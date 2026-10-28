@@ -10,7 +10,7 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Why: VNBot's first sign-in is email, then a 6-digit code, invite-only. `passwordAuth: false` would also disable codes and passkeys and require OIDC, so it is not the switch.
 - Files / modules: `packages/auth`, `packages/contracts` (`NOT_INVITED`), `packages/db` (schema, migration, row security), `apps/api` (env, capabilities, `email-allowlist` CLI).
 - Invariants affected: password routes can be refused while email codes and passkeys still open a session. With the invite list on, an address outside `auth_email_allowlist` cannot receive a code, create a user, or create a session. The table is system-only under row-level security. Threads, runs, and vault rows are unchanged.
-- Links: [ADR 0002](adr/0002-email-code-sign-in-and-invite-list.md), pull request (opened with this change)
+- Links: [ADR 0002](adr/0002-email-code-sign-in-and-invite-list.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
 
 ## 2026-10-28 — Avatar set `vnbot`
 
@@ -18,7 +18,7 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Why: VNBot mascots are a third set. Duplicate and import must not turn a vnbot bot into organic.
 - Files / modules: `packages/contracts/src/bot-avatar.ts`, `packages/db/src/bot-avatar-choice.ts`, `packages/core/src/logo-avatar-traits.ts`.
 - Invariants affected: unknown sets still resolve to `organic`. Stored `organic` and `rakazo` rows are unchanged. A client that does not render `vnbot` falls through to the organic avatar.
-- Links: [ADR 0003](adr/0003-vnbot-avatar-set.md), pull request (opened with this change)
+- Links: [ADR 0003](adr/0003-vnbot-avatar-set.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
 
 ## 2026-10-28 — No architecture change yet
 
