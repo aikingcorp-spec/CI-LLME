@@ -1,5 +1,19 @@
 # AGENTS.md
 
+## Architecture trail rule
+
+Before changing code, read [`docs/architecture/vnbot/README.md`](docs/architecture/vnbot/README.md). Read [`docs/architecture/rakazo-baseline/SYSTEM_MAP.md`](docs/architecture/rakazo-baseline/SYSTEM_MAP.md) when the change depends on how a node works today. The owner picture of the imported tree is [`docs/architecture/rakazo-baseline/ban-do-rakazo-goc.md`](docs/architecture/rakazo-baseline/ban-do-rakazo-goc.md).
+
+`docs/architecture/rakazo-baseline/` is read-only once it is on the base branch. Do not record VNBot deltas there. A typo-only edit needs the pull request label `baseline-typo`. The pull request that first adds that folder is the freeze, not an edit.
+
+A change that touches a path listed in [`scripts/architecture-trail.config.json`](scripts/architecture-trail.config.json) must add an entry to [`docs/architecture/vnbot/CHANGELOG-ARCHITECTURE.md`](docs/architecture/vnbot/CHANGELOG-ARCHITECTURE.md) in the same pull request. The entry states the date, the pull request, what changed versus the baseline, why, the modules and files, the invariants affected, and an ADR link (`none` when it is not a decision). A decision also adds an ADR under `docs/architecture/vnbot/adr/`. If the owner-facing picture changes, update [`docs/architecture/vnbot/ban-do-vnbot.md`](docs/architecture/vnbot/ban-do-vnbot.md).
+
+[`scripts/check-architecture-trail.mjs`](scripts/check-architecture-trail.mjs) enforces this on pull requests (`.github/workflows/architecture-trail.yml`). It fails when a sensitive path changes and that changelog entry is missing, and when the frozen baseline is edited. The label `no-arch-change` skips only the changelog requirement, and the pull request body must include a line `Architecture-trail-justification:` followed by the reason. Reviewers should block a pull request that skips the entry without that label and justification.
+
+Source identifiers stay Rakazo. Do not rename the product in code, and do not edit `LICENSE` as part of a naming change.
+
+Hosted gateway and self-hosted node ([ADR 0001](docs/architecture/vnbot/adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md), Proposed, not yet a code change). vnbot.run signs a person in, lists paired nodes, and carries signaling and TURN. The customer's machine runs the Rakazo stack and keeps chat. A remote client reaches that node over a WebRTC data channel, not by calling `/rpc` on the gateway origin. Do not store threads, runs, or vault rows on the gateway.
+
 - This is a public repository: assume all tracked content and diffs are public. Never commit secrets, `.env` files, private URLs, personal/customer data, or real production data; use fake placeholders. Review `git status` and the staged diff before committing, and never force-add ignored files. If private data appears, stop and alert the maintainer.
 - Rakazo is one product across web, Electron desktop, and Expo mobile; Electron hosts the web UI. Put shared behavior, contracts, API logic, and reusable UI in packages. Keep only genuinely native navigation, storage, permissions, and interactions platform-specific. Core workflows must cover every applicable surface or degrade safely for an explicit reason.
 - No hosted vendor is required to run the core product. Keep LLMs, sandboxes, memory, voice, integrations, and future external services optional and behind provider-neutral interfaces. Vendor SDKs, configuration, and translation belong only in adapters and composition roots. New providers must reuse shared contracts and deterministic offline conformance tests.
