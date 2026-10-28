@@ -982,12 +982,12 @@ describe("email code sign-in", () => {
 });
 
 describe("email invite list", () => {
-  it("sends no code and returns NOT_INVITED for an address that is not invited", async () => {
+  it("sends no code and returns EMAIL_NOT_INVITED for an address that is not invited", async () => {
     const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
     const refused = await f.sendCode("stranger@example.test");
     expect(refused.status).toBe(403);
     expect(await refused.json()).toMatchObject({
-      code: "NOT_INVITED",
+      code: "EMAIL_NOT_INVITED",
       message: "This email is not invited yet",
     });
     expect(f.messages).toHaveLength(0);
@@ -1003,7 +1003,7 @@ describe("email invite list", () => {
     const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
     const response = await f.signup("stranger@example.test");
     expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({ code: "NOT_INVITED" });
+    expect(await response.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
     expect(f.data.user).toHaveLength(0);
     expect((await f.signup("lan@gmail.com")).status).toBe(200);
   });
@@ -1066,7 +1066,7 @@ describe("passkeys", () => {
     f.invited?.delete("approved@example.test");
     const signedIn = await f.signInWithPasskey();
     expect(signedIn.status).toBe(403);
-    expect(await signedIn.json()).toMatchObject({ code: "NOT_INVITED" });
+    expect(await signedIn.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
   });
 
   it("registers from a signed-in session and signs in through the session hooks", async () => {

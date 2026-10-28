@@ -1,10 +1,10 @@
-import { NOT_INVITED } from "@rakazo/contracts";
+import { EMAIL_NOT_INVITED } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { runAsSystemInTransaction } from "@rakazo/db";
 import { APIError } from "better-auth/api";
 
-/** English body. Clients map `NOT_INVITED`; they do not show this sentence. */
-export const NOT_INVITED_MESSAGE = "This email is not invited yet";
+/** English body. Clients map `EMAIL_NOT_INVITED`; they do not show this sentence. */
+export const EMAIL_NOT_INVITED_MESSAGE = "This email is not invited yet";
 
 /** Trim and lowercase only. Plus-tags and dots stay, so the invite is the exact address. */
 export function normalizeEmail(raw: unknown): string {
@@ -23,14 +23,16 @@ export function isAllowlistEmail(email: string): boolean {
 
 export function notInvited(): APIError {
   return new APIError("FORBIDDEN", {
-    code: NOT_INVITED,
-    message: NOT_INVITED_MESSAGE,
+    code: EMAIL_NOT_INVITED,
+    message: EMAIL_NOT_INVITED_MESSAGE,
   });
 }
 
 export async function isEmailInvited(prisma: PrismaClient, raw: unknown): Promise<boolean> {
   const email = normalizeEmail(raw);
   if (!isAllowlistEmail(email)) return false;
+  // The shared API client does not set bypass on every checkout. This system
+  // context does, so the lookup connection gets app.rls_bypass = 'on'.
   return runAsSystemInTransaction(prisma, "read the sign-in invite list", async () => {
     const row = await prisma.authEmailAllowlist.findUnique({
       where: { email },

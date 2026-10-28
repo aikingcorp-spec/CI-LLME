@@ -1,10 +1,10 @@
-import { NOT_INVITED } from "@rakazo/contracts";
+import { EMAIL_NOT_INVITED } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   addAllowlistEmail,
+  EMAIL_NOT_INVITED_MESSAGE,
   isAllowlistEmail,
   isEmailInvited,
-  NOT_INVITED_MESSAGE,
   normalizeEmail,
   notInvited,
   parseEmailAllowlistArgs,
@@ -22,12 +22,12 @@ describe("invite addresses", () => {
     expect(isAllowlistEmail("lan@")).toBe(false);
   });
 
-  it("returns HTTP 403 NOT_INVITED", () => {
+  it("returns HTTP 403 EMAIL_NOT_INVITED", () => {
     const error = notInvited();
     expect(error.status).toBe("FORBIDDEN");
     expect(error.body).toMatchObject({
-      code: NOT_INVITED,
-      message: NOT_INVITED_MESSAGE,
+      code: EMAIL_NOT_INVITED,
+      message: EMAIL_NOT_INVITED_MESSAGE,
     });
   });
 });

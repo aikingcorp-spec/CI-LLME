@@ -12,7 +12,7 @@ VNBot bots need a third avatar set, forked from the logo set rather than from th
 
 The contract enum is `organic`, `rakazo`, and `vnbot`. `resolveBotAvatarSet` returns `vnbot` when that is the stored value and still returns `organic` for anything else unknown. New bots created through the API default to `vnbot`. Existing rows keep their stored set. `bots.avatarSet` stays text, so there is no migration.
 
-The vnbot id seed follows the logo set: no organic family, and a non-heart id. Body colour is specified to come from the 12-colour VNBot palette. That palette file was not in the repository, so the seed currently matches the logo colour until those hexes are supplied. Stored colours are not rewritten when the palette arrives.
+The vnbot id seed follows the logo set: no organic family, and a non-heart id. Body colour is a stable pick from the twelve palette hexes (la-ma, la-dong, kem-lua, cham-ran, hong-sen, do-son, vang-nghe, xanh-ma, xanh-ngoc, cam-gach, nau-ca-phe, cham). A colour already stored on a bot is not rewritten.
 
 ## Consequences
 

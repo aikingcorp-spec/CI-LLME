@@ -14,7 +14,7 @@ VNBot's first sign-in is one path: email, then a 6-digit code. An unknown invite
 
 `AUTH_EMAIL_CODE_ONLY=true` closes only the password routes: `/sign-in/email`, `/sign-up/email`, `/request-password-reset`, `/reset-password`, `/change-password`, and `/set-password`. Email codes and passkeys stay. The capabilities response reports `passwordAuth: false` so clients hide password surfaces. The refusal code on those routes stays `PASSWORD_AUTH_DISABLED`.
 
-`AUTH_EMAIL_ALLOWLIST=on` reads `auth_email_allowlist`. The check runs before a sign-in code is stored or sent, before a user row is created, and before a session row is created. An address that is not listed gets HTTP 403 `{ "code": "NOT_INVITED", "message": "This email is not invited yet" }` and no email. The table is system-only under row-level security. Operators change it with the `email-allowlist` CLI. Turning the flag off restores the previous signup policy and does not require a migration.
+`AUTH_EMAIL_ALLOWLIST=on` reads `auth_email_allowlist`. The check runs before a sign-in code is stored or sent, before a user row is created, and before a session row is created. An address that is not listed gets HTTP 403 `{ "code": "EMAIL_NOT_INVITED", "message": "This email is not invited yet" }` and no email. While the flag is on, sending a code is limited to 5 requests per 15 minutes per IP. The table is system-only under row-level security. Operators change it with the `email-allowlist` CLI. Turning the flag off restores the previous signup policy and does not require a migration.
 
 A new account whose name is missing or equal to the email stores the local part of the address. An explicit name is kept.
 

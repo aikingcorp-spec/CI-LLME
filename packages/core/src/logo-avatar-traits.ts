@@ -45,14 +45,29 @@ export function seededLogoAvatarColor(identity: string): string {
 }
 
 /**
- * Body colour for a `vnbot` bot.
- *
- * The 12-colour VNBot palette (`tokens.json`) is not in this repository.
- * Until those hexes are supplied, the seed matches the logo set so a new bot
- * still stores one stable colour. This is not the VNBot palette.
+ * Body colours from the VNBot palette `tokens` list, in that order:
+ * la-ma, la-dong, kem-lua, cham-ran, hong-sen, do-son, vang-nghe, xanh-ma,
+ * xanh-ngoc, cam-gach, nau-ca-phe, cham.
  */
+export const VNBOT_BODY_COLORS = [
+  "#93A460",
+  "#6C763D",
+  "#F3E1C9",
+  "#4D5A80",
+  "#F1A4A4",
+  "#C8322B",
+  "#F2B705",
+  "#7BC043",
+  "#1FA7A0",
+  "#E8743B",
+  "#A8714B",
+  "#5566B0",
+] as const;
+
+/** Stable body colour for a `vnbot` bot, one of `VNBOT_BODY_COLORS`. */
 export function seededVnbotBodyColor(identity: string): string {
-  return seededLogoAvatarColor(identity);
+  const index = shippedHash(`vnbot-body/v1/${identity}`) % VNBOT_BODY_COLORS.length;
+  return VNBOT_BODY_COLORS[index]!;
 }
 
 /** Evaluate once per identity, never on an animation frame or from React's useId. */
