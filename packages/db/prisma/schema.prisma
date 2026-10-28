@@ -204,6 +204,18 @@ model Passkey {
   @@map("passkey")
 }
 
+/// Phase-1 invite list. The auth server reads it. Operators write it with the email-allowlist CLI.
+model AuthEmailAllowlist {
+  /// Stored trimmed and lowercase. The migration CHECK enforces that shape.
+  email     String   @id
+  note      String?
+  /// Free text (admin email or handle). No foreign key.
+  addedBy   String?
+  createdAt DateTime @default(now())
+
+  @@map("auth_email_allowlist")
+}
+
 /// Better Auth credential rate limits. `lastRequest` is epoch milliseconds.
 model RateLimit {
   id          String @id

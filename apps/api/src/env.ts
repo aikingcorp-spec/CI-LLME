@@ -28,6 +28,10 @@ export { resolveCloudAgentProvider, resolveSandboxProvider } from "@rakazo/adapt
 
 export interface AppEnv {
   passwordAuth?: boolean;
+  /** AUTH_EMAIL_CODE_ONLY=true. Closes password sign-in without closing email codes or passkeys. */
+  emailCodeOnly?: boolean;
+  /** AUTH_EMAIL_ALLOWLIST=on. Only auth_email_allowlist addresses can sign in. */
+  emailAllowlist?: boolean;
   /** Opt-in Have I Been Pwned check for new passwords. Default off: it calls an outside service. */
   breachedPasswordCheck?: boolean;
   oidc?: OidcConfig;
@@ -179,6 +183,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   }
   for (const key of [
     "AUTH_PASSWORD_ENABLED",
+    "AUTH_EMAIL_CODE_ONLY",
     "AUTH_BREACHED_PASSWORD_CHECK_ENABLED",
     "OIDC_ALLOW_SIGNUP_BYPASS",
   ]) {
@@ -186,6 +191,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     if (value && !["true", "false"].includes(value))
       throw new Error(`${key} must be true or false`);
   }
+  const allowlist = source.AUTH_EMAIL_ALLOWLIST;
+  if (allowlist && !["on", "off"].includes(allowlist))
+    throw new Error("AUTH_EMAIL_ALLOWLIST must be on or off");
   const passwordAuth = source.AUTH_PASSWORD_ENABLED !== "false";
   if (!passwordAuth && !issuer)
     throw new Error("AUTH_PASSWORD_ENABLED=false requires OIDC configuration");
@@ -208,6 +216,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   const deploymentModel = resolveDeploymentModel(source);
   return {
     passwordAuth,
+    emailCodeOnly: source.AUTH_EMAIL_CODE_ONLY === "true",
+    emailAllowlist: allowlist === "on",
     breachedPasswordCheck: source.AUTH_BREACHED_PASSWORD_CHECK_ENABLED === "true",
     oidc,
     nodeEnv: source.NODE_ENV ?? "",

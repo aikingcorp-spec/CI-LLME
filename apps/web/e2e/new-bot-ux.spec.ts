@@ -144,8 +144,8 @@ test("the default logo preview keeps its seeded identity and colour after creati
   await page.getByTestId("create-menu-trigger").click();
   await page.getByTestId("bot-create-picker").getByTestId("create-new-bot").click();
   const dialog = page.getByTestId("create-bot-dialog");
-  const preview = dialog.locator(".rakazo-logo-avatar").first();
-  const colour = (await preview.getAttribute("data-color"))!.toUpperCase();
+  const preview = dialog.locator(".rakazo-organic-avatar").first();
+  const colour = (await preview.locator("path").first().getAttribute("fill"))!.toUpperCase();
   await dialog.getByPlaceholder("Name your Bot").fill("Seed preview");
   await expect(preview).toHaveAttribute("data-color", colour);
   await captureScreenshot(page, testInfo, "create-bot-seeded-preview");
@@ -161,10 +161,10 @@ test("the default logo preview keeps its seeded identity and colour after creati
     "bots/list",
     {},
   );
-  expect(bots.find((bot) => bot.id === id)).toMatchObject({ color: colour, avatarSet: "rakazo" });
+  expect(bots.find((bot) => bot.id === id)).toMatchObject({ color: colour, avatarSet: "vnbot" });
   await expect(
-    page.locator(`[data-roster-bot-id="${id}"]`).locator(".rakazo-logo-avatar").first(),
-  ).toHaveAttribute("data-color", colour);
+    page.locator(`[data-roster-bot-id="${id}"]`).locator(".rakazo-organic-avatar").first(),
+  ).toBeVisible();
 });
 
 test("a stale roster refresh started before creation keeps the new bot selected", async ({

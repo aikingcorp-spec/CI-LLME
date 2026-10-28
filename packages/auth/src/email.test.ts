@@ -3,6 +3,7 @@ import {
   accountDeletionEmail,
   passwordResetEmail,
   signInCodeEmail,
+  signInCodeLocale,
   verificationEmail,
 } from "./email.js";
 
@@ -20,6 +21,22 @@ describe("account email templates", () => {
     expect(message.to).toBe("user@example.test");
     expect(message.text).toContain(url);
     expect(message.html).toContain(`href="${url.replaceAll("&", "&amp;")}"`);
+  });
+
+  it("defaults sign-in codes to Vietnamese and switches to English when asked", async () => {
+    expect(signInCodeLocale(undefined)).toBe("vi");
+    expect(signInCodeLocale("vi-VN")).toBe("vi");
+    expect(signInCodeLocale("fr")).toBe("vi");
+    expect(signInCodeLocale("en-US")).toBe("en");
+    const english = await signInCodeEmail("ada@example.test", "042517", {
+      locale: "en",
+      assetBase: "https://app.example.test/email",
+    });
+    expect(english.subject).toBe("Your VNBot sign-in code");
+    expect(english.subject).not.toContain("042517");
+    expect(english.html).toContain("Your sign-in code");
+    expect(english.html).not.toContain("{{CODE}}");
+    expect(english.text).toContain("042517");
   });
 
   it.each([signInCodeEmail, accountDeletionEmail])(

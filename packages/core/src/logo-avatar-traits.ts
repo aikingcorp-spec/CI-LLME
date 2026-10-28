@@ -44,6 +44,17 @@ export function seededLogoAvatarColor(identity: string): string {
   return color;
 }
 
+/**
+ * Body colour for a `vnbot` bot.
+ *
+ * The 12-colour VNBot palette (`tokens.json`) is not in this repository.
+ * Until those hexes are supplied, the seed matches the logo set so a new bot
+ * still stores one stable colour. This is not the VNBot palette.
+ */
+export function seededVnbotBodyColor(identity: string): string {
+  return seededLogoAvatarColor(identity);
+}
+
 /** Evaluate once per identity, never on an animation frame or from React's useId. */
 export function logoAvatarTraits(identity: string, color?: string) {
   const random = shippedRandom(shippedHash(`logo-avatar/v2/${identity}`));

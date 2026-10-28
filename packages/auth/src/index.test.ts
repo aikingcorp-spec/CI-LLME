@@ -6,8 +6,27 @@ import {
   createAuth,
   isBlockedAuthPath,
   passwordResetEmail,
+  passwordsEnabled,
   signInCodeEmail,
 } from "./index.js";
+
+describe("passwordsEnabled", () => {
+  it("closes passwords for email-code-only without using passwordAuth false", () => {
+    expect(passwordsEnabled({})).toBe(true);
+    expect(passwordsEnabled({ emailCodeOnly: true })).toBe(false);
+    expect(passwordsEnabled({ passwordAuth: false })).toBe(false);
+    expect(() =>
+      createAuth({} as never, {
+        secret: "offline-auth-secret-at-least-32-characters",
+        baseURL: "https://api.example.test",
+        webOrigin: "https://app.example.test",
+        signupsEnabled: "true",
+        signupAllowlist: "",
+        emailCodeOnly: true,
+      }),
+    ).toThrow(/email sender/);
+  });
+});
 
 describe("auth policy", () => {
   it("closes every organization plugin route", () => {
@@ -124,6 +143,13 @@ describe("authRateLimitOptions", () => {
   it("stays off outside production so the test suite can sign in", () => {
     expect(authRateLimitOptions("test").enabled).toBe(false);
   });
+
+  it("tightens sign-in code sends while the invite list is on", () => {
+    expect(authRateLimitOptions("production", { emailAllowlist: true }).customRules).toMatchObject({
+      "/email-otp/send-verification-otp": { window: 15 * 60, max: 5 },
+      "/sign-in/email-otp": { window: 15 * 60, max: 10 },
+    });
+  });
 });
 
 describe("buildTrustedOrigins", () => {
@@ -170,11 +196,18 @@ describe("passwordResetEmail", () => {
 });
 
 describe("signInCodeEmail", () => {
-  it("puts the code in plain text and HTML without links", async () => {
-    const message = await signInCodeEmail("ada@example.test", "042517");
-    expect(message).toMatchObject({ to: "ada@example.test", subject: "Your Rakazo sign-in code" });
+  it("puts the code in plain text and HTML without links, and not in the subject", async () => {
+    const message = await signInCodeEmail("ada@example.test", "042517", {
+      assetBase: "https://app.example.test/email",
+    });
+    expect(message).toMatchObject({
+      to: "ada@example.test",
+      subject: "Mã đăng nhập VNBot của bạn",
+    });
+    expect(message.subject).not.toContain("042517");
     expect(message.text).toContain("042517");
     expect(message.html).toContain("042517");
+    expect(message.html).toContain("https://app.example.test/email/vnbot-wordmark-light@2x.png");
     expect(message.text).not.toMatch(/https?:/);
     expect(message.html).not.toContain("<a ");
   });
@@ -189,15 +222,24 @@ describe("stored account names", () => {
     signupAllowlist: "",
   });
   it.each(["", " ", "__TestTok1__", "550e8400-e29b-41d4-a716-446655440000"])(
-    "normalizes unusable names on creation and updates: %s",
+    "uses the email local part when a new account has no usable name: %s",
     async (name) => {
       const hooks = auth.options.databaseHooks!.user!;
       expect(
         await hooks.create!.before!({ name, email: "demo@example.com" } as never),
-      ).toMatchObject({ data: { name: "" } });
+      ).toMatchObject({ data: { name: "demo" } });
       expect(await hooks.update!.before!({ name })).toMatchObject({ data: { name: "" } });
     },
   );
+  it("keeps a chosen name and replaces a name that is the email address", async () => {
+    const hook = auth.options.databaseHooks!.user!.create!.before!;
+    expect(await hook({ name: "Ada Lovelace", email: "ada@example.com" } as never)).toMatchObject({
+      data: { name: "Ada Lovelace" },
+    });
+    expect(
+      await hook({ name: "ada@example.com", email: "ada@example.com" } as never),
+    ).toMatchObject({ data: { name: "ada" } });
+  });
   it("preserves real names and does not change names during unrelated updates", async () => {
     const hook = auth.options.databaseHooks!.user!.update!.before!;
     expect(await hook({ name: " 李雷 " })).toMatchObject({ data: { name: "李雷" } });

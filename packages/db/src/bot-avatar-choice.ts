@@ -7,6 +7,7 @@ import {
   organicAvatarFamily,
   organicAvatarLook,
   seededLogoAvatarColor,
+  seededVnbotBodyColor,
 } from "@rakazo/core";
 
 /** A uniform number in [0, 1). */
@@ -93,14 +94,15 @@ export function chooseBotAvatar(
     id: previewId,
   }: { random?: Random; now?: number; family?: number; avatarSet?: BotAvatarSet; id?: string } = {},
 ): { id: string; color: string } {
-  if (avatarSet === "rakazo") {
-    // The logo uses no organic family. Keep automatic ids non-heart for a later
-    // Original-set switch, without scanning the roster or balancing unused shapes.
-    if (previewId) return { id: previewId, color: color ?? seededLogoAvatarColor(previewId) };
+  if (avatarSet === "rakazo" || avatarSet === "vnbot") {
+    // Logo and vnbot sets use no organic family. Keep automatic ids non-heart
+    // for a later Original-set switch, without scanning the roster.
+    const seeded = avatarSet === "vnbot" ? seededVnbotBodyColor : seededLogoAvatarColor;
+    if (previewId) return { id: previewId, color: color ?? seeded(previewId) };
     let id = family === undefined ? cuidShapedId(random, now) : idForFamily(family, random, now);
     while (family === undefined && organicAvatarFamily(id) === ORGANIC_AVATAR_HEART_FAMILY)
       id = cuidShapedId(random, now);
-    return { id, color: color ?? seededLogoAvatarColor(id) };
+    return { id, color: color ?? seeded(id) };
   }
   const avatars = existing.map((bot) => {
     const avatar = parseBotAvatarValue(bot.color);

@@ -50,6 +50,13 @@ export const legacyAccountSecurity: AccountSecurity = {
 };
 
 /**
+ * HTTP 403 from the auth server when the invite list is on and the address is
+ * not in it. The body is `{ "code": "NOT_INVITED", "message": "..." }`.
+ * Clients map the code; the English message is not the UI string.
+ */
+export const NOT_INVITED = "NOT_INVITED";
+
+/**
  * The RPC error code for a sensitive action the session must confirm its
  * identity for first. Clients confirm, then retry the action once.
  */

@@ -41,6 +41,9 @@ function fixture({
   webOrigin = "http://web.example.test",
   requestOrigin,
   stalledDelivery = false,
+  emailCodeOnly = false,
+  emailAllowlist = false,
+  invited = [],
 }: {
   allowlist?: string;
   delivery?: boolean;
@@ -49,6 +52,9 @@ function fixture({
   requestOrigin?: string;
   /** The provider accepts the message but never settles, like a hung SMTP connection. */
   stalledDelivery?: boolean;
+  emailCodeOnly?: boolean;
+  emailAllowlist?: boolean;
+  invited?: string[];
 } = {}) {
   const data: Record<string, Record<string, unknown>[]> = {
     user: [],
@@ -70,9 +76,16 @@ function fixture({
   };
   const messages: TransactionalEmail[] = [];
   const members = new Set<string>();
+  const invitedEmails = new Set(invited.map((email) => email.trim().toLowerCase()));
   const prisma = {
     authData: data,
     $executeRaw: vi.fn(async () => 0),
+    $queryRaw: vi.fn(async () => [{ bypass: "off" }]),
+    authEmailAllowlist: {
+      findUnique: vi.fn(async ({ where }: { where: { email: string } }) =>
+        invitedEmails.has(where.email) ? { email: where.email } : null,
+      ),
+    },
     $transaction: vi.fn(
       async (run: ((tx: typeof prisma) => Promise<unknown>) | Promise<unknown>[]) =>
         Array.isArray(run) ? Promise.all(run) : run(prisma),
@@ -149,6 +162,8 @@ function fixture({
     get signupAllowlist() {
       return policy.signupAllowlist;
     },
+    emailCodeOnly,
+    emailAllowlist,
     email: delivery
       ? {
           describe: () => ({
@@ -164,7 +179,12 @@ function fixture({
         }
       : undefined,
   });
-  const request = (path: string, body?: unknown, token?: string) =>
+  const request = (
+    path: string,
+    body?: unknown,
+    token?: string,
+    headers?: Record<string, string>,
+  ) =>
     auth.handler(
       new Request(`${baseURL}/api/auth${path}`, {
         method: body ? "POST" : "GET",
@@ -172,6 +192,7 @@ function fixture({
           "content-type": "application/json",
           origin: requestOrigin ?? webOrigin,
           ...(token ? { authorization: `Bearer ${token}` } : {}),
+          ...headers,
         },
         body: body ? JSON.stringify(body) : undefined,
       }),
@@ -193,8 +214,11 @@ function fixture({
     const url = new URL(messages.at(-1)!.text.match(/http:\/\/\S+/)![0]);
     return request(`${url.pathname.replace("/api/auth", "")}${url.search}`);
   };
-  const sendCode = (email = "approved@example.test", type = "sign-in") =>
-    request("/email-otp/send-verification-otp", { email, type });
+  const sendCode = (
+    email = "approved@example.test",
+    type = "sign-in",
+    headers?: Record<string, string>,
+  ) => request("/email-otp/send-verification-otp", { email, type }, undefined, headers);
   const lastCode = () => messages.at(-1)!.text.match(/\b\d{6}\b/)![0];
   const codeSignIn = (otp: string, email = "approved@example.test") =>
     request("/sign-in/email-otp", { email, otp, name: "Code User" });
@@ -250,6 +274,7 @@ function fixture({
     policy,
     messages,
     members,
+    invited: invitedEmails,
   };
 }
 
@@ -777,7 +802,7 @@ describe("email code sign-in", () => {
     expect(f.messages).toHaveLength(1);
     expect(f.messages[0]).toMatchObject({
       to: "approved@example.test",
-      subject: "Your Rakazo sign-in code",
+      subject: "Mã đăng nhập VNBot của bạn",
     });
     const code = f.lastCode();
     expect(JSON.stringify(f.data.verification)).not.toContain(code);
@@ -921,6 +946,67 @@ describe("email code sign-in", () => {
     expect((await f.codeSignIn("123456")).status).toBe(404);
     expect(fixture().auth.emailCodeSignIn).toBe(true);
   });
+
+  it("closes password routes and still sends a code", async () => {
+    const f = fixture({ emailCodeOnly: true });
+    for (const path of [
+      "/sign-in/email",
+      "/sign-up/email",
+      "/request-password-reset",
+      "/reset-password",
+      "/change-password",
+    ]) {
+      const response = await f.request(path, {
+        email: "approved@example.test",
+        password: "offline-password12",
+        newPassword: "offline-password34",
+      });
+      expect(response.status, path).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "PASSWORD_AUTH_DISABLED" });
+    }
+    // Better Auth does not mount this route once password sign-in is off.
+    expect((await f.request("/set-password", { newPassword: "offline-password34" })).status).toBe(
+      404,
+    );
+    const sent = await f.sendCode("ada@example.test", "sign-in", { "x-rakazo-locale": "en" });
+    expect(sent.status).toBe(200);
+    expect(f.messages[0]?.subject).toBe("Your VNBot sign-in code");
+    expect(f.messages[0]?.subject).not.toContain(f.lastCode());
+    const created = await f.request("/sign-in/email-otp", {
+      email: "ada@example.test",
+      otp: f.lastCode(),
+    });
+    expect(created.status).toBe(200);
+    expect(f.data.user![0]).toMatchObject({ name: "ada" });
+  });
+});
+
+describe("email invite list", () => {
+  it("sends no code and returns NOT_INVITED for an address that is not invited", async () => {
+    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
+    const refused = await f.sendCode("stranger@example.test");
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({
+      code: "NOT_INVITED",
+      message: "This email is not invited yet",
+    });
+    expect(f.messages).toHaveLength(0);
+    expect(f.data.verification).toHaveLength(0);
+    expect(f.data.user).toHaveLength(0);
+
+    const invited = await f.sendCode("Lan@Gmail.com");
+    expect(invited.status).toBe(200);
+    expect(f.messages).toHaveLength(1);
+  });
+
+  it("refuses to create an account that is not invited", async () => {
+    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
+    const response = await f.signup("stranger@example.test");
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "NOT_INVITED" });
+    expect(f.data.user).toHaveLength(0);
+    expect((await f.signup("lan@gmail.com")).status).toBe(200);
+  });
 });
 describe("passkeys", () => {
   const webOrigin = "https://web.example.test";
@@ -963,6 +1049,25 @@ describe("passkeys", () => {
     };
     return { ...f, call, register, signInWithPasskey };
   };
+
+  it("keeps passkey sign-in when email-code-only closes passwords", async () => {
+    const f = passkeyFixture({ emailCodeOnly: true });
+    const { token } = await f.legacyAccount();
+    expect((await f.signin()).status).toBe(403);
+    expect((await f.register(token)).status).toBe(200);
+    const signedIn = await f.signInWithPasskey();
+    expect(signedIn.status).toBe(200);
+  });
+
+  it("refuses a passkey session after the address leaves the invite list", async () => {
+    const f = passkeyFixture({ emailAllowlist: true, invited: ["approved@example.test"] });
+    const { token } = (await (await f.signup()).json()) as { token: string };
+    expect((await f.register(token)).status).toBe(200);
+    f.invited?.delete("approved@example.test");
+    const signedIn = await f.signInWithPasskey();
+    expect(signedIn.status).toBe(403);
+    expect(await signedIn.json()).toMatchObject({ code: "NOT_INVITED" });
+  });
 
   it("registers from a signed-in session and signs in through the session hooks", async () => {
     const f = passkeyFixture({ delivery: false });

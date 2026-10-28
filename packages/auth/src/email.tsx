@@ -4,6 +4,12 @@ import { displayName } from "@rakazo/core";
 import { lightTokens } from "@rakazo/ui-tokens";
 import type { ReactNode } from "react";
 import { Body, Container, Head, Html, Link, render, Text, toPlainText } from "react-email";
+import {
+  SIGN_IN_CODE_EN_HTML,
+  SIGN_IN_CODE_EN_TXT,
+  SIGN_IN_CODE_VI_HTML,
+  SIGN_IN_CODE_VI_TXT,
+} from "./sign-in-code-templates.js";
 
 export async function message(
   to: string,
@@ -46,18 +52,54 @@ export function verificationEmail(email: string, url: string): Promise<Transacti
   );
 }
 
-export function signInCodeEmail(email: string, code: string): Promise<TransactionalEmail> {
-  return message(
-    email,
-    "Your Rakazo sign-in code",
-    <>
-      <Text>Enter this code to sign in to Rakazo:</Text>
-      <Text>
-        <strong>{code}</strong>
-      </Text>
-      <Text>This code expires in ten minutes. If you did not request it, ignore this email.</Text>
-    </>,
-  );
+const SIGN_IN_CODE_SUBJECT = {
+  vi: "Mã đăng nhập VNBot của bạn",
+  en: "Your VNBot sign-in code",
+} as const;
+
+/** Vietnamese unless the caller passed English (`en` or `en-…`). */
+export function signInCodeLocale(raw: string | null | undefined): "vi" | "en" {
+  const value = raw?.trim().toLowerCase().replaceAll("_", "-") ?? "";
+  if (value === "en" || value.startsWith("en-")) return "en";
+  return "vi";
+}
+
+/** Public URL prefix for `vnbot-wordmark-light@2x.png`, served by the web app. */
+export function signInCodeAssetBase(webOrigin: string): string {
+  return `${webOrigin.replace(/\/$/, "")}/email`;
+}
+
+export function signInCodeEmail(
+  email: string,
+  code: string,
+  options?: { locale?: string | null; assetBase?: string },
+): Promise<TransactionalEmail> {
+  const locale = signInCodeLocale(options?.locale);
+  const values = { CODE: code, EMAIL: email, ASSET_BASE: options?.assetBase ?? "" };
+  const htmlTemplate = locale === "en" ? SIGN_IN_CODE_EN_HTML : SIGN_IN_CODE_VI_HTML;
+  const textTemplate = locale === "en" ? SIGN_IN_CODE_EN_TXT : SIGN_IN_CODE_VI_TXT;
+  return Promise.resolve({
+    to: email,
+    subject: SIGN_IN_CODE_SUBJECT[locale],
+    html: fillTemplate(htmlTemplate, values, true),
+    text: fillTemplate(textTemplate, values, false).trimEnd(),
+  });
+}
+
+function fillTemplate(template: string, values: Record<string, string>, html: boolean): string {
+  return template.replaceAll(/\{\{([A-Z_]+)\}\}/g, (match, key: string) => {
+    const value = values[key];
+    if (value === undefined) return match;
+    return html ? escapeHtml(value) : value;
+  });
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 export function passwordResetEmail(

@@ -350,6 +350,19 @@ describe("OIDC environment", () => {
       );
     },
   );
+  it("reads email-code-only and the invite list without closing passwords by themselves", () => {
+    expect(loadEnv(base).emailCodeOnly).toBe(false);
+    expect(loadEnv(base).emailAllowlist).toBe(false);
+    expect(loadEnv({ ...base, AUTH_EMAIL_CODE_ONLY: "true" }).emailCodeOnly).toBe(true);
+    expect(loadEnv({ ...base, AUTH_EMAIL_ALLOWLIST: "on" }).emailAllowlist).toBe(true);
+    expect(loadEnv({ ...base, AUTH_EMAIL_ALLOWLIST: "off" }).emailAllowlist).toBe(false);
+    expect(() => loadEnv({ ...base, AUTH_EMAIL_CODE_ONLY: "yes" })).toThrow(
+      "AUTH_EMAIL_CODE_ONLY must be true or false",
+    );
+    expect(() => loadEnv({ ...base, AUTH_EMAIL_ALLOWLIST: "true" })).toThrow(
+      "AUTH_EMAIL_ALLOWLIST must be on or off",
+    );
+  });
   it("guards password-only lockout without contacting discovery", () => {
     expect(() => loadEnv({ ...base, AUTH_PASSWORD_ENABLED: "false" })).toThrow(/requires OIDC/);
     expect(loadEnv({ ...base, ...oidc, AUTH_PASSWORD_ENABLED: "false" }).passwordAuth).toBe(false);

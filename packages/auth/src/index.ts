@@ -29,7 +29,14 @@ import {
   signedBearer,
 } from "./account-security.js";
 import { breachedPasswordCheck } from "./breached-password.js";
-import { passwordResetEmail, signInCodeEmail, verificationEmail } from "./email.js";
+import {
+  passwordResetEmail,
+  signInCodeAssetBase,
+  signInCodeEmail,
+  signInCodeLocale,
+  verificationEmail,
+} from "./email.js";
+import { isEmailInvited, notInvited } from "./email-allowlist.js";
 import { hasRecentIdentityConfirmation, identityConfirmation } from "./identity-confirmation.js";
 import type { OidcConfig } from "./oidc.js";
 import { isCurrentOidcAccount, oidcDiscovery } from "./oidc.js";
@@ -37,7 +44,21 @@ import { passkeyRelyingParty } from "./passkey.js";
 import type { TokenKey } from "./token-storage.js";
 import { encryptStoredOAuthTokens, openIdToken, sealIdToken } from "./token-storage.js";
 
-export { passwordResetEmail, signInCodeEmail, verificationEmail } from "./email.js";
+export {
+  passwordResetEmail,
+  signInCodeAssetBase,
+  signInCodeEmail,
+  signInCodeLocale,
+  verificationEmail,
+} from "./email.js";
+export {
+  ALLOWLIST_USAGE,
+  isAllowlistEmail,
+  NOT_INVITED_MESSAGE,
+  normalizeEmail,
+  parseEmailAllowlistArgs,
+  runEmailAllowlist,
+} from "./email-allowlist.js";
 export type { OidcConfig } from "./oidc.js";
 export { passkeyRelyingParty } from "./passkey.js";
 export { welcomeEmail } from "./welcome-email.js";
@@ -56,6 +77,13 @@ export interface AuthEnv {
   extraOrigins?: string[];
   /** SHA-256 signing certificate fingerprints of Android apps allowed to use this server's passkeys. */
   androidAppCertFingerprints?: string[];
+  /**
+   * `AUTH_EMAIL_CODE_ONLY=true`. Closes password sign-in and sign-up.
+   * Email codes and passkeys stay available. Not the same as `passwordAuth: false`.
+   */
+  emailCodeOnly?: boolean;
+  /** `AUTH_EMAIL_ALLOWLIST=on`. Only listed emails can get a code, an account, or a session. */
+  emailAllowlist?: boolean;
   email?: TransactionalEmailProvider;
   logger?: BetterAuthOptions["logger"];
   onEmailError?: (error: unknown) => void;
@@ -79,6 +107,23 @@ const CREDENTIAL_PATHS = [
   SEND_SIGN_IN_CODE_PATH,
   CODE_SIGN_IN_PATH,
 ] as const;
+
+/** Password routes. Email-code-only must not include the sign-in code paths. */
+const PASSWORD_PATHS = [
+  "/sign-in/email",
+  "/sign-up/email",
+  "/request-password-reset",
+  "/reset-password",
+  "/change-password",
+  "/set-password",
+] as const;
+
+export function passwordsEnabled(env: {
+  passwordAuth?: boolean;
+  emailCodeOnly?: boolean;
+}): boolean {
+  return env.passwordAuth !== false && !env.emailCodeOnly;
+}
 
 /** Sign-in codes are short-lived, single use and hashed at rest. */
 export const SIGN_IN_CODE_EXPIRES_IN_SECONDS = 10 * 60;
@@ -111,13 +156,23 @@ const ACCOUNT_EVENT_PATHS: Record<string, SecurityEventType> = {
 };
 
 /** Shared across API processes. Off outside production so tests can sign in freely. */
-export function authRateLimitOptions(nodeEnv = process.env.NODE_ENV) {
+export function authRateLimitOptions(
+  nodeEnv = process.env.NODE_ENV,
+  options?: { emailAllowlist?: boolean },
+) {
   const rule = { window: 15 * 60, max: 10 };
+  // The invite check reveals list membership. A tighter send cap slows probing.
+  const sendCodeRule = options?.emailAllowlist ? { window: 15 * 60, max: 5 } : rule;
   return {
     enabled: nodeEnv === "production",
     storage: "database" as const,
     customRules: {
-      ...Object.fromEntries(CREDENTIAL_PATHS.map((path) => [path, rule])),
+      ...Object.fromEntries(
+        CREDENTIAL_PATHS.map((path) => [
+          path,
+          path === SEND_SIGN_IN_CODE_PATH ? sendCodeRule : rule,
+        ]),
+      ),
       "/request-account-deletion": { window: 600, max: 3 },
       "/request-identity-code": { window: 600, max: 3 },
       "/confirm-identity": rule,
@@ -132,7 +187,10 @@ export function authRateLimitOptions(nodeEnv = process.env.NODE_ENV) {
 export function createAuth(prisma: PrismaClient, env: AuthEnv) {
   if (env.passwordAuth === false && !env.oidc)
     throw new Error("Password auth requires OIDC when disabled");
+  if (env.emailCodeOnly && !env.email)
+    throw new Error("Email-code-only sign-in needs an email sender");
   const discovery = env.oidc ? oidcDiscovery(env.oidc) : undefined;
+  const passwordEnabled = passwordsEnabled(env);
   // SSO-only deployments keep every email credential closed, codes included.
   const emailCodeSignIn = Boolean(env.email) && env.passwordAuth !== false;
   // SSO-only deployments keep the identity provider as the only way in.
@@ -161,11 +219,13 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         overrides: { "reset-password:": "hashed", "delete-account-": "hashed" },
       },
     },
-    rateLimit: authRateLimitOptions(),
+    rateLimit: authRateLimitOptions(process.env.NODE_ENV, {
+      emailAllowlist: Boolean(env.emailAllowlist),
+    }),
     advanced: { ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] } },
     database: prismaAdapter(prisma, { provider: "postgresql" }),
     emailAndPassword: {
-      enabled: env.passwordAuth !== false,
+      enabled: passwordEnabled,
       // Signup policy is mutable deployment state, so the request hook below
       // enforces it instead of freezing an environment value at process start.
       disableSignUp: false,
@@ -265,7 +325,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
     plugins: [
       signedBearer,
       expo(),
-      accountSecurity(env.email, env.oidc?.name, env.oidc?.issuer, env.passwordAuth !== false),
+      accountSecurity(env.email, env.oidc?.name, env.oidc?.issuer, passwordEnabled),
       identityConfirmation(env.email),
       ...(discovery ? [discovery.plugin] : []),
       ...(emailCodeSignIn
@@ -273,13 +333,23 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             emailOTP({
               otpLength: 6,
               expiresIn: SIGN_IN_CODE_EXPIRES_IN_SECONDS,
+              // Admission is enforced by the request hook below.
+              disableSignUp: false,
               allowedAttempts: 3,
               storeOTP: "hashed",
-              sendVerificationOTP: async ({ email, otp }) => {
+              sendVerificationOTP: async ({ email, otp }, ctx) => {
+                // Runs after the response is chosen, so a miss returns quietly.
+                if (env.emailAllowlist && !(await isEmailInvited(prisma, email))) return;
+                const locale = signInCodeLocale(localeFromAuthContext(ctx));
                 // Like password reset, do not wait on delivery: a refused address
                 // answers at once, so waiting would reveal which addresses are admitted.
                 void env.email
-                  ?.send(await signInCodeEmail(email, otp))
+                  ?.send(
+                    await signInCodeEmail(email, otp, {
+                      locale,
+                      assetBase: signInCodeAssetBase(env.webOrigin),
+                    }),
+                  )
                   .catch((error) => env.onEmailError?.(error));
               },
             }),
@@ -340,13 +410,17 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             ctx.path,
           )
         ) {
-          throw new APIError("FORBIDDEN", {
-            code: "PASSWORD_AUTH_DISABLED",
-            message: "Password authentication is disabled",
-          });
+          throw passwordAuthDisabled();
+        }
+        if (env.emailCodeOnly && (PASSWORD_PATHS as readonly string[]).includes(ctx.path)) {
+          throw passwordAuthDisabled();
         }
         if (isUnusedEmailCodePath(ctx.path, ctx.body)) throw new APIError("NOT_FOUND");
         if (ctx.path === SEND_SIGN_IN_CODE_PATH || ctx.path === CODE_SIGN_IN_PATH) {
+          // Before the plugin stores or sends a code. Existing and new users alike.
+          if (env.emailAllowlist && !(await isEmailInvited(prisma, ctx.body?.email))) {
+            throw notInvited();
+          }
           // A code for an unknown address creates an account, so it passes the
           // same registration policy as password signup. A refused address is
           // answered like any other so replies do not reveal which accounts exist.
@@ -482,6 +556,9 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
                 message: "Email verification required",
               });
             }
+            if (env.emailAllowlist && !(await isEmailInvited(prisma, user.email))) {
+              throw notInvited();
+            }
             if (!user.emailVerified && policy.allowlist.length > 0 && !bypassAllowlist) {
               throw new APIError("FORBIDDEN", {
                 code: "EMAIL_VERIFICATION_REQUIRED",
@@ -576,10 +653,13 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             if (isMessagingEmail(user.email)) {
               throw new APIError("BAD_REQUEST", { message: "Email is not available" });
             }
+            if (env.emailAllowlist && !(await isEmailInvited(prisma, user.email))) {
+              throw notInvited();
+            }
             return {
               data: {
                 ...user,
-                ...(user.name !== undefined ? { name: displayName(user.name, "") } : {}),
+                name: initialAccountName(user.email, user.name),
               },
             };
           },
@@ -721,6 +801,40 @@ export function loopbackTwinOrigins(origin: string): string[] {
  */
 export function isBlockedAuthPath(path: string): boolean {
   return path.startsWith("/organization");
+}
+
+function passwordAuthDisabled(): APIError {
+  return new APIError("FORBIDDEN", {
+    code: "PASSWORD_AUTH_DISABLED",
+    message: "Password authentication is disabled",
+  });
+}
+
+/** Local part when the account has no chosen name. An explicit name is kept. */
+export function initialAccountName(
+  email: string | null | undefined,
+  name: string | null | undefined,
+): string {
+  const address = String(email ?? "").trim();
+  const local = address.split("@")[0] ?? "";
+  const provided = name !== undefined && name !== null ? displayName(name, "") : "";
+  if (!provided || provided.toLowerCase() === address.toLowerCase()) return displayName(local, "");
+  return provided;
+}
+
+function localeFromAuthContext(ctx: unknown): string | undefined {
+  if (!ctx || typeof ctx !== "object") return undefined;
+  const record = ctx as {
+    body?: { locale?: unknown };
+    headers?: Headers;
+    request?: Request;
+  };
+  if (typeof record.body?.locale === "string") return record.body.locale;
+  return (
+    record.headers?.get("x-rakazo-locale") ??
+    record.request?.headers.get("x-rakazo-locale") ??
+    undefined
+  );
 }
 
 function isOidcCallback(

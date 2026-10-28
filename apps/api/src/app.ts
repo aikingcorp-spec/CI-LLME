@@ -94,7 +94,7 @@ import {
   verifyModelServesAgents,
   withSecretPersistence,
 } from "@rakazo/adapters";
-import { createAuth, isBlockedAuthPath, loopbackTwinOrigins } from "@rakazo/auth";
+import { createAuth, isBlockedAuthPath, loopbackTwinOrigins, passwordsEnabled } from "@rakazo/auth";
 import type { Actor, AuthCapabilities } from "@rakazo/contracts";
 import { isLocalhostOrLoopbackIp, SERVER_BUILD_HEADER } from "@rakazo/contracts";
 import { signupPolicyFromEnv } from "@rakazo/core";
@@ -490,6 +490,8 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   const auth = createAuth(prisma, {
     analytics,
     passwordAuth: env.passwordAuth,
+    emailCodeOnly: env.emailCodeOnly,
+    emailAllowlist: env.emailAllowlist,
     breachedPasswordCheck: env.breachedPasswordCheck,
     oidc: env.oidc,
     secret: env.authSecret,
@@ -784,10 +786,10 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       sso: env.oidc
         ? { name: env.oidc.name, availability: auth.ssoAvailability() ?? "checking" }
         : null,
-      passwordAuth: env.passwordAuth !== false,
-      passwordReset: env.passwordAuth !== false && Boolean(email),
+      passwordAuth: passwordsEnabled(env),
+      passwordReset: passwordsEnabled(env) && Boolean(email),
       resetUrl:
-        env.passwordAuth !== false && email ? new URL("/reset-password", env.webOrigin).href : null,
+        passwordsEnabled(env) && email ? new URL("/reset-password", env.webOrigin).href : null,
       emailCode: auth.emailCodeSignIn,
       billing: Boolean(billing),
       passkeyRpId: auth.passkeyRpId,

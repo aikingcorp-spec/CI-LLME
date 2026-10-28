@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { contrastRatio } from "./bot-avatar-colors.js";
-import { seededLogoAvatarColor } from "./logo-avatar-traits.js";
+import { seededLogoAvatarColor, seededVnbotBodyColor } from "./logo-avatar-traits.js";
 
 describe("seeded logo colours", () => {
   it("reproduces a valid colour from a persisted identity across calls and reload data", () => {
@@ -29,6 +29,7 @@ describe("seeded logo colours", () => {
       ...chosen
     } = logoAvatarTraits("persistent-bot-1", "#123456");
     expect(color).toBe(seededLogoAvatarColor("persistent-bot-1"));
+    expect(seededVnbotBodyColor("persistent-bot-1")).toBe(color);
     expect(explicit).toBe("#123456");
     expect(chosen).toEqual(seeded);
   });

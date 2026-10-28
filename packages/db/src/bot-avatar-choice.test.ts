@@ -5,6 +5,7 @@ import {
   organicAvatarFamily,
   organicAvatarLook,
   seededLogoAvatarColor,
+  seededVnbotBodyColor,
 } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
 import { BOT_ID_ATTEMPTS, chooseBotAvatar, pickLeastUsed } from "./bot-avatar-choice.js";
@@ -53,6 +54,23 @@ describe("chooseBotAvatar", () => {
         chooseBotAvatar([], undefined, { avatarSet: "rakazo", random: seeded(seed), now: 0 }),
       ).toEqual(chosen);
     }
+  });
+
+  it("seeds a vnbot id like the logo set and keeps an explicit colour", () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const chosen = chooseBotAvatar([], undefined, {
+        avatarSet: "vnbot",
+        random: seeded(seed),
+        now: 0,
+      });
+      expect(chosen.color).toBe(seededVnbotBodyColor(chosen.id));
+      expect(organicAvatarFamily(chosen.id)).not.toBe(ORGANIC_AVATAR_HEART_FAMILY);
+    }
+    const id = "c0123456789abcdef01234567";
+    expect(chooseBotAvatar([], "#123456", { avatarSet: "vnbot", id })).toEqual({
+      id,
+      color: "#123456",
+    });
   });
 
   it("uses the supplied preview identity for both the final id and generated colour", () => {

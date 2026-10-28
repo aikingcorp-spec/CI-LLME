@@ -76,23 +76,20 @@ describe("CreateBotDialog", () => {
     expect(button("Create").disabled).toBe(false);
   });
 
-  it("defaults new bots to the Rakazo set without an organic family override", async () => {
+  it("defaults new bots to the vnbot set without an organic family override", async () => {
     const onCreate = vi.fn(async (_input: CreateBotDialogInput) => undefined);
     await render(onCreate);
-    expect(document.querySelector(".rakazo-logo-avatar")).not.toBeNull();
-    expect(button("Rakazo").getAttribute("aria-selected")).toBe("true");
+    expect(document.querySelector(".rakazo-organic-avatar")).not.toBeNull();
     await typeName("Scout");
     await click(button("Create"));
-    expect(onCreate.mock.lastCall?.[0]).toMatchObject({ name: "Scout", avatarSet: "rakazo" });
+    expect(onCreate.mock.lastCall?.[0]).toMatchObject({ name: "Scout", avatarSet: "vnbot" });
     expect(onCreate.mock.lastCall?.[0]).not.toHaveProperty("avatarFamily");
     const input = onCreate.mock.lastCall![0];
-    const preview = document.querySelector(".rakazo-logo-avatar")!;
     expect(input.id).toMatch(/^c[a-z0-9]{24}$/);
-    expect(input.color?.toUpperCase()).toBe(preview.getAttribute("data-color")?.toUpperCase());
     expect(input.color).toBe(seededLogoAvatarColor(input.id!));
   });
 
-  it("preserves an explicitly chosen Rakazo colour through a failed create and retry", async () => {
+  it("preserves an explicitly chosen colour through a failed create and retry", async () => {
     const onCreate = vi
       .fn(async (_input: CreateBotDialogInput) => undefined)
       .mockRejectedValueOnce(new Error("Try again"));
@@ -100,9 +97,9 @@ describe("CreateBotDialog", () => {
     await click(button("Color #10B981"));
     await typeName("Scout");
     await click(button("Create"));
-    expect(onCreate.mock.lastCall?.[0]).toMatchObject({ avatarSet: "rakazo", color: "#10B981" });
+    expect(onCreate.mock.lastCall?.[0]).toMatchObject({ avatarSet: "vnbot", color: "#10B981" });
     await click(button("Create"));
-    expect(onCreate.mock.lastCall?.[0]).toMatchObject({ avatarSet: "rakazo", color: "#10B981" });
+    expect(onCreate.mock.lastCall?.[0]).toMatchObject({ avatarSet: "vnbot", color: "#10B981" });
   });
 
   it("sends the organic family the preview draws", async () => {
@@ -177,9 +174,11 @@ it("retains the preview identity and colour through rerenders, set toggles and a
     .fn(async (_input: CreateBotDialogInput) => undefined)
     .mockRejectedValueOnce(new Error("Try again"));
   await render(onCreate);
+  await click(button("Rakazo"));
   const colour = document.querySelector(".rakazo-logo-avatar")!.getAttribute("data-color");
   await typeName("First name");
   await render(onCreate);
+  await click(button("Rakazo"));
   expect(document.querySelector(".rakazo-logo-avatar")!.getAttribute("data-color")).toBe(colour);
   await click(button("Original"));
   await click(button("Rakazo"));

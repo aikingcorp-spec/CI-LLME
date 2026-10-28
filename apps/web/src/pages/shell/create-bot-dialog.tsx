@@ -66,6 +66,7 @@ export function CreateBotDialog({
     identity: pick(ORGANIC_IDENTITIES),
   }));
   const [avatarSet, setAvatarSet] = useState<BotAvatarSet>(DEFAULT_NEW_BOT_AVATAR_SET);
+  const reservesPreview = avatarSet === "rakazo" || avatarSet === "vnbot";
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const trimmed = name.trim();
@@ -79,7 +80,7 @@ export function CreateBotDialog({
       await onCreate({
         name: trimmed,
         color: look.value,
-        ...(avatarSet === "rakazo" ? { id: previewId } : {}),
+        ...(reservesPreview ? { id: previewId } : {}),
         avatarSet,
         ...(organic ? { avatarFamily: organicAvatarFamily(look.identity) } : {}),
       });
@@ -118,7 +119,7 @@ export function CreateBotDialog({
           <div className="flex justify-center py-2">
             <BotAvatar
               color={look.value}
-              identity={avatarSet === "rakazo" ? previewId : look.identity}
+              identity={reservesPreview ? previewId : look.identity}
               size={96}
               avatarSet={avatarSet}
             />
@@ -139,7 +140,7 @@ export function CreateBotDialog({
           ) : null}
           <BotLookPicker
             value={look.value}
-            identity={avatarSet === "rakazo" ? previewId : look.identity}
+            identity={reservesPreview ? previewId : look.identity}
             organicIdentities={ORGANIC_IDENTITIES}
             avatarSet={avatarSet}
             onAvatarSetChange={(set, value) => {

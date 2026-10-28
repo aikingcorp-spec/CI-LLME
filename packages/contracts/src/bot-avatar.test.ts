@@ -62,11 +62,12 @@ describe("per-bot avatar sets", () => {
     expect(resolveBotAvatarSet("future-set")).toBe("organic");
     expect(resolveBotAvatarSet("organic")).toBe("organic");
     expect(resolveBotAvatarSet("rakazo")).toBe("rakazo");
-    expect(DEFAULT_NEW_BOT_AVATAR_SET).toBe("rakazo");
+    expect(resolveBotAvatarSet("vnbot")).toBe("vnbot");
+    expect(DEFAULT_NEW_BOT_AVATAR_SET).toBe("vnbot");
   });
 
   it("accepts an explicit set on create/update and rejects unrecognised writes", () => {
-    for (const avatarSet of ["organic", "rakazo"] as const) {
+    for (const avatarSet of ["organic", "rakazo", "vnbot"] as const) {
       expect(CreateBotInput.parse({ name: "Scout", avatarSet }).avatarSet).toBe(avatarSet);
       expect(UpdateBotInput.parse({ botId: "bot-1", avatarSet }).avatarSet).toBe(avatarSet);
     }
@@ -109,5 +110,18 @@ describe("per-bot avatar sets", () => {
       expect(imported.avatarSet).toBe("rakazo");
       expect(imported.color).toBe(color);
     }
+    const vnbot = ExportManifestSchema.parse({
+      ...base,
+      bot: { ...base.bot, avatarSet: "vnbot", color: "#8B5CF6" },
+    });
+    expect(
+      AgentImportCreateInput.parse({
+        name: "Scout",
+        color: vnbot.bot.color,
+        avatarSet: vnbot.bot.avatarSet,
+        files: [{ path: "SOUL.md", content: "Be helpful." }],
+        selection: { instructions: [], memory: [], skills: [] },
+      }).avatarSet,
+    ).toBe("vnbot");
   });
 });
