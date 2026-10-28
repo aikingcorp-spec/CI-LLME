@@ -1,10 +1,7 @@
+import { vnbotBodyColors } from "@rakazo/ui-tokens";
 import { describe, expect, it } from "vitest";
 import { contrastRatio } from "./bot-avatar-colors.js";
-import {
-  seededLogoAvatarColor,
-  seededVnbotBodyColor,
-  VNBOT_BODY_COLORS,
-} from "./logo-avatar-traits.js";
+import { seededLogoAvatarColor, seededVnbotBodyColor } from "./logo-avatar-traits.js";
 
 describe("seeded logo colours", () => {
   it("reproduces a valid colour from a persisted identity across calls and reload data", () => {
@@ -41,24 +38,12 @@ describe("seeded logo colours", () => {
 import { LOGO_AVATAR_LOOP_MS, logoAvatarTraits } from "./logo-avatar-traits.js";
 
 describe("vnbot body colours", () => {
-  it("picks a stable hex from the twelve palette tokens", () => {
-    expect(VNBOT_BODY_COLORS).toEqual([
-      "#93A460",
-      "#6C763D",
-      "#F3E1C9",
-      "#4D5A80",
-      "#F1A4A4",
-      "#C8322B",
-      "#F2B705",
-      "#7BC043",
-      "#1FA7A0",
-      "#E8743B",
-      "#A8714B",
-      "#5566B0",
-    ]);
+  it("picks a stable hex from vnbotBodyColors", () => {
+    const hexes = vnbotBodyColors.map((color) => color.hex);
     const first = seededVnbotBodyColor("persistent-bot-1");
-    expect(VNBOT_BODY_COLORS).toContain(first);
+    expect(hexes).toContain(first);
     expect(seededVnbotBodyColor("persistent-bot-1")).toBe(first);
+    expect(new Set(hexes).size).toBe(vnbotBodyColors.length);
   });
 });
 

@@ -288,6 +288,24 @@ export const botColors = [
   "#D9508A",
 ] as const;
 
+/** VNBot mascot body colours (palette/tokens.json). `tone: "light"` swaps accessories to their on-light variants. */
+export const vnbotBodyColors = [
+  { key: "la-ma", hex: "#93A460", tone: "dark", vi: "Lá mạ" },
+  { key: "la-dong", hex: "#6C763D", tone: "dark", vi: "Lá dong" },
+  { key: "kem-lua", hex: "#F3E1C9", tone: "light", vi: "Kem lụa" },
+  { key: "cham-ran", hex: "#4D5A80", tone: "dark", vi: "Chàm rằn" },
+  { key: "hong-sen", hex: "#F1A4A4", tone: "light", vi: "Hồng sen" },
+  { key: "do-son", hex: "#C8322B", tone: "dark", vi: "Đỏ son" },
+  { key: "vang-nghe", hex: "#F2B705", tone: "light", vi: "Vàng nghệ" },
+  { key: "xanh-ma", hex: "#7BC043", tone: "light", vi: "Xanh mạ" },
+  { key: "xanh-ngoc", hex: "#1FA7A0", tone: "dark", vi: "Xanh ngọc" },
+  { key: "cam-gach", hex: "#E8743B", tone: "dark", vi: "Cam gạch" },
+  { key: "nau-ca-phe", hex: "#A8714B", tone: "dark", vi: "Nâu cà phê" },
+  { key: "cham", hex: "#5566B0", tone: "dark", vi: "Chàm" },
+] as const;
+
+export type VnbotBodyColorKey = (typeof vnbotBodyColors)[number]["key"];
+
 export function isAppearancePreference(
   value: string | null | undefined,
 ): value is AppearancePreference {

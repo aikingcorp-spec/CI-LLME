@@ -14,9 +14,9 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 
 ## 2026-10-28 — Avatar set `vnbot`
 
-- What changed versus baseline: the bot avatar contract accepts `vnbot` beside `organic` and `rakazo`. `resolveBotAvatarSet` keeps `vnbot` instead of folding it into `organic`. New bots default to `vnbot`. The id seed matches the logo set (no organic family). Body colour is one of the twelve VNBot palette hexes (`la-ma` through `cham`). No database migration: `bots.avatarSet` is text and stays default `rakazo` at the column.
+- What changed versus baseline: the bot avatar contract accepts `vnbot` beside `organic` and `rakazo`. `resolveBotAvatarSet` keeps `vnbot` instead of folding it into `organic`. New bots default to `vnbot`. The id seed matches the logo set (no organic family). Body colour is `seededVnbotBodyColor`, which indexes `vnbotBodyColors` in `@rakazo/ui-tokens` (the twelve palette hexes, `la-ma` through `cham`). No database migration: `bots.avatarSet` is text and stays default `rakazo` at the column.
 - Why: VNBot mascots are a third set. Duplicate and import must not turn a vnbot bot into organic.
-- Files / modules: `packages/contracts/src/bot-avatar.ts`, `packages/db/src/bot-avatar-choice.ts`, `packages/core/src/logo-avatar-traits.ts`.
+- Files / modules: `packages/contracts/src/bot-avatar.ts`, `packages/db/src/bot-avatar-choice.ts`, `packages/core/src/logo-avatar-traits.ts`, `packages/ui-tokens/src/index.ts` (`vnbotBodyColors`).
 - Invariants affected: unknown sets still resolve to `organic`. Stored `organic` and `rakazo` rows are unchanged. A client that does not render `vnbot` falls through to the organic avatar.
 - Links: [ADR 0003](adr/0003-vnbot-avatar-set.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
 
