@@ -43,6 +43,21 @@ function Mascot({
   );
 }
 
+export function VnbotMascot({
+  name,
+  className,
+}: {
+  name: (typeof MASCOTS)[number]["name"];
+  className?: string;
+}) {
+  const mascot = MASCOTS.find((entry) => entry.name === name) ?? MASCOTS[0];
+  return (
+    <span className={`block ${className ?? ""}`} aria-hidden="true">
+      <Mascot {...mascot} />
+    </span>
+  );
+}
+
 /** The five welcome mascots. Decorative; each SVG's ids are prefixed so they do not collide. */
 export function VnbotMascotRow({ className, size }: { className?: string; size: string }) {
   return (

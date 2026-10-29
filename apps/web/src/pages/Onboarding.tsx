@@ -50,6 +50,7 @@ import {
 import { ModelHeadersEditor } from "../components/ModelHeadersEditor";
 import { PageLoading } from "../components/PageLoading";
 import { SignupSurvey } from "../components/SignupSurvey";
+import { VnbotMascot } from "../components/VnbotMascotRow";
 import { useCopyText } from "../lib/copy-text";
 import { providerDisplayName } from "../lib/localized-provider-hint";
 import type { ModelCatalogEntry } from "../lib/model-auth";
@@ -614,9 +615,13 @@ export function OnboardingPage() {
         ) : null}
         {step === "model" ? (
           <div>
+            <VnbotMascot name="non" className="mb-4 size-16 sm:size-20" />
             <h1 className="text-[32px] font-medium text-foreground">
               <Trans>Connect a model</Trans>
             </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              <Trans>Use your own key — VNBot doesn't provide a model</Trans>
+            </p>
             <div className="mt-8 block text-sm font-medium text-foreground">
               <span>
                 <Trans>Provider</Trans>
@@ -637,7 +642,7 @@ export function OnboardingPage() {
                 }}
                 items={providerItems}
               >
-                <SelectTrigger aria-label={t`Provider`} className="mt-2 w-full">
+                <SelectTrigger aria-label={t`Provider`} className="mt-2 min-h-11 w-full">
                   <SelectValue placeholder={t`Choose a provider`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -680,6 +685,7 @@ export function OnboardingPage() {
                     <div className="mt-3">
                       <Button
                         variant="outline"
+                        className="min-h-11"
                         disabled={probing || !baseUrl.trim()}
                         onClick={() => void probeServerModels()}
                       >
@@ -710,7 +716,10 @@ export function OnboardingPage() {
                           }}
                           items={probeModelItems}
                         >
-                          <SelectTrigger aria-label={t`Models from server`} className="mt-2 w-full">
+                          <SelectTrigger
+                            aria-label={t`Models from server`}
+                            className="mt-2 min-h-11 w-full"
+                          >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -743,7 +752,7 @@ export function OnboardingPage() {
                         <Button
                           variant="link"
                           size="xs"
-                          className="mt-2 px-0 text-muted-foreground"
+                          className="mt-2 min-h-11 px-0 text-muted-foreground"
                           onClick={() => {
                             setManualModelId(false);
                             setModelId(probeModels[0] ?? "");
@@ -829,6 +838,7 @@ export function OnboardingPage() {
                                 spellCheck={false}
                               />
                               <Button
+                                className="min-h-11"
                                 disabled={!pasteCode.trim()}
                                 onClick={() => void submitOAuthCode()}
                               >
@@ -881,6 +891,7 @@ export function OnboardingPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="min-h-11"
                                 onClick={() => copyOAuthCode(oauth.userCode)}
                               >
                                 {codeCopied ? (
@@ -903,7 +914,7 @@ export function OnboardingPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="mt-2 -ml-2 text-muted-foreground"
+                          className="mt-2 -ml-2 min-h-11 text-muted-foreground"
                           onClick={() => cancelOAuthAttempt()}
                         >
                           <Trans>Cancel</Trans>
@@ -911,6 +922,7 @@ export function OnboardingPage() {
                       </div>
                     ) : (
                       <Button
+                        className="min-h-11"
                         disabled={oauthPending}
                         onClick={() => beginSelectedSubscriptionSignIn()}
                       >
@@ -999,7 +1011,7 @@ export function OnboardingPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="mt-3"
+                      className="mt-3 min-h-11"
                       disabled={preflightTesting || apiKey.trim().length < 8}
                       onClick={() => void testApiKeyConnection()}
                     >
@@ -1034,7 +1046,7 @@ export function OnboardingPage() {
                       }}
                       items={modelItems}
                     >
-                      <SelectTrigger aria-label={t`Model`} className="mt-2 w-full">
+                      <SelectTrigger aria-label={t`Model`} className="mt-2 min-h-11 w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1058,11 +1070,16 @@ export function OnboardingPage() {
             ) : null}
             {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
             <div className="mt-6 flex items-center gap-2">
-              <Button disabled={!canSaveModel} onClick={() => void saveModel()}>
+              <Button
+                className="min-h-11"
+                disabled={!canSaveModel}
+                onClick={() => void saveModel()}
+              >
                 <Trans>Continue</Trans>
               </Button>
               <Button
                 variant="text"
+                className="min-h-11"
                 onClick={() => {
                   cancelOAuthAttempt();
                   goTo("bot");
