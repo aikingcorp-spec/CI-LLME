@@ -8,7 +8,7 @@ import {
   getHomeCopy,
 } from "./i18n/home";
 import { roundupMarkdown } from "./roundup";
-import { APP_URL, SITE_URL } from "./site";
+import { APP_URL, SITE_URL, SUPPORT_EMAIL } from "./site";
 
 export const AGENT_DISCOVERY_LINKS =
   '</llms.txt>; rel="describedby"; type="text/plain", </.well-known/ai-catalog.json>; rel="ai-catalog"; type="application/ai-catalog+json"';
@@ -82,16 +82,16 @@ VNBot is a Grok Bot alternative for persistent AI teammates: bots that can use a
 
 The project started from a simple premise: useful agents should be understandable and controllable by the people who run them. VNBot keeps routines in readable Markdown, supports multiple model providers, records actions in an audit log, and lets operators keep model keys, browser sessions, and deployment infrastructure under their own control.
 
-VNBot targets the web, macOS, Linux, iOS, and Android. Inbox Zero Inc. maintains VNBot and offers support at hello@rakazo.com.
+VNBot targets the web, macOS, Linux, iOS, and Android. Inbox Zero Inc. maintains VNBot and offers support at ${SUPPORT_EMAIL}.
 
 - [Support](${SITE_URL}/support/)
 `;
 
 export const SUPPORT_MARKDOWN = `# VNBot support
 
-For help with the VNBot mobile app or a hosted VNBot account, email [hello@rakazo.com](mailto:hello@rakazo.com). Include the email address on the account, what you expected to happen, and any error message you saw. Never send passwords, API keys, access tokens, or other secrets.
+For help with the VNBot mobile app or a hosted VNBot account, email [${SUPPORT_EMAIL}](mailto:${SUPPORT_EMAIL}). Include the email address on the account, what you expected to happen, and any error message you saw. Never send passwords, API keys, access tokens, or other secrets.
 
-Hosted users can permanently delete their account and associated personal Space data from the Account screen in the VNBot app, or on the web at [vnbot.run](${APP_URL}) under Settings → Account. Without access to the app, email [hello@rakazo.com](mailto:hello@rakazo.com) from the account's email address to ask us to delete it. Sign-in security records are kept for up to 90 days.
+Hosted users can permanently delete their account and associated personal Space data from the Account screen in the VNBot app, or on the web at [vnbot.run](${APP_URL}) under Settings → Account. Without access to the app, email [${SUPPORT_EMAIL}](mailto:${SUPPORT_EMAIL}) from the account's email address to ask us to delete it. Sign-in security records are kept for up to 90 days.
 `;
 
 export const PRIVACY_MARKDOWN = `# VNBot privacy
@@ -108,7 +108,7 @@ Permission records include the recipient, Space, disclosure version, and time. C
 
 Services we select must provide protection equal to or greater than the safeguards in our complete policy, including limited processing purposes, security, retention, and deletion protections. We review provider terms and safeguards before enabling a provider. Self-hosted operators are responsible for the services they select and their agreements. Provider terms govern processing and retention after receipt; provider policy links are available in AI data sharing and in the complete policy.
 
-Hosted users can delete their account and associated personal Space data from Account. In self-hosted deployments, the server operator controls information sent to that deployment. For privacy requests, email [hello@rakazo.com](mailto:hello@rakazo.com).
+Hosted users can delete their account and associated personal Space data from Account. In self-hosted deployments, the server operator controls information sent to that deployment. For privacy requests, email [${SUPPORT_EMAIL}](mailto:${SUPPORT_EMAIL}).
 
 Read the [complete privacy policy](${SITE_URL}/privacy/) for account information, other service providers, retention, deletion, security, international transfers, children, and your rights.
 `;
@@ -121,7 +121,7 @@ These terms are an agreement between you and Inbox Zero Inc. for the VNBot servi
 
 You are responsible for your account and for actions your bots take on your behalf, including in scheduled routines; give bots only the access they need and require approval for actions that are hard to undo. AI output can be wrong, so review it before relying on it, and do not use the Service where an error could cause serious harm. Do not use the Service to break the law, send spam or malware, access systems without authorization, abuse its computers, or violate the terms of connected providers. You keep ownership of your content and bot output, and you pay any fees charged by third-party services, including usage on your own API keys.
 
-Free trials convert to a paid plan when they end unless cancelled before then. Fair use on hosted plans is up to 100 computer-hours a month and 5 computers running at once per account; computers sleep when idle, there are no charges for computer use beyond the plan, and we may slow or pause usage beyond these limits. Self-hosted deployments have no such limits. Paid plans renew automatically until cancelled and are charged through Stripe. Cancel at any time from billing settings or by emailing [hello@rakazo.com](mailto:hello@rakazo.com); access continues until the end of the paid period. Payments are non-refundable and not prorated except where required by law. Charges made in error are refunded when reported within 30 days. If we close your account or stop offering the Service for reasons other than a violation of these terms, we refund prepaid fees for the unused period. Consumers in the EU and UK can withdraw from a new subscription within 14 days and are refunded less the value of the Service already provided.
+Free trials convert to a paid plan when they end unless cancelled before then. Fair use on hosted plans is up to 100 computer-hours a month and 5 computers running at once per account; computers sleep when idle, there are no charges for computer use beyond the plan, and we may slow or pause usage beyond these limits. Self-hosted deployments have no such limits. Paid plans renew automatically until cancelled and are charged through Stripe. Cancel at any time from billing settings or by emailing [${SUPPORT_EMAIL}](mailto:${SUPPORT_EMAIL}); access continues until the end of the paid period. Payments are non-refundable and not prorated except where required by law. Charges made in error are refunded when reported within 30 days. If we close your account or stop offering the Service for reasons other than a violation of these terms, we refund prepaid fees for the unused period. Consumers in the EU and UK can withdraw from a new subscription within 14 days and are refunded less the value of the Service already provided.
 
 The Service is provided as is. Our liability is limited to the greater of what you paid us in the previous 12 months or US$100, except where the law does not allow a limit. Delaware law governs these terms.
 
@@ -144,7 +144,7 @@ VNBot Cloud at ${APP_URL} is in beta. Self-hosting is also available. Do not sen
 
 1. Confirm deployment choices and any host-level commands with the user before changing their machine.
 2. Keep secrets in local environment configuration rather than tracked files.
-3. Send support requests to [hello@rakazo.com](mailto:hello@rakazo.com).
+3. Send support requests to [${SUPPORT_EMAIL}](mailto:${SUPPORT_EMAIL}).
 
 ## Canonical resources
 

@@ -1,4 +1,4 @@
-import { SITE_URL } from "./site";
+import { DOWNLOAD_URL, OPENCLAW_ALTERNATIVE_PATH, SITE_URL, SUPPORT_EMAIL } from "./site";
 
 export const OPENCLAW_DOCS_URL = "https://docs.openclaw.ai/";
 export const OPENCLAW_GETTING_STARTED_URL = "https://docs.openclaw.ai/start/getting-started";
@@ -16,6 +16,37 @@ export type ComparisonRow = {
   rakazo: string;
   openclaw: string;
 };
+
+export const SELF_HOST_H1 = "Install VNBot on your computer";
+export const SELF_HOST_TITLE = "Install VNBot on Your Computer – VNBot";
+export const SELF_HOST_DESCRIPTION =
+  "Run VNBot on your own Mac, PC, or VPS. Your chats and data stay on your machine. Download the app and follow four short steps.";
+
+export const SELF_HOST_STEPS = [
+  { title: "Download VNBot", body: "Get the app for your computer from the download page." },
+  { title: "Choose This computer", body: "Open the app and pick This computer. VNBot starts on your machine." },
+  { title: "Create your account", body: "The first account you create owns this install." },
+  { title: "Connect a model", body: "Use your own key, or a model server running on your machine." },
+] as const;
+
+export const SELF_HOST_REQUIREMENTS =
+  "VNBot runs its bot computers in Docker, so install Docker first. Leave the machine on if bots should keep running routines.";
+
+export const SELF_HOST_SERVER =
+  "For an always-on machine, such as a Mac mini or a VPS, install VNBot there the same way. From other devices, choose Existing instance in the desktop app or Use a custom server in the mobile app and enter its https address.";
+
+export const SELF_HOST_FAQS: readonly FaqItem[] = [
+  {
+    question: "Where does my data live?",
+    answer:
+      "Chats, bot files, browser profiles, and the audit log stay on your computer. Content you send to a model provider is processed by that provider under its terms. You choose the provider and the keys.",
+  },
+  {
+    question: "What does it cost?",
+    answer:
+      "There is no seat fee for running VNBot on your own computer. You pay the model provider you connect.",
+  },
+];
 
 export const OPENCLAW_H1 = "OpenClaw alternative";
 export const OPENCLAW_TITLE = "OpenClaw Alternative – VNBot";
@@ -177,6 +208,34 @@ function comparisonMarkdown(): string {
   );
   return [header, ...rows].join("\n");
 }
+
+export const SELF_HOST_MARKDOWN = `# ${SELF_HOST_H1}
+
+> Run VNBot on your own Mac, PC, or VPS. Your chats and data stay on your machine.
+
+## Steps
+
+${SELF_HOST_STEPS.map((step, index) => `${index + 1}. **${step.title}.** ${step.body}`).join("\n")}
+
+[Download VNBot](${DOWNLOAD_URL})
+
+## Before you start
+
+${SELF_HOST_REQUIREMENTS}
+
+## Always-on machine
+
+${SELF_HOST_SERVER} For help, email [${SUPPORT_EMAIL}](mailto:${SUPPORT_EMAIL}).
+
+## FAQ
+
+${faqMarkdown(SELF_HOST_FAQS)}
+
+## Related
+
+- [Home](${SITE_URL}/)
+- [OpenClaw comparison](${SITE_URL}${OPENCLAW_ALTERNATIVE_PATH})
+`;
 
 export const OPENCLAW_RELATED = [
   { href: "/grok-bot-alternative/", label: "Grok Bot alternative" },

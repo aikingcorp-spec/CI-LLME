@@ -2,6 +2,7 @@
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { SUPPORT_EMAIL } from "../site";
 ---
 
 <BaseLayout
@@ -117,7 +118,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       <h2>Cancellation and refunds</h2>
       <p>
         You can cancel at any time from your account’s billing settings or by emailing{" "}
-        <a href="mailto:hello@rakazo.com">hello@rakazo.com</a>. Cancellation stops future renewals;
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Cancellation stops future renewals;
         you keep access until the end of the period you paid for. Payments are non-refundable and
         partial periods are not prorated, except where required by law. If you were charged in error,
         email us within 30 days and we will refund the charge.
@@ -216,7 +217,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         Inbox Zero Inc.<br />
         131 Continental Dr, Suite 305<br />
         Newark, Delaware 19713, United States<br />
-        <a href="mailto:hello@rakazo.com">hello@rakazo.com</a>
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
       </p>
     </main>
     <Footer />

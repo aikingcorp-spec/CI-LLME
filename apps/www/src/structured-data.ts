@@ -1,4 +1,4 @@
-import { SITE_NAME, SITE_URL } from "./site";
+import { SITE_NAME, SITE_URL, SUPPORT_EMAIL } from "./site";
 
 const LEGAL_NAME = "Inbox Zero Inc.";
 
@@ -29,11 +29,11 @@ export function homeStructuredData(input: HomeStructuredDataInput) {
         legalName: LEGAL_NAME,
         url: `${SITE_URL}/`,
         logo: `${SITE_URL}/brand/rakazo-mark.png`,
-        email: "hello@rakazo.com",
+        email: SUPPORT_EMAIL,
         contactPoint: {
           "@type": "ContactPoint",
           contactType: "customer support",
-          email: "hello@rakazo.com",
+          email: SUPPORT_EMAIL,
           url: `${SITE_URL}/support/`,
           availableLanguage: input.availableLanguages,
         },

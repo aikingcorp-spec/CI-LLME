@@ -9,6 +9,10 @@ export const DOCS_NAV = [
       { slug: "fleet-management", label: "Bots that manage bots" },
     ],
   },
+  {
+    title: "Self-hosting",
+    pages: [{ slug: "install-on-your-computer", label: "Install VNBot on your computer" }],
+  },
 ] as const;
 
 export const DOCS_PAGES: { slug: string; label: string }[] = DOCS_NAV.flatMap((section) => [

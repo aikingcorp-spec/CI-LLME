@@ -2,6 +2,7 @@
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { SUPPORT_EMAIL } from "../site";
 ---
 
 <BaseLayout
@@ -27,7 +28,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       <h2>Who is behind it</h2>
       <p>
         VNBot is maintained by Inbox Zero Inc. For product or account help, email
-        <a href="mailto:hello@rakazo.com">hello@rakazo.com</a>.
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
       </p>
     </main>
     <Footer />

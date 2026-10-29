@@ -6,6 +6,7 @@ export const SITE_DESCRIPTION =
 export const APP_URL = "https://vnbot.run";
 export const CATALOG_URL =
   "https://rakazo-public.fsn1.your-objectstorage.com/integrations/catalog.json";
+export const SUPPORT_EMAIL = "aiking.corp@gmail.com";
 export const DOWNLOAD_URL = "https://vnbot.run/#tai-ve";
 export const IOS_APP_URL = "https://apps.apple.com/app/rakazo/id6801531099";
 export const ANDROID_APK_URL = DOWNLOAD_URL;
