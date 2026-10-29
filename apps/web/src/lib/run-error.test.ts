@@ -103,3 +103,14 @@ it.each([
     recovery: "connection",
   });
 });
+
+it("gives Vietnamese recovery advice for an app context error", () => {
+  const summary = "Ngữ cảnh trò chuyện bị lỗi. Hãy thử lại hoặc bắt đầu cuộc trò chuyện mới.";
+  i18n.load("vi", { "Chat context is inconsistent. Try again or start a new chat.": summary });
+  i18n.activate("vi");
+  expect(normalizeWebRunError("Unmatched tool result in context")).toMatchObject({
+    kind: "context",
+    summary,
+  });
+  expect(normalizeWebRunError("Unmatched tool result in context").recovery).toBeUndefined();
+});

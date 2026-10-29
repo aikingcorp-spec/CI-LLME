@@ -1228,6 +1228,11 @@ msgstr "변경 중…"
 msgid "Chart failed to render: {error}"
 msgstr "차트를 표시하지 못했습니다: {error}"
 
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "Chat context is inconsistent. Try again or start a new chat."
+msgstr ""
+
 #: src/pages/shell/composer-mentions.tsx
 msgid "Chat Settings"
 msgstr "채팅 설정"

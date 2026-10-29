@@ -160,3 +160,12 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/api/src/routes/bots.ts`, prompt contract assertions in `apps/api/src/router.test.ts`.
 - Invariants affected: the existing creation run and restricted tool selection remain shared across clients; no stored messages are rewritten.
 - ADR: none (default prompt correction).
+
+## 2026-10-29 — Tool call identities before execution
+
+- Pull request: none (local commits only).
+- Changed versus baseline: completed model responses receive unique local IDs for empty, blank or duplicate tool-call IDs before execution and transcript persistence. Valid wire IDs are preserved. Context protocol errors are classified as app context failures with localized retry/new-chat advice.
+- Why: a compatible endpoint can omit the wire ID; Pi retains the call with an empty ID and executes it, producing a result with the same empty ID. Context grouping rejects that result on the next model call before trimming. An offline runtime regression reproduces the exact exception with prior messages and a long prompt; message length is not required for the fault.
+- Modules and files: `packages/adapters/src/pi-runtime-stream.ts`, runtime regressions, `packages/core/src/run-error.ts`, web run-error translator and catalogs.
+- Invariants affected: execution, approvals and persisted transcripts share one call identity; malformed context is still rejected rather than silently discarding action results. No database changes.
+- ADR: none (protocol invariant repair).

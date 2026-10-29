@@ -224,6 +224,20 @@ export function normalizeRunError(
   period?: "none" | "daily" | "weekly" | "monthly";
 } {
   const trimmed = details.trim();
+  if (
+    [
+      "Unmatched tool result in context",
+      "Orphaned tool result in context",
+      "Duplicate tool result in context",
+      "Missing tool result in context",
+    ].includes(trimmed)
+  ) {
+    return {
+      summary: translate("Chat context is inconsistent. Try again or start a new chat."),
+      details,
+      kind: "context",
+    };
+  }
   if ([MODEL_IMAGE_INPUT_ERROR, MODEL_IMAGE_INPUT_UNKNOWN].includes(trimmed)) {
     return {
       summary: translate(trimmed),

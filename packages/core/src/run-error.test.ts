@@ -22,6 +22,19 @@ describe("normalizeRunError", () => {
   beforeEach(() => {
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-01T00:00:00Z"));
   });
+  it.each([
+    "Unmatched tool result in context",
+    "Orphaned tool result in context",
+    "Duplicate tool result in context",
+    "Missing tool result in context",
+  ])("classifies app transcript failures without provider recovery: %s", (details) => {
+    expect(normalizeRunError(details)).toEqual({
+      summary: "Chat context is inconsistent. Try again or start a new chat.",
+      details,
+      kind: "context",
+    });
+  });
+
   it("summarizes the weekly OpenRouter key limit without exposing diagnostics", () => {
     const details =
       '403: {"message":"Key limit exceeded (weekly limit). Manage it using https://openrouter.ai/workspaces/default/keys/<long hash> $20.05 of $20.00 used; resets 2026-10-12T00:00:00.000Z.","code":403,"metadata":{"limit_source":"openrouter_key_limit"}}';

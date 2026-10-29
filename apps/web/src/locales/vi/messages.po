@@ -1228,6 +1228,11 @@ msgstr "Đang đổi…"
 msgid "Chart failed to render: {error}"
 msgstr "Không thể hiển thị biểu đồ: {error}"
 
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "Chat context is inconsistent. Try again or start a new chat."
+msgstr "Ngữ cảnh trò chuyện bị lỗi. Hãy thử lại hoặc bắt đầu cuộc trò chuyện mới."
+
 #: src/pages/shell/composer-mentions.tsx
 msgid "Chat Settings"
 msgstr "Cài đặt trò chuyện"

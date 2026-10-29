@@ -207,6 +207,52 @@ beforeEach(() => {
   providerState.delay.mockReset().mockResolvedValue(undefined);
 });
 
+describe("malformed compatible tool call ids", () => {
+  it.each([[""], ["   "], ["duplicate", "duplicate"], ["valid-a", "valid-b"]])(
+    "pairs wire ids %j before execution and the next context build",
+    async (...ids) => {
+      providerState.stream
+        .mockImplementationOnce(() =>
+          stream(
+            message(
+              plain,
+              ids.map((id) => ({
+                type: "toolCall" as const,
+                id,
+                name: "write_effect",
+                arguments: { value: id },
+              })),
+              "toolUse",
+            ),
+          ),
+        )
+        .mockImplementation(() => reply(plain));
+      const input = request(plain);
+      input.prompt = "x".repeat(3000);
+      input.history = [
+        { role: "user", content: "Earlier question" },
+        { role: "assistant", content: "Earlier answer" },
+      ];
+      const events = await run(input);
+      expect(events.at(-1)).toEqual({ type: "done", text: "Recovered." });
+      expect(providerState.stream).toHaveBeenCalledTimes(2);
+      const context = providerState.stream.mock.calls[1]![1];
+      const assistant = context.messages.find(
+        (entry: { role: string }) => entry.role === "assistant",
+      );
+      const results = context.messages.filter(
+        (entry: { role: string }) => entry.role === "toolResult",
+      );
+      const callIds = assistant.content.map((part: { id: string }) => part.id);
+      expect(callIds.every((id: string) => id.trim().length > 0)).toBe(true);
+      expect(new Set(callIds).size).toBe(ids.length);
+      expect(results.map((result: { toolCallId: string }) => result.toolCallId)).toEqual(callIds);
+      if (ids[0] === "valid-a") expect(callIds).toEqual(ids);
+      expect(input.executeTool).toHaveBeenCalledTimes(ids.length);
+    },
+  );
+});
+
 describe("a call that has only thought has not started", () => {
   it.each([
     "terminated",

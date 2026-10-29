@@ -5,6 +5,12 @@ import { HOSTED_MODEL_CREDITS_REQUIRED_ERROR, normalizeRunError } from "@rakazo/
 /** Static descriptors keep shared run-error messages in Lingui extraction. */
 export const translateRunError: RunErrorTranslator = (message, values) => {
   switch (message) {
+    case "Chat context is inconsistent. Try again or start a new chat.":
+      return i18n._({
+        id: "Chat context is inconsistent. Try again or start a new chat.",
+        message: "Chat context is inconsistent. Try again or start a new chat.",
+        values,
+      });
     case "This connection's request limit is too small. Choose another model.":
       return i18n._({
         id: "This connection's request limit is too small. Choose another model.",
