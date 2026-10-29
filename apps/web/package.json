@@ -11,7 +11,8 @@
     "test": "vitest run --root ../.. apps/web/src",
     "e2e": "playwright test",
     "intl:extract": "lingui extract --clean",
-    "intl:compile": "lingui compile"
+    "intl:compile": "lingui compile",
+    "intl:check-vi": "node scripts/check-vi-catalog.mjs"
   },
   "dependencies": {
     "@better-auth/passkey": "1.7.12",
