@@ -1,6 +1,7 @@
 import { expo } from "@better-auth/expo";
 import { passkey } from "@better-auth/passkey";
 import type { ProductAnalytics, TransactionalEmailProvider } from "@rakazo/adapter-kit";
+import { EMAIL_NOT_INVITED } from "@rakazo/contracts";
 import {
   displayName,
   emailAllowed,
@@ -702,7 +703,10 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
     },
   });
   authContext = auth.$context;
+  const baseHandler = auth.handler;
   return Object.assign(auth, {
+    handler: async (request: Request) =>
+      ssoCallbackContract(request, Boolean(env.oidc), () => baseHandler(request)),
     emailCodeSignIn,
     /** Encrypts OAuth tokens stored before encryption was enabled. Safe to rerun. */
     encryptStoredOAuthTokens: async () => encryptStoredOAuthTokens(prisma, await tokenKey()),
@@ -856,6 +860,33 @@ function localeFromAuthContext(ctx: unknown): string | undefined {
     record.request?.headers.get("x-rakazo-locale") ??
     undefined
   );
+}
+
+/**
+ * The agreed EMAIL_NOT_INVITED contract for the SSO callback. With OIDC off the
+ * callback does not exist: 404. A refused invite becomes exactly
+ * `302 Location: <error page>?error=EMAIL_NOT_INVITED` with no cookies, so
+ * the client shows the not-invited screen and holds no session or OAuth state.
+ */
+export async function ssoCallbackContract(
+  request: Request,
+  oidcEnabled: boolean,
+  handle: () => Promise<Response>,
+): Promise<Response> {
+  if (!new URL(request.url).pathname.endsWith("/callback/oidc")) return handle();
+  if (!oidcEnabled) return new Response(null, { status: 404 });
+  const response = await handle();
+  const location = response.headers.get("location");
+  if (!location) return response;
+  const target = new URL(location, request.url);
+  if (target.searchParams.get("error") !== EMAIL_NOT_INVITED) return response;
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: `${target.origin}${target.pathname}?error=${EMAIL_NOT_INVITED}`,
+      "cache-control": "no-store",
+    },
+  });
 }
 
 function isOidcCallback(

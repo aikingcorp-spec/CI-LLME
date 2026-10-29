@@ -7,7 +7,10 @@ import { createAuth } from "./index.js";
 import { isCurrentOidcAccount, oidcAccountSubject } from "./oidc.js";
 import { encryptStoredOAuthTokens, openIdToken, sealIdToken } from "./token-storage.js";
 
-const state = vi.hoisted(() => ({ db: {} as Record<string, Record<string, unknown>[]> }));
+const state = vi.hoisted(() => ({
+  db: {} as Record<string, Record<string, unknown>[]>,
+  invited: new Set<string>(),
+}));
 vi.mock("better-auth/adapters/prisma", () => ({ prismaAdapter: () => memoryAdapter(state.db) }));
 vi.mock("@rakazo/db", async (original) => ({
   ...(await original<typeof Db>()),
@@ -64,6 +67,12 @@ function setup(options: Partial<AuthEnv> = {}, hasMembership = true) {
       findFirst: vi.fn(async () => (hasMembership ? { id: "existing-space" } : null)),
     },
     member: { findMany: vi.fn(async () => []) },
+    $queryRaw: vi.fn(async () => [{ bypass: "off" }]),
+    authEmailAllowlist: {
+      findUnique: vi.fn(async ({ where }: { where: { email: string } }) =>
+        state.invited.has(where.email) ? { email: where.email } : null,
+      ),
+    },
     messagingIdentity: { deleteMany: vi.fn(async () => ({})) },
     passkey: { deleteMany: vi.fn(async () => ({})) },
     organization: { deleteMany: vi.fn(async () => ({})) },
@@ -206,6 +215,7 @@ beforeEach(() => {
     member: [],
     invitation: [],
   };
+  state.invited = new Set();
   discoveryDown = false;
   activeIssuer = issuer;
   sequence = 0;
@@ -689,6 +699,122 @@ describe("OIDC callbacks", () => {
   it("refuses password-off without an alternative", () => {
     expect(() => setup({ passwordAuth: false, oidc: undefined })).toThrow(/requires OIDC/);
   });
+});
+
+describe("SSO and the invite list (EMAIL_NOT_INVITED contract)", () => {
+  const notInvitedLocation = `${origin}/sign-in?error=EMAIL_NOT_INVITED`;
+  const claimsFor = (email: string, sub = "subject-1") => ({
+    sub,
+    email,
+    email_verified: true,
+    name: "SSO user",
+  });
+  const expectNotInvitedRedirect = (response: Response) => {
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(notInvitedLocation);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  };
+
+  it("1. rejects an uninvited email: exact 302, no cookie, no user, account or session", async () => {
+    setup({ emailAllowlist: true });
+    state.invited.add("ann@example.com");
+    expectNotInvitedRedirect(await signIn(claimsFor("bob@example.com")));
+    expect(rows("user")).toHaveLength(0);
+    expect(rows("account")).toHaveLength(0);
+    expect(rows("session")).toHaveLength(0);
+  });
+
+  it("2. admits an invited email with a user, an OIDC account and a session cookie", async () => {
+    setup({ emailAllowlist: true });
+    state.invited.add("ann@example.com");
+    const response = await signIn(claimsFor("ann@example.com"));
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(`${origin}/app`);
+    expect(response.headers.getSetCookie().join(";")).toContain("session_token=");
+    expect(rows("user")).toHaveLength(1);
+    expect(rows("account")).toEqual([expect.objectContaining({ providerId: "oidc" })]);
+    expect(rows("session")).toHaveLength(1);
+  });
+
+  it("3. rejects a previously invited user after removal and revokes the old session", async () => {
+    setup({ emailAllowlist: true });
+    state.invited.add("cara@example.com");
+    await signIn(claimsFor("cara@example.com"));
+    const oldCookies = cookies;
+    const { id, email, name } = rows("user")[0]!;
+    expect(rows("session")).toHaveLength(1);
+
+    state.invited.delete("cara@example.com");
+    cookies = "";
+    expectNotInvitedRedirect(await signIn(claimsFor("cara@example.com")));
+    expect(rows("user")).toEqual([expect.objectContaining({ id, email, name })]);
+    expect(rows("session")).toHaveLength(1);
+
+    cookies = oldCookies;
+    const stale = await request("/get-session");
+    expect(stale.status).toBe(401);
+    expect(await stale.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
+    expect(rows("session")).toHaveLength(0);
+  });
+
+  it("4. links SSO to an existing invited email account without a duplicate user", async () => {
+    setup({ emailAllowlist: true });
+    state.invited.add("dan@example.com");
+    await request("/sign-up/email", {
+      email: "dan@example.com",
+      password: "test-password-123",
+      name: "Dan",
+    });
+    const userId = rows("user")[0]?.id;
+    // Linking needs the signed-in link flow; a bare SSO sign-in never merges accounts.
+    expect(
+      (await request(await start(claimsFor("dan@example.com"), true))).headers.get("location"),
+    ).toBe(`${origin}/app`);
+    expect(rows("user")).toHaveLength(1);
+    expect(
+      rows("account")
+        .map((account) => [account.userId, account.providerId])
+        .sort(),
+    ).toEqual([
+      [userId, "credential"],
+      [userId, "oidc"],
+    ]);
+    // A bare SSO sign-in with the same email never merges into the existing account.
+    cookies = "";
+    expect(
+      (await signIn(claimsFor("dan@example.com", "subject-2"))).headers.get("location"),
+    ).toContain("error=account_not_linked");
+    expect(rows("user")).toHaveLength(1);
+  });
+
+  it("5. answers 404 on a direct callback when OIDC is off, creating nothing", async () => {
+    setup({ oidc: undefined, emailAllowlist: true });
+    for (const method of ["GET", "POST"] as const) {
+      const response = await auth.handler(
+        new Request(`${origin}/api/auth/callback/oidc?state=forged&code=forged`, {
+          method,
+          headers: { origin, "content-type": "application/x-www-form-urlencoded" },
+          ...(method === "POST" ? { body: "state=forged&code=forged" } : {}),
+        }),
+      );
+      expect(response.status).toBe(404);
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.getSetCookie()).toEqual([]);
+    }
+    expect(rows("user")).toHaveLength(0);
+    expect(rows("session")).toHaveLength(0);
+  });
+
+  it.each([["Eve@Example.COM"], [" Eve@Example.com "], ["eve\u200b@example.com"]])(
+    "6. normalizes the provider email %j before the invite check",
+    async (email) => {
+      setup({ emailAllowlist: true });
+      state.invited.add("eve@example.com");
+      const response = await signIn(claimsFor(email));
+      expect(response.headers.get("location")).toBe(`${origin}/app`);
+      expect(rows("user")).toEqual([expect.objectContaining({ email: "eve@example.com" })]);
+    },
+  );
 });
 
 describe("SSO-only account deletion", () => {
