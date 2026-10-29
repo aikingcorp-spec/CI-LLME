@@ -24,6 +24,8 @@ test("set selection preserves legacy, shapes and photos and persists an explicit
     );
     await studio.getByRole("tab", { name: "VNBot", exact: true }).click();
     await expect(studio.locator("[data-vnbot-avatar]").first()).toBeVisible();
+    await studio.getByTestId("vnbot-shape-non").click();
+    await expect(studio.getByTestId("vnbot-shape-non")).toHaveAttribute("aria-pressed", "true");
     await captureScreenshot(page, testInfo, `avatar-set-studio-${theme}`);
     await studio.getByRole("button", { name: "Done", exact: true }).click();
     await page.reload();
@@ -36,6 +38,7 @@ test("set selection preserves legacy, shapes and photos and persists an explicit
       "true",
     );
     await studio.getByRole("tab", { name: "Classic", exact: true }).click();
+    await studio.getByTestId("avatar-studio-default").click();
     await studio.getByRole("button", { name: "Done", exact: true }).click();
     await expect(legacy.locator(".rakazo-organic-avatar")).toBeVisible();
   }
