@@ -41,6 +41,7 @@ function fixture({
   webOrigin = "http://web.example.test",
   requestOrigin,
   stalledDelivery = false,
+  failingDelivery = false,
   emailCodeOnly = false,
   emailAllowlist = false,
   invited = [],
@@ -52,6 +53,8 @@ function fixture({
   requestOrigin?: string;
   /** The provider accepts the message but never settles, like a hung SMTP connection. */
   stalledDelivery?: boolean;
+  /** The provider rejects with an error that echoes the whole message, like some SDKs do. */
+  failingDelivery?: boolean;
   emailCodeOnly?: boolean;
   emailAllowlist?: boolean;
   invited?: string[];
@@ -152,6 +155,7 @@ function fixture({
     members.add(user.id);
     return { spaceId: "space-1" };
   });
+  const emailErrors: unknown[] = [];
   const secret = "offline-auth-secret-at-least-32-characters";
   const auth = createAuth(prisma as never, {
     secret,
@@ -175,10 +179,18 @@ function fixture({
           }),
           send: (message) => {
             messages.push(message);
+            if (failingDelivery) {
+              const error = Object.assign(new Error(`rejected: ${JSON.stringify(message)}`), {
+                statusCode: 422,
+                body: message,
+              });
+              return Promise.reject(error);
+            }
             return stalledDelivery ? new Promise<void>(() => undefined) : Promise.resolve();
           },
         }
       : undefined,
+    onEmailError: (error) => emailErrors.push(error),
   });
   const request = (
     path: string,
@@ -274,6 +286,7 @@ function fixture({
     data,
     policy,
     messages,
+    emailErrors,
     members,
     invited: invitedEmails,
   };
@@ -979,6 +992,29 @@ describe("email code sign-in", () => {
     });
     expect(created.status).toBe(200);
     expect(f.data.user![0]).toMatchObject({ name: "ada" });
+  });
+});
+
+describe("failed code delivery", () => {
+  it("reports the failure without the code, the address or the provider's echo", async () => {
+    const f = fixture({ emailCodeOnly: true, failingDelivery: true });
+    const sent = await f.request("/email-otp/send-verification-otp", {
+      email: "lan@gmail.com",
+      type: "sign-in",
+    });
+    expect(sent.status).toBe(200);
+    await vi.waitFor(() => expect(f.emailErrors).toHaveLength(1));
+    const code = f.messages[0]!.text.match(/\b\d{6}\b/)![0];
+    const reported = f.emailErrors[0] as Error & Record<string, unknown>;
+    const everything = JSON.stringify({
+      text: String(reported),
+      stack: reported.stack,
+      cause: String(reported.cause),
+      own: Object.getOwnPropertyNames(reported).map((key) => String(reported[key])),
+    });
+    expect(everything).not.toContain(code);
+    expect(everything).not.toContain("lan@gmail.com");
+    expect(reported.message).toBe("transactional email delivery failed (Error 422)");
   });
 });
 

@@ -164,6 +164,24 @@ const ACCOUNT_EVENT_PATHS: Record<string, SecurityEventType> = {
 };
 
 /** Code sends per normalized address: 5 per 15 minutes with the invite list on, else 10. */
+/**
+ * What a failed delivery may tell the logs: the error class and a numeric status.
+ * Provider errors can echo the message body, and with it a sign-in code or link,
+ * so their text, cause and payload never leave this function.
+ */
+export function emailDeliveryFailure(error: unknown): Error {
+  const name = error instanceof Error && /^\w{1,64}$/.test(error.name) ? error.name : "Error";
+  const raw = (error as { statusCode?: unknown; status?: unknown } | null) ?? {};
+  const status = [raw.statusCode, raw.status].find(
+    (value): value is number => typeof value === "number" && Number.isInteger(value),
+  );
+  const failure = new Error(
+    `transactional email delivery failed (${name}${status ? ` ${status}` : ""})`,
+  );
+  failure.name = "EmailDeliveryError";
+  return failure;
+}
+
 export function sendCodeRule(options?: { emailAllowlist?: boolean }) {
   // The invite check reveals list membership. A tighter send cap slows probing.
   return { window: 15 * 60, max: options?.emailAllowlist ? 5 : 10 };
@@ -262,7 +280,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             // while the composition root drains accepted delivery during graceful shutdown.
             void env.email
               ?.send(await passwordResetEmail(user, url))
-              .catch((error) => env.onEmailError?.(error));
+              .catch((error) => env.onEmailError?.(emailDeliveryFailure(error)));
           }
         : undefined,
     },
@@ -366,7 +384,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
                       assetBase: signInCodeAssetBase(env.webOrigin),
                     }),
                   )
-                  .catch((error) => env.onEmailError?.(error));
+                  .catch((error) => env.onEmailError?.(emailDeliveryFailure(error)));
               },
             }),
           ]
