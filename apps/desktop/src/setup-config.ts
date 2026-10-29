@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { DesktopSetup, DesktopStackProbeResponse } from "@rakazo/contracts";
 import { isLoopbackHost, isPrivateNetworkHost } from "@rakazo/contracts/network-host";
+import { strings } from "./strings.js";
 
 /** Managed desktop origin; development keeps its usual web/API ports. */
 export const DEFAULT_LOCAL_WEB_URL = "http://127.0.0.1:45173";
@@ -128,20 +129,20 @@ export function resolveStartupTarget(input: {
 export function probeFailureMessage(error: unknown): string {
   const name = error instanceof Error ? error.name : "";
   if (name === "TimeoutError" || name === "AbortError") {
-    return "Timed out reaching that address.";
+    return strings().server.timeout;
   }
 
   const detail = error instanceof Error ? error.message : String(error);
   if (detail.includes("CONNECTION_REFUSED") || detail.includes("ECONNREFUSED")) {
-    return "Nothing is listening at that address yet.";
+    return strings().server.refused;
   }
   if (detail.includes("NAME_NOT_RESOLVED") || detail.includes("ENOTFOUND")) {
-    return "That host could not be found.";
+    return strings().server.hostNotFound;
   }
   if (detail.includes("CERT_") || detail.includes("SSL")) {
-    return "The server's HTTPS certificate was rejected.";
+    return strings().server.certificate;
   }
-  return "Could not reach that address.";
+  return strings().server.unreachable;
 }
 
 /** Packaged shell overlays its web bundle only on the managed loopback stack. */

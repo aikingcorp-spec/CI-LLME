@@ -68,6 +68,7 @@ import {
   sessionPartitionForServerUrl,
 } from "./setup-config.js";
 import { clearSetup, readSetup, writeSetup } from "./setup-store.js";
+import { currentLocale, format, setLocale, strings } from "./strings.js";
 import type { UserDeviceAccess } from "./user-device.js";
 import { createUserDeviceAccess, deviceName } from "./user-device.js";
 import { oauthPopupSessionPreferences, shouldOpenInAppPopup } from "./window-open.js";
@@ -115,23 +116,14 @@ const updaterEnvironment = {
   version: app.getVersion(),
   disabled: process.env.RAKAZO_DISABLE_AUTO_UPDATE !== "0",
 };
-const desktopUpdater = new DesktopUpdateController(
-  updaterEnvironment,
-  // Loaded only when a packaged build actually checks for updates.
-  async () => {
-    const module = await import("electron-updater");
-    return (module.default ?? module).autoUpdater as unknown as ElectronAutoUpdater;
-  },
-  undefined,
-  () => {
-    quitting = false;
-  },
-);
+let desktopUpdater: DesktopUpdateController;
 let launchUpdateCheckScheduled = false;
 let localStack: LocalStackController;
 let hostComputer: Awaited<ReturnType<typeof prepareHostComputer>> | undefined;
 let requestingComputerAccess = false;
 let userDevices: UserDeviceAccess | undefined;
+
+class OpenFailure extends Error {}
 
 markOnce("rk:main:module-evaluated");
 if (PERFORMANCE_USER_DATA) {
@@ -281,6 +273,7 @@ function createWindow(url: string, partition: string | null) {
   const icon = developmentIcon();
   const win = new BrowserWindow({
     ...browserWindowOptions(process.platform),
+    title: "VNBot",
     ...(icon ? { icon } : {}),
     webPreferences: {
       preload: path.join(import.meta.dirname, "preload.cjs"),
@@ -404,7 +397,7 @@ async function probeDocument(url: string): Promise<string | null> {
     });
     // Allow 3xx (e.g. / → /login); reject hard HTTP errors before opening a window.
     if (response.status >= 400) {
-      return `The server answered with HTTP ${response.status}.`;
+      return format(strings().server.http, { status: response.status });
     }
     return null;
   } catch (error) {
@@ -444,14 +437,14 @@ function loadAppUrl(win: BrowserWindow, url: string): Promise<AppDocumentState> 
       }
       if (mainStatus !== undefined && mainStatus >= 400) {
         contents.removeListener("render-process-gone", onGone);
-        reject(new Error(`The server answered with HTTP ${mainStatus}.`));
+        reject(new OpenFailure(format(strings().server.http, { status: mainStatus })));
         return;
       }
       void waitForMountedAppDocument(contents)
         .then((state) => {
           contents.removeListener("render-process-gone", onGone);
           if (contents.isCrashed()) {
-            reject(new Error("Renderer stopped after load."));
+            reject(new OpenFailure(strings().server.rendererStoppedAfterLoad));
             return;
           }
           resolve(state);
@@ -469,10 +462,15 @@ function loadAppUrl(win: BrowserWindow, url: string): Promise<AppDocumentState> 
       _validatedURL: string,
       isMainFrame: boolean,
     ) => {
-      if (isMainFrame) settle(new Error(errorDescription || "Page failed to load."));
+      if (isMainFrame)
+        settle(
+          errorDescription
+            ? new Error(errorDescription)
+            : new OpenFailure(strings().server.pageFailed),
+        );
     };
     const onGone = (_event: Electron.Event, details: Electron.RenderProcessGoneDetails) => {
-      settle(new Error(`Renderer stopped (${details.reason}).`));
+      settle(new OpenFailure(format(strings().server.rendererStopped, { reason: details.reason })));
     };
 
     contents.on("did-fail-load", onFail);
@@ -498,14 +496,14 @@ async function waitForMountedAppDocument(
 ): Promise<AppDocumentState> {
   const deadline = Date.now() + APP_DOCUMENT_READY_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    if (contents.isCrashed()) throw new Error("Renderer stopped after load.");
+    if (contents.isCrashed()) throw new OpenFailure(strings().server.rendererStoppedAfterLoad);
     const state = (await contents.executeJavaScript(APP_DOCUMENT_STATE_SCRIPT)) as
       | AppDocumentState
       | "pending";
     if (state !== "pending") return state;
     await new Promise((r) => setTimeout(r, 50));
   }
-  throw new Error("The server page did not become ready.");
+  throw new OpenFailure(strings().server.pageNotReady);
 }
 
 async function installBundledRenderer(
@@ -571,6 +569,7 @@ function createSetupWindow() {
   const icon = developmentIcon();
   const win = new BrowserWindow({
     ...setupWindowOptions(process.platform),
+    title: strings().setup.windowTitle,
     ...(icon ? { icon } : {}),
     webPreferences: {
       preload: path.join(import.meta.dirname, "setup-preload.cjs"),
@@ -642,8 +641,8 @@ async function runMenuUpdateCheck() {
       : dialog.showMessageBox(options);
   if (state.phase === "ready") {
     const { response } = await alert({
-      message: `VNBot ${state.availableVersion} is ready to install.`,
-      buttons: ["Restart", "Later"],
+      message: format(strings().updateDialog.ready, { version: state.availableVersion ?? "" }),
+      buttons: [strings().updateDialog.restart, strings().updateDialog.later],
       defaultId: 0,
       cancelId: 1,
       noLink: true,
@@ -653,7 +652,7 @@ async function runMenuUpdateCheck() {
     if (result.message) {
       await alert({
         type: "warning",
-        message: "Could not install the update.",
+        message: strings().updateDialog.installFailed,
         detail: result.message,
       });
     }
@@ -661,11 +660,14 @@ async function runMenuUpdateCheck() {
     // Offline and other failed checks settle back to idle with a message.
     await alert({
       type: "warning",
-      message: "Could not check for updates.",
+      message: strings().updateDialog.checkFailed,
       detail: state.message,
     });
   } else if (state.phase === "idle") {
-    await alert({ message: "VNBot is up to date.", detail: `Version ${state.currentVersion}` });
+    await alert({
+      message: strings().updateDialog.upToDate,
+      detail: format(strings().updateDialog.version, { version: state.currentVersion }),
+    });
   }
 }
 
@@ -681,12 +683,12 @@ async function installUpdate() {
 
 function installApplicationMenu() {
   const computerAccess: Electron.MenuItemConstructorOptions = {
-    label: "Computer Access…",
+    label: strings().menu.computerAccess,
     visible: currentSetup?.mode === "new",
     click: () => mainWindow?.webContents.send("desktop.computer.configure"),
   };
   const revokeComputerAccess: Electron.MenuItemConstructorOptions = {
-    label: "Revoke Local Computer Access",
+    label: strings().menu.revokeComputerAccess,
     visible: remoteServerOrigin() === null && hostComputer?.isEnabled() === true,
     click: () => {
       void hostComputer
@@ -696,19 +698,19 @@ function installApplicationMenu() {
     },
   };
   const checkForUpdates: Electron.MenuItemConstructorOptions = {
-    label: "Check for Updates…",
+    label: strings().menu.checkForUpdates,
     visible: updaterSupport(updaterEnvironment).supported,
     click: () => void checkForUpdatesFromMenu(),
   };
   const changeServer: Electron.MenuItemConstructorOptions = {
     id: "change-rakazo-server",
-    label: "Change VNBot Server…",
+    label: strings().menu.changeServer,
     accelerator: "CmdOrCtrl+Shift+K",
     click: () => showSetupWindow(),
   };
   const stopStack: Electron.MenuItemConstructorOptions = {
     id: "stop-local-stack",
-    label: "Stop Local Stack",
+    label: strings().menu.stopLocalStack,
     // The stack keeps running after quit (bots are always on); this is the explicit off switch.
     click: () => {
       if (currentSetup?.mode === "new") {
@@ -719,7 +721,7 @@ function installApplicationMenu() {
     },
   };
   const viewMenu: Electron.MenuItemConstructorOptions = {
-    label: "View",
+    label: strings().menu.view,
     submenu: [
       { role: "resetZoom" },
       { role: "zoomIn" },
@@ -756,7 +758,7 @@ function installApplicationMenu() {
           { role: "editMenu" },
           viewMenu,
           {
-            label: "Window",
+            label: strings().menu.window,
             role: "window",
             submenu: [
               { role: "minimize" },
@@ -769,7 +771,7 @@ function installApplicationMenu() {
         ]
       : [
           {
-            label: "File",
+            label: strings().menu.file,
             submenu: [
               computerAccess,
               revokeComputerAccess,
@@ -789,7 +791,7 @@ function installApplicationMenu() {
 }
 
 /** Setup IPC must only answer the setup window, never a connected Rakazo server. */
-function fromSetupWindow(event: Electron.IpcMainInvokeEvent) {
+function fromSetupWindow(event: { sender: Electron.WebContents }) {
   return (
     setupWindow !== null && !setupWindow.isDestroyed() && event.sender === setupWindow.webContents
   );
@@ -797,7 +799,7 @@ function fromSetupWindow(event: Electron.IpcMainInvokeEvent) {
 
 async function probeServer(rawUrl: string, signal?: AbortSignal): Promise<DesktopReachability> {
   const url = normalizeServerUrl(rawUrl);
-  if (url === null) return { ok: false, error: "Enter a valid http:// or https:// address." };
+  if (url === null) return { ok: false, error: strings().server.invalidAddress };
   const timeout = AbortSignal.timeout(PROBE_TIMEOUT_MS);
 
   try {
@@ -815,7 +817,7 @@ async function probeServer(rawUrl: string, signal?: AbortSignal): Promise<Deskto
         ok: false,
         status: response.status,
         url,
-        error: "That address redirects elsewhere. Enter the final VNBot server address.",
+        error: strings().server.redirects,
       };
     }
     if (!response.ok) {
@@ -823,7 +825,7 @@ async function probeServer(rawUrl: string, signal?: AbortSignal): Promise<Deskto
         ok: false,
         status: response.status,
         url,
-        error: `The server answered with HTTP ${response.status}.`,
+        error: format(strings().server.http, { status: response.status }),
       };
     }
     const health = await readProbeJson(response);
@@ -832,7 +834,7 @@ async function probeServer(rawUrl: string, signal?: AbortSignal): Promise<Deskto
         ok: false,
         status: response.status,
         url,
-        error: "That address did not respond like a VNBot server.",
+        error: strings().server.notVnbot,
       };
     }
     return {
@@ -873,16 +875,7 @@ async function probeManagedStack(
 
 function openFailureDetail(error: unknown): string {
   if (error instanceof Error) {
-    const { message } = error;
-    if (
-      message.startsWith("The server answered with HTTP") ||
-      message.startsWith("The server page loaded empty") ||
-      message.startsWith("The server page did not become ready") ||
-      message.startsWith("Renderer stopped") ||
-      message.startsWith("Page failed to load")
-    ) {
-      return message;
-    }
+    if (error instanceof OpenFailure) return error.message;
   }
   return probeFailureMessage(error);
 }
@@ -937,7 +930,7 @@ async function openAppOnce(targetUrl: string, switching: boolean) {
     // On launch the web app's error screen stays up so its Refresh can recover;
     // switching to a server that cannot render keeps the previous one instead.
     if ((await created.loaded) === "failed" && switching) {
-      throw new Error("The server page did not become ready.");
+      throw new OpenFailure(strings().server.pageNotReady);
     }
     currentTargetUrl = targetUrl;
     activateDesktopMonitoring(targetUrl, target.value);
@@ -955,7 +948,7 @@ async function openAppOnce(targetUrl: string, switching: boolean) {
     // Show the setup window BEFORE destroying the failed one: on Windows/Linux,
     // destroying the last window fires "window-all-closed" -> app.quit() before
     // showSetupWindow() runs, so the app silently exits instead of showing this error.
-    showSetupWindow(`Could not open that server. ${openFailureDetail(error)}`);
+    showSetupWindow(format(strings().server.couldNotOpen, { detail: openFailureDetail(error) }));
     if (win !== null && !win.isDestroyed()) win.destroy();
     return false;
   }
@@ -983,10 +976,10 @@ function remoteServerOrigin() {
 async function confirmComputerAccess(where: string, revokeWhere: string) {
   const options: Electron.MessageBoxOptions = {
     type: "warning",
-    title: "Allow local computer access?",
-    message: "Allow bots to use this computer?",
-    detail: `Bots on ${where} can run commands, read and change files, and launch apps with your account’s permissions. You can revoke access ${revokeWhere}.`,
-    buttons: ["Cancel", "Allow"],
+    title: strings().computerAccess.title,
+    message: strings().computerAccess.message,
+    detail: format(strings().computerAccess.detail, { where, revokeWhere }),
+    buttons: [strings().computerAccess.cancel, strings().computerAccess.allow],
     defaultId: 0,
     cancelId: 0,
     noLink: true,
@@ -1002,7 +995,7 @@ function confirmRemoteComputerAccess(host: string) {
     if (!mainWindow.isVisible()) mainWindow.show();
     else if (!mainWindow.isFocused()) app.dock?.bounce("informational");
   }
-  return confirmComputerAccess(host, "in Settings");
+  return confirmComputerAccess(host, strings().computerAccess.inSettings);
 }
 
 function deviceTokenCipher() {
@@ -1108,8 +1101,8 @@ async function recoverFromCrashedSave(
   }
   const message =
     previousSetup !== null
-      ? "Could not open that server. Renderer stopped. The previous instance was restored for the next launch."
-      : "Could not open that server. Renderer stopped.";
+      ? strings().server.rendererStoppedRestored
+      : strings().server.rendererStoppedPlain;
   showSetupWindow(message);
   return message;
 }
@@ -1137,6 +1130,19 @@ if (!hasSingleInstanceLock) {
 
 app.whenReady().then(async () => {
   if (!hasSingleInstanceLock) return;
+  setLocale(app.getLocale());
+  desktopUpdater = new DesktopUpdateController(
+    updaterEnvironment,
+    // Loaded only when a packaged build actually checks for updates.
+    async () => {
+      const module = await import("electron-updater");
+      return (module.default ?? module).autoUpdater as unknown as ElectronAutoUpdater;
+    },
+    undefined,
+    () => {
+      quitting = false;
+    },
+  );
   installSessionPermissions(session.defaultSession, permissionTarget);
   const userDataDir = app.getPath("userData");
   try {
@@ -1228,9 +1234,9 @@ app.whenReady().then(async () => {
       typeof url !== "string" ||
       url.length > 16_384
     )
-      throw new Error("Invalid sign-in request.");
+      throw new Error(strings().signIn.invalid);
     if (browserAuthAttempts.has(url) || browserAuthAttempts.size >= 8) {
-      throw new Error("A sign-in attempt is already active. Cancel it and retry.");
+      throw new Error(strings().signIn.alreadyActive);
     }
     const controller = new AbortController();
     browserAuthAttempts.set(url, controller);
@@ -1260,7 +1266,7 @@ app.whenReady().then(async () => {
       });
     } catch {
       controller.abort();
-      throw new Error("Could not open browser sign-in. Close other sign-in attempts and retry.");
+      throw new Error(strings().signIn.couldNotOpen);
     }
   });
   ipcMain.handle("desktop.oauth.cancel", (event, url: unknown) => {
@@ -1282,7 +1288,7 @@ app.whenReady().then(async () => {
     const origin = new URL(localStack.webUrl()).origin;
     const token = await readStackToken(stackDir(app.getPath("userData")));
     if (!token || !(await localStack.matchesDesiredStack()))
-      throw new Error("Local server is unavailable");
+      throw new Error(strings().computerAccess.serverUnavailable);
     await saveLocalComputerHost({ origin, token }, computerHost, (input, init) =>
       net.fetch(input instanceof URL ? input.href : input, {
         ...init,
@@ -1292,7 +1298,7 @@ app.whenReady().then(async () => {
   };
   ipcMain.handle("desktop.computer.requestAccess", async (event) => {
     if (!isManagedComputerRequest(event) || !hostComputer)
-      throw new Error("Local computer access requires an app-managed local instance.");
+      throw new Error(strings().computerAccess.requiresManagedInstance);
     if (requestingComputerAccess) return false;
     requestingComputerAccess = true;
     try {
@@ -1302,7 +1308,10 @@ app.whenReady().then(async () => {
         await persistHostChoice("this-mac");
         return true;
       }
-      const allowed = await confirmComputerAccess("this local instance", "from the app menu");
+      const allowed = await confirmComputerAccess(
+        strings().computerAccess.localInstance,
+        strings().computerAccess.fromAppMenu,
+      );
       if (!allowed || !isManagedComputerRequest(event)) return false;
       hostComputer.activate(true);
       await hostComputer.grant();
@@ -1389,6 +1398,11 @@ app.whenReady().then(async () => {
   ipcMain.handle("desktop.update.install", (event) =>
     fromMainWindow(event) ? installUpdate() : desktopUpdater.state(),
   );
+  ipcMain.on("desktop.setup.strings", (event) => {
+    event.returnValue = fromSetupWindow(event)
+      ? { lang: currentLocale(), strings: strings().setup }
+      : null;
+  });
   ipcMain.handle("desktop.setup.state", (event) => {
     if (!fromSetupWindow(event)) return null;
     return {
@@ -1400,16 +1414,16 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle("desktop.setup.test", async (event, url: unknown) => {
-    if (!fromSetupWindow(event)) return { ok: false, error: "Setup is not active." };
-    if (typeof url !== "string") return { ok: false, error: "Enter a server address." };
+    if (!fromSetupWindow(event)) return { ok: false, error: strings().setupIpc.inactive };
+    if (typeof url !== "string") return { ok: false, error: strings().setupIpc.enterAddress };
     return probeServer(url);
   });
 
   ipcMain.handle("desktop.setup.save", async (event, payload: unknown) => {
-    if (!fromSetupWindow(event)) return { ok: false, error: "Setup is not active." };
+    if (!fromSetupWindow(event)) return { ok: false, error: strings().setupIpc.inactive };
     // A launch still loading counts too: the switch must open and check its own server.
     if (setupSaveInProgress || appOpener.busy())
-      return { ok: false, error: "A connection attempt is already running." };
+      return { ok: false, error: strings().setupIpc.busy };
     setupSaveInProgress = true;
     const previousSetup = currentSetup;
     const previousUrl = currentTargetUrl;
@@ -1418,8 +1432,7 @@ app.whenReady().then(async () => {
       if (setup === null) {
         return {
           ok: false,
-          error:
-            "Enter a valid server address. Public servers require HTTPS; a new local instance must use localhost.",
+          error: strings().setupIpc.invalidSetup,
         };
       }
 
@@ -1430,7 +1443,7 @@ app.whenReady().then(async () => {
         if (managedUrl === null || !(await localStack.matchesDesiredStack())) {
           return {
             ok: false,
-            error: "The app-managed VNBot services are not ready. Retry setup.",
+            error: strings().setupIpc.managedNotReady,
           };
         }
         openSetup = { mode: "new", serverUrl: managedUrl };
@@ -1447,7 +1460,7 @@ app.whenReady().then(async () => {
         syncHostComputerAccess();
         return {
           ok: false,
-          error: "Could not open that server. The previous instance was left unchanged.",
+          error: strings().server.couldNotOpenUnchanged,
         };
       }
 
@@ -1481,8 +1494,8 @@ app.whenReady().then(async () => {
           ok: false,
           error:
             outcome === "restored"
-              ? "Could not save setup. The previous instance was restored."
-              : "Connected, but could not save setup for the next launch. Try Continue again.",
+              ? strings().setupIpc.saveRestored
+              : strings().setupIpc.saveFailed,
         };
       } finally {
         rendererWatch?.dispose();
@@ -1556,7 +1569,9 @@ app.whenReady().then(async () => {
           destroySetupWindow();
         }
       } else {
-        showSetupWindow(`Could not reconnect to the saved server. ${reachability.error}`);
+        showSetupWindow(
+          format(strings().server.couldNotReconnect, { error: reachability.error ?? "" }),
+        );
       }
     }
   } else {

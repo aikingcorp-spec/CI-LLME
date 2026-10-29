@@ -9,6 +9,7 @@ function runPreload(file: string, ipc: { invoke?: unknown; on?: unknown; off?: u
     (ipc.invoke as ReturnType<typeof vi.fn>) ?? vi.fn(async (channel: string) => ({ channel }));
   const on = (ipc.on as ReturnType<typeof vi.fn>) ?? vi.fn();
   const off = (ipc.off as ReturnType<typeof vi.fn>) ?? vi.fn();
+  const sendSync = vi.fn((channel: string) => ({ channel, lang: "vi", strings: {} }));
   const exposeInMainWorld = vi.fn();
   const source = readFileSync(path.join(import.meta.dirname, file), "utf8");
 
@@ -16,11 +17,11 @@ function runPreload(file: string, ipc: { invoke?: unknown; on?: unknown; off?: u
     process: { platform: "linux" },
     require(moduleName: string) {
       if (moduleName !== "electron") throw new Error(`Unexpected preload import: ${moduleName}`);
-      return { contextBridge: { exposeInMainWorld }, ipcRenderer: { invoke, on, off } };
+      return { contextBridge: { exposeInMainWorld }, ipcRenderer: { invoke, on, off, sendSync } };
     },
   });
 
-  return { invoke, on, off, exposeInMainWorld };
+  return { invoke, on, off, sendSync, exposeInMainWorld };
 }
 
 describe("desktop preload bridge", () => {
@@ -108,10 +109,12 @@ describe("desktop preload bridge", () => {
 
 describe("setup preload bridge", () => {
   it("exposes only the first-run setup operations", async () => {
-    const { invoke, on, exposeInMainWorld } = runPreload("setup-preload.cjs");
+    const { invoke, on, sendSync, exposeInMainWorld } = runPreload("setup-preload.cjs");
 
-    expect(exposeInMainWorld).toHaveBeenCalledTimes(1);
-    const [globalName, bridge] = exposeInMainWorld.mock.calls[0] as [string, RakazoSetup];
+    expect(exposeInMainWorld).toHaveBeenCalledTimes(2);
+    expect(sendSync).toHaveBeenCalledWith("desktop.setup.strings");
+    expect(exposeInMainWorld.mock.calls[0]?.[0]).toBe("rakazoSetupText");
+    const [globalName, bridge] = exposeInMainWorld.mock.calls[1] as [string, RakazoSetup];
     expect(globalName).toBe("rakazoSetup");
     expect(bridge.platform).toBe("linux");
     expect(Object.keys(bridge).sort()).toEqual([

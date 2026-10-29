@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+contextBridge.exposeInMainWorld("rakazoSetupText", ipcRenderer.sendSync("desktop.setup.strings"));
+
 contextBridge.exposeInMainWorld("rakazoSetup", {
   platform: process.platform,
   state: () => ipcRenderer.invoke("desktop.setup.state"),

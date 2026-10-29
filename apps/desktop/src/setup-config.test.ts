@@ -18,6 +18,7 @@ import {
   servesBundledRenderer,
   sessionPartitionForServerUrl,
 } from "./setup-config.js";
+import { strings } from "./strings.js";
 
 describe("server address normalization", () => {
   it("assumes http locally and https for a bare public host", () => {
@@ -278,8 +279,8 @@ describe("managed stack response", () => {
 
 describe("probe failures", () => {
   it.each([
-    ["TimeoutError", "Timed out reaching that address."],
-    ["AbortError", "Timed out reaching that address."],
+    ["TimeoutError", strings().server.timeout],
+    ["AbortError", strings().server.timeout],
   ])("explains %s", (name, expected) => {
     const error = new Error("stopped");
     error.name = name;
@@ -287,10 +288,10 @@ describe("probe failures", () => {
   });
 
   it.each([
-    ["net::ERR_CONNECTION_REFUSED", "Nothing is listening at that address yet."],
-    ["net::ERR_NAME_NOT_RESOLVED", "That host could not be found."],
-    ["net::ERR_CERT_AUTHORITY_INVALID", "The server's HTTPS certificate was rejected."],
-    ["something else entirely", "Could not reach that address."],
+    ["net::ERR_CONNECTION_REFUSED", strings().server.refused],
+    ["net::ERR_NAME_NOT_RESOLVED", strings().server.hostNotFound],
+    ["net::ERR_CERT_AUTHORITY_INVALID", strings().server.certificate],
+    ["something else entirely", strings().server.unreachable],
   ])("explains %s", (message, expected) => {
     expect(probeFailureMessage(new Error(message))).toBe(expected);
   });

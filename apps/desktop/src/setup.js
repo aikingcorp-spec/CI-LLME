@@ -1,6 +1,23 @@
 (() => {
   const bridge = window.rakazoSetup;
+  const text = window.rakazoSetupText?.strings ?? {};
   document.documentElement.dataset.platform = bridge?.platform ?? "browser";
+  document.documentElement.lang = window.rakazoSetupText?.lang ?? "vi";
+  document.title = text.windowTitle ?? "VNBot";
+  for (const node of document.querySelectorAll("[data-text]")) {
+    node.textContent = text[node.dataset.text] ?? "";
+  }
+  for (const [attribute, key] of [
+    ["title", "title"],
+    ["aria-label", "ariaLabel"],
+    ["placeholder", "placeholder"],
+  ]) {
+    for (const node of document.querySelectorAll(`[data-${attribute}]`)) {
+      node.setAttribute(attribute, text[node.dataset[key]] ?? "");
+    }
+  }
+  const format = (template, values) =>
+    template.replace(/\{(\w+)\}/g, (match, key) => (key in values ? String(values[key]) : match));
 
   const form = document.getElementById("setup");
   const serverUrl = document.getElementById("server-url");
@@ -21,12 +38,12 @@
 
   const STACK_POLL_MS = 1000;
   const PHASE_LABELS = {
-    "checking-docker": "Getting ready…",
-    preparing: "Getting ready…",
-    pulling: "Downloading VNBot…",
-    starting: "Starting VNBot…",
-    "waiting-healthy": "Almost ready…",
-    ready: "VNBot is ready.",
+    "checking-docker": text.phasePreparing,
+    preparing: text.phasePreparing,
+    pulling: text.phasePulling,
+    starting: text.phaseStarting,
+    "waiting-healthy": text.phaseWaiting,
+    ready: text.phaseReady,
   };
   const TERMINAL_PHASES = new Set([
     "idle",
@@ -88,7 +105,7 @@
     panelNew.hidden = mode !== "new";
     panelExisting.hidden = mode !== "existing";
     checkButton.hidden = mode !== "existing";
-    if (mode !== "new") continueButton.textContent = "Continue";
+    if (mode !== "new") continueButton.textContent = text.continue;
     setStatus("");
   }
 
@@ -133,7 +150,8 @@
 
   function renderDetails(stack) {
     const bytes = stack.phase === "pulling" ? downloadedBytes(stack) : 0;
-    stackDetail.textContent = bytes > 0 ? `${formatBytes(bytes)} downloaded` : "";
+    stackDetail.textContent =
+      bytes > 0 ? format(text.downloaded, { size: formatBytes(bytes) }) : "";
 
     // A new attempt clears the output, so drop an expansion the person did not ask for.
     if (stack.phase === "checking-docker" && detailsOpenedByFailure) {
@@ -160,7 +178,7 @@
     const { phase } = stack;
     stackSection.hidden = phase === "idle";
     if (phase === "idle") {
-      continueButton.textContent = "Continue";
+      continueButton.textContent = text.continue;
       return;
     }
     const failed = isDockerPhase(phase) || phase === "failed";
@@ -173,9 +191,9 @@
     renderDetails(stack);
     stackDockerHelp.hidden = !isDockerPhase(phase);
 
-    if (isDockerPhase(phase)) continueButton.textContent = "Check again";
-    else if (phase === "failed") continueButton.textContent = "Retry";
-    else continueButton.textContent = "Continue";
+    if (isDockerPhase(phase)) continueButton.textContent = text.checkAgain;
+    else if (phase === "failed") continueButton.textContent = text.retry;
+    else continueButton.textContent = text.continue;
     setBusy(!TERMINAL_PHASES.has(phase));
   }
 
@@ -183,12 +201,12 @@
     const generation = ++requestGeneration;
     setBusy(true);
     lockMode(true);
-    setStatus("Connecting…");
+    setStatus(text.connecting);
     try {
       const saved = await bridge.save({ mode, serverUrl: url });
-      if (!saved.ok) setStatus(saved.error ?? "Could not save that address.", "error");
+      if (!saved.ok) setStatus(saved.error ?? text.saveFailed, "error");
     } catch {
-      setStatus("Could not save that address. Try again.", "error");
+      setStatus(text.saveFailedRetry, "error");
     } finally {
       lockMode(false);
       // A newer run may own the controls by now; only their owner unlocks them.
@@ -240,7 +258,7 @@
     } catch {
       // Only report a follow the person still sees; leaving "new" already handed the form back.
       if (selectedMode() === "new") {
-        setStatus("Could not follow the local stack. Try again.", "error");
+        setStatus(text.followFailed, "error");
         setBusy(false);
       }
     } finally {
@@ -260,7 +278,7 @@
       if (started !== null && started.phase !== "idle") renderStack(started);
     } catch {
       if (generation === requestGeneration) {
-        setStatus("Could not start the local stack. Try again.", "error");
+        setStatus(text.startFailed, "error");
         setBusy(false);
       }
       return;
@@ -271,28 +289,28 @@
   async function check() {
     const value = serverUrl.value;
     if (value.trim() === "") {
-      setStatus("Enter a server address first.", "error");
+      setStatus(text.enterAddressFirst, "error");
       return null;
     }
 
     const generation = ++requestGeneration;
     activeCheck = generation;
     setBusy(true);
-    setStatus("Checking…");
+    setStatus(text.checking);
     try {
       const result = await bridge.test(value);
       // The address or the mode changed under the test, so its result speaks for neither.
       if (generation !== requestGeneration) return result;
       if (result.ok) {
         serverUrl.value = result.url;
-        setStatus(`VNBot answered at ${result.url}.`, "ok");
+        setStatus(format(text.answered, { url: result.url }), "ok");
       } else {
-        setStatus(result.error ?? "Could not reach that address.", "error");
+        setStatus(result.error ?? text.unreachable, "error");
       }
       return result;
     } catch {
       if (generation === requestGeneration) {
-        setStatus("Could not run the connection check. Try again.", "error");
+        setStatus(text.checkFailed, "error");
       }
       return null;
     } finally {
@@ -371,7 +389,7 @@
 
   async function init() {
     if (bridge === undefined) {
-      setStatus("Setup bridge unavailable.", "error");
+      setStatus(text.bridgeUnavailable ?? "Không có cầu nối thiết lập.", "error");
       setBusy(true);
       return;
     }
@@ -408,7 +426,7 @@
         continueButton.focus();
       }
     } catch {
-      setStatus("Setup could not start. Quit VNBot and try again.", "error");
+      setStatus(text.setupFailed, "error");
       setBusy(true);
     }
   }
