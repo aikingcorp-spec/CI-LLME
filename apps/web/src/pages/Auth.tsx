@@ -6,15 +6,15 @@ import { inputClass } from "@rakazo/ui-web/components/ui/input-variants";
 import { Label } from "@rakazo/ui-web/components/ui/label";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import type { ComponentProps } from "react";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { LanguageSwitch } from "../components/LanguageSwitch";
 import { PasskeySignIn } from "../components/PasskeySignIn";
 import { VnbotWordmark } from "../components/VnbotWordmark";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import { getActiveUiLocale } from "../lib/i18n";
-import { lazyComponent } from "../lib/preload-recovery";
 import { clearSpaceSelection } from "../lib/rpc";
 import {
   clearSignInProgress,
@@ -33,10 +33,6 @@ export const submitClass = "mt-3 h-12 w-full rounded-xl text-base";
 const EMAIL_ERROR_ID = "auth-email-error";
 const linkClass =
   "font-medium text-link underline underline-offset-4 hover:decoration-2 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
-
-const LanguageSwitch = lazyComponent(() =>
-  import("../components/LanguageSwitch").then((module) => module.LanguageSwitch),
-);
 
 type Step = "email" | "code";
 
@@ -502,9 +498,7 @@ export function AuthFrame({
   return (
     <div className="relative flex min-h-full items-center justify-center bg-background px-6 py-16 text-foreground">
       {/* Outside the form: picking a language must never submit it. */}
-      <Suspense fallback={null}>
-        <LanguageSwitch className="absolute end-5 top-4 max-sm:end-3 max-sm:top-3" />
-      </Suspense>
+      <LanguageSwitch className="absolute end-5 top-4 max-sm:end-3 max-sm:top-3" />
       <div className="flex w-[460px] max-w-full flex-col items-center">
         <form noValidate onSubmit={onSubmit} className="flex w-full flex-col items-center">
           <VnbotWordmark variant="wordmark" className="h-8 w-auto sm:h-9" />

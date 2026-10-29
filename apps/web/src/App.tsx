@@ -79,7 +79,9 @@ const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => mod
 const OnboardingPage = lazyPage(() =>
   import("./pages/Onboarding").then((module) => module.OnboardingPage),
 );
-const WelcomePage = lazyPage(() => import("./pages/Welcome").then((module) => module.WelcomePage));
+const WelcomePage = lazyComponent(() =>
+  import("./pages/Welcome").then((module) => module.WelcomePage),
+);
 const ArtifactsPage = lazyPage(() =>
   import("./pages/Artifacts").then((module) => module.ArtifactsPage),
 );

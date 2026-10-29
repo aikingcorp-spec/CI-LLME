@@ -1,4 +1,3 @@
-import { prefixSvgIds } from "@rakazo/ui-web";
 import type { CSSProperties } from "react";
 import { useId } from "react";
 import aodaiSvg from "../assets/vnbot/aodai.svg?raw";
@@ -6,6 +5,7 @@ import chungSvg from "../assets/vnbot/chung.svg?raw";
 import nonSvg from "../assets/vnbot/non.svg?raw";
 import ranSvg from "../assets/vnbot/ran.svg?raw";
 import senSvg from "../assets/vnbot/sen.svg?raw";
+import { prefixSvgIds } from "../lib/svg-ids";
 
 const MASCOTS = [
   { name: "non", svg: nonSvg, body: "var(--vnbot-body-la-ma)", light: false },
