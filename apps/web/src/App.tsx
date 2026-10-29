@@ -3,7 +3,9 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { LinkFavicons } from "@rakazo/chat-ui/web-providers";
 import { LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web-providers";
 import { analyticsScreen } from "@rakazo/core";
-import { Button } from "@rakazo/ui-web";
+import { buttonVariants } from "@rakazo/ui-web/components/ui/button-variants";
+import { cn } from "@rakazo/ui-web/lib/utils";
+import type { ComponentProps, ComponentType } from "react";
 import {
   Suspense,
   useEffect,
@@ -46,28 +48,55 @@ import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
 
 import { IntegrationCallbackPage } from "./pages/IntegrationCallback";
 
-import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
+function lazyPage(load: () => Promise<ComponentType>) {
+  return lazyComponent(async () => {
+    const [Page, { TooltipScope }] = await Promise.all([
+      load(),
+      import("./components/TooltipScope"),
+    ]);
+    return function PageWithTooltips() {
+      return (
+        <TooltipScope>
+          <Page />
+        </TooltipScope>
+      );
+    };
+  });
+}
 
-const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => module.AuthPage));
-const OnboardingPage = lazyComponent(() =>
+function FallbackButton({ className, ...props }: ComponentProps<"button">) {
+  return (
+    <button
+      type="button"
+      data-slot="button"
+      className={cn(buttonVariants({ variant: "secondary" }), className)}
+      {...props}
+    />
+  );
+}
+
+const AuthPage = lazyPage(() => import("./pages/Auth").then((module) => module.AuthPage));
+const OnboardingPage = lazyPage(() =>
   import("./pages/Onboarding").then((module) => module.OnboardingPage),
 );
-const WelcomePage = lazyComponent(() =>
-  import("./pages/Welcome").then((module) => module.WelcomePage),
-);
-const ArtifactsPage = lazyComponent(() =>
+const WelcomePage = lazyPage(() => import("./pages/Welcome").then((module) => module.WelcomePage));
+const ArtifactsPage = lazyPage(() =>
   import("./pages/Artifacts").then((module) => module.ArtifactsPage),
 );
-const BoardPage = lazyComponent(() => import("./pages/Board").then((module) => module.BoardPage));
-const NavLinkPage = lazyComponent(() =>
+const BoardPage = lazyPage(() => import("./pages/Board").then((module) => module.BoardPage));
+const NavLinkPage = lazyPage(() =>
   import("./pages/NavLinkPage").then((module) => module.NavLinkPage),
 );
 
-const IntegrationSetupPage = lazyComponent(() =>
+const IntegrationSetupPage = lazyPage(() =>
   import("./pages/IntegrationSetup").then((module) => module.IntegrationSetupPage),
 );
 
-const ShellPage = lazyComponent(() => import("./pages/Shell").then((module) => module.ShellPage));
+const McpOAuthCallbackPage = lazyPage(() =>
+  import("./pages/McpOAuthCallback").then((module) => module.McpOAuthCallbackPage),
+);
+
+const ShellPage = lazyPage(() => import("./pages/Shell").then((module) => module.ShellPage));
 
 function SsoCallbackPage() {
   useEffect(() => {
@@ -294,8 +323,7 @@ function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
           <Trans>Can&apos;t reach the server.</Trans>
         </p>
         <div className="mt-4">
-          <Button
-            variant="secondary"
+          <FallbackButton
             onClick={() => {
               retryImmediately.current = true;
               setAttempt(0);
@@ -303,7 +331,7 @@ function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
             }}
           >
             <Trans>Retry now</Trans>
-          </Button>
+          </FallbackButton>
         </div>
       </div>
     </div>
@@ -322,9 +350,9 @@ function AppFailed() {
           <Trans>Something went wrong. Try again.</Trans>
         </p>
         <div className="mt-4">
-          <Button variant="secondary" onClick={() => window.location.reload()}>
+          <FallbackButton onClick={() => window.location.reload()}>
             <Trans>Refresh</Trans>
-          </Button>
+          </FallbackButton>
         </div>
       </div>
     </div>

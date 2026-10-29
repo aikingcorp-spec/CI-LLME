@@ -10,7 +10,7 @@ import { writeSaved } from "@rakazo/core/query";
 import { useQuery } from "@tanstack/react-query";
 import type { RefObject } from "react";
 import { useCallback } from "react";
-import { lazyOverlay } from "../../components/ErrorBoundary";
+import { lazyOverlay } from "../../components/lazy-overlay";
 import type { connectedAppMarks } from "../../lib/connected-apps";
 import type { SpaceQueries } from "../../lib/query";
 import { queryClient } from "../../lib/query";

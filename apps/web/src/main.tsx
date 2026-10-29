@@ -1,5 +1,6 @@
 import "./monitoring-bootstrap";
-import { BotAvatarActivityProvider, Toaster, TooltipProvider } from "@rakazo/ui-web";
+import { BotAvatarActivityProvider } from "@rakazo/ui-web/bot-avatar-activity";
+import { Toaster } from "@rakazo/ui-web/components/ui/sonner";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect, useLayoutEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
@@ -68,11 +69,9 @@ createRoot(document.getElementById("root")!, { onCaughtError: reportCaughtReactE
         <ClientUpdateOnNavigate />
         <QueryClientProvider client={queryClient}>
           <DesktopUpdatesProvider>
-            <TooltipProvider>
-              <BotAvatarActivityProvider source={webLogoAvatarActivity}>
-                <App />
-              </BotAvatarActivityProvider>
-            </TooltipProvider>
+            <BotAvatarActivityProvider source={webLogoAvatarActivity}>
+              <App />
+            </BotAvatarActivityProvider>
             <Toaster />
           </DesktopUpdatesProvider>
         </QueryClientProvider>

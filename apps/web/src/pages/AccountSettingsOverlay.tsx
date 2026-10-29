@@ -34,7 +34,7 @@ import { AccountAccess } from "../components/AccountAccess";
 import { SuccessPop } from "../components/ai/primitives";
 import { ComputerDeviceSettings } from "../components/ComputerDeviceSettings";
 import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint";
-import { DesktopUpdateSection } from "../components/DesktopUpdates";
+import { DesktopUpdateSection } from "../components/DesktopUpdateViews";
 import { PasskeySettings } from "../components/PasskeySettings";
 import { SettingsGroup, SettingsRow } from "../components/SettingsRows";
 import { TrustedLinkSitesSettings } from "../components/TrustedLinkSitesSettings";

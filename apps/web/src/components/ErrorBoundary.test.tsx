@@ -45,7 +45,7 @@ vi.mock("@rakazo/ui-web", () => {
   };
 });
 
-import { lazyOverlay } from "./ErrorBoundary";
+import { lazyOverlay } from "./lazy-overlay";
 
 let container: HTMLDivElement;
 let root: Root;
