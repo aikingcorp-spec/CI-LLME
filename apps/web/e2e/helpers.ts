@@ -92,7 +92,7 @@ export async function readSignInCode(page: Page, email: string): Promise<string>
         text: string;
       }>;
       const mine = messages.filter(
-        (message) => message.to === email && /sign-in code/i.test(message.subject),
+        (message) => message.to === email && /sign-in code|mã đăng nhập/i.test(message.subject),
       );
       found = mine.at(-1)?.text.match(/\b(\d{6})\b/)?.[1] ?? "";
       return found;
