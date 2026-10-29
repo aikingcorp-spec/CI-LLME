@@ -1,4 +1,5 @@
 import type { ConnectorCall, ConnectorTool } from "@rakazo/adapter-kit";
+import { CONNECTOR_TOOL_NAME_CONFLICT } from "@rakazo/contracts";
 import { redactSecrets } from "@rakazo/core";
 import { reserveInstructionProposal, validateInstructionProposal } from "@rakazo/db";
 import { prepareAgentConnectionResponse } from "./agent-connections.js";
@@ -97,7 +98,7 @@ export async function resolveToolRequest(
       if (resolved) {
         if (BUILTIN_AGENT_TOOL_NAMES.has(resolved.tool.name)) {
           return {
-            error: "Connector tool name conflicts with a built-in tool",
+            error: CONNECTOR_TOOL_NAME_CONFLICT,
           };
         }
         name = resolved.tool.name;
