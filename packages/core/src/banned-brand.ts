@@ -61,18 +61,17 @@ export function findBannedBrandTerms(
 export const EXCLUDED_CATALOG_CONTENT =
   /\bcursor\b(?!\.[a-z])|\b(?:xai|grok|elie222)\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|origin|syncs\s+and\s+stores)\b/iu;
 
-/**
- * Same rule for a URL (install source, homepage, endpoint) except "grok": a repository slug such
- * as getsentry/plugin-grok is an identifier the user never reads as a brand, and matching it
- * dropped Sentry. xAI, x.ai and cursor.com hosts stay banned. Names and descriptions are still
- * checked with EXCLUDED_CATALOG_CONTENT.
- */
-export const EXCLUDED_CATALOG_URL_CONTENT =
-  /\bxai\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|origin|syncs\s+and\s+stores)\b/iu;
-
-/** True when the text is excluded; a http(s) URL is judged by the URL rule. */
+/** URLs are judged by their host and repository owner, never by a repository slug. */
 export function isExcludedCatalogText(text: string): boolean {
+  if (!/^https?:\/\/\S+$/iu.test(text)) return EXCLUDED_CATALOG_CONTENT.test(text);
+  const url = new URL(text);
+  const host = url.hostname.toLowerCase();
+  if (["x.ai", "cursor.com"].some((banned) => host === banned || host.endsWith(`.${banned}`)))
+    return true;
+  const segments = url.pathname.toLowerCase().split("/").filter(Boolean);
+  const owner = host === "api.github.com" && segments[0] === "repos" ? segments[1] : segments[0];
   return (
-    /^https?:\/\/\S+$/iu.test(text) ? EXCLUDED_CATALOG_URL_CONTENT : EXCLUDED_CATALOG_CONTENT
-  ).test(text);
+    ["github.com", "raw.githubusercontent.com", "api.github.com", "ghcr.io"].includes(host) &&
+    ["cursor", "xai", "xai-org", "elie222"].includes(owner ?? "")
+  );
 }

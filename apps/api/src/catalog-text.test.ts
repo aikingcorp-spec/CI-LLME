@@ -247,9 +247,7 @@ async function skillsClient(source = "plugin") {
 
 describe("catalog text keeps ordinary prose and markdown", () => {
   it("does not turn banned catalog text into a renamed field", () => {
-    expect(sanitizeCatalogText("Paginate with the cursor field. Works in Cursor.")).toBe(
-      "",
-    );
+    expect(sanitizeCatalogText("Paginate with the cursor field. Works in Cursor.")).toBe("");
   });
 
   it("preserves markdown indentation, newlines and code blocks", () => {
@@ -336,6 +334,8 @@ describe("catalog exclusion policy", () => {
   });
   it.each([
     "https://github.com/getsentry/plugin-grok.git",
+    "https://github.com/example/xai-tools.git",
+    "https://github.com/xai-org-tools/plugin.git",
     "https://github.com/getsentry/plugin-grok.git@3b4ec482aa94a964b210d004c817bdce15cda8f7#skills",
   ])("keeps a repository slug that contains grok: %s", (url) => {
     for (const key of ["source", "installedSource", "homepage", "url"])
@@ -346,7 +346,6 @@ describe("catalog exclusion policy", () => {
     "https://api.cursor.com/v1",
     "https://docs.x.ai/docs",
     "https://github.com/xai-org/plugin-marketplace",
-    "https://github.com/example/xai-tools.git",
   ])("still bans the brand host or owner in the URL %s", (url) => {
     for (const key of ["source", "installedSource", "homepage", "url"])
       expect(isCatalogContentAllowed({ [key]: url })).toBe(false);
@@ -450,4 +449,45 @@ it("drops a cursor-sdk tile before any field can be blanked", () => {
     skippedEntries: 0,
   } as unknown as Parameters<typeof sanitizePluginCatalog>[0];
   expect(sanitizePluginCatalog(catalog).entries).toEqual([]);
+});
+
+it("finds neutral app entries independently of their registry's brand", async () => {
+  const apps = [
+    "Stripe",
+    "Supabase",
+    "GitHub",
+    "Linear",
+    "Slack",
+    "Vercel",
+    "HubSpot",
+    "Asana",
+    "Jira",
+    "Sentry",
+  ];
+  const read = vi.fn(async (url: string) => {
+    if (url.endsWith("plugin-index.json"))
+      return JSON.stringify({
+        plugins: Object.fromEntries(
+          apps.map((name) => [name.toLowerCase(), { components: { skills: [{}] } }]),
+        ),
+      });
+    if (url.includes("xai-org") && url.endsWith("marketplace.json"))
+      return JSON.stringify({
+        plugins: apps.map((name) => ({
+          name: name.toLowerCase(),
+          description: `${name} integration`,
+          source: `https://github.com/example/${name.toLowerCase()}`,
+        })),
+      });
+    if (url.endsWith("marketplace.json")) return JSON.stringify({ plugins: [] });
+    if (url.includes("/git/trees/")) return JSON.stringify({ tree: [] });
+    throw new Error("Not found");
+  });
+  const client = setup(undefined, { pluginMarketplaceRead: read });
+  for (const name of apps) {
+    const result = await client.marketplace.catalog({ query: name });
+    expect(result.entries).toEqual([
+      expect.objectContaining({ name: name.toLowerCase(), registry: "" }),
+    ]);
+  }
 });

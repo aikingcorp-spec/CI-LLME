@@ -57,3 +57,21 @@ describe("EXCLUDED_CATALOG_CONTENT word and host boundaries", () => {
     "mycursor.com",
   ])("keeps %s", (text) => expect(EXCLUDED_CATALOG_CONTENT.test(text)).toBe(false));
 });
+
+it.each([
+  "https://max.ai/docs",
+  "https://cursor.company/docs",
+  "https://github.com/example/xai-tools",
+  "https://github.com/xai-org-tools/plugin",
+  "https://github.com/example/cursor-sdk",
+])("keeps exact URL boundaries: %s", (url) => {
+  expect(isExcludedCatalogText(url)).toBe(false);
+});
+it.each([
+  "https://github.com/cursor/plugins",
+  "https://raw.githubusercontent.com/xai-org/plugins/main/index.json",
+  "https://api.github.com/repos/elie222/example",
+  "https://ghcr.io/cursor/tool",
+])("blocks exact owners: %s", (url) => {
+  expect(isExcludedCatalogText(url)).toBe(true);
+});
