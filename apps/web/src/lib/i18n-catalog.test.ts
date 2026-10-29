@@ -38,7 +38,8 @@ describe("lingui catalogs", () => {
 
   it("localizes provider error guidance and retains its placeholders", () => {
     const messages = [
-      ...Object.values(RUN_ERROR_LIMIT_MESSAGES).flatMap(Object.values),
+      // Credit limits show the generic "connect your own key" copy; there is no credit message.
+      ...Object.values({ ...RUN_ERROR_LIMIT_MESSAGES, credit: {} }).flatMap(Object.values),
       "{summary} Your backup models also failed.",
       "{summary} No backup model was usable for this request.",
       "{summary} Backup models failed or were unavailable for this request.",
@@ -48,7 +49,7 @@ describe("lingui catalogs", () => {
       "Your model provider",
       "The model provider returned an error.",
       "Connect a model in Settings before running bots.",
-      "Connect your own API key in Models or choose VNBot credits in Billing.",
+      "Connect your own API key in Models.",
       "{provider} is rate limiting requests. Try again shortly.",
       "{summary} Resets {date}.",
       "{provider} rejected the API key. Check your connection settings.",

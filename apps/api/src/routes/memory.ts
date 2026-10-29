@@ -3,6 +3,7 @@ import { MEMORY_REVISION_CONFLICT_ERROR } from "@rakazo/adapter-kit";
 import { isScratchpadStatus, listScratchpadItems, mapScratchpadItem } from "@rakazo/adapters";
 import { isDeletableMemoryDocument } from "@rakazo/contracts";
 import { findSpaceMemoryConfig, IsolationError } from "@rakazo/db";
+import { sanitizeAgentSkill } from "../catalog-text.js";
 import {
   disconnectMemoryProvider,
   persistMemoryProviderConfig,
@@ -231,9 +232,11 @@ export function memoryRoutes(ctx: RouterContext) {
       ),
     },
     agentSkills: {
-      list: authed.agentSkills.list.handler(async ({ context }) => agentSkills.list(context.actor)),
+      list: authed.agentSkills.list.handler(async ({ context }) =>
+        (await agentSkills.list(context.actor)).map(sanitizeAgentSkill),
+      ),
       get: authed.agentSkills.get.handler(async ({ context, input }) =>
-        agentSkills.get(context.actor, input),
+        sanitizeAgentSkill(await agentSkills.get(context.actor, input)),
       ),
       create: authed.agentSkills.create.handler(async ({ context, input }) =>
         agentSkills.create(context.actor, input),

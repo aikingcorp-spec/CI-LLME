@@ -544,6 +544,26 @@ export default defineConfig(({ command, mode }) => {
         },
       },
       {
+        // Hashed bundles never change under their name; the HTML that names them must be revalidated.
+        name: "rakazo-cache-control",
+        configurePreviewServer({ config, middlewares }) {
+          const assetsPrefix = `${config.base}${config.build.assetsDir}/`;
+          middlewares.use((req, res, next) => {
+            if (req.method !== "GET" && req.method !== "HEAD") {
+              next();
+              return;
+            }
+            const pathname = req.url?.split("?", 1)[0] ?? "/";
+            if (pathname.startsWith(assetsPrefix)) {
+              res.setHeader("cache-control", "public, max-age=31536000, immutable");
+            } else if (!path.extname(pathname) || pathname.endsWith(".html")) {
+              res.setHeader("cache-control", "no-cache");
+            }
+            next();
+          });
+        },
+      },
+      {
         name: "rakazo-missing-asset-404",
         configurePreviewServer({ config, middlewares }) {
           const outDir = path.resolve(config.root, config.build.outDir);

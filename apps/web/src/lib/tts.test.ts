@@ -145,7 +145,7 @@ describe("Speaker", () => {
   });
 
   it.each([
-    ["VOICE_OUT_OF_CREDIT", 402, "Your voice provider is out of credit."],
+    ["VOICE_OUT_OF_CREDIT", 402, "Connect your own API key in Models."],
     ["VOICE_KEY_REJECTED", 403, "Your voice provider key was rejected."],
   ])("shows its own copy for %s", async (code, status, copy) => {
     vi.stubGlobal(

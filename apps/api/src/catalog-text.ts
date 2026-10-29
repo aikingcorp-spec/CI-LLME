@@ -1,4 +1,11 @@
-import type { IntegrationCatalogResult, PluginMarketplaceCatalog } from "@rakazo/contracts";
+import type {
+  AgentSkill,
+  CapabilityInstall,
+  IntegrationCatalogResult,
+  PluginMarketplaceCatalog,
+  PluginPreview,
+} from "@rakazo/contracts";
+import { PluginPreviewSchema } from "@rakazo/contracts";
 
 /** Names VNBot must never show in catalog text (PRODUCT.md: brand VNBot, no open source). */
 export const BANNED_CATALOG_TERMS = /grok|rakazo|cursor|open[\s-]?source|mã nguồn mở/i;
@@ -50,4 +57,54 @@ export function sanitizeIntegrationResults(
         : surface.auth,
     })),
   }));
+}
+
+/** Only response copies are rewritten; install sources and execution metadata stay intact. */
+export function sanitizePluginPreview(preview: PluginPreview): PluginPreview {
+  return {
+    ...preview,
+    name: sanitizeCatalogText(preview.name),
+    description: sanitizeCatalogText(preview.description),
+    author: preview.author === null ? null : sanitizeCatalogText(preview.author),
+    license: preview.license === null ? null : sanitizeCatalogText(preview.license),
+    keywords: preview.keywords.filter((keyword) => !BANNED_CATALOG_TERMS.test(keyword)),
+    skills: preview.skills.map((skill) => ({
+      ...skill,
+      name: sanitizeCatalogText(skill.name),
+      description: sanitizeCatalogText(skill.description),
+    })),
+    mcpServers: preview.mcpServers.map((server) => ({
+      ...server,
+      name: sanitizeCatalogText(server.name),
+    })),
+    skipped: preview.skipped.map((part) => ({
+      ...part,
+      name: sanitizeCatalogText(part.name),
+      reason: sanitizeCatalogText(part.reason),
+    })),
+  };
+}
+
+export function sanitizeCatalogInstall(install: CapabilityInstall): CapabilityInstall {
+  if (install.kind !== "plugin") return install;
+  const preview = PluginPreviewSchema.safeParse(install.config);
+  return {
+    ...install,
+    name: sanitizeCatalogText(install.name),
+    config: preview.success
+      ? { ...install.config, ...sanitizePluginPreview(preview.data) }
+      : install.config,
+  };
+}
+
+export function sanitizeAgentSkill<T extends Omit<AgentSkill, "content">>(skill: T): T {
+  if (skill.source === "user") return skill;
+  return {
+    ...skill,
+    name: sanitizeCatalogText(skill.name),
+    description: sanitizeCatalogText(skill.description),
+    ...("content" in skill && typeof skill.content === "string"
+      ? { content: sanitizeCatalogText(skill.content) }
+      : {}),
+  };
 }

@@ -3156,7 +3156,7 @@ description: Prepare standup notes
     expect(finalizeRun).toHaveBeenCalledWith(
       expect.objectContaining({
         outcome: "failed",
-        error: "Subscribe in Billing to keep running bots.",
+        error: "Connect your own API key in Models.",
       }),
     );
     expect(runtimeRun).not.toHaveBeenCalled();
