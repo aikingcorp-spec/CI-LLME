@@ -49,6 +49,7 @@ const NOT_PASSED: Record<string, string> = {
   RAKAZO_ALLOW_DEV_SECRETS: "development-only escape hatch for placeholder secrets",
   EMAIL_EMULATOR: "ignored when NODE_ENV=production",
   GIT_SHA: "baked into the image at build time; a pass-through entry would unset it",
+  BUILT_AT: "baked into the image with a timestamp file fallback; not a runtime Compose setting",
   SHELL: "host shell for the desktop computer, which only the Electron app runs",
   CLOUDFLARE_ACCOUNT_ID: "written into Pi's environment from stored gateway settings",
   CLOUDFLARE_GATEWAY_ID: "written into Pi's environment from stored gateway settings",

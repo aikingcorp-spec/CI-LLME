@@ -175,6 +175,7 @@ import {
   TeamChatStartupRetries,
 } from "./team-chat-startup.js";
 import { mountUserDeviceRoutes } from "./user-devices.js";
+import { versionRoutes } from "./version.js";
 import { mountVoiceHttpRoutes, voiceAccountErrorStatus } from "./voice.js";
 import { mountWebhookHttpRoutes } from "./webhook.js";
 
@@ -784,6 +785,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       c.header("cache-control", "no-store");
     });
   }
+  app.route("/", versionRoutes(env));
   app.get("/api/auth/capabilities", (c) => {
     return c.json({
       sso: env.oidc

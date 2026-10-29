@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { loadEnv } from "./env.js";
+import { readBuildTime } from "./version.js";
+
+vi.mock("./version.js", { spy: true });
 
 const base = {
   DATABASE_URL: "postgres://rakazo:rakazo@127.0.0.1:5433/rakazo",
@@ -268,6 +271,17 @@ describe("loadEnv", () => {
     expect(loadEnv(base).gitSha).toBeUndefined();
     expect(loadEnv({ ...base, GIT_SHA: "  3c6e209  " }).gitSha).toBe("3c6e209");
     expect(loadEnv({ ...base, RAKAZO_GIT_SHA: "abc1234" }).gitSha).toBe("abc1234");
+  });
+
+  it("falls back to the image timestamp when BUILT_AT is not passed", () => {
+    vi.mocked(readBuildTime).mockReturnValueOnce("2026-10-29T13:00:00Z");
+    expect(loadEnv({ ...base, GIT_SHA: "abc1234" }).builtAt).toBe("2026-10-29T13:00:00Z");
+  });
+
+  it("loads an explicit build timestamp", () => {
+    expect(loadEnv({ ...base, BUILT_AT: " 2026-10-29T13:00:00Z " }).builtAt).toBe(
+      "2026-10-29T13:00:00Z",
+    );
   });
 
   it("loads per-client minimum builds and refuses a malformed one", () => {

@@ -45,8 +45,12 @@ RUN VITE_DEFAULT_UI_LOCALE="$VITE_DEFAULT_UI_LOCALE" VITE_VNBOT_CONTACT_URL="$VI
   RAKAZO_ALLOW_DEV_SECRETS=1 pnpm --filter @rakazo/web build
 RUN install -d -m 750 -o node -g node /data /app/apps/web/node_modules/.vite-temp /app/apps/web/asset-archive
 ARG GIT_SHA
+ARG BUILT_AT
 ENV NODE_ENV=production
 ENV GIT_SHA=$GIT_SHA
+ENV BUILT_AT=$BUILT_AT
+RUN if [ -n "$BUILT_AT" ]; then printf '%s\n' "$BUILT_AT" > /app/BUILT_AT; \
+    else date -u +%Y-%m-%dT%H:%M:%SZ > /app/BUILT_AT; fi
 EXPOSE 3100 5173 7091
 USER node
 CMD ["pnpm", "--filter", "@rakazo/api", "start"]

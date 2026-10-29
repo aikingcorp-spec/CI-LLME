@@ -169,3 +169,12 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `packages/adapters/src/pi-runtime-stream.ts`, runtime regressions, `packages/core/src/run-error.ts`, web run-error translator and catalogs.
 - Invariants affected: execution, approvals and persisted transcripts share one call identity; malformed context is still rejected rather than silently discarding action results. No database changes.
 - ADR: none (protocol invariant repair).
+
+## 2026-10-29 — Public deployment version
+
+- Pull request: none (local commits only).
+- Changed versus baseline: unauthenticated `GET /api/version` returns only `{sha, builtAt}`, with nulls when unavailable and no caching. `GIT_SHA` uses existing environment loading. Docker accepts optional `BUILT_AT` and writes a UTC timestamp file at build time when omitted; environment loading uses that file as fallback.
+- Why: deployment verification needs the running revision and image build time through the same web origin.
+- Modules and files: `apps/api/src/version.ts`, `app.ts`, `env.ts`, unit tests and `infra/compose/Dockerfile`. Existing web `/api` proxy serves the route unchanged.
+- Invariants affected: the version endpoint reads no session, tenant data or database; authenticated routes retain their checks. Existing deployment commands need no new argument.
+- ADR: none (deployment metadata endpoint).
