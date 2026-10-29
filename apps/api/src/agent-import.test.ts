@@ -272,7 +272,7 @@ describe("an imported server asked for twice", () => {
 });
 
 describe("portable avatar appearance on import", () => {
-  it.each([undefined, "organic", "rakazo"] as const)(
+  it.each([undefined, "organic", "rakazo", "vnbot"] as const)(
     "preserves explicit sets and defaults legacy imports to vnbot (set=%s)",
     async (avatarSet) => {
       const createBot = vi.fn<AgentImportServices["createBot"]>(async (_actor, request) => {

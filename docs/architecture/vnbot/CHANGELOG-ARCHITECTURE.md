@@ -151,3 +151,12 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `packages/contracts/src/builtin-tools.ts`, adapter tool definitions, selection, dispatch and scripted runtime, web labels and catalogs.
 - Invariants affected: these tools cannot be offered to a model or enabled through bot settings; existing storage is unchanged.
 - ADR: none (capability removal).
+
+## 2026-10-29 — Vietnamese bot introductions
+
+- Pull request: none (local commits only).
+- Changed versus baseline: the creation prompt defaults greetings, onboarding choices and generated profile text to Vietnamese, with Vietnamese examples for general and accounting roles. Explicit user language requests still take precedence.
+- Why: a new bot should speak the product's default language from its first message.
+- Modules and files: `apps/api/src/routes/bots.ts`, prompt contract assertions in `apps/api/src/router.test.ts`.
+- Invariants affected: the existing creation run and restricted tool selection remain shared across clients; no stored messages are rewritten.
+- ADR: none (default prompt correction).

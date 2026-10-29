@@ -5074,6 +5074,18 @@ describe("bot intro run", () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
+  it("supplies Vietnamese defaults even when the intro cannot use tools", () => {
+    for (const disabledBuiltinTools of [[], ["ask_user", "update_bot"]]) {
+      const prompt = botIntroPrompt({ userName: "", spaceName: null, disabledBuiltinTools });
+      expect(prompt).toContain(
+        "Use Vietnamese by default for the greeting, question, choices, title and description. Switch languages only when the user explicitly asks.",
+      );
+      expect(prompt).toContain('"Chào bạn, bạn muốn mình hỗ trợ việc gì?"');
+      expect(prompt).toContain('"Hỗ trợ dự án", "Giải đáp thắc mắc", "Hướng dẫn", "Việc khác"');
+      expect(prompt).toContain('"Ghi sổ kế toán" and "Lập báo cáo"');
+    }
+  });
+
   it("names only the intro tools the bot still has", () => {
     const prompt = (disabledBuiltinTools: string[]) =>
       botIntroPrompt({ userName: "Ada", spaceName: null, disabledBuiltinTools });
