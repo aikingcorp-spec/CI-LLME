@@ -7,7 +7,7 @@ import { APIError } from "better-auth/api";
 export const EMAIL_NOT_INVITED_MESSAGE = "This email is not invited yet";
 
 /** Zero-width characters a pasted address can carry: U+200B, U+200C, U+200D, U+2060, U+FEFF. */
-const ZERO_WIDTH = /[\u200B\u200C\u200D\u2060\uFEFF]/g;
+const ZERO_WIDTH = /\u200B|\u200C|\u200D|\u2060|\uFEFF/g;
 
 /**
  * Fixed order, matching the `auth_email_allowlist` CHECK: trim, Unicode NFC,
