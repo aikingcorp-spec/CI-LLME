@@ -863,12 +863,12 @@ export function isBlockedAuthPath(path: string): boolean {
 interface RateLimitAdapter {
   findOne<T>(input: {
     model: string;
-    where: { field: string; value: string }[];
+    where: { field: string; value: string | number | bigint }[];
   }): Promise<T | null>;
   create<T>(input: { model: string; data: Record<string, unknown> }): Promise<T>;
   update<T>(input: {
     model: string;
-    where: { field: string; value: string }[];
+    where: { field: string; value: string | number | bigint }[];
     update: Record<string, unknown>;
   }): Promise<T | null>;
 }
@@ -887,30 +887,43 @@ async function limitPerEmail(
   const db = adapter as RateLimitAdapter;
   const key = `email-code:${email}`;
   const where = [{ field: "key", value: key }];
-  const now = Date.now();
-  const row = await db.findOne<{ count: number; lastRequest: number | bigint }>({
-    model: "rateLimit",
-    where,
-  });
-  if (!row) {
-    await db.create({
+  for (;;) {
+    const now = Date.now();
+    const row = await db.findOne<{ count: number; lastRequest: number | bigint }>({
       model: "rateLimit",
-      data: { key, count: 1, lastRequest: now },
+      where,
     });
-    return;
-  }
-  const started = Number(row.lastRequest);
-  if (now - started >= rule.window * 1000) {
-    await db.update({ model: "rateLimit", where, update: { count: 1, lastRequest: now } });
-    return;
-  }
-  if (row.count >= rule.max) {
-    throw new APIError("TOO_MANY_REQUESTS", {
-      code: "RATE_LIMITED",
-      message: "Too many requests. Please try again later.",
+    if (!row) {
+      try {
+        await db.create({ model: "rateLimit", data: { key, count: 1, lastRequest: now } });
+        return;
+      } catch (error) {
+        // Another first request may have created the unique key in the meantime.
+        if (!error || typeof error !== "object" || !("code" in error) || error.code !== "P2002")
+          throw error;
+        continue;
+      }
+    }
+    const expired = now - Number(row.lastRequest) >= rule.window * 1000;
+    if (!expired && row.count >= rule.max) {
+      throw new APIError("TOO_MANY_REQUESTS", {
+        code: "RATE_LIMITED",
+        message: "Too many requests. Please try again later.",
+      });
+    }
+    // Compare both fields so increments cannot be lost and only one request
+    // resets an expired window. A lost race retries against the winning row.
+    const updated = await db.update({
+      model: "rateLimit",
+      where: [
+        ...where,
+        { field: "count", value: row.count },
+        { field: "lastRequest", value: row.lastRequest },
+      ],
+      update: expired ? { count: 1, lastRequest: now } : { count: row.count + 1 },
     });
+    if (updated) return;
   }
-  await db.update({ model: "rateLimit", where, update: { count: row.count + 1 } });
 }
 
 function passwordAuthDisabled(): APIError {

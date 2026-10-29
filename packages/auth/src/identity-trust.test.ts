@@ -10,18 +10,33 @@ import { CLIENT_IP_HEADER, createAuth } from "./index.js";
 vi.mock("better-auth/adapters/prisma", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return {
-    prismaAdapter: (prisma: { authData: Record<string, { id?: unknown }[]> }) => {
+    prismaAdapter: (prisma: { authData: Record<string, { id?: unknown; key?: unknown }[]> }) => {
       const factory = memoryAdapter(prisma.authData);
+      const pendingRateLimitKeys = new Set<unknown>();
       // Postgres rejects a duplicate primary key, which first-writer-wins reservations rely on.
       return (options: Parameters<typeof factory>[0]) => {
         const adapter = factory(options);
         return {
           ...adapter,
-          create: (async (input: { model: string; data: { id?: unknown } }) => {
+          create: (async (input: { model: string; data: { id?: unknown; key?: unknown } }) => {
             const id = input.data.id;
             if (id !== undefined && prisma.authData[input.model]?.some((row) => row.id === id))
               throw new Error("duplicate key");
-            return adapter.create(input as never);
+            if (input.model !== "rateLimit") return adapter.create(input as never);
+            const key = input.data.key;
+            // Include in-flight inserts: the adapter yields before persisting.
+            if (
+              pendingRateLimitKeys.has(key) ||
+              prisma.authData.rateLimit?.some((row) => row.key === key)
+            ) {
+              throw Object.assign(new Error("duplicate rate limit key"), { code: "P2002" });
+            }
+            pendingRateLimitKeys.add(key);
+            try {
+              return await adapter.create(input as never);
+            } finally {
+              pendingRateLimitKeys.delete(key);
+            }
           }) as typeof adapter.create,
         };
       };
@@ -1023,6 +1038,39 @@ describe("sign-in code send limit per address", () => {
     f.request("/email-otp/send-verification-otp", { email, type: "sign-in" }, undefined, {
       [CLIENT_IP_HEADER]: ip,
     });
+
+  it("caps concurrent sends to one address at 5 across IPs when the list is on", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
+      const sendBurst = () =>
+        Promise.all(
+          Array.from({ length: 8 }, (_, index) =>
+            sendFrom(f, "lan@gmail.com", `203.0.113.${index + 1}`),
+          ),
+        );
+      const assertCapped = async () => {
+        const responses = await sendBurst();
+        expect(responses.filter((response) => response.status === 200)).toHaveLength(5);
+        const blocked = responses.filter((response) => response.status === 429);
+        expect(blocked).toHaveLength(3);
+        for (const response of blocked) {
+          expect(await response.json()).toMatchObject({ code: "RATE_LIMITED" });
+        }
+        expect(
+          f.data.rateLimit!.filter((row) => row.key === "email-code:lan@gmail.com"),
+        ).toMatchObject([{ count: 5 }]);
+      };
+      await assertCapped();
+      expect(f.messages).toHaveLength(5);
+      // Concurrent resets must also preserve the cap and fixed window.
+      vi.setSystemTime(Date.now() + 15 * 60_000 + 1);
+      await assertCapped();
+      expect(f.messages).toHaveLength(10);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it("caps one normalized address at 5 sends per 15 minutes across IPs when the list is on", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });

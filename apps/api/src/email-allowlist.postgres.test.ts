@@ -159,5 +159,13 @@ describePostgres("invite list on PostgreSQL (runtime login)", () => {
       `email-code:${invited}`,
     ]);
     expect(row.rows).toEqual([{ count: 5 }]);
+    // Concurrent first sends for a fresh address: exactly 5 pass, none error.
+    const burst = `burst-${suffix}@example.test`;
+    await sql(true, 'INSERT INTO "auth_email_allowlist" ("email") VALUES ($1)', [burst]);
+    const statuses = await Promise.all(
+      Array.from({ length: 9 }, (_, n) => send(burst, `192.0.2.${n + 1}`)),
+    );
+    expect(statuses.filter((status) => status === 200)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(4);
   });
 });
