@@ -19,7 +19,7 @@ import {
 } from "../lib/sign-in-progress";
 import { runSsoFlow } from "../lib/sso-flow";
 import { authErrorCode, authErrorText, EMAIL_NOT_INVITED } from "../lib/user-error";
-import { VNBOT_CONTACT_URL } from "../lib/vnbot-links";
+import { VNBOT_CONTACT_URL, VNBOT_PRIVACY_URL, VNBOT_TERMS_URL } from "../lib/vnbot-links";
 
 const fieldClass = "mt-2 h-12 rounded-xl px-4 text-base md:text-base";
 const CODE_LENGTH = 6;
@@ -476,27 +476,38 @@ export function AuthFrame({
     <div className="relative flex min-h-full items-center justify-center bg-background px-6 py-16 text-foreground">
       {/* Outside the form: picking a language must never submit it. */}
       <LanguageSwitch className="absolute end-5 top-4 max-sm:end-3 max-sm:top-3" />
-      <form
-        noValidate
-        onSubmit={onSubmit}
-        className="flex w-[460px] max-w-full flex-col items-center"
-      >
-        <VnbotWordmark variant="wordmark" className="h-8 w-auto sm:h-9" />
-        <h1
-          aria-live="polite"
-          className="mt-7 text-center text-4xl font-medium tracking-tight max-sm:text-3xl"
-        >
-          {title}
-        </h1>
-        {subtitle ? (
-          <p className="mb-9 mt-3 text-center text-body1 text-pretty text-muted-foreground">
-            {subtitle}
-          </p>
-        ) : (
-          <div className="mb-9" />
-        )}
-        {children}
-      </form>
+      <div className="flex w-[460px] max-w-full flex-col items-center">
+        <form noValidate onSubmit={onSubmit} className="flex w-full flex-col items-center">
+          <VnbotWordmark variant="wordmark" className="h-8 w-auto sm:h-9" />
+          <h1
+            aria-live="polite"
+            className="mt-7 text-center text-4xl font-medium tracking-tight max-sm:text-3xl"
+          >
+            {title}
+          </h1>
+          {subtitle ? (
+            <p className="mb-9 mt-3 text-center text-body1 text-pretty text-muted-foreground">
+              {subtitle}
+            </p>
+          ) : (
+            <div className="mb-9" />
+          )}
+          {children}
+        </form>
+        <p className="mt-8 flex gap-4 text-sm text-muted-foreground">
+          <a href={VNBOT_TERMS_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
+            <Trans>Terms</Trans>
+          </a>
+          <a
+            href={VNBOT_PRIVACY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClass}
+          >
+            <Trans>Privacy</Trans>
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

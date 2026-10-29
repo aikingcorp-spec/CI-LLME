@@ -25,9 +25,11 @@ import {
   initialModelProbeState,
   pickCatalogModelId,
   popularModelProvidersFirst,
+  seededVnbotBodyColor,
 } from "@rakazo/core";
 import {
   Button,
+  defaultVnbotAvatarValue,
   Input,
   ModelThinkingOptions,
   Select,
@@ -110,6 +112,9 @@ async function createOrReuseFirstBot(): Promise<{ id: string }> {
       instructions: "",
       notifyOnFinish: true,
       spawnKey: FIRST_BOT_SPAWN_KEY,
+      // Same Nón look the New bot dialog starts from.
+      color: defaultVnbotAvatarValue(seededVnbotBodyColor(FIRST_BOT_SPAWN_KEY)),
+      avatarSet: "vnbot",
     });
     return { id: created.id };
   } catch (error) {
@@ -1052,9 +1057,20 @@ export function OnboardingPage() {
               </p>
             ) : null}
             {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
-            <Button className="mt-6" disabled={!canSaveModel} onClick={() => void saveModel()}>
-              <Trans>Continue</Trans>
-            </Button>
+            <div className="mt-6 flex items-center gap-2">
+              <Button disabled={!canSaveModel} onClick={() => void saveModel()}>
+                <Trans>Continue</Trans>
+              </Button>
+              <Button
+                variant="text"
+                onClick={() => {
+                  cancelOAuthAttempt();
+                  goTo("bot");
+                }}
+              >
+                <Trans>Skip for now</Trans>
+              </Button>
+            </div>
           </div>
         ) : null}
         {step === "bot" ? (

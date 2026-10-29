@@ -26,3 +26,6 @@ export const VNBOT_DOWNLOAD_URL = httpsUrl(
   import.meta.env.VITE_DOWNLOAD_URL,
   "https://vnbot.run/#tai-ve",
 );
+
+export const VNBOT_TERMS_URL = "https://vnbot.run/dieu-khoan";
+export const VNBOT_PRIVACY_URL = "https://vnbot.run/quyen-rieng-tu";
