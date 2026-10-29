@@ -67,7 +67,7 @@ export function BotLookPicker({
             <Trans>VNBot</Trans>
           </TabsTrigger>
           <TabsTrigger value="rakazo" className="flex-1">
-            <Trans>Rakazo</Trans>
+            <Trans>Classic</Trans>
           </TabsTrigger>
           <TabsTrigger value="organic" className="flex-1">
             <Trans>Original</Trans>

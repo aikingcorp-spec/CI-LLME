@@ -1,48 +1,10 @@
-import {
-  DOCS_URL,
-  GITHUB_URL,
-  OPENCLAW_ALTERNATIVE_PATH,
-  SELF_HOST_GUIDE_PATH,
-  SELF_HOST_RESTRICTED_URL,
-  SELF_HOST_SECRETS_URL,
-  SETUP_PROMPT_URL,
-  SITE_URL,
-} from "./site";
+import { SITE_URL } from "./site";
 
 export const OPENCLAW_DOCS_URL = "https://docs.openclaw.ai/";
 export const OPENCLAW_GETTING_STARTED_URL = "https://docs.openclaw.ai/start/getting-started";
 export const OPENCLAW_FEATURES_URL = "https://docs.openclaw.ai/concepts/features";
 export const OPENCLAW_SANDBOX_URL = "https://docs.openclaw.ai/gateway/sandboxing";
 export const OPENCLAW_GITHUB_URL = "https://github.com/openclaw/openclaw";
-
-export const PUBLISHED_IMAGES_INSTALL = `mkdir -p rakazo && cd rakazo &&
-curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/install-images.sh &&
-bash install-images.sh`;
-
-export const PUBLISHED_IMAGES_SERVER = `bash install-images.sh --prepare-only
-# Edit .env, then:
-bash install-images.sh`;
-
-export const SOURCE_CHECKOUT = `git clone https://github.com/elie222/rakazo.git
-cd rakazo
-cp .env.example .env`;
-
-export const SOURCE_DEV = `docker compose --env-file .env \\
-  -f infra/compose/docker-compose.yml \\
-  -f infra/compose/docker-compose.postgres-host.yml \\
-  up postgres -d
-pnpm install
-pnpm db:generate
-pnpm db:migrate
-pnpm sandbox:build
-pnpm dev`;
-
-export const CADDY_SNIPPET = `app.example.com {
-	reverse_proxy 127.0.0.1:5173
-}`;
-
-export const RUN_ON_YOUR_MAC =
-  "Run on your Mac with the desktop app. This computer installs VNBot on that Mac. A Mac Mini can stay on as the always-on box.";
 
 export type FaqItem = {
   question: string;
@@ -55,46 +17,14 @@ export type ComparisonRow = {
   openclaw: string;
 };
 
-export const SELF_HOST_TITLE = "Self-Hosted AI Agent (Open Source) – VNBot";
-export const SELF_HOST_DESCRIPTION =
-  "Run VNBot yourself: an open source AI agent with your data, your model, and your costs. Requirements and the setup steps for Docker or a source checkout.";
-
-export const OPENCLAW_H1 = "Open source OpenClaw alternative";
-export const OPENCLAW_TITLE = "Open Source OpenClaw Alternative – VNBot";
+export const OPENCLAW_H1 = "OpenClaw alternative";
+export const OPENCLAW_TITLE = "OpenClaw Alternative – VNBot";
 export const OPENCLAW_UPDATED = "October 7, 2026";
 export const OPENCLAW_DESCRIPTION =
-  "VNBot and OpenClaw are both open source, self-hosted AI agents. VNBot keeps setup and daily use in chat. OpenClaw's docs add a gateway, a config file, and a background service you can install.";
-
-export const SELF_HOST_FAQS: readonly FaqItem[] = [
-  {
-    question: "What do I need to self-host VNBot?",
-    answer:
-      "Published images need Docker Engine 26 or newer, the Compose plugin, curl, and OpenSSL. You do not need Node.js for that path. A source checkout needs Node.js 22.22.2 or newer on the 22.x line, Node.js 24.x, or Node.js 26 or newer, plus pnpm 9 and Docker. Node.js 23.x and 25.x are not supported.",
-  },
-  {
-    question: "Where does my data live?",
-    answer:
-      "Postgres, bot files, browser profiles, and the audit log stay on the deployment you run. Content you send to a model provider is processed by that provider under its terms. You choose the provider and the keys.",
-  },
-  {
-    question: "How do model choice and cost work?",
-    answer:
-      "You connect your own model keys, or a local or OpenAI-compatible model server, and you can pick a different model per bot. The open source software has no seat fee. You pay the model and computer providers you use. Local Docker computers are the default and do not need a hosted sandbox account.",
-  },
-  {
-    question: "Is hosted VNBot available?",
-    answer:
-      "Yes. VNBot Cloud is in beta at app.rakazo.com. Self-hosting is available too.",
-  },
-  {
-    question: "How does this compare with OpenClaw?",
-    answer:
-      "Both are open source and run on hardware you control. After a Docker or desktop install, VNBot is a chat for persistent teammates. OpenClaw's getting-started guide adds a wizard, a Gateway you run in the terminal or install as a background service, and a separate step to connect a chat app.",
-  },
-];
+  "VNBot and OpenClaw are both self-hosted AI agents. VNBot keeps setup and daily use in chat. OpenClaw's docs add a gateway, a config file, and a background service you can install.";
 
 export const OPENCLAW_SETUP_PARAGRAPHS = [
-  "VNBot's self-host path is the published Docker installer, or the desktop app starting that stack on this computer. You create an account and connect a model. From there it is just chat, on the web, desktop, and mobile apps. A new bot interviews you about the work, and you manage the bot from that chat. Routines are readable Markdown.",
+  "VNBot's self-host path is the desktop app starting that stack on this computer. You create an account and connect a model. From there it is just chat, on the web, desktop, and mobile apps. A new bot interviews you about the work, and you manage the bot from that chat. Routines are readable Markdown.",
   "OpenClaw's getting-started guide installs the CLI, then runs a wizard. Quick start is the short path when a Claude Code or Codex login, or an API key, is already on the machine. Custom setup walks through the full flow, and `openclaw onboard --classic` is the step-by-step wizard. Quick start leaves the Gateway in that terminal until you stop it, so you can chat before installing a service. `openclaw gateway install` is the later step that keeps it in the background: a LaunchAgent on macOS, a systemd user unit on Linux, or a Scheduled Task on Windows. You check `openclaw gateway status` (the guide says port 18789) and open `openclaw dashboard`. Messaging from a phone, such as Telegram, is a separate Channels step.",
 ] as const;
 
@@ -107,12 +37,12 @@ export const OPENCLAW_FAQS: readonly FaqItem[] = [
   {
     question: "Is VNBot simpler to set up than OpenClaw?",
     answer:
-      "The documented paths are different. VNBot's self-host guide is a Docker installer, or the desktop app starting that stack, then an account and a model. After that VNBot is just chat, and you manage the bot from that chat. OpenClaw's getting-started guide is an installer and a wizard (Quick start or Custom setup). You can chat while the Gateway runs in that terminal. `openclaw gateway install` keeps it running in the background, then `openclaw gateway status` and `openclaw dashboard`. Connecting a chat app is another step. OpenClaw can be short when a model login is already detected. The ongoing surface is still the Gateway and the config file.",
+      "The documented paths are different. VNBot's local path is the desktop app starting the stack, then an account and a model. After that VNBot is just chat, and you manage the bot from that chat. OpenClaw's getting-started guide is an installer and a wizard (Quick start or Custom setup). You can chat while the Gateway runs in that terminal. `openclaw gateway install` keeps it running in the background, then `openclaw gateway status` and `openclaw dashboard`. Connecting a chat app is another step. OpenClaw can be short when a model login is already detected. The ongoing surface is still the Gateway and the config file.",
   },
   {
     question: "Can I chat with OpenClaw before installing a background service?",
     answer:
-      "Yes. Quick start leaves the Gateway in that terminal until you stop it, so you can send a message before `openclaw gateway install`. That command is the later step that keeps the Gateway in the background: a LaunchAgent on macOS, a systemd user unit on Linux, or a Scheduled Task on Windows. VNBot does not add a gateway service. After Docker or the desktop app, the product is the chat.",
+      "Yes. Quick start leaves the Gateway in that terminal until you stop it, so you can send a message before `openclaw gateway install`. That command is the later step that keeps the Gateway in the background: a LaunchAgent on macOS, a systemd user unit on Linux, or a Scheduled Task on Windows. VNBot does not add a gateway service. After the desktop app, the product is the chat.",
   },
   {
     question: "Do I manage OpenClaw from the chat?",
@@ -127,12 +57,7 @@ export const OPENCLAW_FAQS: readonly FaqItem[] = [
   {
     question: "Is VNBot a drop-in replacement for OpenClaw?",
     answer:
-      "No. VNBot does not import OpenClaw configuration, skills, or channel sessions. It is a separate open source agent you self-host.",
-  },
-  {
-    question: "How do the licenses differ?",
-    answer:
-      "VNBot is released under the Apache-2.0 license. OpenClaw is released under the MIT license and is stewarded by the OpenClaw Foundation, an independent 501(c)(3).",
+      "No. VNBot does not import OpenClaw configuration, skills, or channel sessions. It is a separate agent you can self-host.",
   },
   {
     question: "Do both keep data on my machine?",
@@ -155,7 +80,7 @@ export const COMPARISON_ROWS: readonly ComparisonRow[] = [
   {
     aspect: "Setup",
     rakazo:
-      "Docker installer or the desktop app's local stack, then an account and a model. After that VNBot is just chat: a new bot interviews you, and you manage it from the chat.",
+      "The desktop app's local stack, then an account and a model. After that VNBot is just chat: a new bot interviews you, and you manage it from the chat.",
     openclaw:
       "CLI install, then Quick start or Custom setup. The Gateway can stay in that terminal for a first chat. `openclaw gateway install` is the background service (LaunchAgent, systemd user unit, or Windows Scheduled Task). Then `openclaw gateway status` and `openclaw dashboard`. A phone channel is a separate step.",
   },
@@ -169,19 +94,14 @@ export const COMPARISON_ROWS: readonly ComparisonRow[] = [
   {
     aspect: "What it is",
     rakazo:
-      "An open source platform for persistent AI teammates. Bots keep conversations, memory, routines, and history, and can use a browser, shell, and desktop.",
+      "A platform for persistent AI teammates. Bots keep conversations, memory, routines, and history, and can use a browser, shell, and desktop.",
     openclaw:
       "A self-hosted gateway that connects chat apps to an AI assistant on your machine. The project describes one Gateway for the channels you already use.",
   },
   {
-    aspect: "License",
-    rakazo: "Apache-2.0. Maintained in the open by Inbox Zero Inc.",
-    openclaw: "MIT. Stewarded by the OpenClaw Foundation, an independent 501(c)(3).",
-  },
-  {
     aspect: "Where it runs",
     rakazo:
-      "You self-host with published Docker images or from source. Web, desktop, and mobile apps are clients of that API. Hosted VNBot Cloud is in beta.",
+      "You run the stack on your own computer with the desktop app, or connect to a computer you operate. Web, desktop, and mobile apps are clients of that API. Hosted VNBot Cloud is in beta.",
     openclaw:
       "You run the Gateway on your own computer or a server. The docs say there is no hosted service in the middle. Interfaces include a browser Control UI, companion apps, and iOS and Android nodes.",
   },
@@ -226,7 +146,7 @@ export const COMPARISON_ROWS: readonly ComparisonRow[] = [
   },
   {
     aspect: "Software cost",
-    rakazo: "No seat fee for the open source software. You pay the models and infrastructure you use.",
+    rakazo: "No seat fee for self-hosting. You pay the models and infrastructure you use.",
     openclaw: "The docs say there is no paid tier. You pay the models and the machine you run.",
   },
 ];
@@ -258,119 +178,6 @@ function comparisonMarkdown(): string {
   return [header, ...rows].join("\n");
 }
 
-export const SELF_HOST_MARKDOWN = `# Self-hosted AI agent
-
-> Open source AI agent you run on a machine you control. Your keys, your model, your data.
-
-VNBot is an open source AI agent for persistent teammates. Each bot can use a browser and a shell, keep routines as Markdown, and pause for approval when work crosses a boundary you set. Self-hosting means that stack runs on infrastructure you operate.
-
-The software is [Apache-2.0](${GITHUB_URL}/blob/main/LICENSE). Hosted VNBot Cloud is in beta. This page is the essential setup. The [full self-hosting guide](${DOCS_URL}) on GitHub covers backups, upgrades, secrets, restricted networks, and production Compose.
-
-## What self-hosting gives you
-
-### Data ownership
-
-Postgres, bot files, browser profiles, and the audit log stay on the deployment you run. Content you send to a model provider is processed by that provider under its terms. You choose the provider and the keys.
-
-### Model choice
-
-Connect OpenAI, Anthropic, Google, OpenRouter, or Vercel AI Gateway. You can also use an OpenAI-compatible endpoint or a local model server such as Ollama, LM Studio, llama.cpp, or MLX. Each bot can use a different model.
-
-### Cost control
-
-There is no seat fee for the open source software. You pay the model provider you connect and any remote computer provider you choose. Local Docker computers are the default, so a single machine does not need an E2B, Daytona, CreateOS, or Boat account.
-
-## Self-host only, for now
-
-These work on your own deployment and are not yet on VNBot Cloud. Each turns on from \`.env\`.
-
-- **Telegram, WhatsApp, iMessage and SMS, Feishu and Lark.** Add the platform's credentials: \`TELEGRAM_BOT_TOKEN\`, \`WHATSAPP_*\`, \`SENDBLUE_*\` (iMessage and SMS), or \`LARK_*\`.
-- **Image and video generation.** \`MEDIA_GENERATION_PROVIDER=fal\`, \`MEDIA_GENERATION_API_KEY\`, and an image or video model (\`MEDIA_GENERATION_IMAGE_MODEL\`, \`MEDIA_GENERATION_VIDEO_MODEL\`).
-- **Purchases with Stripe Link.** \`PAYMENT_WALLET_PROVIDER=link\`. Each purchase waits for your approval in Link.
-- **Cursor cloud agents.** \`CLOUD_AGENT_PROVIDER=cursor\`, \`CURSOR_API_KEY\`, and \`CLOUD_AGENT_SPACE_ID\`.
-- **Ticket board.** \`TICKET_BOARD_ENABLED=true\`.
-- **Local models and local MCP servers.** \`RAKAZO_LOCAL_MODELS\`, and \`MCP_STDIO_ENABLED\` with \`MCP_STDIO_ALLOWED_COMMANDS\`.
-
-The [full guide](${DOCS_URL}) lists every setting for each one.
-
-## Requirements
-
-Published images need Docker Engine 26 or newer (API 1.45 or newer, for bot home volume subpaths), the Compose plugin, curl, and OpenSSL. No Node.js install.
-
-A source checkout needs Node.js 22.22.2 or newer on the 22.x line, Node.js 24.x, or Node.js 26 or newer, plus pnpm 9 and Docker. Node.js 23.x and 25.x are not supported.
-
-## Install with published images
-
-\`\`\`bash
-${PUBLISHED_IMAGES_INSTALL}
-\`\`\`
-
-The installer downloads the Compose file and \`.env.images.example\`, creates \`.env\` with random secrets, and starts VNBot. It keeps an existing \`.env\` when you run it again. The default image tag is \`edge\` (builds from the main branch, \`linux/amd64\` and \`linux/arm64\`).
-
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173) and create an account. The first registered user becomes the deployment owner. Connect a model in the app, or set \`OPENROUTER_API_KEY\` before startup. Local Docker computers are on by default.
-
-For an agent-assisted install, use the [setup prompt](${SETUP_PROMPT_URL}).
-
-## Run it on a server
-
-Use the same installer on a VPS when bots should stay running. Images Compose binds the web app to loopback \`127.0.0.1:5173\`. Terminate TLS on the host and proxy there. Do not publish port 3100. The web server proxies \`/api\`.
-
-\`\`\`bash
-${PUBLISHED_IMAGES_SERVER}
-\`\`\`
-
-Before the second command, set \`RAKAZO_HOST\` to the hostname and set \`BETTER_AUTH_URL\`, \`WEB_ORIGIN\`, and \`API_URL\` to that same \`https://\` origin. For a remote computer instead of local Docker, set \`SANDBOX_PROVIDER\` to \`e2b\`, \`daytona\`, \`createos\`, or \`boat\` and add that provider's API key.
-
-\`\`\`Caddyfile
-${CADDY_SNIPPET}
-\`\`\`
-
-Replace \`app.example.com\` with your host. Desktop clients should use **Existing instance** with the \`https://\` address. The [public single-VM section](${DOCS_URL}#public-single-vm-deployment) covers production Compose, host hardening, signup allowlists, and SMTP.
-
-If downloads are blocked, use the [restricted-network guide](${SELF_HOST_RESTRICTED_URL}). Secret names and recovery are in the [secrets checklist](${SELF_HOST_SECRETS_URL}).
-
-## Install from source
-
-\`\`\`bash
-${SOURCE_CHECKOUT}
-\`\`\`
-
-Set \`POSTGRES_PASSWORD\` and \`POSTGRES_APP_PASSWORD\` to two URI-safe random values (for example \`openssl rand -hex 16\`) and put them in \`DATABASE_MIGRATION_URL\` and \`DATABASE_URL\`. Set \`BETTER_AUTH_SECRET\`, \`ENCRYPTION_KEY\`, and \`SCREEN_PROXY_SECRET\` to independent long random values. Docker sandboxes also need a dedicated \`SANDBOX_SUPERVISOR_TOKEN\`. Keep these in \`.env\`, not in git.
-
-For host-side development with Docker Desktop, set \`SANDBOX_CONTROL_VIA_LOOPBACK=true\` in \`.env\`. The supervisor then publishes its control service on a loopback port, because Docker Desktop container addresses are not reachable from the host. Leave this unset when the supervisor runs inside Compose.
-
-\`\`\`bash
-${SOURCE_DEV}
-\`\`\`
-
-The Postgres overlay publishes loopback \`127.0.0.1:5433\` for host-side tools. Open [http://127.0.0.1:5173](http://127.0.0.1:5173). \`docker compose down -v\` deletes Postgres data.
-
-## Desktop and mobile
-
-With a server already running, the Electron app's **Existing instance** option takes its \`https://\` address (HTTP is accepted only for loopback and private LAN addresses). **This computer** installs the published images with Docker Compose on that machine.
-
-${RUN_ON_YOUR_MAC}
-
-In the mobile app, tap **Use a custom server** on the sign-in screen and enter the same HTTPS origin as \`WEB_ORIGIN\`.
-
-## Full reference
-
-- [Self-hosting guide](${DOCS_URL})
-- [Secrets checklist](${SELF_HOST_SECRETS_URL})
-- [Restricted networks](${SELF_HOST_RESTRICTED_URL})
-- [Setup prompt](${SETUP_PROMPT_URL})
-- [Source](${GITHUB_URL})
-
-## FAQ
-
-${faqMarkdown(SELF_HOST_FAQS)}
-
-## Related
-
-- [Home](${SITE_URL}/)
-- [OpenClaw comparison](${SITE_URL}${OPENCLAW_ALTERNATIVE_PATH})
-`;
-
 export const OPENCLAW_RELATED = [
   { href: "/grok-bot-alternative/", label: "Grok Bot alternative" },
   { href: "/muse-alternative/", label: "Meta Muse" },
@@ -382,15 +189,15 @@ export const OPENCLAW_RELATED = [
   { href: "/alternatives/", label: "All comparisons" },
 ] as const;
 
-export const OPENCLAW_MARKDOWN = `# Open source OpenClaw alternative
+export const OPENCLAW_MARKDOWN = `# OpenClaw alternative
 
 Updated ${OPENCLAW_UPDATED}.
 
-> A fair comparison of VNBot and OpenClaw, two open source ways to run an AI agent you control.
+> A fair comparison of VNBot and OpenClaw, two self-hosted ways to run an AI agent you control.
 
-The main difference is simplicity. Like Grok Bot, VNBot is just chat: you set up the bot and manage it from that chat. OpenClaw is also open source and self-hosted. Its [getting-started guide](${OPENCLAW_GETTING_STARTED_URL}) is a longer path: a CLI installer, an onboarding wizard, a Gateway you run in the terminal or install as a background service, and a config file.
+The main difference is simplicity. Like Grok Bot, VNBot is just chat: you set up the bot and manage it from that chat. OpenClaw is also self-hosted. Its [getting-started guide](${OPENCLAW_GETTING_STARTED_URL}) is a longer path: a CLI installer, an onboarding wizard, a Gateway you run in the terminal or install as a background service, and a config file.
 
-They are not the same product, and VNBot does not import an OpenClaw setup. This comparison follows [OpenClaw's documentation](${OPENCLAW_DOCS_URL}) and this repository. Details change. Those docs are the full source for OpenClaw.
+They are not the same product, and VNBot does not import an OpenClaw setup. This comparison follows [OpenClaw's documentation](${OPENCLAW_DOCS_URL}) and this project. Details change. Those docs are the full source for OpenClaw.
 
 ## Setup
 
@@ -412,8 +219,6 @@ VNBot runs bot work on a computer. Local Docker is the default. OpenClaw can san
 
 Both let you bring a model provider, including a server you run. Neither charges a seat fee for the software. OpenClaw's docs say it has no paid tier and no hosted service. VNBot is free to self-host. Hosted VNBot Cloud is in beta.
 
-VNBot is Apache-2.0, maintained by Inbox Zero Inc. OpenClaw is MIT, stewarded by the OpenClaw Foundation.
-
 ## Which shape fits
 
 Choose VNBot for repeated browser and shell work, scheduled operational routines, an audit log, and approval boundaries, shared across the web, desktop, and mobile clients.
@@ -427,8 +232,6 @@ Choose OpenClaw when the assistant should live in chat apps you already use, wit
 - [OpenClaw features](${OPENCLAW_FEATURES_URL})
 - [OpenClaw sandboxing](${OPENCLAW_SANDBOX_URL})
 - [OpenClaw source](${OPENCLAW_GITHUB_URL})
-- [VNBot self-host guide](${SITE_URL}${SELF_HOST_GUIDE_PATH})
-- [VNBot source](${GITHUB_URL})
 
 ## FAQ
 
@@ -437,6 +240,5 @@ ${faqMarkdown(OPENCLAW_FAQS)}
 ## Related
 
 - [Home](${SITE_URL}/)
-- [Self-hosted AI agent guide](${SITE_URL}${SELF_HOST_GUIDE_PATH})
 ${OPENCLAW_RELATED.map((item) => `- [${item.label}](${SITE_URL}${item.href})`).join("\n")}
 `;

@@ -1317,6 +1317,10 @@ msgstr "フォルダを選択"
 msgid "Choose how to use VNBot"
 msgstr "VNBotの使い方を選択"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Classic"
+msgstr "クラシック"
+
 #: src/lib/localized-provider-hint.ts
 msgid "Claude subscription"
 msgstr "Claudeサブスクリプション"
@@ -4498,10 +4502,6 @@ msgstr "プルリクエスト"
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "待機中"
-
-#: src/pages/shell/avatar-studio-popover.tsx
-msgid "Rakazo"
-msgstr "Rakazo"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "rakazo-shared and IDs starting with bot- are reserved for VNBot."

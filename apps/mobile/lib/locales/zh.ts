@@ -873,7 +873,7 @@ export const ZH_MESSAGES: Record<string, string> = {
   Memory: "记忆",
   "Privacy policies": "隐私政策",
   VNBot: "VNBot",
-  Rakazo: "Rakazo",
+  Classic: "经典",
   "Withdraw all permissions": "撤销所有权限",
   "Withdraw all permissions?": "撤销所有权限？",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":

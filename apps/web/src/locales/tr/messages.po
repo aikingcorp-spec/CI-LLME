@@ -1317,6 +1317,10 @@ msgstr "Klasör seç"
 msgid "Choose how to use VNBot"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Classic"
+msgstr "Klasik"
+
 #: src/lib/localized-provider-hint.ts
 msgid "Claude subscription"
 msgstr ""
@@ -4498,10 +4502,6 @@ msgstr "Çekme isteği"
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "Kuyrukta"
-
-#: src/pages/shell/avatar-studio-popover.tsx
-msgid "Rakazo"
-msgstr "Rakazo"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "rakazo-shared and IDs starting with bot- are reserved for VNBot."

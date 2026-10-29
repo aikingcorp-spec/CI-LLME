@@ -869,7 +869,7 @@ export const NL_MESSAGES: Record<string, string> = {
   Memory: "Geheugen",
   "Privacy policies": "Privacybeleid",
   VNBot: "VNBot",
-  Rakazo: "Rakazo",
+  Classic: "Klassiek",
   "Withdraw all permissions": "Alle toestemmingen intrekken",
   "Withdraw all permissions?": "Alle toestemmingen intrekken?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":

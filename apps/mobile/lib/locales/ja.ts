@@ -858,7 +858,7 @@ export const JA_MESSAGES: Record<string, string> = {
   Memory: "メモリ",
   "Privacy policies": "プライバシーポリシー",
   VNBot: "VNBot",
-  Rakazo: "Rakazo",
+  Classic: "クラシック",
   "Withdraw all permissions": "すべての許可を取り消す",
   "Withdraw all permissions?": "すべての許可を取り消しますか？",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":

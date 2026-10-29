@@ -12,8 +12,8 @@
     <text x="450" y="176" fill="#242424" font-size="20" font-weight="600">OpenClaw</text>
     <text x="828" y="176" fill="#242424" font-size="20" font-weight="600">Hermes Agent</text>
     <g fill="#3d3d3d" font-size="15">
-      <text x="72" y="230">1. Docker installer, or the desktop</text>
-      <text x="92" y="252">app's local stack</text>
+      <text x="72" y="230">1. The desktop app's local</text>
+      <text x="92" y="252">stack</text>
       <text x="72" y="292">2. Create an account</text>
       <text x="72" y="332">3. Connect a model</text>
       <text x="72" y="372">4. Chat, and manage the bot there</text>
@@ -30,9 +30,9 @@
       <text x="828" y="394">4. A separate gateway only</text>
       <text x="848" y="416">for messaging apps</text>
     </g>
-    <text x="72" y="600" fill="#6d6e70" font-size="13">Apache-2.0. Chat is the product.</text>
-    <text x="450" y="600" fill="#6d6e70" font-size="13">MIT. Gateway for chat apps.</text>
-    <text x="828" y="588" fill="#6d6e70" font-size="13">MIT. Desktop can reach a first</text>
+    <text x="72" y="600" fill="#6d6e70" font-size="13">Chat is the product.</text>
+    <text x="450" y="600" fill="#6d6e70" font-size="13">Gateway for chat apps.</text>
+    <text x="828" y="588" fill="#6d6e70" font-size="13">Desktop can reach a first</text>
     <text x="828" y="608" fill="#6d6e70" font-size="13">message without the CLI.</text>
   </g>
 </svg>

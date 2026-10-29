@@ -5,7 +5,6 @@ import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import RichText from "../components/RichText.astro";
 import VsCard from "../components/VsCard.astro";
-import { githubStarsLabel } from "../github";
 import {
   COMPARE_NOTE,
   COMPARE_ROWS,
@@ -22,17 +21,15 @@ import {
   GROK_SECTIONS,
   GROK_SOURCES,
   GROK_UPDATED,
-  INSTALL_COMMAND,
   SELF_HOST_AFTER,
   SELF_HOST_LEAD,
   grokAlternativeStructuredData,
 } from "../grok-alternative";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { ogPublicPath } from "../og-pages";
-import { DOCS_URL, GITHUB_URL, SITE_URL } from "../site";
+import { APP_URL, SITE_URL } from "../site";
 import { vsCard } from "../vs-points";
 
-const starsLabel = await githubStarsLabel();
 const pageUrl = new URL(Astro.url.pathname, SITE_URL).toString();
 const structuredData = grokAlternativeStructuredData(pageUrl);
 const card = vsCard("grok-bot-alternative");
@@ -46,7 +43,7 @@ const card = vsCard("grok-bot-alternative");
   ogImage={ogPublicPath("grok-bot-alternative")}
 >
   <div class="container">
-    <Header starsLabel={starsLabel} />
+    <Header />
     <main id="main" class="guide">
       <h1>{GROK_ALTERNATIVE_H1}</h1>
       <p class="alt-note">Updated {GROK_UPDATED}.</p>
@@ -137,13 +134,11 @@ const card = vsCard("grok-bot-alternative");
         }
       </ul>
 
-      <h2>Self-host VNBot</h2>
+      <h2>Run VNBot yourself</h2>
       <p>{SELF_HOST_LEAD}</p>
-      <pre><code>{INSTALL_COMMAND}</code></pre>
       {SELF_HOST_AFTER.map((paragraph) => <p>{paragraph}</p>)}
       <div class="cta-actions">
-        <Button href={DOCS_URL} external>Read the docs</Button>
-        <Button href={GITHUB_URL} variant="secondary" external>View on GitHub</Button>
+        <Button href={APP_URL} external>VNBot Cloud</Button>
       </div>
 
       <h2>Other alternatives</h2>

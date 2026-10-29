@@ -1,16 +1,13 @@
 ---
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
-import { githubStarsLabel } from "../github";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { GITHUB_URL, SELF_HOST_GUIDE_PATH } from "../site";
-
-const starsLabel = await githubStarsLabel();
+import { APP_URL } from "../site";
 ---
 
-<BaseLayout title="Support · VNBot" description="Get help with the VNBot app and self-hosted VNBot.">
+<BaseLayout title="Support · VNBot" description="Get help with the VNBot app and your VNBot account.">
   <div class="container">
-    <Header starsLabel={starsLabel} />
+    <Header />
     <main id="main" class="privacy-copy">
       <h1>VNBot support</h1>
       <p>
@@ -19,16 +16,11 @@ const starsLabel = await githubStarsLabel();
         account, what you expected to happen, and any error message you saw. Do not send passwords, API keys,
         access tokens, or other secrets.
       </p>
-      <h2>Self-hosted VNBot</h2>
-      <p>
-        Start with the <a href={SELF_HOST_GUIDE_PATH}>self-hosting guide</a>. For reproducible bugs or feature requests,
-        open an issue in the <a href={`${GITHUB_URL}/issues`}>VNBot GitHub repository</a>.
-      </p>
       <h2 id="account-deletion">Account deletion</h2>
       <p>
         In the mobile app, open <strong>Account</strong>, enter your current password under{" "}
         <strong>Delete account</strong>, and confirm. On the web, sign in at{" "}
-        <a href="https://app.rakazo.com">app.rakazo.com</a> and do the same under{" "}
+        <a href={APP_URL}>vnbot.run</a> and do the same under{" "}
         <strong>Settings</strong> → <strong>Account</strong>. This permanently deletes the hosted account and its
         associated personal Space data.
       </p>

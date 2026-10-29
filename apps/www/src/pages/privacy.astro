@@ -1,10 +1,7 @@
 ---
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
-import { githubStarsLabel } from "../github";
 import BaseLayout from "../layouts/BaseLayout.astro";
-
-const starsLabel = await githubStarsLabel();
 ---
 
 <BaseLayout
@@ -12,13 +9,13 @@ const starsLabel = await githubStarsLabel();
   description="How Inbox Zero Inc. collects, uses, and protects information when you use VNBot."
 >
   <div class="container">
-    <Header starsLabel={starsLabel} />
+    <Header />
     <main id="main" class="privacy-copy">
       <h1>Privacy</h1>
       <p><strong>Last updated: September 14, 2026</strong></p>
       <p>
         This policy explains how Inbox Zero Inc. (“Inbox Zero,” “we,” or “us”) handles personal information
-        when you use the VNBot mobile app, a VNBot service that we host, or rakazo.com. A third party that
+        when you use the VNBot mobile app, a VNBot service that we host, or vnbot.run. A third party that
         operates a self-hosted VNBot deployment is responsible for its own privacy practices.
       </p>
 

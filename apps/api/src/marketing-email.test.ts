@@ -68,7 +68,7 @@ describe("sendWelcomeEmail", () => {
     const url = unsubscribeUrl(origin, secret, "user-1");
     expect(email.sent[0]).toMatchObject({
       to: "new@example.test",
-      subject: "Welcome to VNBot",
+      subject: "Chào mừng đến với VNBot",
       headers: {
         "List-Unsubscribe": `<${url}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",

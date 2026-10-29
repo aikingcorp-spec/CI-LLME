@@ -47,3 +47,17 @@ it("translates the summary of a reply cut off at the output limit", () => {
     recovery: "model",
   });
 });
+
+it("maps the legacy Rakazo credits message to the VNBot credits translation", () => {
+  const current = "Connect your own API key in Models or choose VNBot credits in Billing.";
+  const translated = "Verbinde deinen eigenen API-Schlüssel oder wähle VNBot-Guthaben.";
+  i18n.load("de", { [current]: translated });
+  i18n.activate("de");
+  expect(
+    translateRunError(
+      "Connect your own API key in Models or choose Rakazo credits in Billing.",
+      undefined,
+    ),
+  ).toBe(translated);
+  expect(translateRunError(current, undefined)).toBe(translated);
+});

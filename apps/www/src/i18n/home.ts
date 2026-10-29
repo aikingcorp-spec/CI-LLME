@@ -29,19 +29,13 @@ export type HomeCopy = {
     docs: string;
     integrations: string;
     blog: string;
-    github: string;
     getStarted: string;
   };
   hero: {
-    eyebrow: string;
     heading: string;
     lead: string;
     getStarted: string;
     download: Record<"mac" | "windows" | "linux" | "ios" | "android", string>;
-    viewOnGithub: string;
-    setupWithAgent: string;
-    copiedForAgent: string;
-    copyFailed: string;
   };
   selfHost: {
     heading: string;
@@ -89,20 +83,13 @@ export type HomeCopy = {
     heading: string;
     items: Array<{ question: string; answer: string }>;
   };
-  openSource: {
-    heading: string;
-    copy: string;
-    starOnGithub: string;
-    readTheDocs: string;
-    cloudTitle: string;
-    cloudBadge: string;
+  cloud: {
+    title: string;
+    badge: string;
   };
   cta: {
     heading: string;
     copy: string;
-    openSourceValue: string;
-    selfHostValue: string;
-    stats: Array<{ value: "stars" | "license" | "openSource" | "selfHost"; label: string }>;
   };
   footer: {
     navLabel: string;
@@ -873,7 +860,7 @@ const TESTIMONIALS: HomeCopy["testimonials"]["items"] = [
 
 const HOME_COPY: Record<Locale, HomeCopy> = {
   en: {
-    title: "VNBot | Open source Grok Bot alternative",
+    title: "VNBot | Grok Bot alternative",
     description: SITE_DESCRIPTION,
     ogImageAlt:
       "VNBot. AI teammates you actually own. Your keys, your model, your machine.",
@@ -886,12 +873,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Docs",
       integrations: "Integrations",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Get started",
     },
     hero: {
-      eyebrow: "Open source",
-      heading: "The open source Grok Bot alternative you actually own",
+      heading: "The Grok Bot alternative you actually own",
       lead: "Give your bots a job. Check in from any device.",
       getStarted: "Get started",
       download: {
@@ -901,10 +886,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "Download for iOS",
         android: "Download for Android",
       },
-      viewOnGithub: "View on GitHub",
-      setupWithAgent: "Set up with your agent",
-      copiedForAgent: "Copied for your agent",
-      copyFailed: "Copy failed. Try again.",
     },
     selfHost: {
       heading: "Self-hosted",
@@ -980,25 +961,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Open source",
-      copy: "Apache-2.0. Run it, change it, make it yours.",
-      starOnGithub: "Star on GitHub",
-      readTheDocs: "Read the docs",
-      cloudTitle: "Cloud",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Cloud",
+      badge: "Beta",
     },
     cta: {
       heading: "Meet your first bot",
       copy: "Hand over your next task.",
-      openSourceValue: "Open source",
-      selfHostValue: "Self-host",
-      stats: [
-        { value: "stars", label: "GitHub stars" },
-        { value: "license", label: "License" },
-        { value: "openSource", label: "No seats, no gates" },
-        { value: "selfHost", label: "Your machine" },
-      ],
     },
     footer: {
       navLabel: "Footer",
@@ -1021,9 +990,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   de: {
-    title: "VNBot | Open-Source-Alternative zu Grok Bot",
+    title: "VNBot | Alternative zu Grok Bot",
     description:
-      "VNBot ist eine Open-Source-Alternative zu Grok Bot für persistente KI-Teamkollegen, die echte Arbeit erledigen. Deine Keys, dein Modell, deine Maschine.",
+      "VNBot ist eine Alternative zu Grok Bot für persistente KI-Teamkollegen, die echte Arbeit erledigen. Deine Keys, dein Modell, deine Maschine.",
     ogImageAlt:
       "VNBot. KI-Teamkollegen, die dir wirklich gehören. Deine Keys, dein Modell, deine Maschine.",
     availableLanguage: "German",
@@ -1035,12 +1004,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Docs",
       integrations: "Integrationen",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Loslegen",
     },
     hero: {
-      eyebrow: "Open Source",
-      heading: "Die Open-Source-Alternative zu Grok Bot, die dir wirklich gehört",
+      heading: "Die Alternative zu Grok Bot, die dir wirklich gehört",
       lead: "Gib deinen Bots eine Aufgabe. Schau von jedem Gerät nach.",
       getStarted: "Loslegen",
       download: {
@@ -1050,10 +1017,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "Für iOS laden",
         android: "Für Android laden",
       },
-      viewOnGithub: "Auf GitHub ansehen",
-      setupWithAgent: "Mit deinem Agenten einrichten",
-      copiedForAgent: "Für deinen Agenten kopiert",
-      copyFailed: "Kopieren fehlgeschlagen. Erneut versuchen.",
     },
     selfHost: {
       heading: "Self-hosted",
@@ -1133,25 +1096,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Open Source",
-      copy: "Apache-2.0. Selbst betreiben, ändern und anpassen.",
-      starOnGithub: "Auf GitHub mit Stern markieren",
-      readTheDocs: "Docs lesen",
-      cloudTitle: "Cloud",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Cloud",
+      badge: "Beta",
     },
     cta: {
       heading: "Triff deinen ersten Bot",
       copy: "Gib deine nächste Aufgabe ab.",
-      openSourceValue: "Open Source",
-      selfHostValue: "Self-host",
-      stats: [
-        { value: "stars", label: "GitHub Stars" },
-        { value: "license", label: "Lizenz" },
-        { value: "openSource", label: "Keine Seats, keine Gates" },
-        { value: "selfHost", label: "Deine Maschine" },
-      ],
     },
     footer: {
       navLabel: "Fußzeile",
@@ -1174,9 +1125,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   ko: {
-    title: "VNBot | 오픈소스 Grok Bot 대안",
+    title: "VNBot | Grok Bot 대안",
     description:
-      "VNBot는 실제 업무를 수행하는 지속형 AI 팀원을 위한 오픈소스 Grok Bot 대안입니다. 키, 모델, 머신, 모두 당신 것.",
+      "VNBot는 실제 업무를 수행하는 지속형 AI 팀원을 위한 Grok Bot 대안입니다. 키, 모델, 머신, 모두 당신 것.",
     ogImageAlt: "VNBot. 진짜로 내 것인 AI 팀원. 키, 모델, 머신, 모두 당신 것.",
     availableLanguage: "Korean",
     skipToContent: "본문으로 건너뛰기",
@@ -1187,12 +1138,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Docs",
       integrations: "통합",
       blog: "블로그",
-      github: "GitHub",
       getStarted: "시작하기",
     },
     hero: {
-      eyebrow: "오픈 소스",
-      heading: "진짜로 내 것인 오픈소스 Grok Bot 대안",
+      heading: "진짜로 내 것인 Grok Bot 대안",
       lead: "봇에게 일을 맡기세요. 어떤 기기에서든 확인하세요.",
       getStarted: "시작하기",
       download: {
@@ -1202,10 +1151,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "iOS용 다운로드",
         android: "Android용 다운로드",
       },
-      viewOnGithub: "GitHub에서 보기",
-      setupWithAgent: "에이전트로 설정하기",
-      copiedForAgent: "에이전트용으로 복사됨",
-      copyFailed: "복사 실패. 다시 시도하세요.",
     },
     selfHost: {
       heading: "셀프 호스트",
@@ -1285,25 +1230,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "오픈소스",
-      copy: "Apache-2.0. 직접 실행하고 원하는 대로 수정하세요.",
-      starOnGithub: "GitHub에서 Star",
-      readTheDocs: "문서 읽기",
-      cloudTitle: "Cloud",
-      cloudBadge: "베타",
+    cloud: {
+      title: "Cloud",
+      badge: "베타",
     },
     cta: {
       heading: "첫 봇을 만나보세요",
       copy: "다음 할 일을 맡겨 보세요.",
-      openSourceValue: "오픈소스",
-      selfHostValue: "셀프 호스트",
-      stats: [
-        { value: "stars", label: "GitHub 스타" },
-        { value: "license", label: "라이선스" },
-        { value: "openSource", label: "시트·게이트 없음" },
-        { value: "selfHost", label: "당신 머신" },
-      ],
     },
     footer: {
       navLabel: "푸터",
@@ -1326,9 +1259,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   zh: {
-    title: "VNBot | 开源 Grok Bot 替代品",
+    title: "VNBot | Grok Bot 替代品",
     description:
-      "VNBot 是一个开源 Grok Bot 替代品，用于运行真正干活的持久化 AI 队友。密钥、模型、机器，都归你所有。",
+      "VNBot 是一个 Grok Bot 替代品，用于运行真正干活的持久化 AI 队友。密钥、模型、机器，都归你所有。",
     ogImageAlt: "VNBot：真正属于你的 AI 队友。密钥、模型、机器，都归你所有。",
     availableLanguage: "Chinese",
     skipToContent: "跳到主要内容",
@@ -1339,12 +1272,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "文档",
       integrations: "集成",
       blog: "博客",
-      github: "GitHub",
       getStarted: "开始使用",
     },
     hero: {
-      eyebrow: "开源",
-      heading: "真正属于你的开源 Grok Bot 替代品",
+      heading: "真正属于你的 Grok Bot 替代品",
       lead: "把工作交给 Bot，随时用任意设备查看。",
       getStarted: "开始使用",
       download: {
@@ -1354,10 +1285,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "下载 iOS 版",
         android: "下载 Android 版",
       },
-      viewOnGithub: "在 GitHub 上查看",
-      setupWithAgent: "用你的智能体安装",
-      copiedForAgent: "已为你的智能体复制",
-      copyFailed: "复制失败。请重试。",
     },
     selfHost: {
       heading: "自托管",
@@ -1437,25 +1364,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "开源",
-      copy: "Apache-2.0。自由运行、修改，按需定制。",
-      starOnGithub: "在 GitHub 上点星",
-      readTheDocs: "阅读文档",
-      cloudTitle: "云端",
-      cloudBadge: "测试版",
+    cloud: {
+      title: "云端",
+      badge: "测试版",
     },
     cta: {
       heading: "认识你的第一个 Bot",
       copy: "把下一项任务交给 Bot。",
-      openSourceValue: "开源",
-      selfHostValue: "自托管",
-      stats: [
-        { value: "stars", label: "GitHub 星标" },
-        { value: "license", label: "许可证" },
-        { value: "openSource", label: "无席位、无门槛" },
-        { value: "selfHost", label: "你的机器" },
-      ],
     },
     footer: {
       navLabel: "页脚",
@@ -1478,9 +1393,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   ja: {
-    title: "VNBot | オープンソースの Grok Bot 代替ツール",
+    title: "VNBot | Grok Bot 代替ツール",
     description:
-      "VNBot は、実際の仕事をこなす常駐型 AI チームメイトのための、オープンソースの Grok Bot 代替ツールです。キーもモデルもマシンも、すべてあなたのものです。",
+      "VNBot は、実際の仕事をこなす常駐型 AI チームメイトのための、Grok Bot 代替ツールです。キーもモデルもマシンも、すべてあなたのものです。",
     ogImageAlt:
       "VNBot。本当に自分のものにできる AI チームメイト。キーもモデルもマシンも、すべてあなたのもの。",
     availableLanguage: "Japanese",
@@ -1492,12 +1407,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "ドキュメント",
       integrations: "連携",
       blog: "ブログ",
-      github: "GitHub",
       getStarted: "はじめる",
     },
     hero: {
-      eyebrow: "オープンソース",
-      heading: "本当に自分のものにできる、オープンソースの Grok Bot 代替ツール",
+      heading: "本当に自分のものにできる、Grok Bot 代替ツール",
       lead: "ボットに仕事を任せて、どのデバイスからでも確認できます。",
       getStarted: "はじめる",
       download: {
@@ -1507,10 +1420,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "iOS 版をダウンロード",
         android: "Android 版をダウンロード",
       },
-      viewOnGithub: "GitHub で見る",
-      setupWithAgent: "エージェントでセットアップ",
-      copiedForAgent: "エージェント用にコピーしました",
-      copyFailed: "コピーできませんでした。もう一度お試しください。",
     },
     selfHost: {
       heading: "セルフホスト",
@@ -1590,25 +1499,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "オープンソース",
-      copy: "Apache-2.0。自由に実行し、変更して、自分のものに。",
-      starOnGithub: "GitHub で Star する",
-      readTheDocs: "ドキュメントを読む",
-      cloudTitle: "クラウド",
-      cloudBadge: "ベータ",
+    cloud: {
+      title: "クラウド",
+      badge: "ベータ",
     },
     cta: {
       heading: "最初のボットを迎えましょう",
       copy: "次のタスクを任せてみましょう。",
-      openSourceValue: "オープンソース",
-      selfHostValue: "セルフホスト",
-      stats: [
-        { value: "stars", label: "GitHub スター" },
-        { value: "license", label: "ライセンス" },
-        { value: "openSource", label: "シート課金なし、機能制限なし" },
-        { value: "selfHost", label: "あなたのマシン" },
-      ],
     },
     footer: {
       navLabel: "フッター",
@@ -1631,9 +1528,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "es": {
-    title: "VNBot | Alternativa de código abierto a Grok Bot",
+    title: "VNBot | Alternativa a Grok Bot",
     description:
-      "VNBot es una alternativa de código abierto a Grok Bot para compañeros de IA persistentes que hacen trabajo real. Tus claves, tu modelo, tu máquina.",
+      "VNBot es una alternativa a Grok Bot para compañeros de IA persistentes que hacen trabajo real. Tus claves, tu modelo, tu máquina.",
     ogImageAlt:
       "VNBot. Compañeros de IA que de verdad son tuyos. Tus claves, tu modelo, tu máquina.",
     availableLanguage: "Spanish",
@@ -1645,12 +1542,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Documentación",
       integrations: "Integraciones",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Empezar",
     },
     hero: {
-      eyebrow: "Código abierto",
-      heading: "La alternativa de código abierto a Grok Bot que de verdad es tuya",
+      heading: "La alternativa a Grok Bot que de verdad es tuya",
       lead: "Dale un trabajo a tus bots. Síguelos desde cualquier dispositivo.",
       getStarted: "Empezar",
       download: {
@@ -1660,10 +1555,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "Descargar para iOS",
         android: "Descargar para Android",
       },
-      viewOnGithub: "Ver en GitHub",
-      setupWithAgent: "Configurar con tu agente",
-      copiedForAgent: "Copiado para tu agente",
-      copyFailed: "No se pudo copiar. Inténtalo de nuevo.",
     },
     selfHost: {
       heading: "Autoalojado",
@@ -1743,25 +1634,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Código abierto",
-      copy: "Apache-2.0. Ejecútalo, modifícalo, hazlo tuyo.",
-      starOnGithub: "Dar una estrella en GitHub",
-      readTheDocs: "Leer la documentación",
-      cloudTitle: "Cloud",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Cloud",
+      badge: "Beta",
     },
     cta: {
       heading: "Conoce a tu primer bot",
       copy: "Delégale tu próxima tarea.",
-      openSourceValue: "Código abierto",
-      selfHostValue: "Autoalojado",
-      stats: [
-        { value: "stars", label: "Estrellas en GitHub" },
-        { value: "license", label: "Licencia" },
-        { value: "openSource", label: "Sin licencias por usuario ni bloqueos" },
-        { value: "selfHost", label: "Tu máquina" },
-      ],
     },
     footer: {
       navLabel: "Pie de página",
@@ -1784,9 +1663,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "fr": {
-    title: "VNBot | Alternative open source à Grok Bot",
+    title: "VNBot | Alternative à Grok Bot",
     description:
-      "VNBot est une alternative open source à Grok Bot pour des coéquipiers IA persistants qui font un vrai travail. Vos clés, votre modèle, votre machine.",
+      "VNBot est une alternative à Grok Bot pour des coéquipiers IA persistants qui font un vrai travail. Vos clés, votre modèle, votre machine.",
     ogImageAlt:
       "VNBot. Des coéquipiers IA qui vous appartiennent vraiment. Vos clés, votre modèle, votre machine.",
     availableLanguage: "French",
@@ -1798,12 +1677,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Documentation",
       integrations: "Intégrations",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Commencer",
     },
     hero: {
-      eyebrow: "Open source",
-      heading: "L’alternative open source à Grok Bot qui vous appartient vraiment",
+      heading: "L’alternative à Grok Bot qui vous appartient vraiment",
       lead: "Confiez une mission à vos bots. Suivez-les depuis n’importe quel appareil.",
       getStarted: "Commencer",
       download: {
@@ -1813,10 +1690,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "Télécharger pour iOS",
         android: "Télécharger pour Android",
       },
-      viewOnGithub: "Voir sur GitHub",
-      setupWithAgent: "Configurer avec votre agent",
-      copiedForAgent: "Copié pour votre agent",
-      copyFailed: "Échec de la copie. Réessayez.",
     },
     selfHost: {
       heading: "Auto-hébergé",
@@ -1896,25 +1769,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Open source",
-      copy: "Apache-2.0. Exécutez-le, modifiez-le, appropriez-le-vous.",
-      starOnGithub: "Ajouter une étoile sur GitHub",
-      readTheDocs: "Lire la documentation",
-      cloudTitle: "Cloud",
-      cloudBadge: "Bêta",
+    cloud: {
+      title: "Cloud",
+      badge: "Bêta",
     },
     cta: {
       heading: "Rencontrez votre premier bot",
       copy: "Confiez-lui votre prochaine tâche.",
-      openSourceValue: "Open source",
-      selfHostValue: "Auto-hébergé",
-      stats: [
-        { value: "stars", label: "Étoiles GitHub" },
-        { value: "license", label: "Licence" },
-        { value: "openSource", label: "Ni licences par siège, ni restrictions" },
-        { value: "selfHost", label: "Votre machine" },
-      ],
     },
     footer: {
       navLabel: "Pied de page",
@@ -1937,9 +1798,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "pt-br": {
-    title: "VNBot | Alternativa de código aberto ao Grok Bot",
+    title: "VNBot | Alternativa ao Grok Bot",
     description:
-      "VNBot é uma alternativa de código aberto ao Grok Bot para colegas de IA persistentes que fazem trabalho de verdade. Suas chaves, seu modelo, sua máquina.",
+      "VNBot é uma alternativa ao Grok Bot para colegas de IA persistentes que fazem trabalho de verdade. Suas chaves, seu modelo, sua máquina.",
     ogImageAlt:
       "VNBot. Colegas de IA que são realmente seus. Suas chaves, seu modelo, sua máquina.",
     availableLanguage: "Portuguese",
@@ -1951,12 +1812,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Documentação",
       integrations: "Integrações",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Começar",
     },
     hero: {
-      eyebrow: "Código aberto",
-      heading: "A alternativa de código aberto ao Grok Bot que é realmente sua",
+      heading: "A alternativa ao Grok Bot que é realmente sua",
       lead: "Dê um trabalho aos seus bots. Acompanhe de qualquer dispositivo.",
       getStarted: "Começar",
       download: {
@@ -1966,10 +1825,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "Baixar para iOS",
         android: "Baixar para Android",
       },
-      viewOnGithub: "Ver no GitHub",
-      setupWithAgent: "Configurar com seu agente",
-      copiedForAgent: "Copiado para seu agente",
-      copyFailed: "Falha ao copiar. Tente novamente.",
     },
     selfHost: {
       heading: "Auto-hospedado",
@@ -2049,25 +1904,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Código aberto",
-      copy: "Apache-2.0. Rode, modifique, deixe do seu jeito.",
-      starOnGithub: "Dar estrela no GitHub",
-      readTheDocs: "Ler a documentação",
-      cloudTitle: "Cloud",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Cloud",
+      badge: "Beta",
     },
     cta: {
       heading: "Conheça seu primeiro bot",
       copy: "Entregue sua próxima tarefa.",
-      openSourceValue: "Código aberto",
-      selfHostValue: "Auto-hospedado",
-      stats: [
-        { value: "stars", label: "Estrelas no GitHub" },
-        { value: "license", label: "Licença" },
-        { value: "openSource", label: "Sem licenças por usuário, sem bloqueios" },
-        { value: "selfHost", label: "Sua máquina" },
-      ],
     },
     footer: {
       navLabel: "Rodapé",
@@ -2090,9 +1933,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "nl": {
-    title: "VNBot | Open source alternatief voor Grok Bot",
+    title: "VNBot | Alternatief voor Grok Bot",
     description:
-      "VNBot is een open source alternatief voor Grok Bot voor blijvende AI-teamgenoten die echt werk doen. Jouw keys, jouw model, jouw machine.",
+      "VNBot is een alternatief voor Grok Bot voor blijvende AI-teamgenoten die echt werk doen. Jouw keys, jouw model, jouw machine.",
     ogImageAlt:
       "VNBot. AI-teamgenoten die echt van jou zijn. Jouw keys, jouw model, jouw machine.",
     availableLanguage: "Dutch",
@@ -2104,12 +1947,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Docs",
       integrations: "Integraties",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Aan de slag",
     },
     hero: {
-      eyebrow: "Open source",
-      heading: "Het open source alternatief voor Grok Bot dat echt van jou is",
+      heading: "Het alternatief voor Grok Bot dat echt van jou is",
       lead: "Geef je bots een taak. Kijk mee vanaf elk apparaat.",
       getStarted: "Aan de slag",
       download: {
@@ -2119,10 +1960,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "Downloaden voor iOS",
         android: "Downloaden voor Android",
       },
-      viewOnGithub: "Bekijken op GitHub",
-      setupWithAgent: "Instellen met je agent",
-      copiedForAgent: "Gekopieerd voor je agent",
-      copyFailed: "Kopiëren mislukt. Probeer het opnieuw.",
     },
     selfHost: {
       heading: "Zelf gehost",
@@ -2202,25 +2039,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Open source",
-      copy: "Apache-2.0. Draai het, pas het aan, maak het je eigen.",
-      starOnGithub: "Ster geven op GitHub",
-      readTheDocs: "Lees de docs",
-      cloudTitle: "Cloud",
-      cloudBadge: "Bèta",
+    cloud: {
+      title: "Cloud",
+      badge: "Bèta",
     },
     cta: {
       heading: "Maak kennis met je eerste bot",
       copy: "Draag je volgende taak over.",
-      openSourceValue: "Open source",
-      selfHostValue: "Zelf hosten",
-      stats: [
-        { value: "stars", label: "GitHub-sterren" },
-        { value: "license", label: "Licentie" },
-        { value: "openSource", label: "Geen seats, geen drempels" },
-        { value: "selfHost", label: "Jouw machine" },
-      ],
     },
     footer: {
       navLabel: "Voettekst",
@@ -2243,9 +2068,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "ru": {
-    title: "VNBot | Альтернатива Grok Bot с открытым исходным кодом",
+    title: "VNBot | Альтернатива Grok Bot",
     description:
-      "VNBot — альтернатива Grok Bot с открытым исходным кодом: постоянные ИИ-коллеги, которые выполняют реальную работу. Ваши ключи, ваша модель, ваш компьютер.",
+      "VNBot — альтернатива Grok Bot: постоянные ИИ-коллеги, которые выполняют реальную работу. Ваши ключи, ваша модель, ваш компьютер.",
     ogImageAlt:
       "VNBot. ИИ-коллеги, которые действительно принадлежат вам. Ваши ключи, ваша модель, ваш компьютер.",
     availableLanguage: "Russian",
@@ -2257,12 +2082,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Документация",
       integrations: "Интеграции",
       blog: "Блог",
-      github: "GitHub",
       getStarted: "Начать",
     },
     hero: {
-      eyebrow: "Открытый исходный код",
-      heading: "Альтернатива Grok Bot с открытым исходным кодом, которая действительно ваша",
+      heading: "Альтернатива Grok Bot, которая действительно ваша",
       lead: "Дайте ботам работу. Следите за ней с любого устройства.",
       getStarted: "Начать",
       download: {
@@ -2272,10 +2095,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "Скачать для iOS",
         android: "Скачать для Android",
       },
-      viewOnGithub: "Открыть на GitHub",
-      setupWithAgent: "Настроить с помощью агента",
-      copiedForAgent: "Скопировано для агента",
-      copyFailed: "Не удалось скопировать. Попробуйте ещё раз.",
     },
     selfHost: {
       heading: "На своём сервере",
@@ -2355,25 +2174,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Открытый исходный код",
-      copy: "Apache-2.0. Запускайте, меняйте, настраивайте под себя.",
-      starOnGithub: "Поставить звезду на GitHub",
-      readTheDocs: "Читать документацию",
-      cloudTitle: "Облако",
-      cloudBadge: "Бета",
+    cloud: {
+      title: "Облако",
+      badge: "Бета",
     },
     cta: {
       heading: "Познакомьтесь с первым ботом",
       copy: "Передайте ему следующую задачу.",
-      openSourceValue: "Открытый код",
-      selfHostValue: "Свой сервер",
-      stats: [
-        { value: "stars", label: "Звёзды на GitHub" },
-        { value: "license", label: "Лицензия" },
-        { value: "openSource", label: "Без платы за места, без ограничений" },
-        { value: "selfHost", label: "Ваш компьютер" },
-      ],
     },
     footer: {
       navLabel: "Нижнее меню",
@@ -2396,9 +2203,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "tr": {
-    title: "VNBot | Açık kaynaklı Grok Bot alternatifi",
+    title: "VNBot | Grok Bot alternatifi",
     description:
-      "VNBot, gerçek işler yapan kalıcı yapay zekâ ekip arkadaşları için açık kaynaklı bir Grok Bot alternatifidir. Sizin anahtarlarınız, sizin modeliniz, sizin makineniz.",
+      "VNBot, gerçek işler yapan kalıcı yapay zekâ ekip arkadaşları için bir Grok Bot alternatifidir. Sizin anahtarlarınız, sizin modeliniz, sizin makineniz.",
     ogImageAlt:
       "VNBot. Gerçekten size ait yapay zekâ ekip arkadaşları. Sizin anahtarlarınız, sizin modeliniz, sizin makineniz.",
     availableLanguage: "Turkish",
@@ -2410,12 +2217,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "Belgeler",
       integrations: "Entegrasyonlar",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Başlayın",
     },
     hero: {
-      eyebrow: "Açık kaynak",
-      heading: "Gerçekten size ait, açık kaynaklı Grok Bot alternatifi",
+      heading: "Gerçekten size ait, Grok Bot alternatifi",
       lead: "Botlarınıza bir iş verin. Her cihazdan takip edin.",
       getStarted: "Başlayın",
       download: {
@@ -2425,10 +2230,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "iOS için indir",
         android: "Android için indir",
       },
-      viewOnGithub: "GitHub'da görüntüle",
-      setupWithAgent: "Ajanınızla kurun",
-      copiedForAgent: "Ajanınız için kopyalandı",
-      copyFailed: "Kopyalanamadı. Tekrar deneyin.",
     },
     selfHost: {
       heading: "Kendi sunucunuzda",
@@ -2508,25 +2309,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Açık kaynak",
-      copy: "Apache-2.0. Çalıştırın, değiştirin, size göre uyarlayın.",
-      starOnGithub: "GitHub'da yıldız verin",
-      readTheDocs: "Belgeleri okuyun",
-      cloudTitle: "Bulut",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Bulut",
+      badge: "Beta",
     },
     cta: {
       heading: "İlk botunuzla tanışın",
       copy: "Sıradaki görevinizi devredin.",
-      openSourceValue: "Açık kaynak",
-      selfHostValue: "Kendi sunucunuz",
-      stats: [
-        { value: "stars", label: "GitHub yıldızı" },
-        { value: "license", label: "Lisans" },
-        { value: "openSource", label: "Kullanıcı başı ücret yok, kısıtlama yok" },
-        { value: "selfHost", label: "Sizin makineniz" },
-      ],
     },
     footer: {
       navLabel: "Alt bilgi",
@@ -2549,9 +2338,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "he": {
-    title: "VNBot | חלופת קוד פתוח ל-Grok Bot",
+    title: "VNBot | חלופה ל-Grok Bot",
     description:
-      "VNBot היא חלופת קוד פתוח ל-Grok Bot לעמיתי AI קבועים שעושים עבודה אמיתית. המפתחות שלך, המודל שלך, המכונה שלך.",
+      "VNBot היא חלופה ל-Grok Bot לעמיתי AI קבועים שעושים עבודה אמיתית. המפתחות שלך, המודל שלך, המכונה שלך.",
     ogImageAlt:
       "VNBot. עמיתי AI ששייכים לך באמת. המפתחות שלך, המודל שלך, המכונה שלך.",
     availableLanguage: "Hebrew",
@@ -2563,12 +2352,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "תיעוד",
       integrations: "אינטגרציות",
       blog: "בלוג",
-      github: "GitHub",
       getStarted: "להתחיל",
     },
     hero: {
-      eyebrow: "קוד פתוח",
-      heading: "חלופת הקוד הפתוח ל-Grok Bot ששייכת לך באמת",
+      heading: "החלופה ל-Grok Bot ששייכת לך באמת",
       lead: "נותנים לבוטים משימה. מתעדכנים מכל מכשיר.",
       getStarted: "להתחיל",
       download: {
@@ -2578,10 +2365,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "הורדה ל-iOS",
         android: "הורדה ל-Android",
       },
-      viewOnGithub: "צפייה ב-GitHub",
-      setupWithAgent: "הגדרה עם הסוכן שלך",
-      copiedForAgent: "הועתק עבור הסוכן שלך",
-      copyFailed: "ההעתקה נכשלה. אפשר לנסות שוב.",
     },
     selfHost: {
       heading: "באירוח עצמי",
@@ -2661,25 +2444,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "קוד פתוח",
-      copy: "Apache-2.0. אפשר להריץ, לשנות ולהתאים לעצמך.",
-      starOnGithub: "סימון בכוכב ב-GitHub",
-      readTheDocs: "לקריאת התיעוד",
-      cloudTitle: "ענן",
-      cloudBadge: "בטא",
+    cloud: {
+      title: "ענן",
+      badge: "בטא",
     },
     cta: {
       heading: "הכירו את הבוט הראשון שלכם",
       copy: "העבירו לו את המשימה הבאה.",
-      openSourceValue: "קוד פתוח",
-      selfHostValue: "אירוח עצמי",
-      stats: [
-        { value: "stars", label: "כוכבים ב-GitHub" },
-        { value: "license", label: "רישיון" },
-        { value: "openSource", label: "בלי מושבים, בלי חסימות" },
-        { value: "selfHost", label: "המכונה שלך" },
-      ],
     },
     footer: {
       navLabel: "כותרת תחתונה",
@@ -2702,9 +2473,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "hi": {
-    title: "VNBot | Grok Bot का ओपन सोर्स विकल्प",
+    title: "VNBot | Grok Bot का विकल्प",
     description:
-      "VNBot, Grok Bot का ओपन सोर्स विकल्प है, ऐसे स्थायी AI साथियों के लिए जो असली काम करते हैं। आपकी कुंजियाँ, आपका मॉडल, आपकी मशीन।",
+      "VNBot, Grok Bot का विकल्प है, ऐसे स्थायी AI साथियों के लिए जो असली काम करते हैं। आपकी कुंजियाँ, आपका मॉडल, आपकी मशीन।",
     ogImageAlt:
       "VNBot. ऐसे AI साथी जो सच में आपके अपने हैं। आपकी कुंजियाँ, आपका मॉडल, आपकी मशीन।",
     availableLanguage: "Hindi",
@@ -2716,12 +2487,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "दस्तावेज़",
       integrations: "इंटीग्रेशन",
       blog: "ब्लॉग",
-      github: "GitHub",
       getStarted: "शुरू करें",
     },
     hero: {
-      eyebrow: "ओपन सोर्स",
-      heading: "Grok Bot का ओपन सोर्स विकल्प, जो सच में आपका अपना है",
+      heading: "Grok Bot का विकल्प, जो सच में आपका अपना है",
       lead: "अपने बॉट्स को काम दें। किसी भी डिवाइस से हाल देखें।",
       getStarted: "शुरू करें",
       download: {
@@ -2731,10 +2500,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "iOS के लिए डाउनलोड करें",
         android: "Android के लिए डाउनलोड करें",
       },
-      viewOnGithub: "GitHub पर देखें",
-      setupWithAgent: "अपने एजेंट से सेट अप करें",
-      copiedForAgent: "आपके एजेंट के लिए कॉपी किया गया",
-      copyFailed: "कॉपी नहीं हो सका। फिर से कोशिश करें।",
     },
     selfHost: {
       heading: "सेल्फ़-होस्टेड",
@@ -2814,25 +2579,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "ओपन सोर्स",
-      copy: "Apache-2.0. इसे चलाएं, बदलें, अपने हिसाब से बनाएं।",
-      starOnGithub: "GitHub पर स्टार करें",
-      readTheDocs: "दस्तावेज़ पढ़ें",
-      cloudTitle: "क्लाउड",
-      cloudBadge: "बीटा",
+    cloud: {
+      title: "क्लाउड",
+      badge: "बीटा",
     },
     cta: {
       heading: "अपने पहले बॉट से मिलें",
       copy: "अपना अगला काम सौंप दें।",
-      openSourceValue: "ओपन सोर्स",
-      selfHostValue: "सेल्फ़-होस्ट",
-      stats: [
-        { value: "stars", label: "GitHub स्टार्स" },
-        { value: "license", label: "लाइसेंस" },
-        { value: "openSource", label: "न सीट्स, न पाबंदियां" },
-        { value: "selfHost", label: "आपकी मशीन" },
-      ],
     },
     footer: {
       navLabel: "फ़ुटर",
@@ -2855,9 +2608,9 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
     },
   },
   "zh-tw": {
-    title: "VNBot | 開源 Grok Bot 替代方案",
+    title: "VNBot | Grok Bot 替代方案",
     description:
-      "VNBot 是開源的 Grok Bot 替代方案，讓常駐的 AI 隊友幫你完成實際工作。金鑰、模型、機器，全都屬於你。",
+      "VNBot 是 Grok Bot 替代方案，讓常駐的 AI 隊友幫你完成實際工作。金鑰、模型、機器，全都屬於你。",
     ogImageAlt: "VNBot：真正屬於你的 AI 隊友。金鑰、模型、機器，全都屬於你。",
     availableLanguage: "Chinese (Traditional)",
     skipToContent: "跳至主要內容",
@@ -2868,12 +2621,10 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
       docs: "說明文件",
       integrations: "整合",
       blog: "部落格",
-      github: "GitHub",
       getStarted: "開始使用",
     },
     hero: {
-      eyebrow: "開源",
-      heading: "真正屬於你的開源 Grok Bot 替代方案",
+      heading: "真正屬於你的 Grok Bot 替代方案",
       lead: "把工作交給機器人，用任何裝置隨時查看。",
       getStarted: "開始使用",
       download: {
@@ -2883,10 +2634,6 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         ios: "下載 iOS 版",
         android: "下載 Android 版",
       },
-      viewOnGithub: "在 GitHub 上查看",
-      setupWithAgent: "用你的代理程式設定",
-      copiedForAgent: "已為你的代理程式複製",
-      copyFailed: "複製失敗，請重試。",
     },
     selfHost: {
       heading: "自行託管",
@@ -2966,25 +2713,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "開源",
-      copy: "Apache-2.0。自由執行、修改，打造成你要的樣子。",
-      starOnGithub: "在 GitHub 上加星號",
-      readTheDocs: "閱讀說明文件",
-      cloudTitle: "雲端",
-      cloudBadge: "Beta 版",
+    cloud: {
+      title: "雲端",
+      badge: "Beta 版",
     },
     cta: {
       heading: "認識你的第一個機器人",
       copy: "把下一項任務交給它。",
-      openSourceValue: "開源",
-      selfHostValue: "自行託管",
-      stats: [
-        { value: "stars", label: "GitHub 星號" },
-        { value: "license", label: "授權" },
-        { value: "openSource", label: "不限席次，沒有門檻" },
-        { value: "selfHost", label: "你的機器" },
-      ],
     },
     footer: {
       navLabel: "頁尾",

@@ -3,17 +3,15 @@ import { getHomeCopy } from "../i18n/home";
 import type { HomeCopy } from "../i18n/home";
 import { DEFAULT_LOCALE, localeHomePath } from "../i18n/locales";
 import type { Locale } from "../i18n/locales";
-import { APP_URL, GITHUB_URL } from "../site";
+import { APP_URL } from "../site";
 import Logo from "./Logo.astro";
 
 type Props = {
-  starsLabel: string;
   locale?: Locale;
   copy?: HomeCopy["nav"];
   homeHref?: string;
 };
 
-const { starsLabel } = Astro.props;
 const locale = Astro.props.locale ?? DEFAULT_LOCALE;
 const copy = Astro.props.copy ?? getHomeCopy(locale).nav;
 const homeHref = Astro.props.homeHref ?? localeHomePath(locale);
@@ -21,7 +19,6 @@ const homeHref = Astro.props.homeHref ?? localeHomePath(locale);
 const NAV_LINKS = [
   { href: "/docs/", label: copy.docs },
   { href: "/integrations/", label: copy.integrations },
-  { href: "/blog/", label: copy.blog },
 ];
 
 const currentPath = Astro.url.pathname.replace(/\/+$/, "") || "/";
@@ -48,17 +45,6 @@ function isCurrent(href: string): boolean {
     </nav>
   </div>
   <div class="site-header__right">
-    <a
-      class="star-pill"
-      href={GITHUB_URL}
-      target="_blank"
-      rel="noreferrer"
-      aria-label={copy.github}
-      data-attr="header-github"
-    >
-      <span aria-hidden="true">★</span>
-      <span>{starsLabel}</span>
-    </a>
     <div class="site-header__cta">
       <a class="button button--primary button--small" href={APP_URL}>
         {copy.getStarted}
@@ -84,7 +70,6 @@ function isCurrent(href: string): boolean {
             </a>
           ))
         }
-        <a href={GITHUB_URL} target="_blank" rel="noreferrer" data-attr="menu-github">{copy.github}</a>
       </nav>
     </details>
   </div>

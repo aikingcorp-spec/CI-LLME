@@ -1,11 +1,7 @@
 ---
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
-import { githubStarsLabel } from "../github";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { GITHUB_URL } from "../site";
-
-const starsLabel = await githubStarsLabel();
 ---
 
 <BaseLayout
@@ -13,26 +9,23 @@ const starsLabel = await githubStarsLabel();
   description="The terms for using VNBot, including paid plans, cancellation, and refunds."
 >
   <div class="container">
-    <Header starsLabel={starsLabel} />
+    <Header />
     <main id="main" class="privacy-copy">
       <h1>Terms of Service</h1>
       <p><strong>Last updated: October 27, 2026</strong></p>
       <p>
         These terms are an agreement between you and Inbox Zero Inc. (“Inbox Zero,” “we,” or “us”) for
         your use of the VNBot service that we host, the VNBot web, desktop, and mobile apps, and
-        rakazo.com (together, the “Service”). By using the Service, you agree to these terms. If you
+        vnbot.run (together, the “Service”). By using the Service, you agree to these terms. If you
         use the Service on behalf of an organization, you confirm that you can bind that organization
         to these terms, and “you” includes it.
       </p>
 
-      <h2>Open-source software</h2>
+      <h2>VNBot name and logo</h2>
       <p>
-        The VNBot source code is available under the{" "}
-        <a href={`${GITHUB_URL}/blob/main/LICENSE`}>Apache License 2.0</a>. That license, not these
-        terms, governs your use of the code. It does not grant rights to the VNBot name or logo; do
-        not use them in a way that suggests we operate or endorse something we do not. A third party
-        that operates a self-hosted VNBot deployment is responsible for that deployment and its own
-        terms.
+        These terms do not grant rights to the VNBot name or logo; do not use them in a way that
+        suggests we operate or endorse something we do not. A third party that operates its own
+        VNBot deployment is responsible for that deployment and its own terms.
       </p>
 
       <h2>Your account</h2>

@@ -17,8 +17,7 @@ export type ClientKind = (typeof CLIENT_KINDS)[number];
 export type MinimumClientBuilds = Partial<Record<ClientKind, string>>;
 
 export const IOS_APP_STORE_URL = "https://apps.apple.com/app/rakazo/id6801531099";
-export const ANDROID_APK_URL =
-  "https://github.com/elie222/rakazo/releases/download/android/rakazo.apk";
+export const ANDROID_APK_URL = "https://vnbot.run/#tai-ve";
 
 const BUILD_ID = /^\d{14}$/;
 

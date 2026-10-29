@@ -4,9 +4,7 @@ import { getCollection, render } from "astro:content";
 import Footer from "../../components/Footer.astro";
 import Header from "../../components/Header.astro";
 import { DOCS_NAV, DOCS_PAGES, DOCS_SLUGS, docsPath } from "../../docs";
-import { githubStarsLabel } from "../../github";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { GITHUB_URL } from "../../site";
 
 interface Props {
   entry: CollectionEntry<"docs">;
@@ -28,7 +26,6 @@ const toc = headings.filter((heading) => heading.depth === 2);
 const index = DOCS_SLUGS.indexOf(entry.id);
 const previous = DOCS_SLUGS[index - 1];
 const next = DOCS_SLUGS[index + 1];
-const starsLabel = await githubStarsLabel();
 const currentPath = docsPath(entry.id);
 ---
 
@@ -39,7 +36,7 @@ const currentPath = docsPath(entry.id);
   markdownAlternate={currentPath === "/docs/" ? "/docs.md" : `${currentPath.slice(0, -1)}.md`}
 >
   <div class="container">
-    <Header starsLabel={starsLabel} />
+    <Header />
   </div>
   <div class="container docs">
     <nav class="docs-nav" aria-label="Docs">
@@ -111,9 +108,6 @@ const currentPath = docsPath(entry.id);
           </>
         )
       }
-      <a class="docs-edit" href={`${GITHUB_URL}/edit/main/docs/${entry.id}.md`} target="_blank" rel="noreferrer">
-        Edit on GitHub
-      </a>
     </aside>
   </div>
   <div class="container">

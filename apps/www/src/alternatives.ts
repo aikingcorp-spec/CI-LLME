@@ -1,19 +1,17 @@
 import { OPENCLAW_H1 } from "./guide";
 import { GROK_ALTERNATIVE_H1, GROK_ALTERNATIVE_PATH } from "./grok-alternative";
-import { DOCS_URL, GITHUB_URL, OPENCLAW_ALTERNATIVE_PATH } from "./site";
+import { APP_URL, OPENCLAW_ALTERNATIVE_PATH } from "./site";
 
 export const ROUNDUP_UPDATED = "October 24, 2026";
 
 export const GET_STARTED = {
   heading: "Get started",
-  copy: "Start on VNBot Cloud, in beta, or self-host.",
-  docsLabel: "Self-hosting guide",
-  githubLabel: "View on GitHub",
+  copy: "Start on VNBot Cloud, in beta.",
+  cloudLabel: "VNBot Cloud",
 } as const;
 
-export const OPEN_SOURCE_REASONS = [
-  "The source is Apache-2.0 and public on GitHub.",
-  "You can run the published Docker images, or a source checkout, on a machine you control. The desktop app can start that stack locally or connect to a server you already run.",
+export const WHY_VNBOT_REASONS = [
+  "The desktop app can start the stack on your computer or connect to a computer you already run.",
   "You bring the model credentials. Connector credentials are encrypted on the server and are not returned by the API.",
   "Routines are readable Markdown. A bot can pause for approval at a boundary you set, and actions are recorded in an audit log.",
   "The web app, the Electron desktop app, and the Expo mobile app are clients of the same API.",
@@ -63,10 +61,10 @@ export type Alternative = {
 
 export const ALTERNATIVES_HUB = {
   title:
-    "Best Personal AI Agents in 2026: Grok Bot, Muse, Dots, Instinct, Hark Pro & Open Source Alternatives",
+    "Best Personal AI Agents in 2026: Grok Bot, Muse, Dots, Instinct, Hark Pro & Alternatives",
   description:
-    "A dated comparison of Grok Bot, Meta Muse, OpenAI Dots, Instinct, Claude Duet, Hark Pro, OpenClaw, Hermes Agent, and VNBot. Licenses, self-hosting, model choice, price, setup, and whether you manage the agent from chat.",
-  h1: "Best Personal AI Agents in 2026: Grok Bot, Muse, Dots, Instinct, Hark Pro & Open Source Alternatives",
+    "A dated comparison of Grok Bot, Meta Muse, OpenAI Dots, Instinct, Claude Duet, Hark Pro, OpenClaw, Hermes Agent, and VNBot. Hosting, model choice, price, setup, and whether you manage the agent from chat.",
+  h1: "Best Personal AI Agents in 2026: Grok Bot, Muse, Dots, Instinct, Hark Pro & Alternatives",
   intro:
     "These are different products that all take on work beyond a single reply. This page compares their public descriptions, read between October 7 and October 24, 2026. It is not a score, a benchmark, or a claim that one of them is best at every task.",
 } as const;
@@ -176,34 +174,29 @@ export const ALTERNATIVES: readonly Alternative[] = [
     slug: "muse-alternative",
     name: "Muse",
     summary: "Meta's personal AI agent, and what is different when you host VNBot yourself.",
-    title: "Open Source Meta Muse Alternative – VNBot",
+    title: "Meta Muse Alternative – VNBot",
     description:
-      "VNBot is an open source, self-hostable platform for persistent AI teammates. Compare it with Meta's Muse personal agent.",
-    h1: "Open source Meta Muse alternative",
+      "VNBot is a platform for persistent AI teammates that you can run on your own computer. Compare it with Meta's Muse personal agent.",
+    h1: "Meta Muse alternative",
     comparedOn: "October 7, 2026",
     otherName: "Muse",
     intro: [
       "Muse is Meta's personal AI agent, introduced on September 8, 2026. It runs on a virtual machine Meta operates, and you talk to it in the Muse app or WhatsApp. Meta says it can keep working after you close the app.",
-      "VNBot is open source software for persistent AI teammates. You choose the model and the computer, and you can run the stack yourself. This is a comparison of public descriptions, not a measured benchmark.",
+      "VNBot is software for persistent AI teammates. You choose the model and the computer, and you can run the stack yourself. This is a comparison of public descriptions, not a measured benchmark.",
     ],
     rows: [
       {
         topic: "Product",
-        rakazo: "Open source platform for persistent AI teammates. VNBot is in beta.",
+        rakazo: "Platform for persistent AI teammates. VNBot is in beta.",
         other:
           "Meta's personal AI agent. Meta says it takes on tasks and longer-term goals, rather than only answering questions.",
       },
       {
         topic: "Who runs it",
         rakazo:
-          "You do when you self-host with Docker or point the desktop and mobile apps at a server you operate. VNBot Cloud, in beta, runs it for you.",
+          "You do when you point the desktop and mobile apps at a computer you operate. VNBot Cloud, in beta, runs it for you.",
         other:
           "Meta. Muse runs on Muse Secure VM, a dedicated cloud virtual machine for the agent and for data from services you connect. Meta's September 29, 2026 post describes Muse as available in the US and Canada.",
-      },
-      {
-        topic: "Source",
-        rakazo: "Apache-2.0 source on GitHub.",
-        other: "Hosted service from Meta.",
       },
       {
         topic: "Model",
@@ -251,12 +244,12 @@ export const ALTERNATIVES: readonly Alternative[] = [
       {
         question: "Is VNBot a replacement for Muse?",
         answer:
-          "No. Muse is Meta's hosted personal agent, with the Muse app, WhatsApp, and a virtual machine Meta operates. VNBot is open source software for persistent AI teammates on infrastructure you control. Both can keep working beyond a single chat. They differ on hosting, model choice, and which products are built in.",
+          "No. Muse is Meta's hosted personal agent, with the Muse app, WhatsApp, and a virtual machine Meta operates. VNBot is software for persistent AI teammates on infrastructure you control. Both can keep working beyond a single chat. They differ on hosting, model choice, and which products are built in.",
       },
       {
         question: "Can I self-host VNBot?",
         answer:
-          "Yes. Self-hosting is available now with published Docker images or a source checkout. Hosted VNBot Cloud is in beta.",
+          "Yes. The desktop app can run the stack on your own computer. Hosted VNBot Cloud is in beta.",
       },
       {
         question: "Does VNBot include Muse on WhatsApp, shopping checkout, or AI glasses?",
@@ -275,33 +268,28 @@ export const ALTERNATIVES: readonly Alternative[] = [
     slug: "dots-alternative",
     name: "Dots",
     summary: "OpenAI's always-on agents, in a shorter comparison.",
-    title: "Open Source OpenAI Dots Alternative – VNBot",
+    title: "OpenAI Dots Alternative – VNBot",
     description:
-      "VNBot is an open source, self-hostable platform for persistent AI teammates. Compare it with OpenAI's Dots agents.",
-    h1: "Open source OpenAI Dots alternative",
+      "VNBot is a platform for persistent AI teammates that you can run on your own computer. Compare it with OpenAI's Dots agents.",
+    h1: "OpenAI Dots alternative",
     comparedOn: "October 7, 2026",
     otherName: "Dots",
     intro: [
       "Dots are OpenAI's always-on agents, announced on September 29, 2026. OpenAI says they use GPT-6 Astra, have their own cloud computer, and are rolling out on eligible Pro, Business Premium, and Enterprise plans.",
-      "VNBot is separate software: open source AI teammates you can host yourself, with model credentials you bring.",
+      "VNBot is separate software: AI teammates you can host yourself, with model credentials you bring.",
     ],
     rows: [
       {
         topic: "Product",
-        rakazo: "Open source platform for persistent AI teammates. VNBot is in beta.",
+        rakazo: "Platform for persistent AI teammates. VNBot is in beta.",
         other:
           "Always-on agents from OpenAI. OpenAI says a dot learns from feedback and can work toward your goals continuously.",
       },
       {
         topic: "Who runs it",
         rakazo:
-          "You do when you self-host with Docker or point the desktop and mobile apps at a server you operate. VNBot Cloud, in beta, runs it for you.",
+          "You do when you point the desktop and mobile apps at a computer you operate. VNBot Cloud, in beta, runs it for you.",
         other: "OpenAI. The announcement says each dot has its own cloud computer.",
-      },
-      {
-        topic: "Source",
-        rakazo: "Apache-2.0 source on GitHub.",
-        other: "Hosted product from OpenAI.",
       },
       {
         topic: "Model",
@@ -335,7 +323,7 @@ export const ALTERNATIVES: readonly Alternative[] = [
       {
         question: "Is VNBot a replacement for a dot?",
         answer:
-          "No. A dot is an OpenAI agent on an eligible ChatGPT plan. VNBot is open source software you run yourself, with your own model credentials.",
+          "No. A dot is an OpenAI agent on an eligible ChatGPT plan. VNBot is software you run yourself, with your own model credentials.",
       },
       {
         question: "Do I need an OpenAI account to use VNBot?",
@@ -354,34 +342,29 @@ export const ALTERNATIVES: readonly Alternative[] = [
     slug: "instinct-alternative",
     name: "Instinct",
     summary: "A hosted personal assistant you text or call, and what is different when you host VNBot yourself.",
-    title: "Open Source Instinct AI Alternative – VNBot",
+    title: "Instinct AI Alternative – VNBot",
     description:
-      "VNBot is an open source, self-hostable platform for persistent AI teammates. Compare it with Instinct, the personal assistant you text or call.",
-    h1: "Open source Instinct AI alternative",
+      "VNBot is a platform for persistent AI teammates that you can run on your own computer. Compare it with Instinct, the personal assistant you text or call.",
+    h1: "Instinct AI alternative",
     comparedOn: "October 7, 2026",
     otherName: "Instinct",
     intro: [
       "Instinct is a personal assistant operated by Spear Street Technology, Inc. The homepage says there are no new interfaces: you text or call it, and it can use a phone and a computer the way a person does. Examples on that page include disputing a bill, sending gifts, ordering groceries, scheduling a doctor's appointment, and planning a trip.",
-      "VNBot is open source software for persistent AI teammates. You choose the model and the computer, and you can run the stack yourself. This is a comparison of public descriptions, not a measured benchmark.",
+      "VNBot is software for persistent AI teammates. You choose the model and the computer, and you can run the stack yourself. This is a comparison of public descriptions, not a measured benchmark.",
     ],
     rows: [
       {
         topic: "Product",
-        rakazo: "Open source platform for persistent AI teammates. VNBot is in beta.",
+        rakazo: "Platform for persistent AI teammates. VNBot is in beta.",
         other:
           "A personal assistant. The privacy policy, revised August 26, 2026, calls it an autonomous assistant that thinks, plans, and acts on everyday tasks.",
       },
       {
         topic: "Who runs it",
         rakazo:
-          "You do when you self-host with Docker or point the desktop and mobile apps at a server you operate. VNBot Cloud, in beta, runs it for you.",
+          "You do when you point the desktop and mobile apps at a computer you operate. VNBot Cloud, in beta, runs it for you.",
         other:
           "Spear Street Technology, Inc., under the Instinct name. The privacy policy describes a hosted service, including third-party hosting. It does not describe installing Instinct on a server you operate.",
-      },
-      {
-        topic: "Source",
-        rakazo: "Apache-2.0 source on GitHub.",
-        other: "Hosted service. The terms say the company owns the service and the technology that produces its actions.",
       },
       {
         topic: "Model",
@@ -430,12 +413,12 @@ export const ALTERNATIVES: readonly Alternative[] = [
       {
         question: "Is VNBot a replacement for Instinct?",
         answer:
-          "No. Instinct is a hosted personal assistant you text or call, operated by Spear Street Technology, Inc. VNBot is open source software for persistent AI teammates on infrastructure you control. Both can take on tasks beyond a single reply. They differ on hosting, model choice, and who operates the computer.",
+          "No. Instinct is a hosted personal assistant you text or call, operated by Spear Street Technology, Inc. VNBot is software for persistent AI teammates on infrastructure you control. Both can take on tasks beyond a single reply. They differ on hosting, model choice, and who operates the computer.",
       },
       {
         question: "Can I self-host VNBot?",
         answer:
-          "Yes. Self-hosting is available now with published Docker images or a source checkout. Hosted VNBot Cloud is in beta.",
+          "Yes. The desktop app can run the stack on your own computer. Hosted VNBot Cloud is in beta.",
       },
       {
         question: "Does VNBot text, call, or buy things the way Instinct describes?",
@@ -453,23 +436,23 @@ export const ALTERNATIVES: readonly Alternative[] = [
   {
     slug: "hermes-alternative",
     name: "Hermes",
-    summary: "Nous Research's open source agent. VNBot keeps setup and daily use in chat.",
-    title: "Open Source Hermes Agent Alternative – VNBot",
+    summary: "Nous Research's agent. VNBot keeps setup and daily use in chat.",
+    title: "Hermes Agent Alternative – VNBot",
     description:
-      "VNBot is an open source, self-hosted AI agent with a chat interface. Compare its setup with Hermes Agent, the MIT-licensed agent from Nous Research.",
-    h1: "Open source Hermes Agent alternative",
+      "VNBot is a self-hosted AI agent with a chat interface. Compare its setup with Hermes Agent from Nous Research.",
+    h1: "Hermes Agent alternative",
     comparedOn: "October 7, 2026",
     otherName: "Hermes Agent",
     intro: [
-      "Hermes Agent is Nous Research's open source AI agent, released under the MIT license. You can run it on your own machine. The project site also offers optional Nous Portal credits and cloud hosting.",
+      "Hermes Agent is Nous Research's AI agent. You can run it on your own machine. The project site also offers optional Nous Portal credits and cloud hosting.",
       "The main difference is simplicity. Like Grok Bot, VNBot is just chat: you set up the bot and manage it from that chat. Hermes documents a desktop app and a command-line quickstart. Desktop onboarding can reach a first message without the CLI. The quickstart is an installer, a setup wizard, a model command, and config files. Messaging platforms are a separate gateway.",
-      "Both are open source and can run on hardware you control. This comparison uses each project's public docs. It is not a measured benchmark.",
+      "Both can run on hardware you control. This comparison uses each project's public docs. It is not a measured benchmark.",
     ],
     sections: [
       {
         heading: "Setup",
         paragraphs: [
-          "VNBot's self-host path is the published Docker installer, or the desktop app starting that stack on this computer. You create an account and connect a model. From there it is just chat, on the web, desktop, and mobile apps. A new bot interviews you about the work, and you manage the bot from that chat. Routines are readable Markdown.",
+          "VNBot's self-host path is the desktop app starting that stack on this computer. You create an account and connect a model. From there it is just chat, on the web, desktop, and mobile apps. A new bot interviews you about the work, and you manage the bot from that chat. Routines are readable Markdown.",
           "Hermes Desktop is a native app on macOS, Windows, and Linux. It shares config, API keys, sessions, skills, and memory with the CLI. The desktop guide says first-run onboarding gets you to a first message in seconds, and Choose provider later skips provider setup. Settings cover providers, models, tools, credentials, MCP servers, the gateway, and sessions. The app starts its own local `hermes serve` backend. That chat does not require the CLI or the web dashboard.",
           "The CLI quickstart is a separate path: a shell install (`install.sh` on Linux, macOS, and WSL2; a PowerShell script on Windows), then `hermes setup` (Quick Setup with Nous Portal, Full Setup, or Blank Slate) and `hermes model`. Secrets go in `~/.hermes/.env` and other settings in `~/.hermes/config.yaml`. The first terminal chat is `hermes` or `hermes --tui`. Telegram, Discord, Slack, WhatsApp, Signal, Email, and other platforms use `hermes gateway setup` and a gateway process you start separately. The desktop guide says that messaging gateway is a different process from the app's local backend.",
         ],
@@ -486,7 +469,7 @@ export const ALTERNATIVES: readonly Alternative[] = [
       {
         topic: "Setup",
         rakazo:
-          "Docker installer or the desktop app's local stack, then an account and a model. After that VNBot is just chat: a new bot interviews you, and you manage it from the chat.",
+          "The desktop app's local stack, then an account and a model. After that VNBot is just chat: a new bot interviews you, and you manage it from the chat.",
         other:
           "Desktop: first-run onboarding in the app, with Choose provider later if you skip a provider. The app shares `~/.hermes/` with the CLI and starts its own local backend. CLI: `hermes setup` and `hermes model`, then `hermes` or `hermes --tui`. Messaging platforms use `hermes gateway setup` and a separate gateway process.",
       },
@@ -499,14 +482,9 @@ export const ALTERNATIVES: readonly Alternative[] = [
       },
       {
         topic: "Product",
-        rakazo: "Open source platform for persistent AI teammates. VNBot is in beta.",
+        rakazo: "Platform for persistent AI teammates. VNBot is in beta.",
         other:
           "Nous Research describes a self-improving agent: it creates skills from experience, keeps memory across sessions, and can run scheduled jobs. The README also documents a terminal UI and a messaging gateway.",
-      },
-      {
-        topic: "Source",
-        rakazo: "Apache-2.0 source on GitHub.",
-        other: "MIT source on GitHub, built by Nous Research.",
       },
       {
         topic: "Model",
@@ -555,12 +533,12 @@ export const ALTERNATIVES: readonly Alternative[] = [
       {
         question: "Is VNBot simpler to set up than Hermes Agent?",
         answer:
-          "The documented paths are different. VNBot's self-host guide is a Docker installer, or the desktop app starting that stack, then an account and a model. After that VNBot is just chat, and you manage the bot from that chat. Hermes Desktop can reach a first message from in-app onboarding without the CLI, and you manage providers and tools in Settings. The CLI quickstart is `hermes setup`, `hermes model`, config files under `~/.hermes/`, and a terminal chat. Messaging apps are an extra gateway process on either path.",
+          "The documented paths are different. VNBot's local path is the desktop app starting that stack, then an account and a model. After that VNBot is just chat, and you manage the bot from that chat. Hermes Desktop can reach a first message from in-app onboarding without the CLI, and you manage providers and tools in Settings. The CLI quickstart is `hermes setup`, `hermes model`, config files under `~/.hermes/`, and a terminal chat. Messaging apps are an extra gateway process on either path.",
       },
       {
         question: "Is VNBot a drop-in replacement for Hermes Agent?",
         answer:
-          "No. VNBot does not import Hermes config, skills, or gateway sessions. Both are open source agents you can run yourself. They differ in license, interface, and how much of the setup lives in a chat versus Hermes's CLI and desktop settings.",
+          "No. VNBot does not import Hermes config, skills, or gateway sessions. Both are agents you can run yourself. They differ in interface and how much of the setup lives in a chat versus Hermes's CLI and desktop settings.",
       },
       {
         question: "Do both keep the software on my machine?",
@@ -579,34 +557,29 @@ export const ALTERNATIVES: readonly Alternative[] = [
     slug: "claude-duet-alternative",
     name: "Claude Duet",
     summary: "Anthropic's proactive personal agent, and what is different when you host VNBot yourself.",
-    title: "Open Source Claude Duet Alternative – VNBot",
+    title: "Claude Duet Alternative – VNBot",
     description:
-      "VNBot is an open source, self-hostable platform for persistent AI teammates. Compare it with Claude Duet, Anthropic's personal agent.",
-    h1: "Open source Claude Duet alternative",
+      "VNBot is a platform for persistent AI teammates that you can run on your own computer. Compare it with Claude Duet, Anthropic's personal agent.",
+    h1: "Claude Duet alternative",
     comparedOn: "October 24, 2026",
     otherName: "Claude Duet",
     intro: [
       "Claude Duet is Anthropic's proactive personal agent, released as a research preview on October 21, 2026. You message it like a person. It sends a morning brief, checks your connected accounts, and works on a cloud computer Anthropic runs.",
-      "VNBot is open source software for persistent AI teammates. You run it, you choose the model, and you can have more than one bot. VNBot can also sign in with your Claude Pro or Max subscription.",
+      "VNBot is software for persistent AI teammates. You run it, you choose the model, and you can have more than one bot. VNBot can also sign in with your Claude Pro or Max subscription.",
     ],
     rows: [
       {
         topic: "Product",
-        rakazo: "Open source platform for persistent AI teammates. VNBot is in beta.",
+        rakazo: "Platform for persistent AI teammates. VNBot is in beta.",
         other:
           "A standalone Anthropic app with one ongoing thread, by text or voice. Anthropic says it is for professionals and small business owners.",
       },
       {
         topic: "Who runs it",
         rakazo:
-          "You do when you self-host with Docker or point the desktop and mobile apps at a server you operate. VNBot Cloud, in beta, runs it for you.",
+          "You do when you point the desktop and mobile apps at a computer you operate. VNBot Cloud, in beta, runs it for you.",
         other:
           "Anthropic. Duet works on its own cloud virtual machine with a browser. The help center says you cannot watch or take over that browser.",
-      },
-      {
-        topic: "Source",
-        rakazo: "Apache-2.0 source on GitHub.",
-        other: "Hosted service from Anthropic. Its pages do not describe self-hosting.",
       },
       {
         topic: "Model",
@@ -643,9 +616,9 @@ export const ALTERNATIVES: readonly Alternative[] = [
           "Yes. Sign in with Claude Pro or Max, or bring an Anthropic key. Claude is one model choice, and each bot can use a different one.",
       },
       {
-        question: "Is Claude Duet open source or self-hosted?",
+        question: "Is Claude Duet self-hosted?",
         answer:
-          "Anthropic's Duet pages do not describe source you can run or a self-hosted install. Duet runs on a cloud computer Anthropic operates. VNBot is Apache-2.0, and you can run it yourself.",
+          "Anthropic's Duet pages do not describe a self-hosted install. Duet runs on a cloud computer Anthropic operates. You can run VNBot on a computer you control.",
       },
       {
         question: "Where do the Claude Duet details come from?",
@@ -659,10 +632,10 @@ export const ALTERNATIVES: readonly Alternative[] = [
     slug: "hark-alternative",
     name: "Hark",
     summary: "A hosted personal agent. After install, VNBot stays in chat on a stack you run.",
-    title: "Open Source Hark Pro Alternative – VNBot",
+    title: "Hark Pro Alternative – VNBot",
     description:
-      "VNBot is an open source, self-hosted AI agent with a chat interface. Compare it with Hark Pro, the hosted personal agent at hark.com.",
-    h1: "Open source Hark Pro alternative",
+      "VNBot is a self-hosted AI agent with a chat interface. Compare it with Hark Pro, the hosted personal agent at hark.com.",
+    h1: "Hark Pro alternative",
     comparedOn: "October 7, 2026",
     otherName: "Hark Pro",
     intro: [
@@ -673,21 +646,21 @@ export const ALTERNATIVES: readonly Alternative[] = [
     rows: [
       {
         topic: "Product",
-        rakazo: "Open source platform for persistent AI teammates. VNBot is in beta.",
+        rakazo: "Platform for persistent AI teammates. VNBot is in beta.",
         other:
           "Hark Pro, a hosted personal agent launched October 6, 2026, on the web, iOS, and Android. Hark says it remembers what you tell it and can act on the web.",
       },
       {
         topic: "Who runs it",
         rakazo:
-          "You do when you self-host with Docker or point the desktop and mobile apps at a server you operate. VNBot Cloud, in beta, runs it for you.",
+          "You do when you point the desktop and mobile apps at a computer you operate. VNBot Cloud, in beta, runs it for you.",
         other:
           "The terms name Hark Labs, Inc. as the operator of the hosted service. They do not describe a self-host install, and they restrict reverse engineering the service.",
       },
       {
         topic: "Price",
         rakazo:
-          "No seat fee for the open source software. You pay the model and computer providers you use.",
+          "No seat fee for self-hosting. You pay the model and computer providers you use.",
         other:
           "Free, including the features named in the launch article. $20 a month is twice the usage. $100 a month is ten times the usage.",
       },
@@ -745,17 +718,17 @@ export const ALTERNATIVES: readonly Alternative[] = [
       {
         question: "Is VNBot a replacement for Hark Pro?",
         answer:
-          "No. Hark Pro is a hosted personal agent at hark.com, operated by Hark Labs, Inc. VNBot is open source software for persistent AI teammates on infrastructure you control. Both can take on tasks from a conversation. They differ on hosting, model choice, and who operates the computer.",
+          "No. Hark Pro is a hosted personal agent at hark.com, operated by Hark Labs, Inc. VNBot is software for persistent AI teammates on infrastructure you control. Both can take on tasks from a conversation. They differ on hosting, model choice, and who operates the computer.",
       },
       {
         question: "Can I self-host VNBot?",
         answer:
-          "Yes. Self-hosting is available now with published Docker images or a source checkout. Hosted VNBot Cloud is in beta.",
+          "Yes. The desktop app can run the stack on your own computer. Hosted VNBot Cloud is in beta.",
       },
       {
         question: "How do you manage each one day to day?",
         answer:
-          "After a Docker or desktop install and a model connection, VNBot is just chat, like Grok Bot, and you manage the bot from that chat. Hark Pro feels like a messaging app. The launch article adds Home, Action Buttons, and Panels, and Projects as dedicated chats with their own threads.",
+          "After a desktop install and a model connection, VNBot is just chat, like Grok Bot, and you manage the bot from that chat. Hark Pro feels like a messaging app. The launch article adds Home, Action Buttons, and Panels, and Projects as dedicated chats with their own threads.",
       },
       {
         question: "Does VNBot order things or run Handoff the way Hark describes?",
@@ -795,7 +768,7 @@ const OPENCLAW_HUB_CARD: HubCard = {
   href: OPENCLAW_ALTERNATIVE_PATH,
   name: "OpenClaw",
   h1: OPENCLAW_H1,
-  summary: "An open source agent you run yourself. VNBot stays in chat; OpenClaw's docs add a gateway and a config file.",
+  summary: "An agent you run yourself. VNBot stays in chat; OpenClaw's docs add a gateway and a config file.",
 };
 
 export const HUB_CARDS: readonly HubCard[] = [
@@ -848,16 +821,15 @@ export function alternativeMarkdown(alternative: Alternative): string {
       (row) => `| ${cell(row.topic)} | ${cell(row.rakazo)} | ${cell(row.other)} |`,
     ),
     "",
-    "## Why open source and self-hosted",
+    "## Why VNBot",
     "",
-    ...OPEN_SOURCE_REASONS.map((reason) => `- ${reason}`),
+    ...WHY_VNBOT_REASONS.map((reason) => `- ${reason}`),
     "",
     `## ${GET_STARTED.heading}`,
     "",
     GET_STARTED.copy,
     "",
-    `- [${GET_STARTED.docsLabel}](${DOCS_URL})`,
-    `- [${GET_STARTED.githubLabel}](${GITHUB_URL})`,
+    `- [${GET_STARTED.cloudLabel}](${APP_URL})`,
     "",
     "## FAQ",
     "",

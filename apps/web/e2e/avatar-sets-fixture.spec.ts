@@ -22,7 +22,7 @@ test("set selection preserves legacy, shapes and photos and persists an explicit
       "aria-selected",
       "true",
     );
-    await studio.getByRole("tab", { name: "Rakazo", exact: true }).click();
+    await studio.getByRole("tab", { name: "Classic", exact: true }).click();
     await expect(studio.locator(".rakazo-logo-avatar").first()).toBeVisible();
     await captureScreenshot(page, testInfo, `avatar-set-studio-${theme}`);
     await studio.getByRole("button", { name: "Done", exact: true }).click();
@@ -31,7 +31,7 @@ test("set selection preserves legacy, shapes and photos and persists an explicit
     await expect(shape.locator(".bot-character-eyes")).toBeVisible();
     await expect(photo.locator("img")).toBeVisible();
     await legacy.getByTestId("avatar-studio-trigger").click();
-    await expect(studio.getByRole("tab", { name: "Rakazo", exact: true })).toHaveAttribute(
+    await expect(studio.getByRole("tab", { name: "Classic", exact: true })).toHaveAttribute(
       "aria-selected",
       "true",
     );

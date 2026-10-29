@@ -23,13 +23,11 @@ import {
   OPENCLAW_TITLE,
   OPENCLAW_UPDATED,
 } from "../guide";
-import { githubStarsLabel } from "../github";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { ogPublicPath } from "../og-pages";
-import { APP_URL, GITHUB_URL, SELF_HOST_GUIDE_PATH } from "../site";
+import { APP_URL } from "../site";
 import { vsCard } from "../vs-points";
 
-const starsLabel = await githubStarsLabel();
 const structuredData = faqPageStructuredData(OPENCLAW_FAQS);
 const card = vsCard("openclaw-alternative");
 ---
@@ -42,7 +40,7 @@ const card = vsCard("openclaw-alternative");
   ogImage={ogPublicPath("openclaw-alternative")}
 >
   <div class="container">
-    <Header starsLabel={starsLabel} />
+    <Header />
     <main id="main" class="privacy-copy guide">
       <h1>{OPENCLAW_H1}</h1>
       <p class="alt-note">Updated {OPENCLAW_UPDATED}.</p>
@@ -54,8 +52,7 @@ const card = vsCard("openclaw-alternative");
       <SetupSteps />
       <p>
         The main difference is simplicity. Like Grok Bot, VNBot is just chat: you set up the bot
-        and manage it from that chat. OpenClaw is also
-        open source and self-hosted. Its{" "}
+        and manage it from that chat. OpenClaw is also self-hosted. Its{" "}
         <a href={OPENCLAW_GETTING_STARTED_URL}>getting-started guide</a> is a longer path: a CLI
         installer, an onboarding wizard, a Gateway you run in the terminal or install as a background
         service, and a config file.
@@ -141,17 +138,12 @@ const card = vsCard("openclaw-alternative");
         and no hosted service. VNBot is free to self-host. Hosted VNBot Cloud is in
         beta. You pay for the models, machines, and optional computer providers you use.
       </p>
-      <h3>License</h3>
-      <p>
-        VNBot is Apache-2.0, maintained by Inbox Zero Inc. OpenClaw is MIT, stewarded by the OpenClaw
-        Foundation, which the project describes as an independent 501(c)(3).
-      </p>
 
       <h2>Which shape fits</h2>
       <h3>VNBot</h3>
       <p>
         Repeated browser and shell work, scheduled operational routines, an audit log, and approval
-        boundaries, with the same bots on the web, desktop, and mobile clients. <a href={SELF_HOST_GUIDE_PATH}>Self-host it from the guide</a>.
+        boundaries, with the same bots on the web, desktop, and mobile clients.
       </p>
       <h3>OpenClaw</h3>
       <p>
@@ -166,8 +158,6 @@ const card = vsCard("openclaw-alternative");
         <li><a href={OPENCLAW_FEATURES_URL}>OpenClaw features</a></li>
         <li><a href={OPENCLAW_SANDBOX_URL}>OpenClaw sandboxing</a></li>
         <li><a href={OPENCLAW_GITHUB_URL}>OpenClaw source</a></li>
-        <li><a href={SELF_HOST_GUIDE_PATH}>VNBot self-host guide</a></li>
-        <li><a href={GITHUB_URL}>VNBot source</a></li>
       </ul>
 
       <FaqSection items={OPENCLAW_FAQS} />
@@ -175,7 +165,6 @@ const card = vsCard("openclaw-alternative");
       <h2>Related</h2>
       <ul>
         <li><a href="/">VNBot home</a></li>
-        <li><a href={SELF_HOST_GUIDE_PATH}>Self-hosted AI agent guide</a></li>
         {OPENCLAW_RELATED.map((item) => (
           <li>
             <a href={item.href}>{item.label}</a>
@@ -184,11 +173,9 @@ const card = vsCard("openclaw-alternative");
       </ul>
 
       <h2 id="selfhost">Get started</h2>
-      <p>Self-host VNBot on your machine, or start on VNBot Cloud.</p>
+      <p>Start on VNBot Cloud, in beta.</p>
       <div class="cta-actions">
-        <Button href={SELF_HOST_GUIDE_PATH}>Self-host guide</Button>
-        <Button href={APP_URL} variant="secondary">VNBot Cloud</Button>
-        <Button href={GITHUB_URL} variant="secondary" external>View on GitHub</Button>
+        <Button href={APP_URL}>VNBot Cloud</Button>
       </div>
     </main>
     <Footer />

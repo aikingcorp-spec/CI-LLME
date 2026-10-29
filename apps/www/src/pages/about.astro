@@ -1,23 +1,19 @@
 ---
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
-import { githubStarsLabel } from "../github";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { GITHUB_URL, SELF_HOST_GUIDE_PATH } from "../site";
-
-const starsLabel = await githubStarsLabel();
 ---
 
 <BaseLayout
   title="About · VNBot"
-  description="How VNBot is building an open source Grok Bot alternative that people can understand and control."
+  description="How VNBot is building a Grok Bot alternative that people can understand and control."
 >
   <div class="container">
-    <Header starsLabel={starsLabel} />
+    <Header />
     <main id="main" class="privacy-copy">
       <h1>About VNBot</h1>
       <p>
-        VNBot is an open source Grok Bot alternative for persistent AI teammates: bots that can use a browser and shell,
+        VNBot is a Grok Bot alternative for persistent AI teammates: bots that can use a browser and shell,
         remember the work around a job, run routines on a schedule, and ask for approval when they reach a
         boundary. It is designed for practical operational work rather than one-off chat.
       </p>
@@ -28,12 +24,10 @@ const starsLabel = await githubStarsLabel();
         lets operators keep model keys, browser sessions, and deployment infrastructure under their own
         control. The same bots and routines work across the web, desktop, and mobile clients.
       </p>
-      <h2>Open by default</h2>
+      <h2>Who is behind it</h2>
       <p>
-        VNBot is maintained by Inbox Zero Inc. and released under the Apache-2.0 license. The project accepts
-        public issues and contributions on <a href={GITHUB_URL}>GitHub</a>. To run VNBot on your own
-        infrastructure, start with the <a href={SELF_HOST_GUIDE_PATH}>self-hosting guide</a>. For product or account help,
-        email <a href="mailto:hello@rakazo.com">hello@rakazo.com</a>.
+        VNBot is maintained by Inbox Zero Inc. For product or account help, email
+        <a href="mailto:hello@rakazo.com">hello@rakazo.com</a>.
       </p>
     </main>
     <Footer />

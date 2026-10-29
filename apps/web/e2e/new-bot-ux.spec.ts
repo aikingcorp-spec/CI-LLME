@@ -45,7 +45,7 @@ test("create opens dialog, then empty chat; picker lists bots; sidebar collapses
 
   await name.fill("New Bot");
   // The vnbot default is neither tab's set.
-  await expect(createDialog.getByRole("tab", { name: "Rakazo", exact: true })).toHaveAttribute(
+  await expect(createDialog.getByRole("tab", { name: "Classic", exact: true })).toHaveAttribute(
     "aria-selected",
     "false",
   );

@@ -1317,6 +1317,10 @@ msgstr "Chọn thư mục"
 msgid "Choose how to use VNBot"
 msgstr "Chọn cách dùng VNBot"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Classic"
+msgstr "Cổ điển"
+
 #: src/lib/localized-provider-hint.ts
 msgid "Claude subscription"
 msgstr ""
@@ -4497,10 +4501,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "Queued"
-msgstr ""
-
-#: src/pages/shell/avatar-studio-popover.tsx
-msgid "Rakazo"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx

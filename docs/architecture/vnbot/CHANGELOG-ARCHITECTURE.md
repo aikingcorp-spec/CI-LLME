@@ -29,6 +29,16 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Invariants affected: no auth redirect depends on request headers. Requests for other addresses cannot lock an invited address out of codes.
 - Links: [ADR 0002](adr/0002-email-code-sign-in-and-invite-list.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
 
+## 2026-10-29 — Rebrand follow-up: Classic icon set, welcome email, marketing site, Android link
+
+- Date: 2026-10-29
+- Pull request: this pull request
+- What changed versus the baseline: the `rakazo` avatar set keeps its internal id and image set, and its tab reads "Classic" (vi "Cổ điển") on web and mobile. The welcome email is Vietnamese first, then English, signed "Đội VNBot", with no outside links except the unsubscribe link, and its subject is "Chào mừng đến với VNBot". `ANDROID_APK_URL` in `packages/contracts` is `https://vnbot.run/#tai-ve`. The web run-error mapping also accepts the legacy "Rakazo credits" message. `apps/www` no longer carries open-source, Apache-2.0, GitHub or self-host-install copy and links: the four blog posts, the self-hosting guide page, the GitHub star pill, repo card, release-based desktop download redirect and setup-prompt button are gone, the site origin is `https://vnbot.run`, and the docs index drops the self-hosting section.
+- Why: VNBot users should not meet the Rakazo name, the upstream repository, or open-source claims, and the Android build is offered from the VNBot site.
+- Files / modules: `packages/contracts` (`client-build.ts`), `packages/auth` (`welcome-email.tsx`), `apps/web` (`avatar-studio-popover.tsx`, `lib/run-error.ts`, catalogs), `apps/mobile` (`bot-settings.tsx`, locale files), `apps/www`, `docs/getting-started.md`.
+- Invariants affected: none. Stored avatar-set ids, package names, `@rakazo/*` imports and `RAKAZO_*` variables are unchanged. Runs that stored the legacy credits text now map to the same translation as the VNBot text.
+- ADR: none
+
 ## 2026-10-29 — User-visible product name is VNBot
 
 - Date: 2026-10-29
