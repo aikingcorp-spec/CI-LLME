@@ -1,8 +1,8 @@
 import { completePairing } from "../gateway-client.js";
 import type { NodeKeyFile } from "../key-file.js";
 import { readKeyFile, writeKeyFile } from "../key-file.js";
-import type { LocalHandler } from "../node-agent.js";
 import { httpForwardHandler, startNodeAgent } from "../node-agent.js";
+import { channelHttpHandler, demoHandler, forwardChannelHandler } from "../node-channel-server.js";
 import { generateKeyPair } from "../pairing.js";
 
 function required(name: string): string {
@@ -40,29 +40,36 @@ const identity = await loadIdentity().catch((err: unknown) => {
   process.exit(1);
 });
 
-const json = (status: number, value: unknown): Awaited<ReturnType<LocalHandler>> => ({
-  status,
-  headers: { "content-type": "application/json" },
-  body: new TextEncoder().encode(JSON.stringify(value)),
-});
-
-const demoHandler: LocalHandler = async (req) => {
-  const url = new URL(req.path, "http://node");
-  if (req.method === "GET" && url.pathname === "/hello") {
-    return json(200, { from: nodeId, pid: process.pid, echo: url.search.slice(1) });
-  }
-  if (req.method === "POST" && url.pathname === "/echo") {
-    return { status: 200, headers: { "content-type": "application/octet-stream" }, body: req.body };
-  }
-  return json(404, { error: "not found" });
-};
-
+if (!identity.gatewayPublicKey || !identity.user)
+  throw new Error("paired node identity requires a gateway key and user");
 const target = process.env.NODE_TARGET;
+const handler = target ? forwardChannelHandler(target) : demoHandler();
+
+const relay = channelHttpHandler(handler);
 const agent = startNodeAgent({
   gatewayUrl,
   nodeId,
   keyPair: identity,
-  handler: target ? httpForwardHandler(target) : demoHandler,
+  handler: target
+    ? httpForwardHandler(target)
+    : async (req) => {
+        const url = new URL(req.path, "http://node");
+        if (req.method === "GET" && url.pathname === "/hello") {
+          return {
+            status: 200,
+            headers: { "content-type": "application/json" },
+            body: new TextEncoder().encode(
+              JSON.stringify({ from: nodeId, pid: process.pid, echo: url.search.slice(1) }),
+            ),
+          };
+        }
+        return relay(req);
+      },
+  channel: {
+    gatewayPublicKey: identity.gatewayPublicKey,
+    allowedUsers: [identity.user],
+    handler,
+  },
 });
 console.log(`node agent ${nodeId} dialing ${gatewayUrl}`);
 

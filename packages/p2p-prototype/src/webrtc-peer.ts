@@ -8,6 +8,12 @@ import { decodeGatewayFrame, encodeFrame, toWsUrl } from "./protocol.js";
 
 export interface PeerOptions {
   signalUrl: string;
+  signal?: AbortSignal;
+  /** Node agent multiplexes signaling over its authenticated outbound link. */
+  signaling?: {
+    send(payload: SignalPayload): void;
+    listen(receive: (payload: SignalPayload) => void): () => void;
+  };
   selfId: string;
   remoteId: string;
   initiator: boolean;
@@ -55,47 +61,64 @@ function createMessageQueue() {
 }
 
 export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
+  o.signal?.throwIfAborted();
   const debug = (message: string): void => {
     if (process.env.P2P_DEBUG === "1") console.error(`[debug ${o.selfId}] ${message}`);
   };
-  const ws = new WebSocket(`${toWsUrl(o.signalUrl)}?peer=${encodeURIComponent(o.selfId)}`, {
-    headers: o.authorization === undefined ? {} : { authorization: o.authorization },
-  });
+  const ws = o.signaling
+    ? undefined
+    : new WebSocket(`${toWsUrl(o.signalUrl)}?peer=${encodeURIComponent(o.selfId)}`, {
+        headers: o.authorization === undefined ? {} : { authorization: o.authorization },
+      });
   const pc = new PeerConnection(o.selfId, {
     iceServers: o.iceServers ?? [],
     iceTransportPolicy: o.iceTransportPolicy,
   });
-  pc.onStateChange((state) => debug(`onStateChange ${state}`));
+  pc.onStateChange((state) => {
+    debug(`onStateChange ${state}`);
+    if (state === "closed" || state === "failed") {
+      rejectOpen(new Error(`peer ${state}`));
+      queue.end();
+    }
+  });
   pc.onIceStateChange((state) => debug(`onIceStateChange ${state}`));
   pc.onGatheringStateChange((state) => debug(`onGatheringStateChange ${state}`));
   pc.onSignalingStateChange((state) => debug(`onSignalingStateChange ${state}`));
   const queue = createMessageQueue();
   let channel: DataChannel | undefined;
   let markOpen = (): void => {};
-  const open = new Promise<void>((resolve) => {
+  let rejectOpen = (_error: Error): void => {};
+  const open = new Promise<void>((resolve, reject) => {
     markOpen = resolve;
+    rejectOpen = reject;
   });
+  void open.catch(() => {});
+  ws?.on("error", (error: Error) => rejectOpen(error));
 
   const attach = (dc: DataChannel): void => {
     channel = dc;
     dc.onMessage((msg) => queue.push(typeof msg === "string" ? msg : msg.toString()));
-    dc.onClosed(() => queue.end());
+    dc.onClosed(() => {
+      queue.end();
+      rejectOpen(new Error("channel closed"));
+    });
     if (dc.isOpen()) markOpen();
     else dc.onOpen(markOpen);
   };
 
   const sendSignal = (payload: SignalPayload): void => {
-    ws.send(encodeFrame({ kind: "signal", from: o.selfId, to: o.remoteId, payload }));
+    ws?.send(encodeFrame({ kind: "signal", from: o.selfId, to: o.remoteId, payload }));
     debug(`send ${payload.type}${payload.type === "candidate" ? ` ${payload.candidate}` : ""}`);
   };
   const outbox: SignalPayload[] = [];
-  ws.on("open", () => {
+  ws?.on("open", () => {
     debug("websocket open");
     for (const payload of outbox.splice(0)) sendSignal(payload);
   });
-  ws.on("close", () => debug("websocket close"));
+  ws?.on("close", () => debug("websocket close"));
   const signal = (payload: SignalPayload): void => {
-    if (ws.readyState === WebSocket.OPEN) sendSignal(payload);
+    if (o.signaling) o.signaling.send(payload);
+    else if (ws?.readyState === WebSocket.OPEN) sendSignal(payload);
     else outbox.push(payload);
   };
   pc.onLocalDescription((sdp, type) =>
@@ -110,27 +133,54 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
 
   const pendingCandidates: Array<{ candidate: string; mid: string }> = [];
   let remoteDescriptionSet = false;
-  ws.on("message", (data: RawData) => {
+  const receive = (p: SignalPayload): void => {
+    if (p.type === "candidate") {
+      if (remoteDescriptionSet) pc.addRemoteCandidate(p.candidate, p.mid);
+      else pendingCandidates.push({ candidate: p.candidate, mid: p.mid });
+      return;
+    }
+    pc.setRemoteDescription(p.sdp, p.type);
+    remoteDescriptionSet = true;
+    for (const c of pendingCandidates.splice(0)) pc.addRemoteCandidate(c.candidate, c.mid);
+  };
+  let unlisten: (() => void) | undefined;
+  let closed = false;
+  const close = (): void => {
+    if (closed) return;
+    closed = true;
+    o.signal?.removeEventListener("abort", close);
+    rejectOpen(new Error("peer closed"));
+    queue.end();
+    channel?.close();
+    pc.close();
+    unlisten?.();
+    ws?.close();
+  };
+  o.signal?.addEventListener("abort", close, { once: true });
+  try {
+    unlisten = o.signaling?.listen(receive);
+  } catch (error) {
+    close();
+    throw error;
+  }
+  ws?.on("message", (data: RawData) => {
     try {
       const frame = decodeGatewayFrame(data.toString());
-      if (frame.kind !== "signal") return;
-      const p = frame.payload;
-      debug(`receive ${p.type}${p.type === "candidate" ? ` ${p.candidate}` : ""}`);
-      if (p.type === "candidate") {
-        if (remoteDescriptionSet) pc.addRemoteCandidate(p.candidate, p.mid);
-        else pendingCandidates.push({ candidate: p.candidate, mid: p.mid });
-        return;
-      }
-      pc.setRemoteDescription(p.sdp, p.type);
-      remoteDescriptionSet = true;
-      for (const c of pendingCandidates.splice(0)) pc.addRemoteCandidate(c.candidate, c.mid);
+      if (frame.kind === "signal" && frame.from === o.remoteId) receive(frame.payload);
     } catch {
-      ws.close(1003, "bad frame");
+      ws?.close(1003, "bad frame");
     }
   });
 
   if (o.initiator) attach(pc.createDataChannel(CHANNEL_LABEL));
-  await once(ws, "open");
+  if (ws) {
+    try {
+      await once(ws, "open", { signal: o.signal });
+    } catch (error) {
+      close();
+      throw error;
+    }
+  }
 
   return {
     open,
@@ -144,11 +194,6 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
       if (!channel?.isOpen()) throw new Error("data channel is not open");
       channel.sendMessage(text);
     },
-    close: () => {
-      queue.end();
-      channel?.close();
-      pc.close();
-      ws.close();
-    },
+    close,
   };
 }

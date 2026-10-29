@@ -21,7 +21,8 @@ export type SignalPayload =
   | { type: "candidate"; candidate: string; mid: string };
 export type Signal = { kind: "signal"; from: string; to: string; payload: SignalPayload };
 export type NodeFrame = Hello | RelayResponse | Signal;
-export type GatewayFrame = Welcome | RelayRequest | Signal;
+export type RelayCancel = { kind: "cancel"; id: string };
+export type GatewayFrame = Welcome | RelayRequest | RelayCancel | Signal;
 
 type Fields = Record<string, unknown>;
 
@@ -79,6 +80,8 @@ function decodeFrame(raw: string): NodeFrame | GatewayFrame {
   }
   if (!isFields(v)) return fail("not an object");
   switch (v.kind) {
+    case "cancel":
+      return { kind: "cancel", id: str(v, "id") };
     case "request":
       return {
         kind: "request",
@@ -113,7 +116,9 @@ export function encodeFrame(f: NodeFrame | GatewayFrame): string {
 
 export function decodeNodeFrame(raw: string): NodeFrame {
   const f = decodeFrame(raw);
-  return f.kind === "welcome" || f.kind === "request" ? fail(`${f.kind} is not a node frame`) : f;
+  return f.kind === "welcome" || f.kind === "request" || f.kind === "cancel"
+    ? fail(`${f.kind} is not a node frame`)
+    : f;
 }
 
 export function decodeGatewayFrame(raw: string): GatewayFrame {

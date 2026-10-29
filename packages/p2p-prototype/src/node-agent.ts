@@ -1,15 +1,22 @@
 import type { RawData } from "ws";
 import { WebSocket } from "ws";
+import type { NodeAuth } from "./node-auth.js";
+import { createNodeAuth } from "./node-auth.js";
+import type { NodeChannelHandler } from "./node-channel-server.js";
+import { createNodeChannelServer } from "./node-channel-server.js";
 import type { KeyPair } from "./pairing.js";
 import { signNodeProof } from "./pairing.js";
-import type { NodeId, RelayRequest } from "./protocol.js";
+import type { NodeId, RelayRequest, SignalPayload } from "./protocol.js";
 import { decodeGatewayFrame, encodeFrame, toWsUrl } from "./protocol.js";
+import type { DataPeer } from "./webrtc-peer.js";
+import { connectPeer } from "./webrtc-peer.js";
 
 export type LocalHandler = (req: {
   method: string;
   path: string;
   headers: Record<string, string>;
   body: Uint8Array;
+  signal?: AbortSignal;
 }) => Promise<{ status: number; headers: Record<string, string>; body: Uint8Array }>;
 
 export interface NodeAgentOptions {
@@ -18,12 +25,18 @@ export interface NodeAgentOptions {
   /** The node's own key pair; the hello is signed with it on every connect. */
   keyPair: KeyPair;
   handler: LocalHandler;
+  channel?: {
+    gatewayPublicKey: string;
+    allowedUsers: Iterable<string>;
+    handler: NodeChannelHandler;
+  };
   reconnectMs?: number;
   clock?: () => number;
 }
 export interface NodeAgent {
   close(): Promise<void>;
   connected(): boolean;
+  auth?: NodeAuth;
 }
 
 const DEFAULT_RECONNECT_MS = 500;
@@ -46,16 +59,81 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
   let welcomed = false;
   let stopped = false;
 
+  const receivers = new Map<string, (payload: SignalPayload) => void>();
+  const peers = new Set<DataPeer>();
+  const auth = o.channel
+    ? createNodeAuth({
+        nodeId: o.nodeId,
+        keyPair: o.keyPair,
+        gatewayPublicKey: o.channel.gatewayPublicKey,
+        allowedUsers: o.channel.allowedUsers,
+        clock,
+        onRevoke: (session) => server?.onRevoke(session),
+      })
+    : undefined;
+  const server = auth && o.channel ? createNodeChannelServer(auth, o.channel.handler) : undefined;
+  const stopPeers = (): void => {
+    for (const controller of requests.values()) controller.abort();
+    for (const peer of peers) peer.close();
+    peers.clear();
+    receivers.clear();
+  };
+  const signalPeer = (ws: WebSocket, from: string, payload: SignalPayload): void => {
+    const receive = receivers.get(from);
+    if (receive) {
+      receive(payload);
+      return;
+    }
+    if (!server) return;
+    void connectPeer({
+      signalUrl: `${o.gatewayUrl}/signal`,
+      selfId: o.nodeId,
+      remoteId: from,
+      initiator: false,
+      signaling: {
+        send: (answer) => {
+          if (ws.readyState === WebSocket.OPEN)
+            ws.send(encodeFrame({ kind: "signal", from: o.nodeId, to: from, payload: answer }));
+        },
+        listen: (listener) => {
+          receivers.set(from, listener);
+          listener(payload);
+          return () => {
+            if (receivers.get(from) === listener) receivers.delete(from);
+          };
+        },
+      },
+    })
+      .then(async (peer) => {
+        if (stopped || ws.readyState !== WebSocket.OPEN) {
+          peer.close();
+          return;
+        }
+        peers.add(peer);
+        try {
+          await server.accept(peer);
+        } finally {
+          peers.delete(peer);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const requests = new Map<string, AbortController>();
   const answer = async (ws: WebSocket, req: RelayRequest): Promise<void> => {
+    const controller = new AbortController();
+    requests.set(req.id, controller);
     const { status, headers, body } = await o
       .handler({
+        signal: controller.signal,
         method: req.method,
         path: req.path,
         headers: req.headers,
         body: Buffer.from(req.body, "base64"),
       })
       .catch(() => ({ status: 500, headers: {}, body: new Uint8Array() }));
-    if (ws.readyState === WebSocket.OPEN) {
+    requests.delete(req.id);
+    if (!controller.signal.aborted && ws.readyState === WebSocket.OPEN) {
       const encoded = Buffer.from(body).toString("base64");
       ws.send(encodeFrame({ kind: "response", id: req.id, status, headers, body: encoded }));
     }
@@ -74,6 +152,10 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
         if (frame.kind === "welcome") {
           welcomed = true;
           failures = 0;
+        } else if (frame.kind === "cancel") {
+          requests.get(frame.id)?.abort();
+        } else if (frame.kind === "signal") {
+          signalPeer(ws, frame.from, frame.payload);
         } else if (frame.kind === "request") {
           void answer(ws, frame);
         }
@@ -84,6 +166,7 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
     ws.on("error", () => {});
     ws.on("close", (code) => {
       welcomed = false;
+      stopPeers();
       if (stopped || code === CLOSE_UNAUTHORIZED) return;
       const delay = Math.min(baseMs * 2 ** failures, Math.max(baseMs, MAX_BACKOFF_MS));
       failures += 1;
@@ -95,8 +178,10 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
 
   return {
     connected: () => welcomed,
+    auth,
     close: async () => {
       stopped = true;
+      stopPeers();
       clearTimeout(timer);
       const ws = socket;
       if (ws === undefined || ws.readyState === WebSocket.CLOSED) return;
@@ -115,6 +200,7 @@ export function httpForwardHandler(targetOrigin: string): LocalHandler {
     delete headers.host;
     const res = await fetch(new URL(req.path, targetOrigin), {
       method: req.method,
+      signal: req.signal,
       headers,
       body: BODYLESS_METHODS.has(req.method) ? undefined : req.body,
     });

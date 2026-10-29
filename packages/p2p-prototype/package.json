@@ -24,6 +24,21 @@
       "types": "./src/webrtc-peer.ts",
       "development": "./src/webrtc-peer.ts",
       "default": "./src/webrtc-peer.ts"
+    },
+    "./client-transport": {
+      "types": "./src/client-transport.ts",
+      "development": "./src/client-transport.ts",
+      "default": "./src/client-transport.ts"
+    },
+    "./channel-protocol": {
+      "types": "./src/channel-protocol.ts",
+      "development": "./src/channel-protocol.ts",
+      "default": "./src/channel-protocol.ts"
+    },
+    "./node-channel-server": {
+      "types": "./src/node-channel-server.ts",
+      "development": "./src/node-channel-server.ts",
+      "default": "./src/node-channel-server.ts"
     }
   },
   "scripts": {

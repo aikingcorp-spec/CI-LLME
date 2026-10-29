@@ -70,7 +70,7 @@ GATEWAY_URL=http://127.0.0.1:8787 USER_TOKEN=change-me \
   pnpm exec tsx src/bin/turn-demo.ts --self peer-a --remote demo --initiator --relay
 ```
 
-Client TURN credentials expire no later than the assertion. The responder authenticates with its node key. Each side prints candidate counts and the selected pair; the client prints five ping RTTs. Credentials and keys are never printed.
+Client TURN credentials expire no later than the assertion. Node TURN credentials are capped at the 60-second session lifetime; both are also capped at the configured TTL. The responder authenticates with its node key. Each side prints candidate counts and the selected pair; the client prints five ping RTTs. Credentials and keys are never printed.
 
 Probe an actual TURN Allocate over UDP without WebRTC:
 
@@ -87,4 +87,21 @@ The probe handles the 401 realm/nonce challenge and long-term MESSAGE-INTEGRITY.
 
 `pnpm check` and `pnpm test` run the type check and offline tests, including published STUN integrity vectors. No live TURN server is required for the suite.
 
-Without TURN, `iceServers` defaults to `[]`: host candidates work on the same machine or LAN. The demos exercise authenticated signaling; they do not integrate the node bearer into Rakazo RPC or implement the app's `ClientTransport`. There is no subscribe streaming over the HTTP relay. The gateway stores no chat and logs method, path, and status only. Pairing assumes a trusted gateway connection (loopback here; HTTPS/WSS for remote use).
+Without TURN, `iceServers` defaults to `[]`: host candidates work on the same machine or LAN. The transports implement the ADR seam inside this prototype; the production apps and Better Auth are not integrated. HTTP relay subscriptions are buffered. The gateway stores no chat and logs method, path, and status only. Pairing assumes a trusted gateway connection (loopback here; HTTPS/WSS for remote use).
+
+## ClientTransport
+
+Start the gateway and paired node agent using the commands above, then run:
+
+```sh
+GATEWAY_URL=http://127.0.0.1:8787 USER_TOKEN=change-me NODE_ID=demo \
+  pnpm exec tsx src/bin/transport-demo.ts
+```
+
+The demo calls `echo` and subscribes to `ticks` through both `HttpClientTransport` and `DataChannelClientTransport`. It prints response status/body, chunk timestamps, and the selected ICE candidate pair. The default node handler emits three `data: tick i\n\n` event-stream chunks. Both paths share the node's handler. `NODE_TARGET` forwards RPC to a local API instead; the demo procedures require the default demo handler.
+
+`HttpClientTransport({ baseUrl, nodeId, userToken, fetch? })` POSTs to the authenticated gateway HTTP relay. This v0 relay buffers the entire response: `subscribe` yields one combined chunk after completion, so timestamps do not show individual tick arrival. Abort stops the consumer and sends relay cancellation to the node. True HTTP streaming is a v0 limitation.
+
+`DataChannelClientTransport.connect({ signalUrl, selfId, remoteId, initiator: true, authorization: "Assertion …", assertion, signal? })` uses `connectPeer`. Send only the short-lived gateway assertion through signaling. The data channel exchanges `hello`/`welcome`, then sends the node-issued bearer on every request, chunk, response, and cancellation. The node validates each inbound bearer; local revocation or assertion expiry closes the channel and cancels subscriptions. `close()` releases the peer. `signal` on connection setup cancels connection establishment; each `ClientCall.signal` cancels its request independently.
+
+The node agent receives authenticated signaling on its existing outbound gateway link and multiplexes peers by client id. The gateway carries signaling and the explicit v0 HTTP relay only; it never receives the data-channel bearer. Host ICE candidates suffice for the localhost integration tests; cross-NAT operation needs ICE/TURN configuration as in the TURN demo. No TURN server is required for tests.

@@ -181,10 +181,10 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
   };
 
   const deliverSignal = (from: string, to: string, raw: string, nodeId: NodeId): void => {
-    // Signals go to /signal sockets only; a node's agent link carries relayed HTTP, not WebRTC.
+    // Prefer a dedicated signaling peer; otherwise wake the node agent.
     const entry = peers.get(to);
     if (entry !== undefined && entry.nodeId !== nodeId) return;
-    const target = entry?.socket;
+    const target = entry?.socket ?? (to === nodeId ? nodes.get(nodeId) : undefined);
     if (target?.readyState === WebSocket.OPEN) {
       target.send(raw);
       return;
@@ -434,9 +434,14 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     const answer = await new Promise<{ status: number; response?: RelayResponse }>((resolve) => {
       const settle = (status: number, response?: RelayResponse): void => {
         clearTimeout(entry.timer);
+        res.off("close", cancel);
+        if (!response && node.readyState === WebSocket.OPEN)
+          node.send(encodeFrame({ kind: "cancel", id: relay.id }));
         pending.delete(relay.id);
         resolve({ status, response });
       };
+      const cancel = (): void => settle(499);
+      res.once("close", cancel);
       const timer = setTimeout(() => settle(504), timeoutMs);
       const entry: PendingRequest = { nodeId, settle, timer };
       pending.set(relay.id, entry);
@@ -460,7 +465,7 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     if (!peer) return respond(res, 400, "bad peer");
     if (peer !== caller.peerId) return respond(res, 403, "peer does not match credentials");
     const now = clock();
-    let config = o.turn;
+    let config = { ...o.turn, ttlSeconds: Math.min(o.turn.ttlSeconds, ASSERTION_TTL_MS / 1000) };
     if (caller.kind === "client") {
       // TURN access must not outlive the assertion that authorised it.
       const remainingSeconds = Math.floor((caller.exp - now) / 1000);

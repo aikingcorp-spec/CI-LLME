@@ -146,6 +146,21 @@ describe("gateway turn credentials", () => {
     expect(JSON.stringify(body)).not.toContain(turn.secret);
   });
 
+  it.each([600, 15])(
+    "caps node TURN credentials at session and configured TTL (%i)",
+    async (ttlSeconds) => {
+      gateway = await startGateway({ port: 0, ...options(), turn: { ...turn, ttlSeconds } });
+      const res = await fetch(`${gateway.url}/turn-credentials?peer=n1`, {
+        headers: { authorization: nodeAuthorization(keyPair, "n1") },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as TurnCredentials;
+      expect(body.ttlSeconds).toBeGreaterThan(0);
+      expect(body.ttlSeconds).toBeLessThanOrEqual(60);
+      expect(body.ttlSeconds).toBeLessThanOrEqual(ttlSeconds);
+    },
+  );
+
   it("returns 404 when turn is not configured", async () => {
     gateway = await startGateway({ port: 0, ...options() });
     const res = await fetch(`${gateway.url}/turn-credentials?peer=peer-a`, {
