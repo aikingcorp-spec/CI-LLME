@@ -5,6 +5,8 @@ import { urlSite } from "@rakazo/core/egress";
 import LinkifyIt from "linkify-it";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
+import type { LinkFavicons } from "./markdown-contexts";
+import { LinkFaviconsContext } from "./markdown-contexts";
 
 export type ChatMarkdownProps = {
   children: string;
@@ -321,8 +323,7 @@ export function remoteMarkdownImage(url: string): { href: string; host: string }
   }
 }
 
-/** Whether remote markdown images load without a tap. Apps provide the reader's device setting. */
-export const RemoteImagesContext = createContext(false);
+export { RemoteImagesContext } from "./markdown-contexts";
 
 // Images the reader chose to load stay loaded for the session, even after a bubble remounts.
 const loadedRemoteImages = new Set<string>();
@@ -405,20 +406,8 @@ export function linkFaviconOrigin(href: string): string | undefined {
   return httpUrl(href)?.origin;
 }
 
-/**
- * Where link icons come from. Apps load them through the Rakazo API, which fetches and caches
- * them, so a device never contacts the linked site or an icon service. `globe` is the native
- * fallback glyph; web draws its own.
- */
-export type LinkFavicons = {
-  /** Cache scope for the API serving these answers. */
-  endpoint?: string;
-  /** `retry` means the server was too busy to look, not that the site has no icon. */
-  load(origin: string): Promise<{ icon: string | null; retry?: boolean }>;
-  globe?: ReactNode;
-};
-
-export const LinkFaviconsContext = createContext<LinkFavicons | null>(null);
+export type { LinkFavicons } from "./markdown-contexts";
+export { LinkFaviconsContext } from "./markdown-contexts";
 
 /** True while a reply streams: a half-written autolink host must not be looked up. */
 export const LinkFaviconsPausedContext = createContext(false);

@@ -1,7 +1,7 @@
 import { Trans as LocalizedText } from "@lingui/react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { LinkFavicons } from "@rakazo/chat-ui/web";
-import { LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web";
+import type { LinkFavicons } from "@rakazo/chat-ui/web-providers";
+import { LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web-providers";
 import { analyticsScreen } from "@rakazo/core";
 import { Button } from "@rakazo/ui-web";
 import {
@@ -43,10 +43,10 @@ import {
   showSessionUnavailable,
 } from "./lib/session-gate";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
+
 import { IntegrationCallbackPage } from "./pages/IntegrationCallback";
-import { IntegrationSetupPage } from "./pages/IntegrationSetup";
+
 import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
-import { ShellPage } from "./pages/Shell";
 
 const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => module.AuthPage));
 const OnboardingPage = lazyComponent(() =>
@@ -62,6 +62,12 @@ const BoardPage = lazyComponent(() => import("./pages/Board").then((module) => m
 const NavLinkPage = lazyComponent(() =>
   import("./pages/NavLinkPage").then((module) => module.NavLinkPage),
 );
+
+const IntegrationSetupPage = lazyComponent(() =>
+  import("./pages/IntegrationSetup").then((module) => module.IntegrationSetupPage),
+);
+
+const ShellPage = lazyComponent(() => import("./pages/Shell").then((module) => module.ShellPage));
 
 function SsoCallbackPage() {
   useEffect(() => {
