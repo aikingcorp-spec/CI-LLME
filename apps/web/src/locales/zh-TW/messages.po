@@ -4543,6 +4543,10 @@ msgstr "上一組設定區段"
 msgid "Priority"
 msgstr "優先順序"
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "私人"
@@ -5519,6 +5523,10 @@ msgstr "技能會加入所有機器人共用的技能庫。"
 msgid "Skip"
 msgstr "跳過"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "跳過或使用部署金鑰"
@@ -5764,6 +5772,10 @@ msgstr "未啟用 Teams"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Terms"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx

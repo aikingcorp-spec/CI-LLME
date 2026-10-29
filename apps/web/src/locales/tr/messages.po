@@ -4542,6 +4542,10 @@ msgstr ""
 msgid "Priority"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "Özel"
@@ -5518,6 +5522,10 @@ msgstr "Beceriler tüm botlarınızın paylaştığı kitaplığa eklenir."
 msgid "Skip"
 msgstr "Atla"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Atla veya dağıtım anahtarı kullan"
@@ -5763,6 +5771,10 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Terms"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx

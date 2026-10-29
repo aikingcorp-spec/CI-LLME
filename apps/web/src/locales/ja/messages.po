@@ -4542,6 +4542,10 @@ msgstr "前の設定セクション"
 msgid "Priority"
 msgstr "優先度"
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "非公開"
@@ -5518,6 +5522,10 @@ msgstr "スキルはすべてのボットで共有するライブラリに追加
 msgid "Skip"
 msgstr "スキップ"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "スキップまたはデプロイキーを使用"
@@ -5763,6 +5771,10 @@ msgstr "Teamsが有効になっていません"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Terms"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx

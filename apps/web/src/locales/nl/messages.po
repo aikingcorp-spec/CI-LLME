@@ -4542,6 +4542,10 @@ msgstr ""
 msgid "Priority"
 msgstr "Prioriteit"
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "Privé"
@@ -5518,6 +5522,10 @@ msgstr "Skills komen in de bibliotheek die al je bots delen."
 msgid "Skip"
 msgstr "Overslaan"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Overslaan of deploysleutel"
@@ -5763,6 +5771,10 @@ msgstr "Teams is niet ingeschakeld"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Terms"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx

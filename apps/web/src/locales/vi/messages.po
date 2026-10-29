@@ -4542,6 +4542,10 @@ msgstr "Các mục cài đặt trước"
 msgid "Priority"
 msgstr "Độ ưu tiên"
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr "Quyền riêng tư"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "Riêng tư"
@@ -5518,6 +5522,10 @@ msgstr "Kỹ năng vào thư viện mà mọi bot của bạn dùng chung."
 msgid "Skip"
 msgstr "Bỏ qua"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr "Bỏ qua lúc này"
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Bỏ qua hoặc dùng khóa triển khai"
@@ -5764,6 +5772,10 @@ msgstr "Teams chưa được bật"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
 msgstr "Giọt nước"
+
+#: src/pages/Auth.tsx
+msgid "Terms"
+msgstr "Điều khoản"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Test"
