@@ -3,7 +3,12 @@ import { createRouterClient } from "@orpc/server";
 import { pluginPreviewDto, previewPluginInstall } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { BANNED_CATALOG_TERMS, sanitizeCatalogText } from "./catalog-text.js";
+import {
+  BANNED_CATALOG_TERMS,
+  sanitizeAgentSkill,
+  sanitizeCatalogText,
+  withCatalogLocale,
+} from "./catalog-text.js";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
 
@@ -272,5 +277,30 @@ describe("whole Skills screen responses", () => {
       description: row.description,
       content: skillContent,
     });
+  });
+});
+
+describe("catalog description locale", () => {
+  const skill = {
+    source: "builtin",
+    description: "Adversarial review of a diff/PR/plan. Review only; never applies fixes.",
+  } as unknown as Parameters<typeof sanitizeAgentSkill>[0];
+
+  it("shows known registry descriptions in Vietnamese by default and for vi", () => {
+    expect(sanitizeAgentSkill(skill).description).toBe(
+      "Rà soát phản biện một diff, PR hoặc kế hoạch. Chỉ rà soát, không tự sửa.",
+    );
+    expect(withCatalogLocale("vi", () => sanitizeAgentSkill(skill).description)).toMatch(
+      /^Rà soát/,
+    );
+  });
+
+  it("keeps English for other locales and for unknown text", () => {
+    expect(withCatalogLocale("en", () => sanitizeAgentSkill(skill).description)).toBe(
+      skill.description,
+    );
+    expect(sanitizeAgentSkill({ ...skill, description: "Brand new entry." }).description).toBe(
+      "Brand new entry.",
+    );
   });
 });

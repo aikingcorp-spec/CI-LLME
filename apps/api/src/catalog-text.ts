@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type {
   AgentSkill,
   CapabilityInstall,
@@ -7,6 +8,7 @@ import type {
 } from "@rakazo/contracts";
 import { PluginPreviewSchema } from "@rakazo/contracts";
 import { BANNED_CATALOG_TERMS } from "@rakazo/core/banned-brand";
+import { CATALOG_DESCRIPTIONS_VI } from "./catalog-descriptions-vi.js";
 
 /** Names VNBot must never show in catalog text; the term list lives in @rakazo/core/banned-brand. */
 export { BANNED_CATALOG_TERMS } from "@rakazo/core/banned-brand";
@@ -22,6 +24,24 @@ const REWRITES: Array<[RegExp, string]> = [
 
 /** Third-party catalogs (integrations.sh, plugin registries) describe themselves for
  * other agent hosts. Reword those mentions to VNBot at the API boundary. */
+const uiLocale = new AsyncLocalStorage<string | null>();
+
+/** Runs a request with the UI locale the web client sent (x-vnbot-ui-locale). */
+export function withCatalogLocale<T>(locale: string | null, run: () => T): T {
+  return uiLocale.run(locale, run);
+}
+
+/** VNBot is Vietnamese-first: without a locale header, descriptions are shown in Vietnamese. */
+function localizeDescription(english: string): string {
+  const locale = uiLocale.getStore() ?? "vi";
+  if (!locale.toLowerCase().startsWith("vi")) return english;
+  return CATALOG_DESCRIPTIONS_VI[english] ?? english;
+}
+
+function sanitizeDescription(value: string): string {
+  return localizeDescription(sanitizeCatalogText(value));
+}
+
 export function sanitizeCatalogText(value: string): string {
   let text = value;
   for (const [pattern, replacement] of REWRITES) text = text.replace(pattern, replacement);
@@ -39,7 +59,7 @@ export function sanitizePluginCatalog(catalog: PluginMarketplaceCatalog): Plugin
     entries: catalog.entries.map((entry) => ({
       ...entry,
       displayName: sanitizeCatalogText(entry.displayName),
-      description: sanitizeCatalogText(entry.description),
+      description: sanitizeDescription(entry.description),
       keywords: entry.keywords.filter((keyword) => !BANNED_CATALOG_TERMS.test(keyword)),
       category: entry.category === null ? null : sanitizeCatalogText(entry.category),
     })),
@@ -67,14 +87,14 @@ export function sanitizePluginPreview(preview: PluginPreview): PluginPreview {
   return {
     ...preview,
     name: sanitizeCatalogText(preview.name),
-    description: sanitizeCatalogText(preview.description),
+    description: sanitizeDescription(preview.description),
     author: preview.author === null ? null : sanitizeCatalogText(preview.author),
     license: preview.license === null ? null : sanitizeCatalogText(preview.license),
     keywords: preview.keywords.filter((keyword) => !BANNED_CATALOG_TERMS.test(keyword)),
     skills: preview.skills.map((skill) => ({
       ...skill,
       name: sanitizeCatalogText(skill.name),
-      description: sanitizeCatalogText(skill.description),
+      description: sanitizeDescription(skill.description),
     })),
     mcpServers: preview.mcpServers.map((server) => ({
       ...server,
@@ -104,7 +124,7 @@ export function sanitizeAgentSkill<T extends Omit<AgentSkill, "content">>(skill:
   if (skill.source === "user") return skill;
   return {
     ...skill,
-    description: sanitizeCatalogText(skill.description),
+    description: sanitizeDescription(skill.description),
     ...("content" in skill && typeof skill.content === "string"
       ? { content: sanitizeCatalogText(skill.content) }
       : {}),
