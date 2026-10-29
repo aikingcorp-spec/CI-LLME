@@ -1,5 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup } from "node-datachannel";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
 import { connectPeer } from "./webrtc-peer.js";

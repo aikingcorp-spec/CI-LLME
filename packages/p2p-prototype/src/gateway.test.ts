@@ -6,6 +6,7 @@ import type { LocalHandler, NodeAgent } from "./node-agent.js";
 import { startNodeAgent } from "./node-agent.js";
 import { encodeFrame, toWsUrl } from "./protocol.js";
 import { waitFor } from "./test-util.js";
+import type { TurnCredentials } from "./turn-credentials.js";
 
 const TOKEN = "test-token";
 
@@ -91,5 +92,124 @@ describe("gateway and node agent", () => {
       nodeTokens: new Map([["n1", TOKEN]]),
     });
     await waitFor(() => agent?.connected() === true);
+  });
+});
+
+describe("gateway turn credentials", () => {
+  const turn = { secret: "s3cret", urls: ["turn:192.0.2.10:3478?transport=udp"], ttlSeconds: 600 };
+  let gateway: Gateway | undefined;
+
+  beforeEach(() => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    await gateway?.close();
+    gateway = undefined;
+    vi.restoreAllMocks();
+  });
+
+  it("binds to loopback by default", async () => {
+    gateway = await startGateway({ port: 0, nodeTokens: new Map(), turn });
+    expect(new URL(gateway.url).hostname).toBe("127.0.0.1");
+  });
+
+  it("issues short-lived credentials without caching", async () => {
+    gateway = await startGateway({ port: 0, nodeTokens: new Map(), turn });
+    const res = await fetch(`${gateway.url}/turn-credentials?peer=peer-a`);
+    const body = (await res.json()) as TurnCredentials;
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(body.username).toMatch(/^\d+:peer-a$/);
+    expect(body.credential).toMatch(/^[A-Za-z0-9+/]{27}=$/);
+    expect(body.urls).toEqual(turn.urls);
+    expect(body.ttlSeconds).toBe(600);
+    expect(JSON.stringify(body)).not.toContain(turn.secret);
+  });
+
+  it("returns 404 when turn is not configured", async () => {
+    gateway = await startGateway({ port: 0, nodeTokens: new Map() });
+    const res = await fetch(`${gateway.url}/turn-credentials?peer=peer-a`);
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 for a missing or invalid peer", async () => {
+    gateway = await startGateway({ port: 0, nodeTokens: new Map(), turn });
+    for (const query of ["", "?peer=", "?peer=a%3Ab"]) {
+      const res = await fetch(`${gateway.url}/turn-credentials${query}`);
+      expect(res.status).toBe(400);
+    }
+  });
+});
+
+describe("gateway pending signals", () => {
+  let gateway: Gateway | undefined;
+  const sockets: WebSocket[] = [];
+
+  beforeEach(() => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    for (const ws of sockets.splice(0)) ws.terminate();
+    await gateway?.close();
+    gateway = undefined;
+    vi.restoreAllMocks();
+  });
+
+  async function connectPeer(peer: string): Promise<{ ws: WebSocket; received: string[] }> {
+    const ws = new WebSocket(`${toWsUrl(gateway?.url ?? "")}/signal?peer=${peer}`);
+    sockets.push(ws);
+    const received: string[] = [];
+    ws.on("message", (data) => received.push(data.toString()));
+    await new Promise((resolve) => ws.once("open", resolve));
+    return { ws, received };
+  }
+
+  const signal = (to: string, sdp: string): string =>
+    encodeFrame({ kind: "signal", from: "", to, payload: { type: "offer", sdp } });
+
+  it("drops queued signals that outlive the ttl", async () => {
+    gateway = await startGateway({ port: 0, nodeTokens: new Map(), pendingSignalTtlMs: 100 });
+    const a = await connectPeer("a");
+    a.ws.send(signal("b", "stale"));
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    a.ws.send(signal("b", "fresh"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const b = await connectPeer("b");
+    await waitFor(() => b.received.length > 0);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(b.received.map((raw) => JSON.parse(raw).payload.sdp)).toEqual(["fresh"]);
+  });
+
+  it("delivers queued signals within the ttl", async () => {
+    gateway = await startGateway({ port: 0, nodeTokens: new Map() });
+    const a = await connectPeer("a");
+    a.ws.send(signal("b", "offer"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const b = await connectPeer("b");
+    await waitFor(() => b.received.length === 1);
+
+    expect(JSON.parse(b.received[0] ?? "")).toMatchObject({ from: "a", to: "b" });
+  });
+
+  it("drops signals a peer queued for others when its socket closes", async () => {
+    gateway = await startGateway({ port: 0, nodeTokens: new Map() });
+    const a = await connectPeer("a");
+    a.ws.send(signal("b", "dead-session"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    a.ws.close();
+    await new Promise((resolve) => a.ws.once("close", resolve));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const b = await connectPeer("b");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(b.received).toEqual([]);
   });
 });

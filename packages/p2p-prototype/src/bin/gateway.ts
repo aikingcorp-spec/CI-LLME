@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { startGateway } from "../gateway.js";
+import type { TurnConfig } from "../turn-credentials.js";
 
 const tokens = process.env.NODE_TOKENS;
 if (!tokens) {
@@ -16,10 +18,33 @@ for (const pair of tokens.split(",")) {
   nodeTokens.set(id, token);
 }
 
+function readTurnConfig(): TurnConfig | undefined {
+  const urls = process.env.TURN_URLS;
+  const secretFile = process.env.TURN_SECRET_FILE;
+  if (!urls && !secretFile) return undefined;
+  if (!urls || !secretFile) {
+    console.error("TURN_URLS and TURN_SECRET_FILE must be set together");
+    process.exit(1);
+  }
+  const ttlSeconds = Number(process.env.TURN_TTL_SECONDS ?? 600);
+  const config = {
+    secret: readFileSync(secretFile, "utf8").trim(),
+    urls: urls.split(",").map((u) => u.trim()),
+    ttlSeconds,
+  };
+  if (!config.secret) {
+    console.error("TURN_SECRET_FILE is empty");
+    process.exit(1);
+  }
+  console.log(`turn credentials enabled, ttl=${ttlSeconds}, urls=${config.urls.join(",")}`);
+  return config;
+}
+
 const gateway = await startGateway({
   port: Number(process.env.PORT ?? 8787),
   host: process.env.HOST,
   nodeTokens,
+  turn: readTurnConfig(),
 });
 console.log(`gateway listening at ${gateway.url}`);
 

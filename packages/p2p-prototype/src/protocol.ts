@@ -113,9 +113,7 @@ export function decodeNodeFrame(raw: string): NodeFrame {
 
 export function decodeGatewayFrame(raw: string): GatewayFrame {
   const f = decodeFrame(raw);
-  return f.kind === "hello" || f.kind === "response"
-    ? fail(`${f.kind} is not a gateway frame`)
-    : f;
+  return f.kind === "hello" || f.kind === "response" ? fail(`${f.kind} is not a gateway frame`) : f;
 }
 
 export function toWsUrl(url: string): string {

@@ -1,5 +1,5 @@
 import { once } from "node:events";
-import type { DataChannel } from "node-datachannel";
+import type { DataChannel, IceServer } from "node-datachannel";
 import { PeerConnection } from "node-datachannel";
 import type { RawData } from "ws";
 import { WebSocket } from "ws";
@@ -11,12 +11,15 @@ export interface PeerOptions {
   selfId: string;
   remoteId: string;
   initiator: boolean;
-  iceServers?: string[];
+  iceServers?: Array<string | IceServer>;
+  iceTransportPolicy?: "all" | "relay";
 }
 export interface DataPeer {
   send(text: string): void;
   messages: AsyncIterable<string>;
   open: Promise<void>;
+  localCandidates: string[];
+  selectedPair(): { local: string; remote: string } | null;
   close(): void;
 }
 
@@ -50,8 +53,18 @@ function createMessageQueue() {
 }
 
 export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
+  const debug = (message: string): void => {
+    if (process.env.P2P_DEBUG === "1") console.error(`[debug ${o.selfId}] ${message}`);
+  };
   const ws = new WebSocket(`${toWsUrl(o.signalUrl)}?peer=${encodeURIComponent(o.selfId)}`);
-  const pc = new PeerConnection(o.selfId, { iceServers: o.iceServers ?? [] });
+  const pc = new PeerConnection(o.selfId, {
+    iceServers: o.iceServers ?? [],
+    iceTransportPolicy: o.iceTransportPolicy,
+  });
+  pc.onStateChange((state) => debug(`onStateChange ${state}`));
+  pc.onIceStateChange((state) => debug(`onIceStateChange ${state}`));
+  pc.onGatheringStateChange((state) => debug(`onGatheringStateChange ${state}`));
+  pc.onSignalingStateChange((state) => debug(`onSignalingStateChange ${state}`));
   const queue = createMessageQueue();
   let channel: DataChannel | undefined;
   let markOpen = (): void => {};
@@ -67,19 +80,28 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     else dc.onOpen(markOpen);
   };
 
-  const outbox: string[] = [];
+  const sendSignal = (payload: SignalPayload): void => {
+    ws.send(encodeFrame({ kind: "signal", from: o.selfId, to: o.remoteId, payload }));
+    debug(`send ${payload.type}${payload.type === "candidate" ? ` ${payload.candidate}` : ""}`);
+  };
+  const outbox: SignalPayload[] = [];
   ws.on("open", () => {
-    for (const frame of outbox.splice(0)) ws.send(frame);
+    debug("websocket open");
+    for (const payload of outbox.splice(0)) sendSignal(payload);
   });
+  ws.on("close", () => debug("websocket close"));
   const signal = (payload: SignalPayload): void => {
-    const frame = encodeFrame({ kind: "signal", from: o.selfId, to: o.remoteId, payload });
-    if (ws.readyState === WebSocket.OPEN) ws.send(frame);
-    else outbox.push(frame);
+    if (ws.readyState === WebSocket.OPEN) sendSignal(payload);
+    else outbox.push(payload);
   };
   pc.onLocalDescription((sdp, type) =>
     signal({ type: type === "offer" ? "offer" : "answer", sdp }),
   );
-  pc.onLocalCandidate((candidate, mid) => signal({ type: "candidate", candidate, mid }));
+  const localCandidates: string[] = [];
+  pc.onLocalCandidate((candidate, mid) => {
+    localCandidates.push(candidate);
+    signal({ type: "candidate", candidate, mid });
+  });
   pc.onDataChannel(attach);
 
   const pendingCandidates: Array<{ candidate: string; mid: string }> = [];
@@ -89,6 +111,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
       const frame = decodeGatewayFrame(data.toString());
       if (frame.kind !== "signal") return;
       const p = frame.payload;
+      debug(`receive ${p.type}${p.type === "candidate" ? ` ${p.candidate}` : ""}`);
       if (p.type === "candidate") {
         if (remoteDescriptionSet) pc.addRemoteCandidate(p.candidate, p.mid);
         else pendingCandidates.push({ candidate: p.candidate, mid: p.mid });
@@ -108,6 +131,11 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   return {
     open,
     messages: queue.iterable,
+    localCandidates,
+    selectedPair: () => {
+      const pair = pc.getSelectedCandidatePair();
+      return pair && { local: pair.local.candidate, remote: pair.remote.candidate };
+    },
     send: (text) => {
       if (!channel?.isOpen()) throw new Error("data channel is not open");
       channel.sendMessage(text);
