@@ -104,6 +104,23 @@
           }
         }
       }
+    },
+    {
+      "includes": ["apps/web/src/pages/Welcome.tsx", "apps/web/src/App.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@rakazo/ui-web": "Use a direct subpath to keep Base UI out of the home page bundle."
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }
