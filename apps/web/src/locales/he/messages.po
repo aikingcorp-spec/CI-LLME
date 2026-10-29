@@ -286,8 +286,23 @@ msgstr "המפתח של {provider} הגיע למגבלה השבועית."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its daily credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its daily spending limit."
 msgstr "{provider} הגיע למגבלת ההוצאה היומית."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its monthly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -298,6 +313,11 @@ msgstr "{provider} הגיע למגבלת ההוצאה החודשית."
 #: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider} הגיע למגבלת ההוצאה."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

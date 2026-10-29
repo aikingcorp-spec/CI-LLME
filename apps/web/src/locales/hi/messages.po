@@ -286,8 +286,23 @@ msgstr "{provider} की कुंजी की साप्ताहिक स
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its daily credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its daily spending limit."
 msgstr "{provider} की दैनिक खर्च सीमा पूरी हो गई।"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its monthly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -298,6 +313,11 @@ msgstr "{provider} की मासिक खर्च सीमा पूरी
 #: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider} की खर्च सीमा पूरी हो गई।"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

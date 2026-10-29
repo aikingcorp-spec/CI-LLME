@@ -22,7 +22,7 @@ for (const entry of entries) {
     platform: "node",
     format: "esm",
     target: "node22",
-    sourcemap: true,
+    sourcemap: false,
     // No "module" condition: resolve externals the way Node will.
     conditions: ["node"],
     logLevel: "warning",

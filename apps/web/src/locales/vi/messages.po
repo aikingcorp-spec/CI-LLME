@@ -286,8 +286,23 @@ msgstr "Khóa {provider} đã đạt giới hạn hằng tuần."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its credit limit."
+msgstr "{provider} đã hết hạn mức credit."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its daily credit limit."
+msgstr "{provider} đã hết hạn mức credit hằng ngày."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its daily spending limit."
 msgstr "{provider} đã đạt giới hạn chi tiêu hằng ngày."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its monthly credit limit."
+msgstr "{provider} đã hết hạn mức credit hằng tháng."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -298,6 +313,11 @@ msgstr "{provider} đã đạt giới hạn chi tiêu hằng tháng."
 #: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider} đã đạt giới hạn chi tiêu."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly credit limit."
+msgstr "{provider} đã hết hạn mức credit hằng tuần."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
