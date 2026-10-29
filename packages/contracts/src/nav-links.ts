@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 /**
- * Operator-configured menu links (RAKAZO_NAV_LINKS) that open a same-origin page inside the app.
+ * Operator-configured menu links (VNBOT_NAV_LINKS, legacy RAKAZO_NAV_LINKS) that open a same-origin page inside the app.
  * The operator's reverse proxy serves the path; Rakazo only frames it.
  */
 
@@ -39,12 +39,12 @@ export function parseNavLinks(value: string | undefined): NavLink[] {
   try {
     json = JSON.parse(value);
   } catch {
-    throw new Error("RAKAZO_NAV_LINKS must be a JSON array");
+    throw new Error("VNBOT_NAV_LINKS must be a JSON array");
   }
   const parsed = NavLinksSchema.safeParse(json);
   if (!parsed.success) {
     throw new Error(
-      `Invalid RAKAZO_NAV_LINKS: ${parsed.error.issues.map((issue) => `${issue.path.join(".") || "value"}: ${issue.message}`).join("; ")}`,
+      `Invalid VNBOT_NAV_LINKS: ${parsed.error.issues.map((issue) => `${issue.path.join(".") || "value"}: ${issue.message}`).join("; ")}`,
     );
   }
   return parsed.data;

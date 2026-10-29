@@ -399,6 +399,7 @@ services:
       SPACE_TEARDOWN_TIMEOUT_MS:
       RAKAZO_MIN_CLIENT_BUILD:
       RAKAZO_NAV_LINKS:
+      VNBOT_NAV_LINKS:
       VOICE_SUMMARY_MIN_CHARS:
     healthcheck:
       test:
