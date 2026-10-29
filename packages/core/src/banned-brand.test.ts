@@ -46,6 +46,7 @@ describe("EXCLUDED_CATALOG_CONTENT word and host boundaries", () => {
     "https://api.cursor.com/v1",
     "cursor.com/agents",
     "VNBot SDK",
+    "Skills for building on the VNBot Origin API",
   ])("excludes %s", (text) => expect(EXCLUDED_CATALOG_CONTENT.test(text)).toBe(true));
   it.each([
     "Taxaid invoices",

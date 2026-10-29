@@ -326,6 +326,7 @@ describe("catalog exclusion policy", () => {
     "GROK Voice",
     "https://cursor.com/account",
     "vnbot SDK",
+    "Skills for building on the VNBot Origin API",
     "VNBot Bot",
     "VNBot syncs and stores",
   ])("rejects %s in names, descriptions and URLs", (text) => {
