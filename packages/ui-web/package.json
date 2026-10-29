@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./svg-ids": "./src/svg-ids.ts",
     "./styles.css": "./src/styles.css",
     "./lib/utils": "./src/lib/utils.ts",
     "./bot-avatar-activity": "./src/bot-avatar-activity.tsx",
