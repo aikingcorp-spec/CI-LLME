@@ -234,12 +234,14 @@ export function memoryRoutes(ctx: RouterContext) {
     agentSkills: {
       list: authed.agentSkills.list.handler(async ({ context }) =>
         (await agentSkills.list(context.actor))
-          .filter((skill) => skill.source === "user" || isCatalogContentAllowed(skill))
+          // Only the shipped catalog is filtered; installed (plugin) and user skills stay listed
+          // so they can still be removed.
+          .filter((skill) => skill.source !== "builtin" || isCatalogContentAllowed(skill))
           .map(sanitizeAgentSkill),
       ),
       get: authed.agentSkills.get.handler(async ({ context, input }) => {
         const skill = await agentSkills.get(context.actor, input);
-        if (skill.source !== "user" && !isCatalogContentAllowed(skill))
+        if (skill.source === "builtin" && !isCatalogContentAllowed(skill))
           throw new ORPCError("NOT_FOUND", { message: "Không tìm thấy kỹ năng." });
         return sanitizeAgentSkill(skill);
       }),

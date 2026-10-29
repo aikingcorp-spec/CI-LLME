@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { EXCLUDED_CATALOG_CONTENT, findBannedBrandTerms } from "./banned-brand.js";
 
 it.each(["xAI", "Xai", "cursor.COM", "VNBOT VOICE", "vnbot SDK"])("bans %s", (term) => {
@@ -18,4 +18,25 @@ it("allows exact provider metadata only in the model-provider list", () => {
   expect(
     findBannedBrandTerms("https://docs.x.ai.evil.test/docs", { modelProviderList: true }),
   ).not.toEqual([]);
+});
+
+describe("EXCLUDED_CATALOG_CONTENT word and host boundaries", () => {
+  it.each([
+    "Grok Voice",
+    "Plaid for xAI",
+    "https://github.com/xai-org/plugin-marketplace",
+    "see https://docs.x.ai/api",
+    "x.ai",
+    "https://api.cursor.com/v1",
+    "cursor.com/agents",
+    "VNBot SDK",
+  ])("excludes %s", (text) => expect(EXCLUDED_CATALOG_CONTENT.test(text)).toBe(true));
+  it.each([
+    "Taxaid invoices",
+    "grokking algorithms",
+    "https://max.ai/docs",
+    "https://cursor.company.io",
+    "precursor.com.example",
+    "mycursor.com",
+  ])("keeps %s", (text) => expect(EXCLUDED_CATALOG_CONTENT.test(text)).toBe(false));
 });

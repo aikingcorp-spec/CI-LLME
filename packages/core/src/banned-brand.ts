@@ -56,5 +56,7 @@ export function findBannedBrandTerms(
 }
 
 /** Reject foreign product content before localization; never relabel it as VNBot. */
+// Whole words only (so e.g. "Taxaid" or "grokking" survive), and hosts matched as hosts
+// (x.ai / *.x.ai, cursor.com / *.cursor.com), not as substrings like "max.ai".
 export const EXCLUDED_CATALOG_CONTENT =
-  /xai|(?:[a-z0-9-]+\.)?x\.ai|grok|cursor\.com|vnbot\s+(?:voice|sdk|bot|syncs\s+and\s+stores)/iu;
+  /\b(?:xai|grok)\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|syncs\s+and\s+stores)\b/iu;

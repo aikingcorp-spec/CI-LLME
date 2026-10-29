@@ -246,8 +246,8 @@ describe("catalog text keeps ordinary prose and markdown", () => {
 });
 
 describe("whole Skills screen responses", () => {
-  it("omits foreign skills and rejects direct catalog previews without mutating stored rows", async () => {
-    const { client, row } = await skillsClient();
+  it("omits foreign catalog skills and rejects direct catalog previews without mutating stored rows", async () => {
+    const { client, row } = await skillsClient("builtin");
     expect((await client.agentSkills.list()).some((skill) => skill.id === row.id)).toBe(false);
     await expect(client.agentSkills.get({ skillId: row.id })).rejects.toMatchObject({
       code: "NOT_FOUND",
@@ -258,6 +258,11 @@ describe("whole Skills screen responses", () => {
     });
     expect(row.name).toBe("Grok Voice");
     expect(row.content).toBe(skillContent);
+  });
+
+  it("keeps an installed plugin skill listed so it can be removed", async () => {
+    const { client, row } = await skillsClient("plugin");
+    expect((await client.agentSkills.list()).some((skill) => skill.id === row.id)).toBe(true);
   });
 
   it("preserves a user's authored skill text", async () => {
