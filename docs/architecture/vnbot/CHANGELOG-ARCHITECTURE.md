@@ -226,3 +226,13 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `packages/contracts/src/rpc.ts` and `domain.ts`; `apps/api/src/router.ts`, `app.ts`, `routes/shared.ts`, removed `routes/payment-wallet.ts`, security audit and wallet route regression tests; removed `docs/self-host/payments.md`.
 - Invariants affected: `payment_wallets`, its schema, migrations, RLS and existing data are retained without alteration. No data deletion or migration is introduced. Internal purchase recovery and other billing remain unchanged. Removed RPC requests cannot access stored wallets or secrets.
 - ADR: none (removal of an unused API surface).
+
+## 2026-10-29 — Vietnamese desktop setup and local stack messages
+
+- Date: 2026-10-29
+- Pull request: none (local commits only; imports `b109d7b2`).
+- What changed versus baseline: desktop setup connection errors and local stack progress, recovery and failure messages use a shared desktop string catalog. Vietnamese is the default when no OS locale is available; other OS locales use English unless they begin with `vi`. The setup shell and native dialogs use the same selected locale.
+- Why: desktop setup and recovery must be understandable in Vietnamese and identify the VNBot distribution consistently.
+- Modules and files: `apps/desktop/src/setup-config.ts` (`probeFailureMessage`), `apps/desktop/src/local-stack.ts` (status and failure messages), `apps/desktop/src/strings.ts` (catalog and formatting), `apps/desktop/src/main.ts` (locale selection), setup shell and corresponding unit tests.
+- Invariants affected: server validation, connection probes, local Compose orchestration, secret storage and recovery behavior are unchanged. Raw Docker output and internal error details remain outside translated user messages. Auto-update still requires explicit opt-in; source identifiers remain Rakazo. No API, database or migration changes.
+- ADR: none (desktop localization).
