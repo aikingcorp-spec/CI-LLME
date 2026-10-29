@@ -187,3 +187,12 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/mobile/lib/api.ts`, settings routes, account menu, settings sheet and locale catalogs.
 - Invariants affected: this change removes client access only; payment wallet storage, schema and existing data remain intact. Other billing and authentication behavior is unchanged.
 - ADR: none (client capability removal).
+
+## 2026-10-29 — Remove wallet RPC surface
+
+- Pull request: none (local commits only).
+- What changed versus baseline: remove wallet status, connect and disconnect RPC contracts and handlers, wallet provider metadata from `me`, unused route audit hooks, and wallet setup documentation.
+- Why: clients no longer offer wallet setup or purchases, so the node must not keep exposing the abandoned setup API.
+- Modules and files: `packages/contracts/src/rpc.ts` and `domain.ts`; `apps/api/src/router.ts`, `app.ts`, `routes/shared.ts`, removed `routes/payment-wallet.ts`, security audit and wallet route regression tests; removed `docs/self-host/payments.md`.
+- Invariants affected: `payment_wallets`, its schema, migrations, RLS and existing data are retained without alteration. No data deletion or migration is introduced. Internal purchase recovery and other billing remain unchanged. Removed RPC requests cannot access stored wallets or secrets.
+- ADR: none (removal of an unused API surface).

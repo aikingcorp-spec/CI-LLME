@@ -699,7 +699,6 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     pluginRepoFetcher,
     pluginMarketplaceRead,
     cloudAgent,
-    paymentWallet,
     codexCatalog,
     prisma,
     pushTokens,

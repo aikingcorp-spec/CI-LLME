@@ -6,6 +6,8 @@ VNBot hôm nay vẫn chạy hệ Rakazo trên máy khách. Web đã đổi lớp
 
 Bản cài đặt dùng kho `aikingcorp-spec/vnbot` và image cùng tên trên GHCR. Tự cập nhật mặc định tắt cho tới khi có bản phát hành chính thức; người vận hành phải bật rõ ràng bằng `RAKAZO_DISABLE_AUTO_UPDATE=0`. Không kèm thông tin xác thực. Xem [ADR 0008](adr/0008-distribution-and-update-opt-in.md).
 
+Ví thanh toán đã được gỡ khỏi giao diện và RPC của node. Bảng `payment_wallets` và dữ liệu cũ được giữ nguyên; không có migration xóa bảng.
+
 ## Đề xuất: cổng vnbot.run và máy của khách
 
 Khách chạy cả hệ thống trên máy của họ (Mac mini ở nhà, máy văn phòng, hoặc VPS của họ). Máy đó là một nút: API, worker, cơ sở dữ liệu, và máy tính của bot. Dữ liệu chat ở lại đó.
