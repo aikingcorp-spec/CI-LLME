@@ -8,7 +8,8 @@ export const CATALOG_URL =
   "https://rakazo-public.fsn1.your-objectstorage.com/integrations/catalog.json";
 export const SUPPORT_EMAIL = "aiking.corp@gmail.com";
 export const DOWNLOAD_URL = "https://vnbot.run/#tai-ve";
-export const IOS_APP_URL = "https://apps.apple.com/app/rakazo/id6801531099";
+/** iOS is not released yet (PRODUCT.md: "iOS sắp có"); null renders a "coming soon" label, not a link. */
+export const IOS_APP_URL: string | null = null;
 export const ANDROID_APK_URL = DOWNLOAD_URL;
 export const OPENCLAW_ALTERNATIVE_PATH = "/openclaw-alternative/";
 export const INBOX_ZERO_URL =
