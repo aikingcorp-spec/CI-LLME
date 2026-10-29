@@ -86,7 +86,7 @@ export function runErrorWhatHappened(
         );
     }
   }
-  if (error.kind === "credit" || error.kind === "spending") {
+  if (error.kind === "credit" || error.kind === "spending" || error.kind === "usage") {
     switch (error.period) {
       case "daily":
         return t("The bot couldn't reply because its provider's daily limit was reached.");

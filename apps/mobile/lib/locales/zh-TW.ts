@@ -124,6 +124,10 @@ export const ZH_TW_MESSAGES: Record<string, string> = {
   "{provider} reached its daily spending limit.": "{provider} 已達到每日支出限額。",
   "{provider} reached its weekly spending limit.": "{provider} 已達到每週支出限額。",
   "{provider} reached its monthly spending limit.": "{provider} 已達到每月支出限額。",
+  "{provider} reached its usage limit.": "{provider} 已達到使用限額。",
+  "{provider} reached its daily usage limit.": "{provider} 已達到每日使用限額。",
+  "{provider} reached its weekly usage limit.": "{provider} 已達到每週使用限額。",
+  "{provider} reached its monthly usage limit.": "{provider} 已達到每月使用限額。",
   Details: "詳細資訊",
 
   "Couldn't refresh — showing the last loaded messages.": "無法重新整理——顯示最近載入的訊息。",

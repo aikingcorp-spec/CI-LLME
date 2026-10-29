@@ -301,6 +301,11 @@ msgstr "{provider} atingiu o limite diário de gastos."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its daily usage limit."
+msgstr "{provider} atingiu o limite de uso diário."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its monthly credit limit."
 msgstr ""
 
@@ -311,8 +316,18 @@ msgstr "{provider} atingiu o limite mensal de gastos."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its monthly usage limit."
+msgstr "{provider} atingiu o limite de uso mensal."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider} atingiu o limite de gastos."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its usage limit."
+msgstr "{provider} atingiu o limite de uso."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -323,6 +338,11 @@ msgstr ""
 #: src/lib/run-error.ts
 msgid "{provider} reached its weekly spending limit."
 msgstr "{provider} atingiu o limite semanal de gastos."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly usage limit."
+msgstr "{provider} atingiu o limite de uso semanal."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

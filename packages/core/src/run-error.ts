@@ -129,6 +129,12 @@ export const RUN_ERROR_LIMIT_MESSAGES = {
     weekly: "{provider} reached its weekly spending limit.",
     monthly: "{provider} reached its monthly spending limit.",
   },
+  usage: {
+    none: "{provider} reached its usage limit.",
+    daily: "{provider} reached its daily usage limit.",
+    weekly: "{provider} reached its weekly usage limit.",
+    monthly: "{provider} reached its monthly usage limit.",
+  },
 } as const;
 
 export type RunErrorTranslator = (
@@ -376,7 +382,11 @@ export function normalizeRunError(
       ? "key"
       : /credit|insufficient_quota/i.test(signals)
         ? "credit"
-        : "spending";
+        : // Only a provider that names spend, budget or billing set a spending cap. A free-tier or
+          // plan usage limit is not money the user spent.
+          /spend|budget|billing|funds|balance|recharge/i.test(signals)
+          ? "spending"
+          : "usage";
     // A capped key is fixed by connecting another; an account out of money or quota is not, but
     // another model keeps the user going.
     recovery = kind === "key" ? "connection" : "model";

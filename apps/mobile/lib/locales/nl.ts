@@ -149,6 +149,13 @@ export const NL_MESSAGES: Record<string, string> = {
     "{provider} heeft de weeklimiet voor uitgaven bereikt.",
   "{provider} reached its monthly spending limit.":
     "{provider} heeft de maandlimiet voor uitgaven bereikt.",
+  "{provider} reached its usage limit.": "{provider} heeft de gebruikslimiet bereikt.",
+  "{provider} reached its daily usage limit.":
+    "{provider} heeft de dagelijkse gebruikslimiet bereikt.",
+  "{provider} reached its weekly usage limit.":
+    "{provider} heeft de wekelijkse gebruikslimiet bereikt.",
+  "{provider} reached its monthly usage limit.":
+    "{provider} heeft de maandelijkse gebruikslimiet bereikt.",
   Details: "Details",
   "Couldn't refresh — showing the last loaded messages.":
     "Kon niet vernieuwen — de laatst geladen berichten worden getoond.",

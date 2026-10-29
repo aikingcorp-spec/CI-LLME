@@ -152,6 +152,10 @@ export const DE_MESSAGES: Record<string, string> = {
     "{provider}: wöchentliches Ausgabenlimit erreicht.",
   "{provider} reached its monthly spending limit.":
     "{provider}: monatliches Ausgabenlimit erreicht.",
+  "{provider} reached its usage limit.": "{provider}: Nutzungslimit erreicht.",
+  "{provider} reached its daily usage limit.": "{provider}: tägliches Nutzungslimit erreicht.",
+  "{provider} reached its weekly usage limit.": "{provider}: wöchentliches Nutzungslimit erreicht.",
+  "{provider} reached its monthly usage limit.": "{provider}: monatliches Nutzungslimit erreicht.",
   Details: "Details",
 
   "Couldn't refresh — showing the last loaded messages.":

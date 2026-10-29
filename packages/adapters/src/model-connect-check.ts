@@ -26,7 +26,7 @@ const CHECK_CONTEXT: Context = {
  * Failures that every run on this key and model would hit too. Rate limits, outages, and
  * timeouts are left to the run, so a slow or busy provider never blocks a connection.
  */
-const BLOCKING_KINDS = new Set(["auth", "access", "model", "key", "credit", "spending"]);
+const BLOCKING_KINDS = new Set(["auth", "access", "model", "key", "credit", "spending", "usage"]);
 
 /**
  * Send one minimal agent request and stop as soon as the provider accepts it, so a key without
