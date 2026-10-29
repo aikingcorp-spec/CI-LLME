@@ -178,3 +178,12 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/api/src/version.ts`, `app.ts`, `env.ts`, unit tests and `infra/compose/Dockerfile`. Existing web `/api` proxy serves the route unchanged.
 - Invariants affected: the version endpoint reads no session, tenant data or database; authenticated routes retain their checks. Existing deployment commands need no new argument.
 - ADR: none (deployment metadata endpoint).
+
+## 2026-10-29 — Remove mobile wallet access
+
+- Pull request: none (local commits only).
+- What changed versus baseline: mobile removes the Wallet screen, its navigation entries, translations, and the unused `paymentWallet` client RPC member.
+- Why: the product no longer offers wallet setup or purchases in its clients.
+- Modules and files: `apps/mobile/lib/api.ts`, settings routes, account menu, settings sheet and locale catalogs.
+- Invariants affected: this change removes client access only; payment wallet storage, schema and existing data remain intact. Other billing and authentication behavior is unchanged.
+- ADR: none (client capability removal).
