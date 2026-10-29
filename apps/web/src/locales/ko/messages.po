@@ -822,6 +822,10 @@ msgstr "적용"
 msgid "Approval boundaries"
 msgstr "승인이 필요한 범위"
 
+#: src/lib/user-error.ts
+msgid "approval model"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Approval model"
 msgstr "승인 모델"
@@ -976,6 +980,10 @@ msgstr "아바타 스튜디오"
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr "뒤로"
+
+#: src/lib/user-error.ts
+msgid "backup models"
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bánh chưng"
@@ -3264,6 +3272,10 @@ msgstr ""
 msgid "In this bot"
 msgstr ""
 
+#: src/lib/user-error.ts
+msgid "In use by {names}. Pick another model for them first."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr ""
@@ -3601,6 +3613,10 @@ msgstr "낮음"
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
 
+#: src/lib/user-error.ts
+msgid "main model"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Main model"
 msgstr "기본 모델"
@@ -3868,6 +3884,10 @@ msgstr "모델 ID"
 #: src/pages/model-settings/role-model-picker.tsx
 msgid "Model options"
 msgstr "모델 선택지"
+
+#: src/lib/user-error.ts
+msgid "Model server returned {status}. You can still Connect with an explicit model id."
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6620,6 +6640,10 @@ msgstr "첫 번째 봇이 이미 있습니다."
 #: src/lib/run-error.ts
 msgid "Your model provider"
 msgstr "사용 중인 모델 제공업체"
+
+#: src/lib/user-error.ts
+msgid "Your model provider rejected the API key. Check your connection settings."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

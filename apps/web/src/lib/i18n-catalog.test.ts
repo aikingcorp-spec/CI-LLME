@@ -278,3 +278,47 @@ it("keeps source placeholders and JSX markers in Traditional Chinese translation
     expect(markers(translation), message).toEqual(markers(message));
   }
 });
+
+it("renders model connection errors in Vietnamese", async () => {
+  const filename = fileURLToPath(new URL("../locales/vi/messages.po", import.meta.url));
+  const catalog = await formatter().parse(readFileSync(filename, "utf8"), {
+    locale: "vi",
+    sourceLocale: "en",
+    filename,
+  });
+  i18n.load(
+    "vi",
+    Object.fromEntries(
+      Object.entries(catalog).map(([id, entry]) => [
+        entry.message || id,
+        entry.translation || entry.message || id,
+      ]),
+    ),
+  );
+  i18n.activate("vi");
+  try {
+    expect(
+      i18n._("Your model provider rejected the API key. Check your connection settings."),
+    ).toContain("từ chối khóa API");
+    expect(
+      i18n._({
+        id: "Model server returned {status}. You can still Connect with an explicit model id.",
+        values: { status: "401" },
+      }),
+    ).toContain("trả về mã 401");
+    expect(
+      i18n._({
+        id: "In use by {names}. Pick another model for them first.",
+        values: { names: i18n._("backup models") },
+      }),
+    ).toContain("các mô hình dự phòng");
+    expect(
+      i18n._({
+        id: "In use by {names}. Pick another model for them first.",
+        values: { names: i18n._("main model") },
+      }),
+    ).not.toContain("dự phòng");
+  } finally {
+    i18n.activate("en");
+  }
+});

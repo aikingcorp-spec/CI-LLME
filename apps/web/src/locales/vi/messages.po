@@ -822,6 +822,10 @@ msgstr "Áp dụng"
 msgid "Approval boundaries"
 msgstr "Phạm vi cần phê duyệt"
 
+#: src/lib/user-error.ts
+msgid "approval model"
+msgstr "mô hình phê duyệt"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Approval model"
 msgstr "Mô hình phê duyệt"
@@ -976,6 +980,10 @@ msgstr "Tùy chỉnh ảnh đại diện"
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr "Quay lại"
+
+#: src/lib/user-error.ts
+msgid "backup models"
+msgstr "các mô hình dự phòng"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bánh chưng"
@@ -3264,6 +3272,10 @@ msgstr "Đang xét duyệt"
 msgid "In this bot"
 msgstr "Trong bot này"
 
+#: src/lib/user-error.ts
+msgid "In use by {names}. Pick another model for them first."
+msgstr "Đang được {names} sử dụng. Hãy chọn mô hình khác cho các mục đó trước."
+
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr "Hộp thư & email"
@@ -3601,6 +3613,10 @@ msgstr "Thấp"
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr "Chữ thường, số, dấu gạch ngang và gạch dưới, bắt đầu bằng chữ cái."
 
+#: src/lib/user-error.ts
+msgid "main model"
+msgstr "mô hình chính"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Main model"
 msgstr "Mô hình chính"
@@ -3868,6 +3884,10 @@ msgstr "ID mô hình"
 #: src/pages/model-settings/role-model-picker.tsx
 msgid "Model options"
 msgstr "Tùy chọn mô hình"
+
+#: src/lib/user-error.ts
+msgid "Model server returned {status}. You can still Connect with an explicit model id."
+msgstr "Máy chủ mô hình trả về mã {status}. Bạn vẫn có thể kết nối bằng cách nhập ID mô hình."
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6620,6 +6640,10 @@ msgstr "Bot đầu tiên của bạn đã có."
 #: src/lib/run-error.ts
 msgid "Your model provider"
 msgstr "Nhà cung cấp mô hình của bạn"
+
+#: src/lib/user-error.ts
+msgid "Your model provider rejected the API key. Check your connection settings."
+msgstr "Nhà cung cấp mô hình của bạn từ chối khóa API. Hãy kiểm tra cài đặt kết nối."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

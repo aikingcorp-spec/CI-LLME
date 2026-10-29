@@ -823,6 +823,10 @@ msgstr "套用"
 msgid "Approval boundaries"
 msgstr "核准邊界"
 
+#: src/lib/user-error.ts
+msgid "approval model"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Approval model"
 msgstr "核准模型"
@@ -977,6 +981,10 @@ msgstr "頭像工作室"
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr "返回"
+
+#: src/lib/user-error.ts
+msgid "backup models"
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bánh chưng"
@@ -3265,6 +3273,10 @@ msgstr "審查中"
 msgid "In this bot"
 msgstr ""
 
+#: src/lib/user-error.ts
+msgid "In use by {names}. Pick another model for them first."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr "收件匣和郵件"
@@ -3602,6 +3614,10 @@ msgstr "低"
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr "使用小寫英文字母、數字、連字號與底線，並以字母開頭。"
 
+#: src/lib/user-error.ts
+msgid "main model"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Main model"
 msgstr "主模型"
@@ -3869,6 +3885,10 @@ msgstr "模型 ID"
 #: src/pages/model-settings/role-model-picker.tsx
 msgid "Model options"
 msgstr "模型選項"
+
+#: src/lib/user-error.ts
+msgid "Model server returned {status}. You can still Connect with an explicit model id."
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6621,6 +6641,10 @@ msgstr "你的第一個機器人已存在。"
 #: src/lib/run-error.ts
 msgid "Your model provider"
 msgstr "你的模型供應商"
+
+#: src/lib/user-error.ts
+msgid "Your model provider rejected the API key. Check your connection settings."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

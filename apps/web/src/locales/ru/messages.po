@@ -822,6 +822,10 @@ msgstr "Применить"
 msgid "Approval boundaries"
 msgstr "Границы одобрения"
 
+#: src/lib/user-error.ts
+msgid "approval model"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Approval model"
 msgstr "Модель проверки действий"
@@ -976,6 +980,10 @@ msgstr "Студия аватаров"
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr "Назад"
+
+#: src/lib/user-error.ts
+msgid "backup models"
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bánh chưng"
@@ -3264,6 +3272,10 @@ msgstr ""
 msgid "In this bot"
 msgstr ""
 
+#: src/lib/user-error.ts
+msgid "In use by {names}. Pick another model for them first."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr ""
@@ -3601,6 +3613,10 @@ msgstr "Низкий"
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
 
+#: src/lib/user-error.ts
+msgid "main model"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Main model"
 msgstr "Основная модель"
@@ -3868,6 +3884,10 @@ msgstr "Идентификатор модели"
 #: src/pages/model-settings/role-model-picker.tsx
 msgid "Model options"
 msgstr "Варианты модели"
+
+#: src/lib/user-error.ts
+msgid "Model server returned {status}. You can still Connect with an explicit model id."
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6620,6 +6640,10 @@ msgstr "Ваш первый бот уже существует."
 #: src/lib/run-error.ts
 msgid "Your model provider"
 msgstr "Ваш поставщик моделей"
+
+#: src/lib/user-error.ts
+msgid "Your model provider rejected the API key. Check your connection settings."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

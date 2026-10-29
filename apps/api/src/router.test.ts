@@ -7187,7 +7187,8 @@ describe("openai-compatible enabled models", () => {
     ["bot", { bots: [{ name: "Ada", modelId: "m-b" }] }, "Ada"],
     ["routine", { routines: [{ name: "Nightly digest", modelId: "m-b" }] }, "Nightly digest"],
     ["backup", { backups: ["m-b"] }, "backup models"],
-    ["approval model", { roleChoices: ["m-b"] }, "backup models"],
+    ["main model without backups", { mainPrimary: "m-b" }, "main model"],
+    ["approval model", { roleChoices: ["m-b"] }, "approval model"],
   ])("refuses a shrunk list while a %s pins the removed id", async (_kind, pins, names) => {
     const { call, secrets, state, initialCredential, prisma } = fixture({
       plaintext: secretText(["m-a", "m-b"]),
@@ -7467,7 +7468,7 @@ describe("openai-compatible enabled models", () => {
     });
     expect(await call("models/setDefault", { provider: compatible, modelId: "m-b" })).toEqual({
       status: 400,
-      message: refusal("backup models"),
+      message: refusal("approval model"),
     });
   });
 

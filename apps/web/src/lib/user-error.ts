@@ -11,6 +11,37 @@ import {
   userErrorMessage,
 } from "@rakazo/core";
 
+/** Localize structured model connection failures returned by the node. */
+export function modelConnectionErrorText(message: string): string {
+  if (message === "Your model provider rejected the API key. Check your connection settings.")
+    return t`Your model provider rejected the API key. Check your connection settings.`;
+  const probe =
+    /^Model server returned (\d{3})\. You can still Connect with an explicit model id\.$/.exec(
+      message,
+    );
+  if (probe?.[1]) {
+    const status = probe[1];
+    return t`Model server returned ${status}. You can still Connect with an explicit model id.`;
+  }
+  const pins = /^In use by (.+)\. Pick another model for them first\.$/.exec(message);
+  if (pins?.[1]) {
+    const names = pins[1]
+      .split(", ")
+      .map((name) =>
+        name === "backup models"
+          ? t`backup models`
+          : name === "main model"
+            ? t`main model`
+            : name === "approval model"
+              ? t`approval model`
+              : name,
+      )
+      .join(", ");
+    return t`In use by ${names}. Pick another model for them first.`;
+  }
+  return message;
+}
+
 /** Text for a failure: human messages pass through; network and implementation detail become copy. */
 export function errorText(error: unknown, fallback = t`Something went wrong. Try again.`): string {
   const message =
@@ -36,6 +67,8 @@ export function errorText(error: unknown, fallback = t`Something went wrong. Try
     return t`This model cannot read images. Choose a model that supports images.`;
   if (typeof message === "string" && message.trim() === MODEL_IMAGE_INPUT_UNKNOWN)
     return t`Image input is not configured for this model.`;
+  if (typeof message === "string" && modelConnectionErrorText(message) !== message)
+    return modelConnectionErrorText(message);
   return (
     voiceAccountErrorText(error) ??
     userErrorMessage(error, { fallback, offline: t`Could not reach the server` })

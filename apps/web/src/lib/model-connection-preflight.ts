@@ -1,5 +1,6 @@
 import { plural, t } from "@lingui/core/macro";
 import type { ModelCredential } from "@rakazo/contracts";
+import { modelConnectionErrorText } from "./user-error";
 
 type ModelPreflightOutcome =
   | "timeout"
@@ -31,7 +32,7 @@ export function sanitizeModelConnectionError(raw: string): string {
   for (const pattern of SECRET_PATTERNS) {
     text = text.replace(pattern, "•••");
   }
-  return text;
+  return modelConnectionErrorText(text);
 }
 
 function messageFromError(error: unknown): string {

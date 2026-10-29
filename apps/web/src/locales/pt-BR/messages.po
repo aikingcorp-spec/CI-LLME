@@ -822,6 +822,10 @@ msgstr "Aplicar"
 msgid "Approval boundaries"
 msgstr "Limites de aprovação"
 
+#: src/lib/user-error.ts
+msgid "approval model"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Approval model"
 msgstr "Modelo de aprovação"
@@ -976,6 +980,10 @@ msgstr "Estúdio de avatar"
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr "Voltar"
+
+#: src/lib/user-error.ts
+msgid "backup models"
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bánh chưng"
@@ -3264,6 +3272,10 @@ msgstr ""
 msgid "In this bot"
 msgstr ""
 
+#: src/lib/user-error.ts
+msgid "In use by {names}. Pick another model for them first."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr ""
@@ -3601,6 +3613,10 @@ msgstr "Baixo"
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
 
+#: src/lib/user-error.ts
+msgid "main model"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Main model"
 msgstr "Modelo principal"
@@ -3868,6 +3884,10 @@ msgstr "ID do modelo"
 #: src/pages/model-settings/role-model-picker.tsx
 msgid "Model options"
 msgstr "Opções do modelo"
+
+#: src/lib/user-error.ts
+msgid "Model server returned {status}. You can still Connect with an explicit model id."
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6620,6 +6640,10 @@ msgstr "Seu primeiro bot já existe."
 #: src/lib/run-error.ts
 msgid "Your model provider"
 msgstr "Seu provedor de modelos"
+
+#: src/lib/user-error.ts
+msgid "Your model provider rejected the API key. Check your connection settings."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

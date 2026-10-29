@@ -822,6 +822,10 @@ msgstr "Apply"
 msgid "Approval boundaries"
 msgstr "Approval boundaries"
 
+#: src/lib/user-error.ts
+msgid "approval model"
+msgstr "approval model"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Approval model"
 msgstr "Approval model"
@@ -976,6 +980,10 @@ msgstr "Avatar Studio"
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr "Back"
+
+#: src/lib/user-error.ts
+msgid "backup models"
+msgstr "backup models"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bánh chưng"
@@ -3264,6 +3272,10 @@ msgstr "In review"
 msgid "In this bot"
 msgstr "In this bot"
 
+#: src/lib/user-error.ts
+msgid "In use by {names}. Pick another model for them first."
+msgstr "In use by {names}. Pick another model for them first."
+
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr "Inbox & email"
@@ -3601,6 +3613,10 @@ msgstr "Low"
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 
+#: src/lib/user-error.ts
+msgid "main model"
+msgstr "main model"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Main model"
 msgstr "Main model"
@@ -3868,6 +3884,10 @@ msgstr "Model id"
 #: src/pages/model-settings/role-model-picker.tsx
 msgid "Model options"
 msgstr "Model options"
+
+#: src/lib/user-error.ts
+msgid "Model server returned {status}. You can still Connect with an explicit model id."
+msgstr "Model server returned {status}. You can still Connect with an explicit model id."
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6620,6 +6640,10 @@ msgstr "Your first bot already exists."
 #: src/lib/run-error.ts
 msgid "Your model provider"
 msgstr "Your model provider"
+
+#: src/lib/user-error.ts
+msgid "Your model provider rejected the API key. Check your connection settings."
+msgstr "Your model provider rejected the API key. Check your connection settings."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
