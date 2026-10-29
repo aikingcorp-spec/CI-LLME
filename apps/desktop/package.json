@@ -75,7 +75,7 @@
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "VNBot uses the microphone for dictation and voice calls with your bots."
+        "NSMicrophoneUsageDescription": "VNBot dùng micro để đọc chính tả và gọi thoại với các bot của bạn."
       },
       "target": [
         "dmg",
@@ -124,13 +124,7 @@
         }
       }
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "aikingcorp-spec",
-        "repo": "vnbot"
-      }
-    ],
+    "publish": null,
     "artifactName": "VNBot-${version}-${os}-${arch}.${ext}",
     "nsis": {
       "artifactName": "VNBot-Setup-${version}-${arch}.${ext}",
