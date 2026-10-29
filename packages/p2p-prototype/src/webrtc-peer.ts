@@ -22,6 +22,8 @@ export interface PeerOptions {
   authorization?: string;
   iceServers?: Array<string | IceServer>;
   iceTransportPolicy?: "all" | "relay";
+  /** Fallback for a remote that never acknowledges BYE. Default 5000 ms. */
+  closeAckTimeoutMs?: number;
 }
 export interface DataPeer {
   send(text: string): void;
@@ -34,6 +36,10 @@ export interface DataPeer {
 }
 
 const CHANNEL_LABEL = "rakazo";
+// Control frames are binary; application messages are always strings, so they never collide.
+const BYE = 0x01;
+const BYE_ACK = 0x02;
+const controlFrame = (code: number): Buffer => Buffer.from([code]);
 
 function createMessageQueue() {
   const items: string[] = [];
@@ -89,6 +95,8 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   const queue = createMessageQueue();
   let channel: DataChannel | undefined;
   let channelClosed = false;
+  let byeAcked = false;
+  let byeReceived = false;
   let markOpen = (): void => {};
   let rejectOpen = (_error: Error): void => {};
   const open = new Promise<void>((resolve, reject) => {
@@ -100,7 +108,23 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
 
   const attach = (dc: DataChannel): void => {
     channel = dc;
-    dc.onMessage((msg) => queue.push(typeof msg === "string" ? msg : msg.toString()));
+    dc.onMessage((msg) => {
+      const control = typeof msg === "string" ? undefined : new Uint8Array(msg as ArrayBufferLike);
+      if (control?.length === 1) {
+        if (control[0] === BYE) {
+          // SCTP is ordered and reliable: every earlier message has already been delivered.
+          byeReceived = true;
+          queue.end();
+          if (dc.isOpen()) dc.sendMessageBinary(controlFrame(BYE_ACK));
+          return;
+        }
+        if (control[0] === BYE_ACK) {
+          byeAcked = true;
+          return;
+        }
+      }
+      queue.push(typeof msg === "string" ? msg : msg.toString());
+    });
     dc.onClosed(() => {
       channelClosed = true;
       queue.end();
@@ -164,17 +188,14 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   const closeGracefully = (): Promise<void> => {
     gracefulClose ??= (async () => {
       try {
-        // Drain the last frame before starting SCTP's channel reset handshake.
-        const drainDeadline = Date.now() + 2000;
-        while (!closed && channel?.isOpen() && channel.bufferedAmount() > 0) {
-          if (Date.now() >= drainDeadline) break;
-          await setTimeout(10);
-        }
-        if (!closed && channel && !channelClosed) {
-          channel.close();
-          // Keep the connection alive until the remote has observed the reset.
-          const closeDeadline = Date.now() + 2000;
-          while (!closed && !channelClosed && Date.now() < closeDeadline) await setTimeout(10);
+        // bufferedAmount() == 0 only means usrsctp accepted the data, not that the remote
+        // received it. Ask the remote to acknowledge everything sent before BYE.
+        if (!closed && channel?.isOpen() && !channelClosed) {
+          channel.sendMessageBinary(controlFrame(BYE));
+          const deadline = Date.now() + (o.closeAckTimeoutMs ?? 5000);
+          while (!closed && !channelClosed && !byeAcked && Date.now() < deadline) {
+            await setTimeout(10);
+          }
         }
       } finally {
         close();
@@ -217,7 +238,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
       return pair && { local: pair.local.candidate, remote: pair.remote.candidate };
     },
     send: (text) => {
-      if (!channel?.isOpen()) throw new Error("data channel is not open");
+      if (byeReceived || !channel?.isOpen()) throw new Error("data channel is not open");
       channel.sendMessage(text);
     },
     close,

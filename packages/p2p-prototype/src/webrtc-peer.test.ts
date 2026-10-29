@@ -1,10 +1,11 @@
-import { cleanup } from "node-datachannel";
+import { cleanup, PeerConnection } from "node-datachannel";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startFakeAuthServer } from "./fake-auth-server.js";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
 import { openSession } from "./gateway-client.js";
 import { generateKeyPair, nodeAuthorization } from "./pairing.js";
+import type { SignalPayload } from "./protocol.js";
 import { connectPeer } from "./webrtc-peer.js";
 
 describe("webrtc peer", () => {
@@ -73,6 +74,41 @@ describe("webrtc peer", () => {
     expect((await messages.next()).done).toBe(true);
     await closing;
     b.close();
+  }, 20_000);
+
+  it("closes after the fallback when the remote never acknowledges BYE", async () => {
+    const raw = new PeerConnection("raw", { iceServers: [] });
+    let toPeer: (payload: SignalPayload) => void = () => {};
+    const a = await connectPeer({
+      signalUrl: "http://unused.invalid",
+      selfId: "a",
+      remoteId: "raw",
+      initiator: true,
+      closeAckTimeoutMs: 300,
+      signaling: {
+        send: (p) => {
+          if (p.type === "candidate") raw.addRemoteCandidate(p.candidate, p.mid);
+          else raw.setRemoteDescription(p.sdp, p.type);
+        },
+        listen: (receive) => {
+          toPeer = receive;
+          return () => {};
+        },
+      },
+    });
+    raw.onLocalDescription((sdp, type) =>
+      toPeer({ type: type === "offer" ? "offer" : "answer", sdp }),
+    );
+    raw.onLocalCandidate((candidate, mid) => toPeer({ type: "candidate", candidate, mid }));
+    const received: unknown[] = [];
+    raw.onDataChannel((dc) => dc.onMessage((m) => received.push(m)));
+    await a.open;
+
+    const started = Date.now();
+    await a.closeGracefully();
+    expect(Date.now() - started).toBeGreaterThanOrEqual(250);
+    expect((await a.messages[Symbol.asyncIterator]().next()).done).toBe(true);
+    raw.close();
   }, 20_000);
 });
 

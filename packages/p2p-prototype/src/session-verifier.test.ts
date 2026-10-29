@@ -102,10 +102,17 @@ describe("HTTP session verifier", () => {
   });
   it("times out without caching", async () => {
     auth.sessions.set("token", "timeout");
-    const v = verifier({ timeoutMs: 30 });
+    // Count outbound attempts, not server arrivals: under load the 30 ms abort can fire
+    // before the request reaches the fake server.
+    let attempts = 0;
+    const fetch: typeof globalThis.fetch = (input, init) => {
+      attempts++;
+      return globalThis.fetch(input, init);
+    };
+    const v = verifier({ timeoutMs: 30, fetch });
     for (let i = 0; i < 2; i++)
       expect(await v.verify(credentials)).toMatchObject({ status: 502, code: "AUTH_UNAVAILABLE" });
-    expect(auth.requests).toHaveLength(2);
+    expect(attempts).toBe(2);
   });
   it("honors custom cache TTLs and disabling the cache", async () => {
     const v = verifier({ cacheTtlMs: 100, negativeCacheTtlMs: 10 });
