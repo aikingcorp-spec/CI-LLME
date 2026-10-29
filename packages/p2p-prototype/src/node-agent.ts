@@ -1,5 +1,7 @@
 import type { RawData } from "ws";
 import { WebSocket } from "ws";
+import type { KeyPair } from "./pairing.js";
+import { signNodeProof } from "./pairing.js";
 import type { NodeId, RelayRequest } from "./protocol.js";
 import { decodeGatewayFrame, encodeFrame, toWsUrl } from "./protocol.js";
 
@@ -13,9 +15,11 @@ export type LocalHandler = (req: {
 export interface NodeAgentOptions {
   gatewayUrl: string;
   nodeId: NodeId;
-  token: string;
+  /** The node's own key pair; the hello is signed with it on every connect. */
+  keyPair: KeyPair;
   handler: LocalHandler;
   reconnectMs?: number;
+  clock?: () => number;
 }
 export interface NodeAgent {
   close(): Promise<void>;
@@ -35,6 +39,7 @@ const DECODED_RESPONSE_HEADERS = new Set([
 
 export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
   const baseMs = o.reconnectMs ?? DEFAULT_RECONNECT_MS;
+  const clock = o.clock ?? Date.now;
   let socket: WebSocket | undefined;
   let timer: NodeJS.Timeout | undefined;
   let failures = 0;
@@ -59,7 +64,10 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
   const connect = (): void => {
     const ws = new WebSocket(`${toWsUrl(o.gatewayUrl)}/agent`);
     socket = ws;
-    ws.on("open", () => ws.send(encodeFrame({ kind: "hello", nodeId: o.nodeId, token: o.token })));
+    ws.on("open", () => {
+      const { ts, sig } = signNodeProof(o.keyPair, "agent", o.nodeId, clock());
+      ws.send(encodeFrame({ kind: "hello", nodeId: o.nodeId, ts, sig }));
+    });
     ws.on("message", (data: RawData) => {
       try {
         const frame = decodeGatewayFrame(data.toString());

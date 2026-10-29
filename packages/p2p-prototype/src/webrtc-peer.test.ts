@@ -2,14 +2,21 @@ import { cleanup } from "node-datachannel";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
+import { openSession } from "./gateway-client.js";
+import { generateKeyPair, nodeAuthorization } from "./pairing.js";
 import { connectPeer } from "./webrtc-peer.js";
 
 describe("webrtc peer", () => {
   let gateway: Gateway;
+  const keyPair = generateKeyPair();
 
   beforeAll(async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
-    gateway = await startGateway({ port: 0, nodeTokens: new Map() });
+    gateway = await startGateway({
+      port: 0,
+      userTokens: new Map([["user", "token"]]),
+      registry: new Map([["b", { user: "user", publicKey: keyPair.publicKey, revoked: false }]]),
+    });
   });
 
   afterAll(async () => {
@@ -20,8 +27,21 @@ describe("webrtc peer", () => {
 
   it("exchanges a message both ways through gateway signaling", async () => {
     const signalUrl = `${gateway.url}/signal`;
-    const a = await connectPeer({ signalUrl, selfId: "a", remoteId: "b", initiator: true });
-    const b = await connectPeer({ signalUrl, selfId: "b", remoteId: "a", initiator: false });
+    const { assertion } = await openSession(gateway.url, "token", "b", "a");
+    const a = await connectPeer({
+      signalUrl,
+      selfId: "a",
+      remoteId: "b",
+      initiator: true,
+      authorization: `Assertion ${assertion}`,
+    });
+    const b = await connectPeer({
+      signalUrl,
+      selfId: "b",
+      remoteId: "a",
+      initiator: false,
+      authorization: nodeAuthorization(keyPair, "b"),
+    });
     await Promise.all([a.open, b.open]);
 
     a.send("ping");

@@ -2,23 +2,49 @@ import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import type { Duplex } from "node:stream";
 import type { RawData } from "ws";
 import { WebSocket, WebSocketServer } from "ws";
-import type { NodeFrame, NodeId, RelayRequest, RelayResponse } from "./protocol.js";
+import type { KeyPair } from "./pairing.js";
+import {
+  createPairingCodes,
+  generateKeyPair,
+  isPublicKey,
+  nodeProofMessage,
+  pairingMessage,
+  parseNodeProof,
+  signAssertion,
+  verify,
+  verifyAssertion,
+} from "./pairing.js";
+import type { Hello, NodeFrame, NodeId, RelayRequest, RelayResponse } from "./protocol.js";
 import { decodeNodeFrame, encodeFrame } from "./protocol.js";
 import type { TurnConfig } from "./turn-credentials.js";
 import { mintTurnCredentials } from "./turn-credentials.js";
 
+export interface NodeRecord {
+  user: string;
+  publicKey: string;
+  revoked: boolean;
+}
 export interface GatewayOptions {
   port: number;
   host?: string;
-  nodeTokens: Map<NodeId, string>;
+  /** Stands in for vnbot.run sign-in: user -> static bearer token. */
+  userTokens: Map<string, string>;
+  /** Generated at start when omitted, so assertions do not survive a restart. */
+  gatewayKey?: KeyPair;
+  /** Paired nodes. Pass the same map to a restarted gateway to keep pairings. */
+  registry?: Map<NodeId, NodeRecord>;
+  clock?: () => number;
   requestTimeoutMs?: number;
   turn?: TurnConfig;
   pendingSignalTtlMs?: number;
 }
 export interface Gateway {
   url: string;
+  /** Pinned by nodes at pairing; verifies assertions. */
+  publicKey: string;
   close(): Promise<void>;
   connectedNodes(): NodeId[];
 }
@@ -28,9 +54,14 @@ const HELLO_TIMEOUT_MS = 5_000;
 const MAX_BODY_BYTES = 1 << 20;
 const MAX_PENDING_SIGNALS = 32;
 const DEFAULT_PENDING_SIGNAL_TTL_MS = 15_000;
+const ASSERTION_TTL_MS = 60_000;
+const HELLO_SKEW_MS = 30_000;
+const ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 const CLOSE_BAD_FRAME = 1003;
+const CLOSE_FORBIDDEN_TARGET = 1008;
 const CLOSE_UNAUTHORIZED = 4401;
 const DROPPED_REQUEST_HEADERS = new Set([
+  "authorization",
   "host",
   "connection",
   "content-length",
@@ -39,10 +70,21 @@ const DROPPED_REQUEST_HEADERS = new Set([
 const DROPPED_RESPONSE_HEADERS = new Set(["connection", "content-length", "transfer-encoding"]);
 
 interface QueuedSignal {
+  nodeId: NodeId;
   from: string;
   raw: string;
   expiresAt: number;
 }
+
+interface PeerEntry {
+  socket: WebSocket;
+  owner: string;
+  nodeId: NodeId;
+}
+
+type Caller =
+  | { kind: "client"; user: string; nodeId: NodeId; peerId: string; exp: number }
+  | { kind: "node"; nodeId: NodeId; peerId: string };
 
 interface PendingRequest {
   nodeId: NodeId;
@@ -56,6 +98,13 @@ function digest(s: string): Buffer {
 
 function tokenMatches(expected: string | undefined, given: string): boolean {
   return expected !== undefined && timingSafeEqual(digest(expected), digest(given));
+}
+
+/** The credential of an `Authorization: <scheme> <credential>` header, scheme matched case-insensitively. */
+function credential(req: IncomingMessage, scheme: string): string | undefined {
+  const [given, value, ...rest] = (req.headers.authorization ?? "").split(" ");
+  const ok = given?.toLowerCase() === scheme.toLowerCase() && rest.length === 0;
+  return ok && value ? value : undefined;
 }
 
 function readBody(req: IncomingMessage): Promise<Buffer | null> {
@@ -72,6 +121,19 @@ function readBody(req: IncomingMessage): Promise<Buffer | null> {
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
+}
+
+async function readJson(req: IncomingMessage): Promise<Record<string, unknown> | undefined> {
+  const body = await readBody(req);
+  if (body === null) return undefined;
+  try {
+    const v: unknown = JSON.parse(body.toString());
+    return typeof v === "object" && v !== null && !Array.isArray(v)
+      ? (v as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function respond(res: ServerResponse, status: number, text: string): number {
@@ -98,8 +160,12 @@ function relayRequestHeaders(req: IncomingMessage): Record<string, string> {
 export async function startGateway(o: GatewayOptions): Promise<Gateway> {
   const timeoutMs = o.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   const signalTtlMs = o.pendingSignalTtlMs ?? DEFAULT_PENDING_SIGNAL_TTL_MS;
+  const clock = o.clock ?? Date.now;
+  const gatewayKey = o.gatewayKey ?? generateKeyPair();
+  const registry = o.registry ?? new Map<NodeId, NodeRecord>();
+  const pairing = createPairingCodes({ clock });
   const nodes = new Map<NodeId, WebSocket>();
-  const peers = new Map<string, WebSocket>();
+  const peers = new Map<string, PeerEntry>();
   const queuedSignals = new Map<string, QueuedSignal[]>();
   const pending = new Map<string, PendingRequest>();
   const wss = new WebSocketServer({ noServer: true });
@@ -107,28 +173,31 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
   // A signal for an offline peer belongs to a session that may already be dead; a stale offer or
   // candidate delivered to the next session's responder breaks ICE (ufrag mismatch).
   const liveQueue = (id: string): QueuedSignal[] => {
-    const now = Date.now();
+    const now = clock();
     const live = (queuedSignals.get(id) ?? []).filter((q) => q.expiresAt > now);
     if (live.length > 0) queuedSignals.set(id, live);
     else queuedSignals.delete(id);
     return live;
   };
 
-  const deliverSignal = (from: string, to: string, raw: string): void => {
-    const target = peers.get(to) ?? nodes.get(to);
+  const deliverSignal = (from: string, to: string, raw: string, nodeId: NodeId): void => {
+    // Signals go to /signal sockets only; a node's agent link carries relayed HTTP, not WebRTC.
+    const entry = peers.get(to);
+    if (entry !== undefined && entry.nodeId !== nodeId) return;
+    const target = entry?.socket;
     if (target?.readyState === WebSocket.OPEN) {
       target.send(raw);
       return;
     }
     const queue = liveQueue(to);
     if (queue.length < MAX_PENDING_SIGNALS) {
-      queue.push({ from, raw, expiresAt: Date.now() + signalTtlMs });
+      queue.push({ nodeId, from, raw, expiresAt: clock() + signalTtlMs });
       queuedSignals.set(to, queue);
     }
   };
 
-  const flushSignals = (id: string, socket: WebSocket): void => {
-    for (const q of liveQueue(id)) socket.send(q.raw);
+  const flushSignals = (id: string, socket: WebSocket, nodeId: NodeId): void => {
+    for (const q of liveQueue(id)) if (q.nodeId === nodeId) socket.send(q.raw);
     queuedSignals.delete(id);
   };
 
@@ -140,8 +209,9 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     }
   };
 
-  const relaySignal = (from: string, frame: NodeFrame): void => {
-    if (frame.kind === "signal") deliverSignal(from, frame.to, encodeFrame({ ...frame, from }));
+  const relaySignal = (from: string, frame: NodeFrame, nodeId: NodeId): void => {
+    if (frame.kind === "signal")
+      deliverSignal(from, frame.to, encodeFrame({ ...frame, from }), nodeId);
   };
 
   const onFrames = (socket: WebSocket, handle: (raw: string) => void): void => {
@@ -154,6 +224,59 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     });
   };
 
+  const decodeHello = (raw: string): Hello | undefined => {
+    try {
+      const frame = decodeNodeFrame(raw);
+      return frame.kind === "hello" ? frame : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  // Unknown and revoked nodes fail the same way as a bad signature.
+  const nodeProofValid = (scope: "agent" | "signal", nodeId: NodeId, ts: number, sig: string) => {
+    const record = registry.get(nodeId);
+    return (
+      record !== undefined &&
+      !record.revoked &&
+      Math.abs(clock() - ts) <= HELLO_SKEW_MS &&
+      verify(record.publicKey, nodeProofMessage(scope, nodeId, ts), sig)
+    );
+  };
+
+  const userFor = (req: IncomingMessage): string | undefined => {
+    const given = credential(req, "Bearer");
+    let found: string | undefined;
+    if (given !== undefined) {
+      for (const [user, token] of o.userTokens) if (tokenMatches(token, given)) found = user;
+    }
+    return found;
+  };
+
+  const ownedNode = (user: string, nodeId: NodeId): NodeRecord | undefined => {
+    const record = registry.get(nodeId);
+    return record !== undefined && !record.revoked && record.user === user ? record : undefined;
+  };
+
+  const authenticate = (req: IncomingMessage): Caller | undefined => {
+    const assertion = credential(req, "Assertion");
+    if (assertion !== undefined) {
+      const claims = verifyAssertion(gatewayKey.publicKey, assertion, clock());
+      if (claims === undefined || ownedNode(claims.user, claims.nodeId) === undefined) {
+        return undefined;
+      }
+      return { kind: "client", ...claims };
+    }
+    const proof = parseNodeProof(credential(req, "Node") ?? "");
+    if (proof === undefined || !nodeProofValid("signal", proof.nodeId, proof.ts, proof.sig)) {
+      return undefined;
+    }
+    return { kind: "node", nodeId: proof.nodeId, peerId: proof.nodeId };
+  };
+
+  const ownerOf = (caller: Caller): string =>
+    caller.kind === "client" ? `user:${caller.user}` : `node:${caller.nodeId}`;
+
   const onAgent = (socket: WebSocket): void => {
     let nodeId: NodeId | undefined;
     const helloTimer = setTimeout(
@@ -161,23 +284,24 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
       HELLO_TIMEOUT_MS,
     );
     onFrames(socket, (raw) => {
-      const frame = decodeNodeFrame(raw);
       if (nodeId === undefined) {
-        if (frame.kind !== "hello" || !tokenMatches(o.nodeTokens.get(frame.nodeId), frame.token)) {
+        const hello = decodeHello(raw);
+        if (hello === undefined || !nodeProofValid("agent", hello.nodeId, hello.ts, hello.sig)) {
           socket.close(CLOSE_UNAUTHORIZED, "unauthorized");
           return;
         }
         clearTimeout(helloTimer);
-        nodeId = frame.nodeId;
+        nodeId = hello.nodeId;
         nodes.get(nodeId)?.close(1000, "replaced");
         nodes.set(nodeId, socket);
         socket.send(encodeFrame({ kind: "welcome", nodeId }));
-        flushSignals(nodeId, socket);
-      } else if (frame.kind === "response") {
-        pending.get(frame.id)?.settle(frame.status, frame);
-      } else {
-        relaySignal(nodeId, frame);
+        return;
       }
+      const frame = decodeNodeFrame(raw);
+      if (frame.kind === "response") {
+        const request = pending.get(frame.id);
+        if (request?.nodeId === nodeId) request.settle(frame.status, frame);
+      } else relaySignal(nodeId, frame, nodeId);
     });
     socket.on("close", () => {
       clearTimeout(helloTimer);
@@ -187,25 +311,114 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     });
   };
 
-  const onSignal = (socket: WebSocket, peer: string): void => {
-    peers.get(peer)?.close(1000, "replaced");
-    peers.set(peer, socket);
-    flushSignals(peer, socket);
-    onFrames(socket, (raw) => relaySignal(peer, decodeNodeFrame(raw)));
+  // A client may only signal the node its assertion names; a node may answer any peer.
+  const onSignal = (socket: WebSocket, caller: Caller): void => {
+    const peer = caller.peerId;
+    peers.get(peer)?.socket.close(1000, "replaced");
+    peers.set(peer, { socket, owner: ownerOf(caller), nodeId: caller.nodeId });
+    flushSignals(peer, socket, caller.nodeId);
+    const expiryTimer =
+      caller.kind === "client"
+        ? setTimeout(
+            () => socket.close(CLOSE_UNAUTHORIZED, "assertion expired"),
+            caller.exp - clock(),
+          )
+        : undefined;
+    onFrames(socket, (raw) => {
+      if (
+        registry.get(caller.nodeId)?.revoked ||
+        (caller.kind === "client" && caller.exp <= clock())
+      ) {
+        socket.close(CLOSE_UNAUTHORIZED, "unauthorized");
+        return;
+      }
+      const frame = decodeNodeFrame(raw);
+      if (caller.kind === "client" && frame.kind === "signal" && frame.to !== caller.nodeId) {
+        socket.close(CLOSE_FORBIDDEN_TARGET, "forbidden target");
+        return;
+      }
+      relaySignal(peer, frame, caller.nodeId);
+    });
     socket.on("close", () => {
-      if (peers.get(peer) !== socket) return;
+      clearTimeout(expiryTimer);
+      if (peers.get(peer)?.socket !== socket) return;
       peers.delete(peer);
       dropSignalsFrom(peer);
     });
   };
 
+  const disconnectNode = (nodeId: NodeId): void => {
+    nodes.get(nodeId)?.close(CLOSE_UNAUTHORIZED, "unpaired");
+    for (const entry of peers.values()) {
+      if (entry.nodeId === nodeId) entry.socket.close(CLOSE_UNAUTHORIZED, "unpaired");
+    }
+  };
+
+  const pairStart = (req: IncomingMessage, res: ServerResponse): number => {
+    const user = userFor(req);
+    if (user === undefined) return respond(res, 401, "unauthorized");
+    return respondJson(res, 200, pairing.issue(user));
+  };
+
+  const pairComplete = async (req: IncomingMessage, res: ServerResponse): Promise<number> => {
+    const body = await readJson(req);
+    const { code, nodeId, nodePublicKey, sig } = body ?? {};
+    if (
+      typeof code !== "string" ||
+      typeof nodeId !== "string" ||
+      typeof nodePublicKey !== "string" ||
+      typeof sig !== "string" ||
+      !ID_PATTERN.test(nodeId) ||
+      !isPublicKey(nodePublicKey)
+    ) {
+      return respond(res, 400, "bad request");
+    }
+    // The code is only spent once the node has proved it holds the key it is registering.
+    const user = verify(nodePublicKey, pairingMessage(code, nodeId), sig)
+      ? pairing.redeem(code)
+      : undefined;
+    if (user === undefined) return respond(res, 401, "unauthorized");
+    if (registry.has(nodeId)) return respond(res, 409, "node id taken");
+    registry.set(nodeId, { user, publicKey: nodePublicKey, revoked: false });
+    return respondJson(res, 200, { gatewayPublicKey: gatewayKey.publicKey, user });
+  };
+
+  const openSession = async (req: IncomingMessage, res: ServerResponse): Promise<number> => {
+    const user = userFor(req);
+    if (user === undefined) return respond(res, 401, "unauthorized");
+    const body = await readJson(req);
+    const { nodeId, peerId } = body ?? {};
+    if (
+      typeof nodeId !== "string" ||
+      typeof peerId !== "string" ||
+      !ID_PATTERN.test(nodeId) ||
+      !ID_PATTERN.test(peerId) ||
+      registry.has(peerId)
+    ) {
+      return respond(res, 400, "bad request");
+    }
+    if (ownedNode(user, nodeId) === undefined) return respond(res, 404, "unknown node");
+    const exp = clock() + ASSERTION_TTL_MS;
+    const assertion = signAssertion(gatewayKey, { nodeId, user, peerId, exp });
+    return respondJson(res, 200, { assertion, nodeId, peerId, exp });
+  };
+
+  const unpair = (req: IncomingMessage, res: ServerResponse, nodeId: NodeId): number => {
+    const user = userFor(req);
+    if (user === undefined) return respond(res, 401, "unauthorized");
+    const record = registry.get(nodeId);
+    if (record?.user !== user) return respond(res, 404, "unknown node");
+    record.revoked = true;
+    disconnectNode(nodeId);
+    return respond(res, 204, "");
+  };
+
   const relayHttp = async (
     req: IncomingMessage,
     res: ServerResponse,
-    encodedNodeId: string,
+    nodeId: NodeId,
     path: string,
   ): Promise<number> => {
-    const nodeId = decodeURIComponent(encodedNodeId);
     const node = nodes.get(nodeId);
     if (node === undefined) return respond(res, 502, "node offline");
     const body = await readBody(req);
@@ -240,48 +453,85 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     return answer.response.status;
   };
 
-  const turnCredentials = (res: ServerResponse, peer: string | null): number => {
+  const turnCredentials = (req: IncomingMessage, res: ServerResponse, peer: string | null) => {
+    const caller = authenticate(req);
+    if (caller === undefined) return respond(res, 401, "unauthorized");
     if (o.turn === undefined) return respond(res, 404, "turn not configured");
+    if (!peer) return respond(res, 400, "bad peer");
+    if (peer !== caller.peerId) return respond(res, 403, "peer does not match credentials");
+    const now = clock();
+    let config = o.turn;
+    if (caller.kind === "client") {
+      // TURN access must not outlive the assertion that authorised it.
+      const remainingSeconds = Math.floor((caller.exp - now) / 1000);
+      if (remainingSeconds < 1) return respond(res, 401, "unauthorized");
+      config = { ...config, ttlSeconds: Math.min(config.ttlSeconds, remainingSeconds) };
+    }
     try {
-      return respondJson(res, 200, mintTurnCredentials(o.turn, peer ?? ""));
+      return respondJson(res, 200, mintTurnCredentials(config, peer, now));
     } catch {
       return respond(res, 400, "bad peer");
     }
   };
 
+  const handle = async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<number> => {
+    const method = req.method ?? "GET";
+    const route = /^\/nodes\/([^/]+)(\/.*)?$/.exec(url.pathname);
+    if (url.pathname === "/agent" || url.pathname === "/signal")
+      return respond(res, 401, "unauthorized");
+    if (url.pathname === "/healthz") return respond(res, 200, "ok");
+    if (url.pathname === "/pair/start" && method === "POST") return pairStart(req, res);
+    if (url.pathname === "/pair/complete" && method === "POST") return pairComplete(req, res);
+    if (url.pathname === "/sessions" && method === "POST") return openSession(req, res);
+    if (url.pathname === "/turn-credentials" && method === "GET") {
+      return turnCredentials(req, res, url.searchParams.get("peer"));
+    }
+    if (route?.[1] !== undefined) {
+      const nodeId = decodeURIComponent(route[1]);
+      if (route[2] === undefined && method === "DELETE") return unpair(req, res, nodeId);
+      const user = userFor(req);
+      if (user === undefined) return respond(res, 401, "unauthorized");
+      if (ownedNode(user, nodeId) === undefined) return respond(res, 404, "unknown node");
+      return relayHttp(req, res, nodeId, (route[2] ?? "/") + url.search);
+    }
+    return respond(res, 404, "not found");
+  };
+
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://gateway");
-    const method = req.method ?? "GET";
-    const log = (status: number): void => console.log(`${method} ${url.pathname} ${status}`);
-    const route = /^\/nodes\/([^/]+)(\/.*)?$/.exec(url.pathname);
-    if (url.pathname === "/healthz") {
-      log(respond(res, 200, "ok"));
-    } else if (url.pathname === "/turn-credentials" && method === "GET") {
-      // Unauthenticated: keep the gateway on loopback or behind an SSH tunnel until pairing auth lands.
-      log(turnCredentials(res, url.searchParams.get("peer")));
-    } else if (route?.[1] !== undefined) {
-      const path = (route[2] ?? "/") + url.search;
-      relayHttp(req, res, route[1], path).then(log, () => {
-        if (!res.headersSent) respond(res, 500, "relay failed");
-        log(500);
-      });
-    } else {
-      log(respond(res, 404, "not found"));
-    }
+    const log = (status: number): void =>
+      console.log(`${req.method ?? "GET"} ${url.pathname} ${status}`);
+    handle(req, res, url).then(log, () => {
+      if (!res.headersSent) respond(res, 500, "request failed");
+      log(500);
+    });
   });
+
+  const rejectUpgrade = (socket: Duplex, status: number, reason: string): void => {
+    console.log(`UPGRADE ${status}`);
+    socket.end(`HTTP/1.1 ${status} ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+  };
 
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", "http://gateway");
-    const peer = url.searchParams.get("peer");
-    const isAgent = url.pathname === "/agent";
-    if (!isAgent && !(url.pathname === "/signal" && peer)) {
+    if (url.pathname === "/agent") {
+      wss.handleUpgrade(req, socket, head, onAgent);
+      return;
+    }
+    if (url.pathname !== "/signal") {
       socket.destroy();
       return;
     }
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      if (isAgent) onAgent(ws);
-      else onSignal(ws, peer as string);
-    });
+    const caller = authenticate(req);
+    if (caller === undefined) return rejectUpgrade(socket, 401, "Unauthorized");
+    if (url.searchParams.get("peer") !== caller.peerId) {
+      return rejectUpgrade(socket, 403, "Forbidden");
+    }
+    const holder = peers.get(caller.peerId);
+    if (holder?.socket.readyState === WebSocket.OPEN && holder.owner !== ownerOf(caller)) {
+      return rejectUpgrade(socket, 409, "Conflict");
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => onSignal(ws, caller));
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -292,6 +542,7 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
 
   return {
     url: `http://${address.includes(":") ? `[${address}]` : address}:${port}`,
+    publicKey: gatewayKey.publicKey,
     connectedNodes: () => [...nodes.keys()],
     close: async () => {
       for (const p of pending.values()) p.settle(502);

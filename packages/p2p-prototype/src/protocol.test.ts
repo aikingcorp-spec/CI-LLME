@@ -5,7 +5,7 @@ import { decodeGatewayFrame, decodeNodeFrame, encodeFrame } from "./protocol.js"
 describe("protocol", () => {
   it("round-trips node frames", () => {
     const frames: NodeFrame[] = [
-      { kind: "hello", nodeId: "n1", token: "t" },
+      { kind: "hello", nodeId: "n1", ts: 1_700_000_000_000, sig: "s" },
       { kind: "response", id: "1", status: 200, headers: { a: "b" }, body: "aGk=" },
       { kind: "signal", from: "a", to: "b", payload: { type: "offer", sdp: "v=0" } },
     ];
@@ -29,12 +29,14 @@ describe("protocol", () => {
   it("throws on a bad frame", () => {
     expect(() => decodeNodeFrame("not json")).toThrow();
     expect(() => decodeNodeFrame(JSON.stringify({ kind: "hello", nodeId: "n1" }))).toThrow();
+    const badTs = { kind: "hello", nodeId: "n1", ts: "1", sig: "s" };
+    expect(() => decodeNodeFrame(JSON.stringify(badTs))).toThrow();
     const badStatus = { kind: "response", id: "1", status: "200", headers: {}, body: "" };
     const badPayload = { kind: "signal", from: "a", to: "b", payload: { type: "x" } };
     expect(() => decodeNodeFrame(JSON.stringify(badStatus))).toThrow();
     expect(() => decodeNodeFrame(JSON.stringify(badPayload))).toThrow();
     expect(() => decodeNodeFrame(encodeFrame({ kind: "welcome", nodeId: "n1" }))).toThrow();
-    const hello = encodeFrame({ kind: "hello", nodeId: "n1", token: "t" });
+    const hello = encodeFrame({ kind: "hello", nodeId: "n1", ts: 1, sig: "s" });
     expect(() => decodeGatewayFrame(hello)).toThrow();
   });
 });

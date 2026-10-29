@@ -1,21 +1,36 @@
 import { readFileSync } from "node:fs";
 import { startGateway } from "../gateway.js";
+import { readKeyFile, writeKeyFile } from "../key-file.js";
+import type { KeyPair } from "../pairing.js";
+import { generateKeyPair } from "../pairing.js";
 import type { TurnConfig } from "../turn-credentials.js";
 
-const tokens = process.env.NODE_TOKENS;
+const tokens = process.env.USER_TOKENS;
 if (!tokens) {
-  console.error("NODE_TOKENS is required, e.g. NODE_TOKENS=demo:change-me");
+  console.error("USER_TOKENS is required, e.g. USER_TOKENS=alice:change-me");
   process.exit(1);
 }
 
-const nodeTokens = new Map<string, string>();
+const userTokens = new Map<string, string>();
 for (const pair of tokens.split(",")) {
-  const [id, token] = pair.split(":");
-  if (!id || !token) {
-    console.error("NODE_TOKENS entries must look like nodeId:token");
+  const [user, ...rest] = pair.split(":");
+  const token = rest.join(":");
+  if (!user || !token) {
+    console.error("USER_TOKENS entries must look like user:token");
     process.exit(1);
   }
-  nodeTokens.set(id, token);
+  userTokens.set(user, token);
+}
+
+function readGatewayKey(): KeyPair | undefined {
+  const path = process.env.GATEWAY_KEY_FILE;
+  if (!path) return undefined;
+  const existing = readKeyFile(path);
+  if (existing) return existing;
+  const created = generateKeyPair();
+  writeKeyFile(path, created);
+  console.log("created gateway key file");
+  return created;
 }
 
 function readTurnConfig(): TurnConfig | undefined {
@@ -43,7 +58,8 @@ function readTurnConfig(): TurnConfig | undefined {
 const gateway = await startGateway({
   port: Number(process.env.PORT ?? 8787),
   host: process.env.HOST,
-  nodeTokens,
+  userTokens,
+  gatewayKey: readGatewayKey(),
   turn: readTurnConfig(),
 });
 console.log(`gateway listening at ${gateway.url}`);

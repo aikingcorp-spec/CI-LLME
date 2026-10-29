@@ -11,6 +11,8 @@ export interface PeerOptions {
   selfId: string;
   remoteId: string;
   initiator: boolean;
+  /** Sent as the `Authorization` header on the signaling upgrade (`Assertion ...` or `Node ...`). */
+  authorization?: string;
   iceServers?: Array<string | IceServer>;
   iceTransportPolicy?: "all" | "relay";
 }
@@ -56,7 +58,9 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   const debug = (message: string): void => {
     if (process.env.P2P_DEBUG === "1") console.error(`[debug ${o.selfId}] ${message}`);
   };
-  const ws = new WebSocket(`${toWsUrl(o.signalUrl)}?peer=${encodeURIComponent(o.selfId)}`);
+  const ws = new WebSocket(`${toWsUrl(o.signalUrl)}?peer=${encodeURIComponent(o.selfId)}`, {
+    headers: o.authorization === undefined ? {} : { authorization: o.authorization },
+  });
   const pc = new PeerConnection(o.selfId, {
     iceServers: o.iceServers ?? [],
     iceTransportPolicy: o.iceTransportPolicy,

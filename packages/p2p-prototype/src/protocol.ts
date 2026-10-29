@@ -14,7 +14,7 @@ export type RelayResponse = {
   headers: Record<string, string>;
   body: string;
 };
-export type Hello = { kind: "hello"; nodeId: NodeId; token: string };
+export type Hello = { kind: "hello"; nodeId: NodeId; ts: number; sig: string };
 export type Welcome = { kind: "welcome"; nodeId: NodeId };
 export type SignalPayload =
   | { type: "offer" | "answer"; sdp: string }
@@ -43,6 +43,11 @@ function status(o: Fields): number {
   return typeof v === "number" && Number.isInteger(v) && v >= 100 && v <= 599
     ? v
     : fail("status must be an HTTP status code");
+}
+
+function timestamp(o: Fields): number {
+  const v = o.ts;
+  return typeof v === "number" && Number.isSafeInteger(v) ? v : fail("ts must be an integer");
 }
 
 function headers(o: Fields): Record<string, string> {
@@ -92,7 +97,7 @@ function decodeFrame(raw: string): NodeFrame | GatewayFrame {
         body: str(v, "body"),
       };
     case "hello":
-      return { kind: "hello", nodeId: str(v, "nodeId"), token: str(v, "token") };
+      return { kind: "hello", nodeId: str(v, "nodeId"), ts: timestamp(v), sig: str(v, "sig") };
     case "welcome":
       return { kind: "welcome", nodeId: str(v, "nodeId") };
     case "signal":

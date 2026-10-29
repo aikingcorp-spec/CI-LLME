@@ -2,13 +2,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
+import { openSession } from "./gateway-client.js";
 import type { LocalHandler, NodeAgent } from "./node-agent.js";
 import { startNodeAgent } from "./node-agent.js";
+import { generateKeyPair, nodeAuthorization, signNodeProof } from "./pairing.js";
 import { encodeFrame, toWsUrl } from "./protocol.js";
 import { waitFor } from "./test-util.js";
 import type { TurnCredentials } from "./turn-credentials.js";
 
 const TOKEN = "test-token";
+const keyPair = generateKeyPair();
+const headers = { authorization: `Bearer ${TOKEN}` };
+const options = () => ({
+  userTokens: new Map([["user", TOKEN]]),
+  registry: new Map(
+    ["n1", "b"].map((id) => [id, { user: "user", publicKey: keyPair.publicKey, revoked: false }]),
+  ),
+});
+async function assertionHeaders(gateway: Gateway, peerId = "peer-a", nodeId = "n1") {
+  const { assertion } = await openSession(gateway.url, TOKEN, nodeId, peerId);
+  return { authorization: `Assertion ${assertion}` };
+}
 
 const echoHandler: LocalHandler = async (req) => ({
   status: 200,
@@ -24,7 +38,7 @@ describe("gateway and node agent", () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     gateway = await startGateway({
       port: 0,
-      nodeTokens: new Map([["n1", TOKEN]]),
+      ...options(),
       requestTimeoutMs: 300,
     });
   });
@@ -40,7 +54,7 @@ describe("gateway and node agent", () => {
     agent = startNodeAgent({
       gatewayUrl: gateway.url,
       nodeId: "n1",
-      token: TOKEN,
+      keyPair,
       handler,
       reconnectMs: 50,
     });
@@ -54,6 +68,7 @@ describe("gateway and node agent", () => {
     const res = await fetch(`${gateway.url}/nodes/n1/some/path?q=1`, {
       method: "POST",
       body: "hello",
+      headers,
     });
 
     expect(res.status).toBe(200);
@@ -62,14 +77,14 @@ describe("gateway and node agent", () => {
   });
 
   it("returns 502 when the node is offline", async () => {
-    const res = await fetch(`${gateway.url}/nodes/n1/anything`);
+    const res = await fetch(`${gateway.url}/nodes/n1/anything`, { headers });
     expect(res.status).toBe(502);
   });
 
-  it("rejects a bad token", async () => {
+  it("rejects a bad signature", async () => {
     const ws = new WebSocket(`${toWsUrl(gateway.url)}/agent`);
     await new Promise((resolve) => ws.once("open", resolve));
-    ws.send(encodeFrame({ kind: "hello", nodeId: "n1", token: "wrong" }));
+    ws.send(encodeFrame({ kind: "hello", ...signNodeProof(generateKeyPair(), "agent", "n1") }));
     const code = await new Promise<number>((resolve) => ws.once("close", resolve));
 
     expect(code).toBe(4401);
@@ -78,7 +93,7 @@ describe("gateway and node agent", () => {
 
   it("returns 504 when the node does not answer in time", async () => {
     await connectAgent(() => new Promise(() => {}));
-    const res = await fetch(`${gateway.url}/nodes/n1/slow`);
+    const res = await fetch(`${gateway.url}/nodes/n1/slow`, { headers });
     expect(res.status).toBe(504);
   });
 
@@ -89,7 +104,7 @@ describe("gateway and node agent", () => {
     await waitFor(() => agent?.connected() === false);
     gateway = await startGateway({
       port: Number(new URL(gateway.url).port),
-      nodeTokens: new Map([["n1", TOKEN]]),
+      ...options(),
     });
     await waitFor(() => agent?.connected() === true);
   });
@@ -110,13 +125,15 @@ describe("gateway turn credentials", () => {
   });
 
   it("binds to loopback by default", async () => {
-    gateway = await startGateway({ port: 0, nodeTokens: new Map(), turn });
+    gateway = await startGateway({ port: 0, ...options(), turn });
     expect(new URL(gateway.url).hostname).toBe("127.0.0.1");
   });
 
   it("issues short-lived credentials without caching", async () => {
-    gateway = await startGateway({ port: 0, nodeTokens: new Map(), turn });
-    const res = await fetch(`${gateway.url}/turn-credentials?peer=peer-a`);
+    gateway = await startGateway({ port: 0, ...options(), turn });
+    const res = await fetch(`${gateway.url}/turn-credentials?peer=peer-a`, {
+      headers: await assertionHeaders(gateway),
+    });
     const body = (await res.json()) as TurnCredentials;
 
     expect(res.status).toBe(200);
@@ -124,21 +141,26 @@ describe("gateway turn credentials", () => {
     expect(body.username).toMatch(/^\d+:peer-a$/);
     expect(body.credential).toMatch(/^[A-Za-z0-9+/]{27}=$/);
     expect(body.urls).toEqual(turn.urls);
-    expect(body.ttlSeconds).toBe(600);
+    expect(body.ttlSeconds).toBeGreaterThan(0);
+    expect(body.ttlSeconds).toBeLessThanOrEqual(60);
     expect(JSON.stringify(body)).not.toContain(turn.secret);
   });
 
   it("returns 404 when turn is not configured", async () => {
-    gateway = await startGateway({ port: 0, nodeTokens: new Map() });
-    const res = await fetch(`${gateway.url}/turn-credentials?peer=peer-a`);
+    gateway = await startGateway({ port: 0, ...options() });
+    const res = await fetch(`${gateway.url}/turn-credentials?peer=peer-a`, {
+      headers: await assertionHeaders(gateway),
+    });
     expect(res.status).toBe(404);
   });
 
-  it("returns 400 for a missing or invalid peer", async () => {
-    gateway = await startGateway({ port: 0, nodeTokens: new Map(), turn });
+  it("rejects a missing or mismatched peer", async () => {
+    gateway = await startGateway({ port: 0, ...options(), turn });
     for (const query of ["", "?peer=", "?peer=a%3Ab"]) {
-      const res = await fetch(`${gateway.url}/turn-credentials${query}`);
-      expect(res.status).toBe(400);
+      const res = await fetch(`${gateway.url}/turn-credentials${query}`, {
+        headers: await assertionHeaders(gateway),
+      });
+      expect(res.status).toBe(query === "?peer=a%3Ab" ? 403 : 400);
     }
   });
 });
@@ -160,7 +182,14 @@ describe("gateway pending signals", () => {
   });
 
   async function connectPeer(peer: string): Promise<{ ws: WebSocket; received: string[] }> {
-    const ws = new WebSocket(`${toWsUrl(gateway?.url ?? "")}/signal?peer=${peer}`);
+    if (!gateway) throw new Error("gateway missing");
+    const authorization =
+      peer === "b"
+        ? nodeAuthorization(keyPair, "b")
+        : (await assertionHeaders(gateway, peer, "b")).authorization;
+    const ws = new WebSocket(`${toWsUrl(gateway.url)}/signal?peer=${peer}`, {
+      headers: { authorization },
+    });
     sockets.push(ws);
     const received: string[] = [];
     ws.on("message", (data) => received.push(data.toString()));
@@ -172,7 +201,7 @@ describe("gateway pending signals", () => {
     encodeFrame({ kind: "signal", from: "", to, payload: { type: "offer", sdp } });
 
   it("drops queued signals that outlive the ttl", async () => {
-    gateway = await startGateway({ port: 0, nodeTokens: new Map(), pendingSignalTtlMs: 100 });
+    gateway = await startGateway({ port: 0, ...options(), pendingSignalTtlMs: 100 });
     const a = await connectPeer("a");
     a.ws.send(signal("b", "stale"));
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -187,7 +216,7 @@ describe("gateway pending signals", () => {
   });
 
   it("delivers queued signals within the ttl", async () => {
-    gateway = await startGateway({ port: 0, nodeTokens: new Map() });
+    gateway = await startGateway({ port: 0, ...options() });
     const a = await connectPeer("a");
     a.ws.send(signal("b", "offer"));
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -199,7 +228,7 @@ describe("gateway pending signals", () => {
   });
 
   it("drops signals a peer queued for others when its socket closes", async () => {
-    gateway = await startGateway({ port: 0, nodeTokens: new Map() });
+    gateway = await startGateway({ port: 0, ...options() });
     const a = await connectPeer("a");
     a.ws.send(signal("b", "dead-session"));
     await new Promise((resolve) => setTimeout(resolve, 50));

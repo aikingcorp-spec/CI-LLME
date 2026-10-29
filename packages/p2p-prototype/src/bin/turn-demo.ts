@@ -1,5 +1,8 @@
 import { parseArgs } from "node:util";
 import type { IceServer } from "node-datachannel";
+import { openSession } from "../gateway-client.js";
+import { readKeyFile } from "../key-file.js";
+import { nodeAuthorization } from "../pairing.js";
 import type { TurnCredentials } from "../turn-credentials.js";
 import { toNodeDatachannelIceServers } from "../turn-credentials.js";
 import { connectPeer } from "../webrtc-peer.js";
@@ -20,7 +23,8 @@ const { values } = parseArgs({
 });
 if (!gatewayUrl || !values.self || !values.remote) {
   console.error(
-    "usage: GATEWAY_URL=http://127.0.0.1:8787 turn-demo.ts --self <id> --remote <id> [--initiator] [--relay]",
+    "usage: GATEWAY_URL=http://127.0.0.1:8787 USER_TOKEN=... turn-demo.ts --self <peer id> --remote <node id> --initiator [--relay]\n" +
+      "       GATEWAY_URL=http://127.0.0.1:8787 NODE_KEY_FILE=... turn-demo.ts --self <node id> --remote <peer id> [--relay]",
   );
   process.exit(1);
 }
@@ -41,7 +45,27 @@ function summarize(candidates: string[]): string {
   return ["host", "srflx", "relay"].map((t) => `${t}=${counts.get(t) ?? 0}`).join(" ");
 }
 
-const res = await fetch(`${gatewayUrl}/turn-credentials?peer=${encodeURIComponent(self)}`);
+// The initiator is the remote client and signs in with an assertion for the node it names; the
+// responder is the paired node and signs in with its own key.
+const authorize = async (): Promise<string> => {
+  if (initiator) {
+    const userToken = process.env.USER_TOKEN;
+    if (!userToken) throw new Error("USER_TOKEN is required for the initiator");
+    return `Assertion ${(await openSession(gatewayUrl, userToken, remote, self)).assertion}`;
+  }
+  const keyFile = process.env.NODE_KEY_FILE;
+  const identity = keyFile ? readKeyFile(keyFile) : undefined;
+  if (!identity) throw new Error("NODE_KEY_FILE must point at the key saved by node-agent.ts");
+  return nodeAuthorization(identity, self);
+};
+const authorization = await authorize().catch((err: unknown) => {
+  console.error(`[${self}] ${err instanceof Error ? err.message : "authorization failed"}`);
+  process.exit(1);
+});
+
+const res = await fetch(`${gatewayUrl}/turn-credentials?peer=${encodeURIComponent(self)}`, {
+  headers: { authorization },
+});
 if (!res.ok) {
   console.error(`[${self}] turn-credentials failed: ${res.status}`);
   process.exit(1);
@@ -59,6 +83,7 @@ const peer = await connectPeer({
   selfId: self,
   remoteId: remote,
   initiator,
+  authorization,
   iceServers,
   iceTransportPolicy: relay ? "relay" : "all",
 });
