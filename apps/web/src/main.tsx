@@ -15,7 +15,7 @@ import { markAfterPaint, markOnce } from "./lib/performance";
 import { installPreloadRecovery } from "./lib/preload-recovery";
 import { queryClient } from "./lib/query";
 import { applyUiAppearance, watchSystemAppearance } from "./lib/ui-appearance";
-import { resolveUiLocale } from "./lib/ui-locale";
+import { migrateStoredUiLocale, resolveUiLocale } from "./lib/ui-locale";
 import { registerServiceWorker } from "./pwa/register";
 import { lockStandaloneZoom } from "./pwa/standalone";
 import "./styles.css";
@@ -25,6 +25,7 @@ installPreloadRecovery();
 clientUpdates().install();
 registerServiceWorker();
 lockStandaloneZoom();
+migrateStoredUiLocale();
 applyUiDirection(resolveUiLocale());
 applyUiAppearance();
 

@@ -47,6 +47,13 @@ export function normalizeUiLocale(raw: string | null | undefined): UiLocale {
   return matchUiLocale(raw, UI_LOCALES);
 }
 
+/** Saved catalogs the web UI no longer offers; they move to Vietnamese. */
+const RETIRED_UI_LOCALES: readonly UiLocale[] = ["ja", "ko", "zh-CN", "zh-TW"];
+
+function migrateRetiredLocale(locale: UiLocale): UiLocale {
+  return RETIRED_UI_LOCALES.includes(locale) ? "vi" : locale;
+}
+
 function readStoredLocale(storage: Pick<Storage, "getItem"> | null | undefined): string | null {
   if (!storage) return null;
   try {
@@ -79,7 +86,7 @@ export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale 
       : readStoredLocale(
           options.storage ?? (typeof localStorage !== "undefined" ? localStorage : null),
         );
-  if (stored) return normalizeUiLocale(stored);
+  if (stored) return migrateRetiredLocale(normalizeUiLocale(stored));
 
   const envDefault =
     options.envDefault !== undefined
@@ -114,4 +121,16 @@ export function persistUiLocale(
   } catch {
     // Ignore quota / private-mode failures; in-memory locale still applies.
   }
+}
+
+/** Rewrite a saved retired locale (`ja`, `ko`, `zh-CN`, `zh-TW`, or a raw tag like `ja-JP`) to `vi`. */
+export function migrateStoredUiLocale(
+  storage: Pick<Storage, "getItem" | "setItem"> | null = typeof localStorage !== "undefined"
+    ? localStorage
+    : null,
+): void {
+  const stored = readStoredLocale(storage);
+  if (!stored) return;
+  const normalized = normalizeUiLocale(stored);
+  if (migrateRetiredLocale(normalized) !== normalized) persistUiLocale("vi", storage);
 }

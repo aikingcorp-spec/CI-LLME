@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  migrateStoredUiLocale,
   normalizeUiLocale,
   PICKER_LOCALES,
   persistUiLocale,
@@ -175,15 +176,51 @@ describe("persistUiLocale", () => {
   });
 });
 
+function memoryStorage(initial?: string) {
+  const store = new Map<string, string>();
+  if (initial !== undefined) store.set(UI_LOCALE_STORAGE_KEY, initial);
+  return {
+    store,
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+  };
+}
+
+describe("retired saved locales", () => {
+  it.each(["ja", "ko", "zh-CN", "zh-TW", "ja-JP", "ko-KR", "zh", "zh-Hant"])(
+    "moves saved %s to Vietnamese and rewrites storage",
+    (saved) => {
+      const storage = memoryStorage(saved);
+      expect(resolveUiLocale({ storage, envDefault: "en" })).toBe("vi");
+      migrateStoredUiLocale(storage);
+      expect(storage.store.get(UI_LOCALE_STORAGE_KEY)).toBe("vi");
+    },
+  );
+
+  it.each(["en", "vi", "de"])("leaves saved %s unchanged", (saved) => {
+    const storage = memoryStorage(saved);
+    expect(resolveUiLocale({ storage })).toBe(saved);
+    migrateStoredUiLocale(storage);
+    expect(storage.store.get(UI_LOCALE_STORAGE_KEY)).toBe(saved);
+  });
+
+  it("writes nothing when nothing is saved", () => {
+    const storage = memoryStorage();
+    migrateStoredUiLocale(storage);
+    expect(storage.store.size).toBe(0);
+  });
+});
+
 describe("Traditional Chinese preferences", () => {
   it("lets a saved choice override the configured default", () => {
-    expect(resolveUiLocale({ stored: "zh-TW", envDefault: "en" })).toBe("zh-TW");
-    expect(resolveUiLocale({ stored: "zh-CN", envDefault: "zh-TW" })).toBe("zh-CN");
+    expect(resolveUiLocale({ stored: "en", envDefault: "zh-TW" })).toBe("en");
     expect(resolveUiLocale({ stored: null, envDefault: "zh-TW" })).toBe("zh-TW");
   });
 });
 
-it("offers only Vietnamese and English while keeping saved catalog choices", () => {
+it("offers only Vietnamese and English while keeping other saved catalog choices", () => {
   expect(PICKER_LOCALES).toEqual(["vi", "en"]);
   expect(resolveUiLocale({ stored: "de" })).toBe("de");
 });
