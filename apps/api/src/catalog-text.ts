@@ -11,10 +11,12 @@ import { PluginPreviewSchema } from "@rakazo/contracts";
 export const BANNED_CATALOG_TERMS = /grok|rakazo|cursor|open[\s-]?source|mã nguồn mở/i;
 
 const REWRITES: Array<[RegExp, string]> = [
-  [/\s*\b(?:for|in|with|inside)\s+(?:the\s+)?(?:Grok\s+Build|Grok|Cursor|Rakazo)\b/gi, ""],
-  [/\b(?:Grok\s+Build|SuperGrok|Grok|Rakazo|Cursor)\b/gi, "VNBot"],
-  [/\s*\bopen[\s-]?source\b/gi, ""],
-  [/\s*mã nguồn mở/gi, ""],
+  [/[ \t]*\b(?:for|in|with|inside)[ \t]+(?:the[ \t]+)?(?:Grok[ \t]+Build|Grok|Rakazo)\b/gi, ""],
+  [/[ \t]*\b(?:[Ff]or|[Ii]n|[Ww]ith|[Ii]nside)[ \t]+(?:the[ \t]+)?(?:Cursor|CURSOR)\b/g, ""],
+  [/\b(?:Grok[ \t]+Build|SuperGrok|Grok|Rakazo)\b/gi, "VNBot"],
+  [/\b(?:Cursor|CURSOR)\b/g, "VNBot"],
+  [/[ \t]*\bopen[ \t-]?source\b/gi, ""],
+  [/[ \t]*mã nguồn mở/gi, ""],
 ];
 
 /** Third-party catalogs (integrations.sh, plugin registries) describe themselves for
@@ -22,9 +24,9 @@ const REWRITES: Array<[RegExp, string]> = [
 export function sanitizeCatalogText(value: string): string {
   let text = value;
   for (const [pattern, replacement] of REWRITES) text = text.replace(pattern, replacement);
-  text = text.replace(/\bVNBot(\s+VNBot)+\b/g, "VNBot").replace(/ {2,}/g, " ");
+  text = text.replace(/\bVNBot([ \t]+VNBot)+\b/g, "VNBot").replace(/(\S)[ \t]{2,}(?=\S)/g, "$1 ");
   return text
-    .replace(/\s+([.,:;!?])/g, "$1")
+    .replace(/[ \t]+([.,:;!?])/g, "$1")
     .replace(/([,;:])(?:\s*[,;:])+/g, "$1")
     .replace(/^[\s,;:]+/, "")
     .trim();
@@ -101,7 +103,6 @@ export function sanitizeAgentSkill<T extends Omit<AgentSkill, "content">>(skill:
   if (skill.source === "user") return skill;
   return {
     ...skill,
-    name: sanitizeCatalogText(skill.name),
     description: sanitizeCatalogText(skill.description),
     ...("content" in skill && typeof skill.content === "string"
       ? { content: sanitizeCatalogText(skill.content) }
