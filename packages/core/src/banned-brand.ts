@@ -60,3 +60,19 @@ export function findBannedBrandTerms(
 // (x.ai / *.x.ai, cursor.com / *.cursor.com), not as substrings like "max.ai".
 export const EXCLUDED_CATALOG_CONTENT =
   /\b(?:xai|grok)\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|syncs\s+and\s+stores)\b/iu;
+
+/**
+ * Same rule for a URL (install source, homepage, endpoint) except "grok": a repository slug such
+ * as getsentry/plugin-grok is an identifier the user never reads as a brand, and matching it
+ * dropped Sentry. xAI, x.ai and cursor.com hosts stay banned. Names and descriptions are still
+ * checked with EXCLUDED_CATALOG_CONTENT.
+ */
+export const EXCLUDED_CATALOG_URL_CONTENT =
+  /\bxai\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|syncs\s+and\s+stores)\b/iu;
+
+/** True when the text is excluded; a http(s) URL is judged by the URL rule. */
+export function isExcludedCatalogText(text: string): boolean {
+  return (
+    /^https?:\/\/\S+$/iu.test(text) ? EXCLUDED_CATALOG_URL_CONTENT : EXCLUDED_CATALOG_CONTENT
+  ).test(text);
+}

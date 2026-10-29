@@ -7,7 +7,11 @@ import type {
   PluginPreview,
 } from "@rakazo/contracts";
 import { PluginPreviewSchema } from "@rakazo/contracts";
-import { BANNED_CATALOG_TERMS, EXCLUDED_CATALOG_CONTENT } from "@rakazo/core/banned-brand";
+import {
+  BANNED_CATALOG_TERMS,
+  EXCLUDED_CATALOG_CONTENT,
+  isExcludedCatalogText,
+} from "@rakazo/core/banned-brand";
 import { CATALOG_DESCRIPTIONS_VI } from "./catalog-descriptions-vi.js";
 
 /** Names VNBot must never show in catalog text; the term list lives in @rakazo/core/banned-brand. */
@@ -55,11 +59,18 @@ export function sanitizeCatalogText(value: string): string {
     .trim();
 }
 
+/** A registry name is shown as-is unless it is a banned brand; then the value is removed, not renamed. */
+function visibleRegistry(name: string): string {
+  return isExcludedCatalogText(name) || BANNED_CATALOG_TERMS.test(name) ? "" : name;
+}
+
 export function sanitizePluginCatalog(catalog: PluginMarketplaceCatalog): PluginMarketplaceCatalog {
   return {
     ...catalog,
+    unavailableRegistries: catalog.unavailableRegistries.map(visibleRegistry),
     entries: catalog.entries.filter(isCatalogContentAllowed).map((entry) => ({
       ...entry,
+      registry: visibleRegistry(entry.registry),
       displayName: sanitizeCatalogText(entry.displayName),
       description: sanitizeDescription(entry.description),
       keywords: entry.keywords.filter((keyword) => !BANNED_CATALOG_TERMS.test(keyword)),
@@ -135,7 +146,7 @@ export function sanitizeAgentSkill<T extends Omit<AgentSkill, "content">>(skill:
 
 /** Scan content and URLs, leaving registry/protocol identifiers out of the product policy. */
 export function isCatalogContentAllowed(value: unknown): boolean {
-  if (typeof value === "string") return !EXCLUDED_CATALOG_CONTENT.test(value);
+  if (typeof value === "string") return !isExcludedCatalogText(value);
   if (Array.isArray(value)) return value.every(isCatalogContentAllowed);
   if (!value || typeof value !== "object") return true;
   return Object.entries(value).every(

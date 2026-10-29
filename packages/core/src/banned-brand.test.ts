@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { EXCLUDED_CATALOG_CONTENT, findBannedBrandTerms } from "./banned-brand.js";
+import {
+  EXCLUDED_CATALOG_CONTENT,
+  findBannedBrandTerms,
+  isExcludedCatalogText,
+} from "./banned-brand.js";
 
 it.each(["xAI", "Xai", "cursor.COM", "VNBOT VOICE", "vnbot SDK"])("bans %s", (term) => {
   expect(findBannedBrandTerms(term)).toEqual([term]);
@@ -18,6 +22,18 @@ it("allows exact provider metadata only in the model-provider list", () => {
   expect(
     findBannedBrandTerms("https://docs.x.ai.evil.test/docs", { modelProviderList: true }),
   ).not.toEqual([]);
+});
+
+describe("isExcludedCatalogText", () => {
+  it("judges URLs by host and owner, text by whole word", () => {
+    expect(isExcludedCatalogText("https://github.com/getsentry/plugin-grok.git")).toBe(false);
+    expect(isExcludedCatalogText("Grok Voice")).toBe(true);
+    expect(isExcludedCatalogText("https://cursor.com/a")).toBe(true);
+    expect(isExcludedCatalogText("https://github.com/xai-org/x")).toBe(true);
+    expect(isExcludedCatalogText("xAI")).toBe(true);
+    expect(isExcludedCatalogText("VNBot SDK")).toBe(true);
+    expect(isExcludedCatalogText("VNBot Voice")).toBe(true);
+  });
 });
 
 describe("EXCLUDED_CATALOG_CONTENT word and host boundaries", () => {

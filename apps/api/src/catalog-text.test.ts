@@ -99,6 +99,20 @@ describe("catalog text", () => {
     expect(offending).toEqual([]);
   });
 
+  it("keeps Sentry, whose install repository is named plugin-grok, and never shows xAI or Cursor as registry", async () => {
+    const client = setup();
+    const result = await client.marketplace.catalog({ query: "" });
+    const sentry = result.entries.find((entry) => entry.name === "sentry");
+    expect(sentry).toMatchObject({ displayName: "Sentry", registry: "" });
+    expect(sentry?.source).toContain("getsentry/plugin-grok");
+    expect(await client.marketplace.catalog({ query: "sentry" })).toMatchObject({
+      entries: [{ name: "sentry" }],
+    });
+    expect(result.entries.length).toBeGreaterThan(0);
+    for (const entry of result.entries) expect(entry.registry).not.toMatch(/xai|cursor/i);
+    for (const name of result.unavailableRegistries) expect(name).not.toMatch(/xai|cursor/i);
+  });
+
   it("integration catalog search response carries no banned term", async () => {
     const fetch = vi.fn(async () =>
       Response.json({
@@ -316,6 +330,54 @@ describe("catalog exclusion policy", () => {
     for (const key of ["name", "displayName", "description", "homepage", "source", "url"])
       expect(isCatalogContentAllowed({ [key]: text })).toBe(false);
     expect(isCatalogContentAllowed({ surfaces: [{ url: text }] })).toBe(false);
+  });
+  it.each([
+    "https://github.com/getsentry/plugin-grok.git",
+    "https://github.com/getsentry/plugin-grok.git@3b4ec482aa94a964b210d004c817bdce15cda8f7#skills",
+  ])("keeps a repository slug that contains grok: %s", (url) => {
+    for (const key of ["source", "installedSource", "homepage", "url"])
+      expect(isCatalogContentAllowed({ [key]: url })).toBe(true);
+  });
+  it.each([
+    "https://cursor.com/account",
+    "https://api.cursor.com/v1",
+    "https://docs.x.ai/docs",
+    "https://github.com/xai-org/plugin-marketplace",
+    "https://github.com/example/xai-tools.git",
+  ])("still bans the brand host or owner in the URL %s", (url) => {
+    for (const key of ["source", "installedSource", "homepage", "url"])
+      expect(isCatalogContentAllowed({ [key]: url })).toBe(false);
+  });
+  it("drops entries named, described or hosted by xAI, Grok or cursor.com and blanks a brand registry", () => {
+    const entry = {
+      id: "xAI:https://github.com/example/notes.git",
+      name: "notes",
+      displayName: "Notes",
+      description: "Daily notes",
+      keywords: ["notes"],
+      category: null,
+      source: "https://github.com/example/notes.git",
+      installedSource: "https://github.com/example/notes.git",
+      homepage: null,
+      registry: "xAI",
+    };
+    const catalog = {
+      entries: [
+        entry,
+        { ...entry, registry: "Cursor", source: "https://github.com/example/b.git" },
+        { ...entry, registry: "Other", source: "https://github.com/example/c.git" },
+        { ...entry, displayName: "Grok Voice" },
+        { ...entry, description: "Works with xAI" },
+        { ...entry, description: "Works with Grok" },
+        { ...entry, homepage: "https://cursor.com/plugins" },
+        { ...entry, source: "https://api.cursor.com/x.git" },
+      ],
+      unavailableRegistries: ["Cursor", "xAI", "Other"],
+      skippedEntries: 0,
+    } as unknown as Parameters<typeof sanitizePluginCatalog>[0];
+    const result = sanitizePluginCatalog(catalog);
+    expect(result.entries.map((e) => e.registry)).toEqual(["", "", "Other"]);
+    expect(result.unavailableRegistries).toEqual(["", "", "Other"]);
   });
   it("filters before translation and stays idempotent without mutating input", () => {
     const entry = {
