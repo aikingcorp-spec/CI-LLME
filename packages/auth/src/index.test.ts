@@ -144,6 +144,11 @@ describe("authRateLimitOptions", () => {
     expect(authRateLimitOptions("test").enabled).toBe(false);
   });
 
+  it("holds in every environment while the invite list is on", () => {
+    expect(authRateLimitOptions("test", { emailAllowlist: true }).enabled).toBe(true);
+    expect(authRateLimitOptions("development", { emailAllowlist: true }).enabled).toBe(true);
+  });
+
   it("tightens sign-in code sends while the invite list is on", () => {
     expect(authRateLimitOptions("production", { emailAllowlist: true }).customRules).toMatchObject({
       "/email-otp/send-verification-otp": { window: 15 * 60, max: 5 },

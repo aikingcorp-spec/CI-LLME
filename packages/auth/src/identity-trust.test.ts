@@ -62,6 +62,7 @@ function fixture({
     session: [],
     verification: [],
     passkey: [],
+    rateLimit: [],
   };
   const policy: {
     signupsEnabled: boolean;
@@ -978,6 +979,39 @@ describe("email code sign-in", () => {
     });
     expect(created.status).toBe(200);
     expect(f.data.user![0]).toMatchObject({ name: "ada" });
+  });
+});
+
+describe("sign-in code send limit per address", () => {
+  const sendFrom = (f: ReturnType<typeof fixture>, email: string, ip: string) =>
+    f.request("/email-otp/send-verification-otp", { email, type: "sign-in" }, undefined, {
+      [CLIENT_IP_HEADER]: ip,
+    });
+
+  it("caps one normalized address at 5 sends per 15 minutes across IPs when the list is on", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
+      const spellings = ["lan@gmail.com", " Lan@Gmail.com", "LAN@gmail.com\u200b"];
+      for (let index = 0; index < 5; index += 1) {
+        const sent = await sendFrom(f, spellings[index % 3]!, `203.0.113.${index + 1}`);
+        expect(sent.status, `send ${index + 1}`).toBe(200);
+      }
+      const blocked = await sendFrom(f, "Lan@gmail.com", "198.51.100.9");
+      expect(blocked.status).toBe(429);
+      expect(f.messages).toHaveLength(5);
+      // Uninvited addresses count the same way, so the limit does not reveal membership.
+      for (let index = 0; index < 5; index += 1) {
+        expect((await sendFrom(f, "probe@x.test", `192.0.2.${index + 1}`)).status).toBe(403);
+      }
+      expect((await sendFrom(f, "probe@x.test", "192.0.2.99")).status).toBe(429);
+      // Another address is unaffected, and the window resets after 15 minutes.
+      expect((await sendFrom(f, "other@x.test", "192.0.2.50")).status).toBe(403);
+      vi.setSystemTime(Date.now() + 15 * 60_000 + 1);
+      expect((await sendFrom(f, "lan@gmail.com", "203.0.113.200")).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

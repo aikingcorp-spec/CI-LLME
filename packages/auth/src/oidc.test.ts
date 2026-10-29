@@ -214,6 +214,7 @@ beforeEach(() => {
     organization: [],
     member: [],
     invitation: [],
+    rateLimit: [],
   };
   state.invited = new Set();
   discoveryDown = false;

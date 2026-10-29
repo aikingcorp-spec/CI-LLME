@@ -162,23 +162,29 @@ const ACCOUNT_EVENT_PATHS: Record<string, SecurityEventType> = {
   "/passkey/delete-passkey": "auth.passkey.removed",
 };
 
-/** Shared across API processes. Off outside production so tests can sign in freely. */
+/** Code sends per normalized address: 5 per 15 minutes with the invite list on, else 10. */
+export function sendCodeRule(options?: { emailAllowlist?: boolean }) {
+  // The invite check reveals list membership. A tighter send cap slows probing.
+  return { window: 15 * 60, max: options?.emailAllowlist ? 5 : 10 };
+}
+
+/**
+ * Shared across API processes. Off outside production so tests can sign in
+ * freely, except with the invite list on: that deployment is a real limited
+ * preview wherever it runs, so the limits hold in every environment.
+ */
 export function authRateLimitOptions(
   nodeEnv = process.env.NODE_ENV,
   options?: { emailAllowlist?: boolean },
 ) {
   const rule = { window: 15 * 60, max: 10 };
-  // The invite check reveals list membership. A tighter send cap slows probing.
-  const sendCodeRule = options?.emailAllowlist ? { window: 15 * 60, max: 5 } : rule;
+  const sendRule = sendCodeRule(options);
   return {
-    enabled: nodeEnv === "production",
+    enabled: nodeEnv === "production" || Boolean(options?.emailAllowlist),
     storage: "database" as const,
     customRules: {
       ...Object.fromEntries(
-        CREDENTIAL_PATHS.map((path) => [
-          path,
-          path === SEND_SIGN_IN_CODE_PATH ? sendCodeRule : rule,
-        ]),
+        CREDENTIAL_PATHS.map((path) => [path, path === SEND_SIGN_IN_CODE_PATH ? sendRule : rule]),
       ),
       "/request-account-deletion": { window: 600, max: 3 },
       "/request-identity-code": { window: 600, max: 3 },
@@ -197,6 +203,10 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
   if (env.emailCodeOnly && !env.email)
     throw new Error("Email-code-only sign-in needs an email sender");
   const discovery = env.oidc ? oidcDiscovery(env.oidc) : undefined;
+  const rateLimit = authRateLimitOptions(process.env.NODE_ENV, {
+    emailAllowlist: Boolean(env.emailAllowlist),
+  });
+  const codeSendRule = sendCodeRule({ emailAllowlist: Boolean(env.emailAllowlist) });
   const passwordEnabled = passwordsEnabled(env);
   // SSO-only deployments keep every email credential closed, codes included.
   const emailCodeSignIn = Boolean(env.email) && env.passwordAuth !== false;
@@ -226,9 +236,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         overrides: { "reset-password:": "hashed", "delete-account-": "hashed" },
       },
     },
-    rateLimit: authRateLimitOptions(process.env.NODE_ENV, {
-      emailAllowlist: Boolean(env.emailAllowlist),
-    }),
+    rateLimit,
     advanced: { ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] } },
     database: prismaAdapter(prisma, { provider: "postgresql" }),
     emailAndPassword: {
@@ -423,6 +431,10 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
           throw passwordAuthDisabled();
         }
         if (isUnusedEmailCodePath(ctx.path, ctx.body)) throw new APIError("NOT_FOUND");
+        if (ctx.path === SEND_SIGN_IN_CODE_PATH && rateLimit.enabled) {
+          // The IP rule alone lets one address be probed or flooded from many IPs.
+          await limitPerEmail(ctx.context.adapter, normalizeEmail(ctx.body?.email), codeSendRule);
+        }
         if (ctx.path === SEND_SIGN_IN_CODE_PATH || ctx.path === CODE_SIGN_IN_PATH) {
           // Before the plugin stores or sends a code. Existing and new users alike.
           if (env.emailAllowlist && !(await isEmailInvited(prisma, ctx.body?.email))) {
@@ -827,6 +839,59 @@ export function loopbackTwinOrigins(origin: string): string[] {
  */
 export function isBlockedAuthPath(path: string): boolean {
   return path.startsWith("/organization");
+}
+
+interface RateLimitAdapter {
+  findOne<T>(input: {
+    model: string;
+    where: { field: string; value: string }[];
+  }): Promise<T | null>;
+  create<T>(input: { model: string; data: Record<string, unknown> }): Promise<T>;
+  update<T>(input: {
+    model: string;
+    where: { field: string; value: string }[];
+    update: Record<string, unknown>;
+  }): Promise<T | null>;
+}
+
+/**
+ * A fixed window per normalized address in Better Auth's shared `rateLimit`
+ * table, beside its per-IP keys. Counted before the invite check, so invited
+ * and uninvited addresses are throttled alike.
+ */
+async function limitPerEmail(
+  adapter: unknown,
+  email: string,
+  rule: { window: number; max: number },
+): Promise<void> {
+  if (!email) return;
+  const db = adapter as RateLimitAdapter;
+  const key = `email-code:${email}`;
+  const where = [{ field: "key", value: key }];
+  const now = Date.now();
+  const row = await db.findOne<{ count: number; lastRequest: number | bigint }>({
+    model: "rateLimit",
+    where,
+  });
+  if (!row) {
+    await db.create({
+      model: "rateLimit",
+      data: { key, count: 1, lastRequest: now },
+    });
+    return;
+  }
+  const started = Number(row.lastRequest);
+  if (now - started >= rule.window * 1000) {
+    await db.update({ model: "rateLimit", where, update: { count: 1, lastRequest: now } });
+    return;
+  }
+  if (row.count >= rule.max) {
+    throw new APIError("TOO_MANY_REQUESTS", {
+      code: "RATE_LIMITED",
+      message: "Too many requests. Please try again later.",
+    });
+  }
+  await db.update({ model: "rateLimit", where, update: { count: row.count + 1 } });
 }
 
 function passwordAuthDisabled(): APIError {
