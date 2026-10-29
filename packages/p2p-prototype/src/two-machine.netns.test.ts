@@ -37,6 +37,7 @@ interface PeerProc {
 
 const NETNS_MODE = process.env.P2P_NETNS === "1";
 const TOPOLOGY_SCRIPT = fileURLToPath(new URL("../scripts/netns-two-machines.sh", import.meta.url));
+const FORWARDER_SCRIPT = fileURLToPath(new URL("../scripts/turn-forwarder.py", import.meta.url));
 const PEER_SCRIPT = fileURLToPath(new URL("./bin/two-machine-peer.ts", import.meta.url));
 const TSX_LOADER = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 const NAMESPACE: Record<Machine, string> = { A: "p2pA", B: "p2pB" };
@@ -52,6 +53,10 @@ const TURN_PORT = 3479;
 const TURN_USER = "p2p-test";
 const TURN_PASS = randomBytes(12).toString("hex");
 const SESSION_TOKEN = "token";
+// Real TURN (stage 3): P2P_TURN_CREDS_FILE=<coturn REST creds file>. Peers read the file themselves.
+// P2P_TURN_FORWARD=1 points them at a root-namespace L4 forwarder (no NAT on the box).
+const TURN_CREDS_FILE = process.env.P2P_TURN_CREDS_FILE;
+const TURN_PUBLIC_IP = process.env.P2P_TURN_PUBLIC_IP;
 const EXPECT_CANDIDATE_TYPE = process.env.P2P_EXPECT_CANDIDATE_TYPE;
 
 function netnsAvailable(): boolean {
@@ -78,6 +83,19 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
     beforeAll(async () => {
       vi.spyOn(console, "log").mockImplementation(() => {});
       if (NETNS_MODE) execFileSync(TOPOLOGY_SCRIPT, ["setup"]);
+      if (TURN_CREDS_FILE && process.env.P2P_TURN_FORWARD === "1") {
+        const fwd = spawn("python3", [
+          FORWARDER_SCRIPT,
+          TURN_PUBLIC_IP ?? "",
+          Object.values(GATEWAY_HOST).join(","),
+          process.env.P2P_TURN_PORTS ?? "3479,5350",
+        ]);
+        await new Promise<void>((resolve, reject) => {
+          fwd.stdout.once("data", () => resolve());
+          fwd.once("exit", (code) => reject(new Error(`forwarder exited ${code}`)));
+        });
+        turn = { stop: () => fwd.kill() };
+      }
       if (NODE_TURN) {
         const Turn = createRequire(import.meta.url)(NODE_TURN) as new (
           o: Record<string, unknown>,
@@ -146,6 +164,12 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
         const host = NETNS_MODE ? GATEWAY_HOST[machine] : "127.0.0.1";
         vars.ICE_SERVERS = `turn:${TURN_USER}:${TURN_PASS}@${host}:${TURN_PORT}?transport=udp`;
         vars.ICE_TRANSPORT_POLICY = "relay";
+      }
+      if (TURN_CREDS_FILE) {
+        vars.TURN_CREDS_FILE = TURN_CREDS_FILE;
+        if (process.env.P2P_TURN_FORWARD === "1") vars.TURN_HOST_OVERRIDE = GATEWAY_HOST[machine];
+        if (process.env.P2P_TURN_TRANSPORTS) vars.TURN_TRANSPORTS = process.env.P2P_TURN_TRANSPORTS;
+        if (process.env.P2P_ICE_POLICY) vars.ICE_TRANSPORT_POLICY = process.env.P2P_ICE_POLICY;
       }
       const nodeArgs = ["--import", TSX_LOADER, PEER_SCRIPT, role];
       const child = NETNS_MODE
@@ -284,6 +308,10 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
       if (expectedType) {
         expect(pair.local).toContain(`typ ${expectedType}`);
         expect(pair.remote).toContain(`typ ${expectedType}`);
+        if (expectedType === "relay" && TURN_PUBLIC_IP) {
+          expect(pair.local).toContain(` ${TURN_PUBLIC_IP} `);
+          expect(pair.remote).toContain(` ${TURN_PUBLIC_IP} `);
+        }
       } else {
         expect(pair.local).toMatch(PEER_ADDRESS);
         expect(pair.remote).toMatch(PEER_ADDRESS);

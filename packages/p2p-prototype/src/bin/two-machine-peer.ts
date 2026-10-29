@@ -1,9 +1,11 @@
 import { networkInterfaces } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
+import type { IceServer } from "node-datachannel";
 import { cleanup } from "node-datachannel";
 import { openSession } from "../gateway-client.js";
 import { readKeyFile } from "../key-file.js";
 import { nodeAuthorization } from "../pairing.js";
+import { readTurnCreds } from "../turn-creds.js";
 import type { CloseHandshakeEvent, DataPeer } from "../webrtc-peer.js";
 import { connectPeer } from "../webrtc-peer.js";
 
@@ -41,7 +43,16 @@ const retryMs = Number(process.env.RETRY_MS ?? 500);
 const iceServers = (process.env.ICE_SERVERS ?? "")
   .split(",")
   .map((value) => value.trim())
-  .filter((value) => value.length > 0);
+  .filter((value) => value.length > 0) as Array<string | IceServer>;
+// TURN_CREDS_FILE: coturn REST credentials read at runtime so they never reach argv or logs.
+if (process.env.TURN_CREDS_FILE) {
+  iceServers.push(
+    ...readTurnCreds(process.env.TURN_CREDS_FILE, {
+      hostOverride: process.env.TURN_HOST_OVERRIDE || undefined,
+      transports: process.env.TURN_TRANSPORTS?.split(",").filter(Boolean),
+    }),
+  );
+}
 const iceTransportPolicy = process.env.ICE_TRANSPORT_POLICY as "all" | "relay" | undefined;
 
 const log = (event: string, fields: Record<string, unknown> = {}): void => {
