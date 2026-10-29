@@ -4,6 +4,14 @@ Each entry is a change versus the frozen Rakazo baseline at commit `c4b24547` (`
 
 Proposed decisions are listed so reviewers can see them. They do not change the running system until a later entry says they landed in code.
 
+## 2026-10-29 — SSO redirect origin, ACCOUNT_NOT_LINKED, send-limit order, compose defaults
+
+- What changed versus baseline: SSO callback redirects are built from the configured web origin instead of the Host header. An SSO email that already has an account gets a bare 302 to `/sign-in?error=ACCOUNT_NOT_LINKED` (no implicit linking; link from Settings while signed in), with VI/EN copy in `@rakazo/contracts`. The per-address send bucket is consumed only after the invite check passes; uninvited addresses get 403 and are limited per IP only. Compose defaults are `AUTH_EMAIL_CODE_ONLY=true` and `AUTH_EMAIL_ALLOWLIST=on`.
+- Why: Rex review v2 of pull request 2 (N1 open redirect, N2 linking, N3 lockout, N4 safe defaults).
+- Files / modules: `packages/auth/src/index.ts`, `packages/contracts/src/auth.ts`, `apps/web/src/lib/user-error.ts`, `infra/compose/*.yml`.
+- Invariants affected: no auth redirect depends on request headers. Requests for other addresses cannot lock an invited address out of codes.
+- Links: [ADR 0002](adr/0002-email-code-sign-in-and-invite-list.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
+
 ## 2026-10-29 — Invite list hardening after review
 
 - What changed versus baseline: removing an invite deletes that account's sessions, and a live session whose address left the list is deleted on read (401 `EMAIL_NOT_INVITED`). The OIDC callback answers a bare 302 to `/sign-in?error=EMAIL_NOT_INVITED` for an uninvited provider email, with no cookie or rows. Email normalization is trim, NFC, zero-width strip, lowercase, in code and in the table CHECK. The send-code limit is also keyed on the normalized address (5 per 15 minutes with the list on, 10 otherwise) and holds outside production while the list is on; the counter uses conditional writes so concurrent sends cannot pass the cap. `auth_email_allowlist` has FORCE row-level security with a WITH CHECK policy, and the runtime login lost UPDATE on it. `bootstrap-owner` invites the owner after the account is verified or created. Sign-in code locale is read only from `x-rakazo-locale`. Failed deliveries reach `onEmailError` without the message text.
