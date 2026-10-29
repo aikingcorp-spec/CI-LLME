@@ -191,6 +191,19 @@ it("ships Vietnamese as the web build default", () => {
   }
 });
 
+it("passes the Vietnamese default into the Docker web build", () => {
+  // .dockerignore drops .env.production from the image context, so the Dockerfile must carry it.
+  const dockerfile = readFileSync(
+    new URL("../../../../infra/compose/Dockerfile", import.meta.url),
+    "utf8",
+  );
+  expect(dockerfile).toMatch(/^ARG VITE_DEFAULT_UI_LOCALE=vi$/m);
+  const viteEnv = readFileSync(new URL("../vite-env.d.ts", import.meta.url), "utf8");
+  for (const [, name] of viteEnv.matchAll(/readonly (VITE_[A-Z0-9_]+)/g)) {
+    expect(dockerfile).toMatch(new RegExp(`^ARG ${name}=`, "m"));
+  }
+});
+
 describe("persistUiLocale", () => {
   it("writes the storage key", () => {
     const store = new Map<string, string>();

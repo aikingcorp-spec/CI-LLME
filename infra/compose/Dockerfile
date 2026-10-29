@@ -36,7 +36,13 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lo
 COPY --chmod=755 . .
 RUN pnpm --filter @rakazo/db generate
 RUN pnpm --filter @rakazo/api --filter @rakazo/worker build
-RUN RAKAZO_ALLOW_DEV_SECRETS=1 pnpm --filter @rakazo/web build
+# .dockerignore keeps every .env.* out of the context (check-image.sh rejects one in the image), so
+# apps/web/.env.production never reaches this build. Its public VITE_* values come in as build args
+# instead; the defaults mirror that file. Only public, bundle-bound values belong here.
+ARG VITE_DEFAULT_UI_LOCALE=vi
+ARG VITE_VNBOT_CONTACT_URL=
+RUN VITE_DEFAULT_UI_LOCALE="$VITE_DEFAULT_UI_LOCALE" VITE_VNBOT_CONTACT_URL="$VITE_VNBOT_CONTACT_URL" \
+  RAKAZO_ALLOW_DEV_SECRETS=1 pnpm --filter @rakazo/web build
 RUN install -d -m 750 -o node -g node /data /app/apps/web/node_modules/.vite-temp /app/apps/web/asset-archive
 ARG GIT_SHA
 ENV NODE_ENV=production
