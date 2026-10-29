@@ -4,6 +4,16 @@ Each entry is a change versus the frozen Rakazo baseline at commit `c4b24547` (`
 
 Proposed decisions are listed so reviewers can see them. They do not change the running system until a later entry says they landed in code.
 
+## 2026-10-29 — Catalog content exclusion and preview recovery
+
+- Date: 2026-10-29.
+- Pull request: none (uncommitted local change).
+- What changed versus baseline: API marketplace and integration search exclude entries whose content or URLs identify excluded third-party products before translation. Builtin/plugin skill lists apply the same policy, and direct excluded skill/preview requests are rejected. Foreign product names are no longer relabeled as VNBot. Preview failures return Vietnamese copy, retain diagnostics in server logs, and no longer remove searchable catalog entries merely because acquisition or parsing failed. Explicitly incomplete successful previews retain the existing suppression rule. The web empty search no longer shows managed-catalog deployment configuration details.
+- Why: relabeling catalogs falsely advertised VNBot-provided services; failed previews also made apps disappear from subsequent searches.
+- Files / modules: API catalog text, Vietnamese description map and tests; `apps/api/src/routes/mcp.ts`; `apps/api/src/routes/memory.ts`; shared banned-brand policy and lint checker/tests; web integrations search and Vietnamese locale; adapter plugin parser/tests and identity prompt.
+- Invariants affected: filtering changes served discovery metadata, not upstream references, pins, digests, execution data, authored skills, authorization or endpoint validation. No gateway data storage, migrations or mandatory hosted provider is introduced.
+- ADR: none; presentation and recovery corrections within existing boundaries.
+
 ## 2026-10-29 — Vietnamese web fallback independent of build env
 
 - Pull request: none (local change).
