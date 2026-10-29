@@ -3238,12 +3238,12 @@ msgid "Image upload area"
 msgstr "이미지 업로드 영역"
 
 #: src/pages/shell/composer.tsx
-#: src/pages/shell/create-bot-dialog.tsx
 msgid "Import"
 msgstr "가져오기"
 
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/agent-import.tsx
+#: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Import an agent"
 msgstr "에이전트 가져오기"

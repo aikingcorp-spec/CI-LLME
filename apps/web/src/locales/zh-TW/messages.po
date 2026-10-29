@@ -3239,12 +3239,12 @@ msgid "Image upload area"
 msgstr "圖片上傳區域"
 
 #: src/pages/shell/composer.tsx
-#: src/pages/shell/create-bot-dialog.tsx
 msgid "Import"
 msgstr "匯入"
 
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/agent-import.tsx
+#: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Import an agent"
 msgstr "匯入代理程式"
