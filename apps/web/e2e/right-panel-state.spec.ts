@@ -35,7 +35,7 @@ test("reload restores the open, closed and settings rail states", async ({ page 
   await completeOnboarding(page);
   const panel = page.getByTestId("side-panel");
   await expect(panel).toHaveAttribute("data-panel", "closed");
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await expect(panel).toHaveAttribute("data-panel", "computer");
   await waitForStoredPanel(page, "computer");
   await page.reload();
@@ -78,7 +78,7 @@ test("switching chats opens each chat's own panel, closed by default", async ({
   const panel = page.getByTestId("side-panel");
   const sidebar = page.locator("aside").first();
   await expect(panel).toHaveAttribute("data-panel", "closed");
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await expect(panel).toHaveAttribute("data-panel", "computer");
   await sidebar.getByRole("button", { name: /^Chief/ }).click();
   await expect(page.getByPlaceholder("Message Chief")).toBeVisible();
@@ -102,7 +102,7 @@ test("reload restores the selected routine and scopes preferences to the chat", 
     timezone: "UTC",
     active: false,
   });
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await page.getByRole("button", { name: /Weekly summary/ }).click();
   const name = page.locator("label:has-text('Name') input");
   await expect(name).toHaveValue("Weekly summary");
@@ -168,7 +168,7 @@ test("reload restores the selected routine and scopes preferences to the chat", 
   await waitForStoredPanel(page, "settings");
   await page.reload();
   await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "settings");
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await page.getByRole("button", { name: /Weekly summary/ }).click();
   await rpc(page, "routines/remove", { routineId: routine.id });
   await page.reload();

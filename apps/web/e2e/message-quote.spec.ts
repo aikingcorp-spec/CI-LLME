@@ -319,7 +319,7 @@ test("an armed reply survives the parent paging out of the transcript", async ({
     reaction: "👍",
     clientNonce: `qr-${stamp}`,
   });
-  const computerButton = page.getByRole("button", { name: "Agent computer", exact: true });
+  const computerButton = page.getByRole("button", { name: "Bot computer", exact: true });
   await expect(async () => {
     if ((await computerButton.getAttribute("data-active")) !== null) {
       await computerButton.click();

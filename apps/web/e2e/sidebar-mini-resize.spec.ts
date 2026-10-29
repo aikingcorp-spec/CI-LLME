@@ -141,7 +141,7 @@ test("narrow desktop keeps the chat width when both panels are open", async ({
   await handle.focus();
   await handle.press("End");
   await expect(sidebar).toHaveCSS("width", "480px");
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const panel = page.getByTestId("side-panel");
   await expect(panel).toHaveCSS("position", "absolute");
   const chat = page.locator('[data-space-switch="main"]');

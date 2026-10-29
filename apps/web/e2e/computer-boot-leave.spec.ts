@@ -44,7 +44,7 @@ test("a retrying computer can be closed and keeps booting without a stale error 
     held.push(route);
   });
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview).toContainText("Computer failed to boot");
   await expect(page.getByText("error", { exact: true })).toHaveCount(0);
@@ -118,7 +118,7 @@ test("a failed boot can be retried from the computer window", async ({ page }) =
     });
   });
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview).toContainText(/Computer is stopped|Computer failed to boot/);
   await preview.hover();
@@ -157,7 +157,7 @@ test("starting another bot's computer is not blocked by a boot still under way",
   });
 
   await page.goto(`/app/${first}`);
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview).toContainText("Computer is stopped");
   await preview.hover();
@@ -170,7 +170,7 @@ test("starting another bot's computer is not blocked by a boot still under way",
   await page.getByText("Bravo", { exact: true }).first().click();
   await expect(page).toHaveURL(new RegExp(`/app/${second}`));
   if (!(await preview.isVisible())) {
-    await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+    await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   }
   await expect(preview).toContainText("Computer is stopped");
   await preview.hover();
@@ -196,7 +196,7 @@ test("opening a computer refreshes a stale booting snapshot", async ({ page }, t
   await page.route("**/rpc/computer/boot", (route) => {
     boots.push(route);
   });
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview).toContainText("Booting live desktop…");
   stale = false;
@@ -228,7 +228,7 @@ test("opening a computer the server reports as booting does not start a second b
     boots.push(route);
   });
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview).toContainText("Booting live desktop…");
   const bootsBefore = boots.length;
@@ -265,7 +265,7 @@ test("Retry screen clears a failed takeover on a running computer", async ({ pag
     }),
   );
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview.locator("iframe")).toHaveAttribute("src", screenUrl);
   await preview.hover();

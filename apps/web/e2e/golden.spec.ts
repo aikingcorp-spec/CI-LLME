@@ -8,6 +8,7 @@ import {
   expectCardWidth,
   realSandboxTimeout,
   rpc,
+  signInWithEmailCode,
   signup,
 } from "./helpers";
 
@@ -103,9 +104,9 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   // Agent computer toggles the panel. Re-open when closed so Open can refresh computer status.
   const sidePanel = page.getByTestId("side-panel");
   if ((await sidePanel.getAttribute("data-panel")) === "computer") {
-    await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+    await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   }
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await expect(sidePanel).toHaveAttribute("data-panel", "computer");
   await expect(sidePanel).toHaveCSS("width", "384px");
   const [mainBox, panelBox] = await Promise.all([
@@ -346,7 +347,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await page.getByText("Chief").first().click();
   const gear = page.getByRole("button", { name: "Show settings" });
   if (!(await gear.isVisible().catch(() => false))) {
-    await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+    await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   }
   await gear.click();
   await page
@@ -463,9 +464,7 @@ test("sign-in, spawn, and stop work in the shell", async ({ page }, testInfo) =>
 
   await page.context().clearCookies();
   await page.goto("/sign-in");
-  await page.getByPlaceholder("Your email address").fill(email);
-  await page.getByPlaceholder("Password").fill("password12");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await signInWithEmailCode(page, email);
   await page.waitForURL(/\/app/, { timeout: 20_000 });
   await expect(sidebarBotButton(page, /^Chief/)).toBeVisible();
   await expect(sidebarBotButton(page, /Scout/)).toBeVisible();

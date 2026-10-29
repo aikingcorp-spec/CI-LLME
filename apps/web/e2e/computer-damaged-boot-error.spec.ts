@@ -23,7 +23,7 @@ test("a damaged computer tells the user to recover it when the boot fails", asyn
     }),
   );
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await preview.hover();
   await preview.getByTestId("computer-preview-open").click();

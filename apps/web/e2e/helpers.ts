@@ -121,10 +121,13 @@ export async function signupThroughForm(
   await signInWithEmailCode(page, email);
   await page.waitForURL(/\/(onboarding|app)/, { timeout: 20_000 });
   if (name) {
-    await page.request.post("/api/auth/update-user", {
+    const response = await page.request.post("/api/auth/update-user", {
       data: { name },
       headers: { origin: new URL(page.url()).origin },
     });
+    if (!response.ok()) throw new Error(`update-user ${response.status()}`);
+    // The app cached the session before the name was set; reload so it shows the new name.
+    await page.reload();
   }
 }
 

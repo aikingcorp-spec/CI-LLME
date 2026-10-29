@@ -38,7 +38,7 @@ test("screen connection failures stay visible and can be retried", async ({ page
     }),
   );
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview.getByRole("alert")).toContainText("temporarily busy");
   await expect(preview.getByTestId("computer-preview-open")).toHaveCount(0);
@@ -111,7 +111,7 @@ test("a framed screen that fails to connect says so and can be retried", async (
     }),
   );
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview.getByRole("alert")).toContainText(
     "Could not connect to the computer screen",
@@ -149,7 +149,7 @@ test("a refused screen shows a fixed localized reason", async ({ page }, testInf
       body: JSON.stringify({ json: { url: "/novnc/session/view/1.refused-test/vnc.html" } }),
     }),
   );
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview.getByRole("alert")).toContainText("The screen link expired.");
   await expect(preview.locator("iframe")).toHaveCount(0);
@@ -169,7 +169,7 @@ test("a running computer without a screen URL offers recovery", async ({ page },
       body: JSON.stringify({ json: { url: null } }),
     });
   });
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview.getByRole("alert")).toContainText("Screen not connected");
   await expect(preview.getByRole("button", { name: "Retry screen" })).toBeVisible();
@@ -215,7 +215,7 @@ test("a healthy running computer is not diagnosed while its screen URL loads", a
       body: JSON.stringify({ json: { url: screenUrl } }),
     });
   });
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await reading;
   const preview = page.getByTestId("computer-preview");
   await expect(preview.getByRole("alert")).toHaveCount(0);
@@ -257,7 +257,7 @@ test("a takeover failure does not diagnose a screen connection failure", async (
       }),
     }),
   );
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview.locator("iframe")).toBeVisible();
   await preview.hover();
@@ -325,7 +325,7 @@ test("a framed screen that drops after connecting loads again by itself once", a
     }),
   );
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   const preview = page.getByTestId("computer-preview");
   await expect(preview.locator("iframe")).toHaveAttribute("src", /1\.drop-test\/vnc\.html/);
   await expect.poll(() => loads).toBe(2);
@@ -387,7 +387,7 @@ for (const moved of [false, true]) {
         }),
       );
 
-      await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+      await page.getByRole("button", { name: "Bot computer", exact: true }).click();
       const preview = page.getByTestId("computer-preview");
       await expect(preview.locator("iframe")).toHaveAttribute("src", /1\.focus-test\/vnc\.html/);
       await preview.locator("iframe").focus();

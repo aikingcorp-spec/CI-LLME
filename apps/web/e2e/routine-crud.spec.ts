@@ -40,7 +40,7 @@ test("routine editing updates in place, preserves timezone, deletion persists, a
   expect(created.nextRunAt).not.toBeNull();
   expect(localSchedule(created.nextRunAt!, created.timezone)).toMatchObject({ hour: 9, minute: 0 });
   await page.reload();
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
 
   await page.getByRole("button", { name: /Tokyo check-in/ }).click();
   await page.locator("label:has-text('Name') input").fill("Weekday check-in");
@@ -149,7 +149,7 @@ test("invalid advanced cron is rejected without creating a routine", async ({ pa
   await completeOnboarding(page);
   const botId = activeBotId(page);
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await page.getByRole("button", { name: "Create Routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Broken schedule");
   await page.locator("label:has-text('Instruction') textarea").fill("This should never run");
@@ -170,7 +170,7 @@ test("a successful routine create is not reported as failed when refresh fails",
   await completeOnboarding(page);
   const botId = activeBotId(page);
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await page.getByRole("button", { name: "Create Routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Persisted routine");
   await page.locator("label:has-text('Instruction') textarea").fill("Run once each morning");
@@ -236,7 +236,7 @@ test("switching bots while a routine save is pending does not reopen stale state
   ]);
   await page.reload();
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await page.getByRole("button", { name: /First routine/ }).click();
   await page.locator("label:has-text('Name') input").fill("First routine updated");
 
@@ -276,7 +276,7 @@ test("switching bots while a routine save is pending does not reopen stale state
   await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "closed");
   await expect(page.getByRole("alert")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await expect(page.getByRole("button", { name: /Second routine/ })).toHaveCount(1);
   await expect(page.getByRole("button", { name: /First routine/ })).toHaveCount(0);
 
@@ -340,7 +340,7 @@ test("change-trigger screenshot walkthrough", async ({ page }, testInfo) => {
   await completeOnboarding(page);
   const botId = activeBotId(page);
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await expect(page.getByRole("button", { name: "Create Routine" })).toBeVisible();
   await expect(page.getByText(/Booting up .* computer/)).toBeHidden();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

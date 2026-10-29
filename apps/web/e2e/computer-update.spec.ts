@@ -37,7 +37,7 @@ test("computer maintenance shows durable background progress and failure recover
     updates = [{ ...updating, id: "recovery-example", action: "recover", stage: "preparing" }];
     return route.fulfill({ json: { json: updates[0] } });
   });
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await expect(page.getByTestId("computer-preview")).toBeVisible();
   await page.getByTestId("computer-preview").hover();
   await page.getByTestId("computer-preview-open").click();
