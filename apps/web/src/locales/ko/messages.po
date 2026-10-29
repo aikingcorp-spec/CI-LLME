@@ -301,6 +301,11 @@ msgstr "{provider}의 일일 지출 한도에 도달했습니다."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its daily usage limit."
+msgstr "{provider}의 일일 사용 한도에 도달했습니다."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its monthly credit limit."
 msgstr ""
 
@@ -311,8 +316,18 @@ msgstr "{provider}의 월간 지출 한도에 도달했습니다."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its monthly usage limit."
+msgstr "{provider}의 월간 사용 한도에 도달했습니다."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider}의 지출 한도에 도달했습니다."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its usage limit."
+msgstr "{provider}의 사용 한도에 도달했습니다."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -323,6 +338,11 @@ msgstr ""
 #: src/lib/run-error.ts
 msgid "{provider} reached its weekly spending limit."
 msgstr "{provider}의 주간 지출 한도에 도달했습니다."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly usage limit."
+msgstr "{provider}의 주간 사용 한도에 도달했습니다."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -3537,6 +3557,7 @@ msgstr "음성 서비스를 불러오는 중…"
 #: src/components/PageLoading.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/IntegrationSetup.tsx
+#: src/pages/ModelRoleSettings.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/shell/transcript.tsx

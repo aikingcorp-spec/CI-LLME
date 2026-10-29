@@ -301,6 +301,11 @@ msgstr "{provider}の1日の利用額上限に達しました。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its daily usage limit."
+msgstr "{provider}が1日の利用上限に達しました。"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its monthly credit limit."
 msgstr ""
 
@@ -311,8 +316,18 @@ msgstr "{provider}の月間利用額上限に達しました。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its monthly usage limit."
+msgstr "{provider}が月間の利用上限に達しました。"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider}の利用額上限に達しました。"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its usage limit."
+msgstr "{provider}が利用上限に達しました。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -323,6 +338,11 @@ msgstr ""
 #: src/lib/run-error.ts
 msgid "{provider} reached its weekly spending limit."
 msgstr "{provider}の週間利用額上限に達しました。"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly usage limit."
+msgstr "{provider}が週間の利用上限に達しました。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -3537,6 +3557,7 @@ msgstr "音声プロバイダーを読み込み中…"
 #: src/components/PageLoading.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/IntegrationSetup.tsx
+#: src/pages/ModelRoleSettings.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/shell/transcript.tsx

@@ -301,6 +301,11 @@ msgstr "{provider} đã đạt giới hạn chi tiêu hằng ngày."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its daily usage limit."
+msgstr "{provider} đã hết hạn mức sử dụng trong ngày."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its monthly credit limit."
 msgstr "{provider} đã hết hạn mức credit hằng tháng."
 
@@ -311,8 +316,18 @@ msgstr "{provider} đã đạt giới hạn chi tiêu hằng tháng."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its monthly usage limit."
+msgstr "{provider} đã hết hạn mức sử dụng trong tháng."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider} đã đạt giới hạn chi tiêu."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its usage limit."
+msgstr "{provider} đã hết hạn mức sử dụng."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -323,6 +338,11 @@ msgstr "{provider} đã hết hạn mức credit hằng tuần."
 #: src/lib/run-error.ts
 msgid "{provider} reached its weekly spending limit."
 msgstr "{provider} đã đạt giới hạn chi tiêu hằng tuần."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly usage limit."
+msgstr "{provider} đã hết hạn mức sử dụng trong tuần."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -3537,6 +3557,7 @@ msgstr "Đang tải nhà cung cấp giọng nói…"
 #: src/components/PageLoading.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/IntegrationSetup.tsx
+#: src/pages/ModelRoleSettings.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/shell/transcript.tsx

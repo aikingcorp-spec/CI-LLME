@@ -32,6 +32,7 @@ export const RUN_ERROR_KINDS = [
   "key",
   "credit",
   "spending",
+  "usage",
   "rate",
   "auth",
   "access",

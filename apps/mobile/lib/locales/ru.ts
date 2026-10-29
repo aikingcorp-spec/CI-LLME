@@ -143,6 +143,12 @@ export const RU_MESSAGES: Record<string, string> = {
     "{provider}: достигнут недельный лимит расходов.",
   "{provider} reached its monthly spending limit.":
     "{provider}: достигнут месячный лимит расходов.",
+  "{provider} reached its usage limit.": "{provider}: достигнут лимит использования.",
+  "{provider} reached its daily usage limit.": "{provider}: достигнут дневной лимит использования.",
+  "{provider} reached its weekly usage limit.":
+    "{provider}: достигнут недельный лимит использования.",
+  "{provider} reached its monthly usage limit.":
+    "{provider}: достигнут месячный лимит использования.",
   Details: "Подробности",
 
   "Couldn't refresh — showing the last loaded messages.":

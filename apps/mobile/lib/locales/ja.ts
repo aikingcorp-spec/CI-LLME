@@ -138,6 +138,10 @@ export const JA_MESSAGES: Record<string, string> = {
   "{provider} reached its daily spending limit.": "{provider}が1日の利用額の上限に達しました。",
   "{provider} reached its weekly spending limit.": "{provider}が週間の利用額の上限に達しました。",
   "{provider} reached its monthly spending limit.": "{provider}が月間の利用額の上限に達しました。",
+  "{provider} reached its usage limit.": "{provider}が利用上限に達しました。",
+  "{provider} reached its daily usage limit.": "{provider}が1日の利用上限に達しました。",
+  "{provider} reached its weekly usage limit.": "{provider}が週間の利用上限に達しました。",
+  "{provider} reached its monthly usage limit.": "{provider}が月間の利用上限に達しました。",
   Details: "詳細",
   "Couldn't refresh — showing the last loaded messages.":
     "更新できませんでした。最後に読み込んだメッセージを表示しています。",
