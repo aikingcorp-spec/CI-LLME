@@ -257,7 +257,7 @@ describe("Pi model catalog", () => {
         providerName: "OpenAI",
         auth: "api-key",
         subscription: false,
-        billing: "Uses your OpenAI API key. VNBot does not pay for model usage.",
+        billing: "Dùng khóa API OpenAI của bạn. VNBot không trả phí dùng mô hình.",
       });
       expect(entry.oauthLabel).toBeUndefined();
       expect(entry.signIn).toBeUndefined();
@@ -270,7 +270,7 @@ describe("Pi model catalog", () => {
         providerName: "Azure OpenAI",
         auth: "api-key",
         subscription: false,
-        billing: "Uses your Azure OpenAI API key. VNBot does not pay for model usage.",
+        billing: "Dùng khóa API Azure OpenAI của bạn. VNBot không trả phí dùng mô hình.",
       });
     }
   });
@@ -313,7 +313,7 @@ describe("Pi model catalog", () => {
     ).toBe(true);
     const chatgpt = catalog.find((entry) => entry.provider === "openai-codex");
     expect(chatgpt?.signIn).toBe("device-code");
-    expect(chatgpt?.billing).toMatch(/ChatGPT Plus or Pro/);
+    expect(chatgpt?.billing).toMatch(/ChatGPT Plus hoặc Pro/);
     const copilot = catalog.find((entry) => entry.provider === "github-copilot");
     expect(copilot?.signIn).toBe("device-code");
     const grok = catalog.find((entry) => entry.provider === "xai");
