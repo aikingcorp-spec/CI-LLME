@@ -222,7 +222,7 @@ describe("model roles", () => {
       deploymentModelRole("approval", {
         env: { RAKAZO_AUTO_REVIEW_PROVIDER: "local-provider", RAKAZO_AUTO_REVIEW_MODEL: "judge" },
       }),
-    ).toEqual({ primary: null, backups: [] });
+    ).toEqual({ primary: { provider: "local-provider", modelId: "judge" }, backups: [] });
   });
 
   it("uses the deployment's defaults for a member who chose nothing", async () => {
@@ -367,5 +367,52 @@ it("does not invent an approval connection when the member has no primary", asyn
     primary: null,
     backups: [],
     primarySource: null,
+  });
+});
+
+it("does not treat deployment chat defaults as explicit approval configuration", () => {
+  expect(
+    deploymentModelRole("approval", {
+      ...deploymentDefaults,
+      env: { PI_DEFAULT_PROVIDER: "openrouter", PI_DEFAULT_MODEL: "deployment-chat" },
+    }),
+  ).toEqual({ primary: null, backups: [] });
+});
+
+it("retains an explicit deployment checker and the member's approval backups", async () => {
+  const prisma = roleClient([
+    { role: "main", position: 0, provider: "main", modelId: "chat", thinkingLevel: null },
+    { role: "approval", position: 1, provider: "backup", modelId: "judge", thinkingLevel: null },
+  ]);
+  await expect(
+    effectiveModelRole(prisma, scope, "approval", {
+      env: { RAKAZO_AUTO_REVIEW_PROVIDER: "deployment", RAKAZO_AUTO_REVIEW_MODEL: "checker" },
+    }),
+  ).resolves.toEqual({
+    primary: { provider: "deployment", modelId: "checker" },
+    backups: [{ provider: "backup", modelId: "judge" }],
+    primarySource: "deployment",
+  });
+});
+
+it("keeps an explicit member approval model ahead of an explicit deployment checker", async () => {
+  await expect(
+    effectiveModelRole(
+      roleClient([
+        {
+          role: "approval",
+          position: 0,
+          provider: "member",
+          modelId: "judge",
+          thinkingLevel: null,
+        },
+      ]),
+      scope,
+      "approval",
+      { env: { RAKAZO_AUTO_REVIEW_PROVIDER: "deployment", RAKAZO_AUTO_REVIEW_MODEL: "checker" } },
+    ),
+  ).resolves.toMatchObject({
+    primary: { provider: "member", modelId: "judge" },
+    primarySource: "member",
   });
 });

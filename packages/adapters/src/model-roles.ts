@@ -8,6 +8,7 @@ import type {
 import { backupChoiceKey, usableModelId } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { appliedModelRole } from "@rakazo/db";
+import { resolveAutoReviewChecker, resolveAutoReviewProviderKind } from "./auto-review.js";
 import type { ModelChoice, ModelCredential } from "./model-selection.js";
 import { findConnectedModelCredential } from "./model-selection.js";
 
@@ -25,7 +26,18 @@ export function deploymentModelRole(
   role: ModelRole,
   defaults: DeploymentModelDefaults,
 ): ModelRoleSettings {
-  if (role === "approval") return { primary: null, backups: [] };
+  if (role === "approval") {
+    const env = defaults.env ?? process.env;
+    // Only explicit approval configuration overrides the member's main model.
+    const explicit =
+      (env.RAKAZO_AUTO_REVIEW_PROVIDER?.trim() && env.RAKAZO_AUTO_REVIEW_MODEL?.trim()) ||
+      resolveAutoReviewProviderKind(env) !== "llm";
+    const checker = explicit ? resolveAutoReviewChecker(env) : null;
+    return {
+      primary: checker ? { provider: checker.provider, modelId: checker.model } : null,
+      backups: [],
+    };
+  }
   const provider = defaults.settings?.defaultModelProvider ?? defaults.deployment?.provider;
   const modelId =
     usableModelId(defaults.settings?.defaultModelId) ?? usableModelId(defaults.deployment?.model);
@@ -50,7 +62,8 @@ export async function effectiveModelRole(
 ): Promise<EffectiveModelRole> {
   const own = await appliedModelRole(prisma, scope, role, requested);
   if (own.primary) return { ...own, primarySource: "member" };
-  if (role === "approval") {
+  const deployment = deploymentModelRole(role, defaults);
+  if (role === "approval" && !deployment.primary) {
     const main = await appliedModelRole(prisma, scope, "main", requested);
     return {
       primary: main.primary,
@@ -58,7 +71,6 @@ export async function effectiveModelRole(
       primarySource: main.primary ? "member" : null,
     };
   }
-  const deployment = deploymentModelRole(role, defaults);
   return {
     primary: deployment.primary,
     backups: own.backups.length ? own.backups : deployment.backups,

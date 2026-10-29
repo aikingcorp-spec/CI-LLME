@@ -1,5 +1,15 @@
 # Architecture changelog
 
+## 2026-10-30 — Preserve explicit approval checker configuration
+
+- Date: 2026-10-30.
+- Pull request: none (local commit).
+- What changed versus baseline: approval resolution honors explicit member choices, then explicit deployment approval configuration, and otherwise follows the member's primary model. Configured approval backups also run without a primary checker.
+- Why: defaulting approvals to the primary model must preserve explicitly configured deployment checkers and backup fallback.
+- Modules and files: `packages/adapters/src/model-roles.ts`, `packages/adapters/src/run-tool-gate.ts`, and their model-role and executor approval tests.
+- Invariants affected: selected connections retain precedence and fail closed when unavailable; deployment checkers retain environment-key support. No implicit deployment chat model becomes an approval default, and no provider becomes required.
+- ADR: none; regression fix within existing approval boundaries.
+
 Each entry is a change versus the frozen Rakazo baseline at commit `c4b24547` (`docs/architecture/rakazo-baseline/SYSTEM_MAP.md`). Record the date, what changed, why, which files or modules moved, which invariants moved, and the ADR or PR.
 
 Proposed decisions are listed so reviewers can see them. They do not change the running system until a later entry says they landed in code.
