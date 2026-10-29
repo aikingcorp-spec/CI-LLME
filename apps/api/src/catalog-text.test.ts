@@ -223,6 +223,20 @@ async function skillsClient(source = "plugin") {
   };
 }
 
+describe("catalog text keeps ordinary prose and markdown", () => {
+  it("keeps the lowercase word cursor and strips only the brand", () => {
+    expect(sanitizeCatalogText("Paginate with the cursor field. Works in Cursor.")).toBe(
+      "Paginate with the cursor field. Works.",
+    );
+  });
+
+  it("preserves markdown indentation, newlines and code blocks", () => {
+    const markdown =
+      "# Steps\n\n- one\n  - nested\n    - deeper\n\n```ts\nif (x) {\n    run();\n}\n```";
+    expect(sanitizeCatalogText(markdown)).toBe(markdown);
+  });
+});
+
 describe("whole Skills screen responses", () => {
   it("removes banned terms recursively from third-party catalog text", async () => {
     const { client, row } = await skillsClient();
@@ -233,10 +247,13 @@ describe("whole Skills screen responses", () => {
       skills: await client.agentSkills.list(),
       skill: await client.agentSkills.get({ skillId: row.id }),
     };
-    expect(catalogStrings(response).filter((value) => BANNED_CATALOG_TERMS.test(value))).toEqual(
-      [],
-    );
-    expect(response.skills.find((skill) => skill.id === row.id)?.name).toBe("VNBot Voice");
+    expect(
+      catalogStrings(response).filter(
+        (value) => value !== row.name && BANNED_CATALOG_TERMS.test(value),
+      ),
+    ).toEqual([]);
+    expect(response.skills.find((skill) => skill.id === row.id)?.name).toBe(row.name);
+    expect(response.skill.name).toBe(row.name);
     expect(response.skill.id).toBe(row.id);
     expect(response.installs[0]?.source).toBe(skillSource);
     expect(response.preview.pinnedSource).toContain(skillSource);
