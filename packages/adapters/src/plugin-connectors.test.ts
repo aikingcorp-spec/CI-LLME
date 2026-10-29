@@ -473,6 +473,14 @@ describe("GitHub acquisition", () => {
   });
   it("tells temporary fetch failures from unsupported content", () => {
     expect(isTransientFetchError(new Error("Request failed: HTTP 503"))).toBe(true);
+    // A dropped TLS handshake on the VPS path (seen 3/40 to raw.githubusercontent.com) is transient.
+    expect(
+      isTransientFetchError(
+        new TypeError("x", {
+          cause: Object.assign(new Error("ssl"), { code: "ERR_SSL_UNEXPECTED_MESSAGE" }),
+        }),
+      ),
+    ).toBe(true);
     expect(isTransientFetchError(new Error("Request failed: HTTP 429"))).toBe(true);
     expect(isTransientFetchError(new DOMException("The operation timed out", "TimeoutError"))).toBe(
       true,
@@ -523,5 +531,51 @@ describe("GitHub acquisition", () => {
     });
     expect(preview.source.subdir).toBe("one");
     expect(preview.skills).toHaveLength(1);
+  });
+});
+
+describe("repositories publishing multiple plugin formats", () => {
+  it("previews the Figma layout without applying the root schema to legacy MCP config", async () => {
+    const preview = await previewPluginInstall({
+      source: "https://github.com/figma/mcp-server-guide",
+      fetcher: async () => ({
+        resolvedSha: SHA,
+        files: [
+          { path: "plugin.json", content: JSON.stringify({ ...manifest, name: "figma" }) },
+          {
+            path: ".cursor-plugin/plugin.json",
+            content: JSON.stringify({ name: "figma", mcpServers: "./.mcp.json" }),
+          },
+          {
+            path: "mcp.json",
+            content: JSON.stringify({
+              mcpServers: {
+                figma: {
+                  type: "http",
+                  url: "https://mcp.figma.com/mcp",
+                  _meta: { ideToolTitles: {} },
+                },
+              },
+            }),
+          },
+          { path: "skills/design/SKILL.md", content: skill },
+        ],
+      }),
+    });
+    expect(preview.name).toBe("figma");
+    expect(preview.mcpServers).toMatchObject([
+      { endpoint: "https://mcp.figma.com/mcp", transport: "streamable_http" },
+    ]);
+    expect(preview.skipped).toEqual([]);
+  });
+  it("still rejects an unsupported standalone root schema", () => {
+    expect(() =>
+      parse([
+        {
+          path: "plugin.json",
+          content: JSON.stringify({ name: "figma", $schema: "https://example.test/unknown" }),
+        },
+      ]),
+    ).toThrow("Unsupported Agent Plugins schema");
   });
 });

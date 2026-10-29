@@ -66,7 +66,9 @@ const SCHEMAS = new Set([
   "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "https://agent-plugins.org/schemas/1.1.0/plugin.schema.json",
 ]);
-const MANIFESTS = ["plugin.json", ".cursor-plugin/plugin.json", ".grok-plugin/plugin.json"];
+// Repositories can publish independent formats together. Prefer the legacy package
+// when present: its HTTP MCP config must not inherit the root Agent Plugins schema.
+const MANIFESTS = [".cursor-plugin/plugin.json", ".grok-plugin/plugin.json", "plugin.json"];
 /** Parts that only run inside an editor or execute the plugin's own code on the host. */
 const UNSUPPORTED_DIRS = new Set(["rules", "hooks", "automations"]);
 const UNSUPPORTED_FILES = new Set([".lsp.json"]);
@@ -201,6 +203,7 @@ export function githubApiHeaders(): Record<string, string> {
 /** One stalled connection must not eat the whole preview budget: each request gets its own
  * short deadline and one retry, inside the overall deadline. */
 const ATTEMPT_TIMEOUT_MS = 8_000;
+const MAX_RETRIES = 3;
 async function readWithRetry(
   read: PluginTextReader,
   url: string,
@@ -227,7 +230,10 @@ async function readWithRetry(
         throw new Error(
           `Request failed: HTTP 429 (GitHub API rate limit${headers?.authorization ? "" : "; unauthenticated requests share 60/hour per server IP"}; optionally set GITHUB_TOKEN)`,
         );
-      if (attempt >= 1 || deadline.aborted || !isTransientFetchError(error)) throw error;
+      // The 8088 VPS path drops ~5-10% of TLS handshakes to GitHub (ERR_SSL_UNEXPECTED_MESSAGE);
+      // a plugin like Figma reads dozens of files, so one retry per file was not enough.
+      if (attempt >= MAX_RETRIES || deadline.aborted || !isTransientFetchError(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
     }
   }
 }
@@ -768,6 +774,9 @@ export function pluginPreviewDto(plugin: ParsedPlugin): PluginPreview {
 export function isTransientFetchError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   if (error.name === "AbortError" || error.name === "TimeoutError") return true;
+  const code = (error.cause as { code?: unknown } | undefined)?.code;
+  if (typeof code === "string" && /^(ERR_SSL_|ECONN|EPIPE|ETIMEDOUT|UND_ERR_)/.test(code))
+    return true;
   return /HTTP (408|429|5\d\d)|fetch failed|timed? ?out|aborted|ECONN|ENOTFOUND|EAI_AGAIN/i.test(
     error.message,
   );
