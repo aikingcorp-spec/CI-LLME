@@ -10,7 +10,6 @@ import {
   PopoverTrigger,
 } from "@rakazo/ui-web";
 import {
-  BookOpen,
   Download,
   FolderOpen,
   Gauge,
@@ -175,15 +174,6 @@ export function SidebarFooter({
             >
               <Smartphone className="text-muted-foreground" strokeWidth={1.75} />
               <Trans>Get the mobile app</Trans>
-            </a>
-            <a
-              className={`${buttonVariants({ variant: "ghost" })} h-9 w-full justify-start gap-2.5 font-normal`}
-              href="https://github.com/elie222/rakazo/blob/main/docs/self-host.md"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <BookOpen className="text-muted-foreground" strokeWidth={1.75} />
-              <Trans>Docs</Trans>
             </a>
             {onBoard ? (
               <Button

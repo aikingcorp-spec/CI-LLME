@@ -26,7 +26,7 @@ export const MISSING_MODEL_RUN_ERROR = "Connect a model in Settings before runni
 
 /** A deployment model run while the organization has not chosen Rakazo credits. */
 export const HOSTED_MODEL_CREDITS_REQUIRED_ERROR =
-  "Connect your own API key in Models or choose Rakazo credits in Billing.";
+  "Connect your own API key in Models or choose VNBot credits in Billing.";
 
 /** A run in a billing organization without a paid plan, credits, or free period. */
 export const MODEL_ACCESS_REQUIRED_RUN_ERROR = "Subscribe in Billing to keep running bots.";

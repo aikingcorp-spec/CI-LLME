@@ -2577,10 +2577,6 @@ msgstr "Dockerは設定されていますが、コンピューターが応答し
 msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
 msgstr "Dockerはセキュリティ強化のため、コンピューターへのアクセスを制限します。{hostLabel}を使用すると、ボットがローカルのファイルやツールを扱えるようになります。"
 
-#: src/components/SidebarFooter.tsx
-msgid "Docs"
-msgstr "ドキュメント"
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Document changed. Reopen to edit the latest version."
 msgstr "ドキュメントが変更されました。最新版を編集するには開き直してください。"
@@ -3112,7 +3108,7 @@ msgstr "チームの規模は？"
 
 #: src/components/SignupSurvey.tsx
 msgid "How did you hear about us?"
-msgstr "Rakazoを何で知りましたか？"
+msgstr "VNBotを何で知りましたか？"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "How often"

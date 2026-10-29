@@ -2577,10 +2577,6 @@ msgstr ""
 msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
 msgstr "Docker, ek güvenlik için bilgisayarına erişimi sınırlar. {hostLabel} kullanıldığında botlar yerel dosyaların ve araçlarınla çalışabilir."
 
-#: src/components/SidebarFooter.tsx
-msgid "Docs"
-msgstr "Belgeler"
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Document changed. Reopen to edit the latest version."
 msgstr "Belge değişti. Son sürümü düzenlemek için yeniden açın."

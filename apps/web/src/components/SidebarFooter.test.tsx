@@ -144,7 +144,6 @@ it("opens integrations and keeps the existing account actions and links", async 
     "Skills",
     "Usage",
     "Get the mobile app",
-    "Docs",
     "Board",
     "Artifacts",
     "Settings",

@@ -11,10 +11,10 @@ export function welcomeEmail(
 ): Promise<TransactionalEmail> {
   return message(
     user.email,
-    "Welcome to Rakazo",
+    "Welcome to VNBot",
     <>
       <Text>Hi {displayName(user.name, "there")},</Text>
-      <Text>Thanks for signing up for Rakazo.</Text>
+      <Text>Thanks for signing up for VNBot.</Text>
       <Text>
         Questions or ideas?{" "}
         <Link href="https://discord.gg/RWwKa2Sn7h" style={linkStyle}>

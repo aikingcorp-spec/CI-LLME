@@ -29,6 +29,16 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Invariants affected: no auth redirect depends on request headers. Requests for other addresses cannot lock an invited address out of codes.
 - Links: [ADR 0002](adr/0002-email-code-sign-in-and-invite-list.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
 
+## 2026-10-29 — User-visible product name is VNBot
+
+- Date: 2026-10-29
+- Pull request: this pull request
+- What changed versus the baseline: every string a person reads says VNBot instead of Rakazo: transactional and marketing emails, passkey and authenticator names, API and desktop messages, the installer and host alerts, app display names and permission prompts on desktop and mobile, Android call titles, the marketing site, and the web, mobile and Lingui catalogs. The sidebar no longer links to the external self-hosting guide. Source identifiers, package names, `@rakazo/*` imports, `RAKAZO_*` variables, storage keys, URL schemes, bundle ids, file names and image names are unchanged.
+- Why: the product shows one brand to its users.
+- Files / modules: `packages/auth`, `packages/contracts` (copy only), `packages/core`, `packages/adapters` (copy only), `apps/api` (`app.ts`, `routes/context.ts`, mail and messaging text), `apps/web`, `apps/mobile` (including `lib/endpoint.ts` copy), `apps/desktop` (`productName`, setup page, `local-stack.ts` copy), `apps/www`, `infra/compose` and `infra/sandboxes` (installer, alert and desktop-menu text).
+- Invariants affected: none. The error text for missing credits changed on the server and in the web run-error mapping together; runs that stored the old text show it unmapped. The desktop `productName` is now VNBot, so the packaged app name and its user-data folder follow it.
+- ADR: none
+
 ## 2026-10-29 — VNBot default avatar, sign-in language switch, review fixes
 
 - Date: 2026-10-29

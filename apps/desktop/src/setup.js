@@ -23,10 +23,10 @@
   const PHASE_LABELS = {
     "checking-docker": "Getting ready…",
     preparing: "Getting ready…",
-    pulling: "Downloading Rakazo…",
-    starting: "Starting Rakazo…",
+    pulling: "Downloading VNBot…",
+    starting: "Starting VNBot…",
     "waiting-healthy": "Almost ready…",
-    ready: "Rakazo is ready.",
+    ready: "VNBot is ready.",
   };
   const TERMINAL_PHASES = new Set([
     "idle",
@@ -285,7 +285,7 @@
       if (generation !== requestGeneration) return result;
       if (result.ok) {
         serverUrl.value = result.url;
-        setStatus(`Rakazo answered at ${result.url}.`, "ok");
+        setStatus(`VNBot answered at ${result.url}.`, "ok");
       } else {
         setStatus(result.error ?? "Could not reach that address.", "error");
       }
@@ -408,7 +408,7 @@
         continueButton.focus();
       }
     } catch {
-      setStatus("Setup could not start. Quit Rakazo and try again.", "error");
+      setStatus("Setup could not start. Quit VNBot and try again.", "error");
       setBusy(true);
     }
   }

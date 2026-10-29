@@ -103,8 +103,8 @@ export const RU_MESSAGES: Record<string, string> = {
   "Your model provider": "Ваш поставщик моделей",
   "Connect a model in Settings before running bots.":
     "Подключите модель в настройках, прежде чем запускать ботов.",
-  "Connect your own API key in Models or choose Rakazo credits in Billing.":
-    "Подключите свой API-ключ в разделе «Модели» или выберите кредиты Rakazo в разделе «Оплата».",
+  "Connect your own API key in Models or choose VNBot credits in Billing.":
+    "Подключите свой API-ключ в разделе «Модели» или выберите кредиты VNBot в разделе «Оплата».",
   "The model provider returned an error.": "Поставщик моделей вернул ошибку.",
   "{provider} is rate limiting requests. Try again shortly.":
     "{provider} ограничивает частоту запросов. Повторите попытку чуть позже.",
@@ -594,8 +594,8 @@ export const RU_MESSAGES: Record<string, string> = {
   "Photo library": "Библиотека фотографий",
   Pin: "Закрепить",
   "Please try again.": "Повторите попытку.",
-  "Point this app at your self-hosted Rakazo origin, the same HTTPS URL you open in a browser.":
-    "Направьте это приложение на свой собственный источник Rakazo, тот же URL-адрес HTTPS, который вы открываете в браузере.",
+  "Point this app at your self-hosted VNBot origin, the same HTTPS URL you open in a browser.":
+    "Направьте это приложение на свой собственный источник VNBot, тот же URL-адрес HTTPS, который вы открываете в браузере.",
   Private: "Личный",
   Profile: "Профиль",
   Providers: "Провайдеры",
@@ -661,10 +661,10 @@ export const RU_MESSAGES: Record<string, string> = {
   "Show more": "Показать ещё",
   "Show {label}": "Показать {label}",
   "Sign in": "Войти",
-  "Sign in to Rakazo": "Войти в Rakazo",
+  "Sign in to VNBot": "Войти в VNBot",
   "Sign out": "Выйти",
   "Sign up": "Зарегистрироваться",
-  "Sign up for Rakazo": "Зарегистрироваться в Rakazo",
+  "Sign up for VNBot": "Зарегистрироваться в VNBot",
   "Sign-in": "Вход",
   "Sign-up": "Регистрация",
   "Sign-in did not return a session": "Вход не вернул сессию",
@@ -696,7 +696,7 @@ export const RU_MESSAGES: Record<string, string> = {
   Team: "Команда",
   "Team Computer": "Командный компьютер",
   "That doesn’t look like a URL": "Это не похоже на URL",
-  "That URL did not look like a Rakazo server": "Этот адрес не похож на сервер Rakazo",
+  "That URL did not look like a VNBot server": "Этот адрес не похож на сервер VNBot",
   "That URL is missing a host": "Для этого URL-адреса отсутствует хост",
   "The server changed while starting the request": "Сервер изменился при запуске запроса",
   "This permanently deletes your account, bots, conversations, memories, files, and saved connections. This cannot be undone.":
@@ -785,8 +785,8 @@ export const RU_MESSAGES: Record<string, string> = {
   "Open conversation": "Открыть диалог",
   "Open in full window": "Открыть в полном окне",
   "OpenAPI JSON": "OpenAPI JSON",
-  "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.":
-    "Вставьте OpenAI-совместимый адрес со своего сервера. При необходимости Rakazo добавляет /v1.",
+  "Paste the OpenAI-compatible address from your server. VNBot adds /v1 if needed.":
+    "Вставьте OpenAI-совместимый адрес со своего сервера. При необходимости VNBot добавляет /v1.",
   Paused: "Приостановлено",
   Prompt: "Промпт",
   "Recording a live demonstration needs desktop or web with the full computer view. You can still ask this bot to run saved skills from chat.":
@@ -802,8 +802,8 @@ export const RU_MESSAGES: Record<string, string> = {
   "Delete {name} and its {count} bots?": "Удалить {name} и его ботов ({count})?",
   "This removes every message and stops current work. The bot, computer, memory, and routines are kept.":
     "Это удалит все сообщения и остановит текущую работу. Бот, компьютер, память и задачи сохранятся.",
-  "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider.":
-    "Вход по этой подписке пока недоступен в Rakazo. Используйте учётные данные развёртывания или выберите другого провайдера.",
+  "This subscription sign-in is not available in VNBot yet. Use a deployment credential or choose another provider.":
+    "Вход по этой подписке пока недоступен в VNBot. Используйте учётные данные развёртывания или выберите другого провайдера.",
   Tools: "Инструменты",
   Uninstall: "Удалить",
   "Verify and add": "Проверить и добавить",
@@ -908,6 +908,7 @@ export const RU_MESSAGES: Record<string, string> = {
   "AI models": "Модели ИИ",
   Memory: "Память",
   "Privacy policies": "Политики конфиденциальности",
+  VNBot: "VNBot",
   Rakazo: "Rakazo",
   "Withdraw all permissions": "Отозвать все разрешения",
   "Withdraw all permissions?": "Отозвать все разрешения?",
@@ -1025,13 +1026,13 @@ export const RU_MESSAGES: Record<string, string> = {
   Subscribe: "Оформить подписку",
   "Monthly credits expire at renewal. Top-ups do not expire.":
     "Ежемесячные кредиты истекают при продлении. Разовые пополнения не сгорают.",
-  "Use Rakazo credits": "Использовать кредиты Rakazo",
+  "Use VNBot credits": "Использовать кредиты VNBot",
   "Choose a plan": "Выбрать тариф",
   "Change plan": "Сменить тариф",
   Plan: "Тариф",
   None: "Нет",
   "Free trial": "Бесплатный пробный период",
-  "Rakazo credits": "Кредиты Rakazo",
+  "VNBot credits": "Кредиты VNBot",
   "Free until": "Бесплатно до",
   Ends: "Заканчивается",
   Renews: "Продление",
@@ -1060,7 +1061,7 @@ export const RU_MESSAGES: Record<string, string> = {
   "Your free trial has started": "Бесплатный пробный период начался",
   "Free until {date}": "Бесплатно до {date}",
   "Connect your AI": "Подключить ИИ",
-  "Start using Rakazo": "Начать работу с Rakazo",
+  "Start using VNBot": "Начать работу с VNBot",
   "1 unread": "1 непрочитанный",
   "{count} unread": "Непрочитанных: {count}",
   "{count} need attention": "Требуют внимания: {count}",
@@ -1068,12 +1069,11 @@ export const RU_MESSAGES: Record<string, string> = {
   "{label}, below": "{label}, ниже",
   Work: "Работа",
   Both: "И то, и другое",
-  "How will you use Rakazo?": "Как вы будете использовать Rakazo?",
-  "What do you most want Rakazo to help with?":
-    "С чем Rakazo должен помогать вам в первую очередь?",
+  "How will you use VNBot?": "Как вы будете использовать VNBot?",
+  "What do you most want VNBot to help with?": "С чем VNBot должен помогать вам в первую очередь?",
   "How big is your team?": "Сколько человек в вашей команде?",
   "How did you hear about us?": "Как вы о нас узнали?",
-  "Welcome to Rakazo": "Добро пожаловать в Rakazo",
+  "Welcome to VNBot": "Добро пожаловать в VNBot",
   Messaging: "Сообщения",
   Unlink: "Отвязать",
   "Connect a chat app": "Подключить чат-приложение",

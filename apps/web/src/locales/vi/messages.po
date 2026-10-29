@@ -2577,10 +2577,6 @@ msgstr ""
 msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
 msgstr ""
 
-#: src/components/SidebarFooter.tsx
-msgid "Docs"
-msgstr "Tài liệu"
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Document changed. Reopen to edit the latest version."
 msgstr ""

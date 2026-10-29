@@ -1,7 +1,7 @@
-export const SITE_NAME = "Rakazo";
+export const SITE_NAME = "VNBot";
 export const SITE_URL = "https://rakazo.com";
 export const SITE_DESCRIPTION =
-  "Rakazo is an open source Grok Bot alternative for persistent AI teammates that do real work. Your keys, your model, your machine.";
+  "VNBot is an open source Grok Bot alternative for persistent AI teammates that do real work. Your keys, your model, your machine.";
 
 export const APP_URL = "https://app.rakazo.com";
 export const CATALOG_URL =
