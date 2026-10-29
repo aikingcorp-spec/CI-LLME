@@ -107,7 +107,7 @@ test("an email that is not invited stays on the email step", async ({ page }, te
   await expect(page.getByLabel("6-digit sign-in code")).toHaveCount(0);
   await expect(page.getByLabel("Email", { exact: true })).toHaveValue("mai@vnbot.vn");
   const contact = page.getByRole("link", { name: "Get in touch (opens in new tab)" });
-  await expect(contact).toHaveAttribute("href", "https://aikingx.com");
+  await expect(contact).toHaveAttribute("href", "https://aikingx.com/lien-he/");
   await expect(contact).toHaveAttribute("target", "_blank");
   await expect(contact).toHaveAttribute("rel", "noopener noreferrer");
   await captureScreenshot(page, testInfo, "not-invited");

@@ -64,7 +64,7 @@ export class PluginMarketplaceFixture {
           {
             name: "planning-notes",
             source: "planning-notes",
-            description: "Plan work and write notes",
+            description: "Lập kế hoạch công việc và ghi chú",
             keywords: ["planning"],
             category: "productivity",
           },
