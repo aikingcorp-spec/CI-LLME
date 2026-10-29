@@ -287,8 +287,23 @@ msgstr "{provider} 的金鑰已達到每週限額。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its daily credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its daily spending limit."
 msgstr "{provider} 已達到每日支出限額。"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its monthly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -299,6 +314,11 @@ msgstr "{provider} 已達到每月支出限額。"
 #: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider} 已達到支出限額。"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

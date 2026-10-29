@@ -286,8 +286,23 @@ msgstr "{provider} için haftalık anahtar sınırına ulaşıldı."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its daily credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its daily spending limit."
 msgstr "{provider} için günlük harcama sınırına ulaşıldı."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its monthly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -298,6 +313,11 @@ msgstr "{provider} için aylık harcama sınırına ulaşıldı."
 #: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider} için harcama sınırına ulaşıldı."
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

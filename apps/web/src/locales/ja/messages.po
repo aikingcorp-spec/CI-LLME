@@ -286,8 +286,23 @@ msgstr "{provider}のキーが週間の上限に達しました。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
+msgid "{provider} reached its credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its daily credit limit."
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
 msgid "{provider} reached its daily spending limit."
 msgstr "{provider}の1日の利用額上限に達しました。"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its monthly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -298,6 +313,11 @@ msgstr "{provider}の月間利用額上限に達しました。"
 #: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider}の利用額上限に達しました。"
+
+#. js-lingui-explicit-id
+#: src/lib/run-error.ts
+msgid "{provider} reached its weekly credit limit."
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts

@@ -147,12 +147,27 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         values,
       });
     case "{provider} reached its credit limit.":
+      return i18n._({
+        id: "{provider} reached its credit limit.",
+        message: "{provider} reached its credit limit.",
+        values,
+      });
     case "{provider} reached its daily credit limit.":
+      return i18n._({
+        id: "{provider} reached its daily credit limit.",
+        message: "{provider} reached its daily credit limit.",
+        values,
+      });
     case "{provider} reached its weekly credit limit.":
+      return i18n._({
+        id: "{provider} reached its weekly credit limit.",
+        message: "{provider} reached its weekly credit limit.",
+        values,
+      });
     case "{provider} reached its monthly credit limit.":
       return i18n._({
-        id: "Connect your own API key in Models.",
-        message: "Connect your own API key in Models.",
+        id: "{provider} reached its monthly credit limit.",
+        message: "{provider} reached its monthly credit limit.",
         values,
       });
     case "{provider} reached its spending limit.":
@@ -202,11 +217,18 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
   }
 };
 
-/** Funding diagnostics from older nodes must never reintroduce the removed billing UI. */
+/**
+ * Users bring their own model key, so a provider credit error asks them to pick another model;
+ * only missing-key and legacy funding advice point to API key setup. Raw provider diagnostics
+ * can carry removed billing copy, so they never reach the expandable details.
+ */
 export function normalizeWebRunError(details: string, locale = i18n.locale || "en") {
   const result = normalizeRunError(details, translateRunError, locale);
+  if (result.kind === "credit") {
+    return { ...result, details: result.summary, recovery: "model" as const };
+  }
   const advice = translateRunError(HOSTED_MODEL_CREDITS_REQUIRED_ERROR);
-  return result.kind === "credit" || result.summary === advice
+  return result.summary === advice
     ? { ...result, summary: advice, details: advice, recovery: "connection" as const }
     : result;
 }

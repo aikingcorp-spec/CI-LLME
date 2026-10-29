@@ -67,21 +67,34 @@ it("maps legacy funding advice to API key setup", () => {
 });
 
 it.each(["{provider} reached its credit limit.", "{provider} reached its daily credit limit."])(
-  "shows API key setup for credit errors: %s",
+  "keeps provider credit errors as provider credit errors: %s",
   (message) => {
     i18n.load("en", {});
     i18n.activate("en");
     expect(translateRunError(message, { provider: "Your model provider" })).toBe(
-      "Connect your own API key in Models.",
+      message.replace("{provider}", "Your model provider"),
     );
   },
 );
 
+it("tells a user whose own provider ran out of credits to choose a model", () => {
+  i18n.load("en", {});
+  i18n.activate("en");
+  expect(
+    normalizeWebRunError('402: {"message":"You have no credits remaining. Go to Billing."}'),
+  ).toMatchObject({
+    kind: "credit",
+    summary: "Your model provider reached its credit limit.",
+    details: "Your model provider reached its credit limit.",
+    recovery: "model",
+  });
+});
+
 it.each([
-  '402: {"message":"You have no credits remaining. Go to Billing."}',
   "Connect your own API key in Models or choose Rakazo credits in Billing.",
   "Subscribe in Billing to keep running bots.",
-])("does not expose legacy billing copy in expandable diagnostics: %s", (error) => {
+  "Connect your own API key in Models.",
+])("keeps API key setup for missing-key advice: %s", (error) => {
   i18n.load("en", {});
   i18n.activate("en");
   expect(normalizeWebRunError(error)).toMatchObject({
