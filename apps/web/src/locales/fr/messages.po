@@ -6648,3 +6648,7 @@ msgstr "Votre fournisseur vocal n'a plus de crédit."
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "Votre fournisseur vocal a refusé la clé."
+
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr ""

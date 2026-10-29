@@ -6648,3 +6648,7 @@ msgstr "לספק הקול שלך נגמר הקרדיט."
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "ספק הקול שלך דחה את המפתח."
+
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr ""

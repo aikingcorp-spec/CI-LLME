@@ -6648,3 +6648,7 @@ msgstr "音声プロバイダーのクレジットが不足しています。"
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "音声プロバイダーのキーが拒否されました。"
+
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr ""

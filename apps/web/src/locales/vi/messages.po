@@ -6648,3 +6648,7 @@ msgstr "Nhà cung cấp giọng nói của bạn đã hết tín dụng."
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "Khoá API của nhà cung cấp giọng nói bị từ chối."
+
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr "Liên hệ"
