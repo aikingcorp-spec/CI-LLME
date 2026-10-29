@@ -91,7 +91,7 @@ describe("selectable bot icon sets", () => {
       ]);
       await click("VNBot");
       await click("Classic");
-      expect(changed).toHaveBeenLastCalledWith("#10B981", "organic");
+      expect(changed).not.toHaveBeenCalled();
     },
   );
 
@@ -137,6 +137,9 @@ describe("selectable bot icon sets", () => {
     expect(changed).not.toHaveBeenCalled();
     expect(document.querySelector(`img[src="${photo}"]`)).not.toBeNull();
     await click("Classic");
+    expect(changed).not.toHaveBeenCalled();
+    expect(document.querySelector(`img[src="${photo}"]`)).not.toBeNull();
+    await click("Default");
     expect(changed).toHaveBeenLastCalledWith(DEFAULT_BOT_AVATAR_COLOR, "organic");
     expect(document.querySelector(`img[src="${photo}"]`)).toBeNull();
   });
@@ -147,7 +150,48 @@ describe("selectable bot icon sets", () => {
     await click("Color #10B981");
     expect(changed).toHaveBeenLastCalledWith("#10B981::shape_2", undefined);
     expect(button("Classic").getAttribute("aria-selected")).toBe("true");
+    changed.mockClear();
     await click("VNBot");
-    expect(changed).toHaveBeenLastCalledWith("#10B981::shape_0", "vnbot");
+    expect(changed).not.toHaveBeenCalled();
+  });
+
+  it("switching tabs never changes the saved look of an existing Classic bot", async () => {
+    await render("#10B981::shape_2", "organic");
+    await click("Customize bot avatar");
+    await click("VNBot");
+    expect(button("VNBot").getAttribute("aria-selected")).toBe("true");
+    expect(document.querySelector('[data-testid^="vnbot-shape-"]')).not.toBeNull();
+    for (const tile of document.querySelectorAll('[data-testid^="vnbot-shape-"]')) {
+      expect(tile.getAttribute("aria-pressed")).toBe("false");
+    }
+    await click("Classic");
+    await click("VNBot");
+    await click("Classic");
+    expect(changed).not.toHaveBeenCalled();
+    expect(document.querySelector("[data-vnbot-avatar]")).toBeNull();
+  });
+
+  it("switching tabs never changes the saved look of an existing VNBot bot", async () => {
+    await render("#8B5CF6::shape_4", "vnbot");
+    await click("Customize bot avatar");
+    await click("Classic");
+    expect(button("Classic").getAttribute("aria-selected")).toBe("true");
+    await click("VNBot");
+    expect(changed).not.toHaveBeenCalled();
+    expect(
+      document.querySelector('[data-testid="vnbot-shape-sen"]')?.getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      document.querySelector('[data-testid="avatar-studio-trigger"] [data-vnbot-shape="sen"]'),
+    ).not.toBeNull();
+  });
+
+  it("saves the other set only once a shape is picked there", async () => {
+    await render("#10B981::shape_2", "organic");
+    await click("Customize bot avatar");
+    await click("VNBot");
+    await click("Sen");
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).toHaveBeenLastCalledWith("#10B981::shape_4", "vnbot");
   });
 });
