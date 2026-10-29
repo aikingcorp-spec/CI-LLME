@@ -57,6 +57,21 @@ export const legacyAccountSecurity: AccountSecurity = {
 export const EMAIL_NOT_INVITED = "EMAIL_NOT_INVITED";
 
 /**
+ * The SSO callback ends at `<web origin>/sign-in?error=ACCOUNT_NOT_LINKED` when
+ * the provider email already belongs to another account. SSO never links by
+ * itself; the person signs in with an email code and links SSO in Settings.
+ */
+export const ACCOUNT_NOT_LINKED = "ACCOUNT_NOT_LINKED";
+
+/** Client copy for auth error codes that have no server message. */
+export const AUTH_ERROR_MESSAGES = {
+  ACCOUNT_NOT_LINKED: {
+    vi: "Email này đã có tài khoản. Hãy đăng nhập bằng mã email rồi liên kết SSO trong Cài đặt.",
+    en: "This email already has an account. Sign in with an email code, then link SSO in Settings.",
+  },
+} as const;
+
+/**
  * The RPC error code for a sensitive action the session must confirm its
  * identity for first. Clients confirm, then retry the action once.
  */

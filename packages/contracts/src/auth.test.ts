@@ -1,5 +1,7 @@
 import { expect, it, vi } from "vitest";
 import {
+  ACCOUNT_NOT_LINKED,
+  AUTH_ERROR_MESSAGES,
   accountSecuritySchema,
   authCapabilitiesSchema,
   IDENTITY_CONFIRMATION_REQUIRED,
@@ -110,4 +112,12 @@ it("passes other failures through without asking", async () => {
     runWithIdentityConfirmation(async () => Promise.reject(failure), confirm),
   ).rejects.toBe(failure);
   expect(confirm).not.toHaveBeenCalled();
+});
+
+it("gives the account-not-linked code Vietnamese and English copy", () => {
+  expect(ACCOUNT_NOT_LINKED).toBe("ACCOUNT_NOT_LINKED");
+  expect(AUTH_ERROR_MESSAGES[ACCOUNT_NOT_LINKED]).toEqual({
+    vi: "Email này đã có tài khoản. Hãy đăng nhập bằng mã email rồi liên kết SSO trong Cài đặt.",
+    en: "This email already has an account. Sign in with an email code, then link SSO in Settings.",
+  });
 });

@@ -168,11 +168,12 @@ async function start(
   callbackURL = `${origin}/app`,
   reauthenticate = false,
   additionalData: Record<string, unknown> = {},
+  errorCallbackURL = `${origin}/sign-in`,
 ) {
   const response = await request(link ? "/link-social" : "/sign-in/social", {
     provider: "oidc",
     callbackURL,
-    errorCallbackURL: `${origin}/sign-in`,
+    errorCallbackURL,
     disableRedirect: true,
     additionalData: { ...additionalData, ...(reauthenticate ? { reauthenticate: true } : {}) },
   });
@@ -194,6 +195,13 @@ async function start(
 }
 async function signIn(claims?: Record<string, unknown>) {
   return request(await start(claims));
+}
+/** The SSO callback contract: a bare 302 to the web origin, no cookies, nothing else in the query. */
+function expectAccountNotLinkedRedirect(response: Response) {
+  expect(response.status).toBe(302);
+  expect(response.headers.get("location")).toBe(`${origin}/sign-in?error=ACCOUNT_NOT_LINKED`);
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.getSetCookie()).toEqual([]);
 }
 const rows = (model: string) => state.db[model] ?? [];
 const hashedIdentifier = (identifier: string) =>
@@ -313,7 +321,7 @@ describe("OIDC callbacks", () => {
       email: "local@example.test",
       email_verified: true,
     });
-    expect(response.headers.get("location")).toContain("error=account_not_linked");
+    expectAccountNotLinkedRedirect(response);
     expect(rows("account")).toHaveLength(2);
   });
   it.each([true, false, undefined])(
@@ -332,7 +340,7 @@ describe("OIDC callbacks", () => {
         email: "sso@example.test",
         email_verified: verified,
       });
-      expect(response.headers.get("location")).toContain("error=account_not_linked");
+      expectAccountNotLinkedRedirect(response);
       expect(rows("user")).toHaveLength(1);
       expect(rows("account")).toHaveLength(1);
       expect(rows("account")[0]?.providerId).toBe("credential");
@@ -437,7 +445,7 @@ describe("OIDC callbacks", () => {
         allowSignupBypass: false,
       },
     });
-    expect((await signIn()).headers.get("location")).toContain("error=account_not_linked");
+    expectAccountNotLinkedRedirect(await signIn());
     expect(rows("user")).toHaveLength(1);
     expect(rows("account")).toHaveLength(1);
   });
@@ -782,9 +790,7 @@ describe("SSO and the invite list (EMAIL_NOT_INVITED contract)", () => {
     ]);
     // A bare SSO sign-in with the same email never merges into the existing account.
     cookies = "";
-    expect(
-      (await signIn(claimsFor("dan@example.com", "subject-2"))).headers.get("location"),
-    ).toContain("error=account_not_linked");
+    expectAccountNotLinkedRedirect(await signIn(claimsFor("dan@example.com", "subject-2")));
     expect(rows("user")).toHaveLength(1);
   });
 
@@ -804,6 +810,47 @@ describe("SSO and the invite list (EMAIL_NOT_INVITED contract)", () => {
     }
     expect(rows("user")).toHaveLength(0);
     expect(rows("session")).toHaveLength(0);
+  });
+
+  /** Replays the callback of a started flow against a forged host, with a relative error page. */
+  const forgedHostCallback = async (claims: Record<string, unknown>) => {
+    const path = await start(claims, false, `${origin}/app`, false, {}, "/sign-in");
+    return auth.handler(
+      new Request(`https://evil.example/api/auth${path}`, {
+        method: "GET",
+        headers: { host: "evil.example", origin, ...(cookies ? { cookie: cookies } : {}) },
+      }),
+    );
+  };
+
+  it("7. redirects to the configured web origin even when the request URL and Host are forged", async () => {
+    setup({ emailAllowlist: true });
+    state.invited.add("ann@example.com");
+    const response = await forgedHostCallback(claimsFor("bob@example.com"));
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(notInvitedLocation);
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(rows("user")).toHaveLength(0);
+  });
+
+  it("8. answers a bare ACCOUNT_NOT_LINKED redirect to the web origin when an email already has an account", async () => {
+    setup();
+    await request("/sign-up/email", {
+      email: "sso@example.test",
+      password: "test-password-123",
+      name: "Local",
+    });
+    cookies = "";
+    expectAccountNotLinkedRedirect(await signIn({ sub: "other", email: "sso@example.test" }));
+    cookies = "";
+    const forged = await forgedHostCallback({
+      sub: "other-2",
+      email: "sso@example.test",
+      email_verified: true,
+    });
+    expectAccountNotLinkedRedirect(forged);
+    expect(rows("user")).toHaveLength(1);
+    expect(rows("account")).toHaveLength(1);
   });
 
   it.each([["Eve@Example.COM"], [" Eve@Example.com "], ["eve\u200b@example.com"]])(

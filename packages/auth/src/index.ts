@@ -1,7 +1,7 @@
 import { expo } from "@better-auth/expo";
 import { passkey } from "@better-auth/passkey";
 import type { ProductAnalytics, TransactionalEmailProvider } from "@rakazo/adapter-kit";
-import { EMAIL_NOT_INVITED } from "@rakazo/contracts";
+import { ACCOUNT_NOT_LINKED, EMAIL_NOT_INVITED } from "@rakazo/contracts";
 import {
   displayName,
   emailAllowed,
@@ -450,14 +450,16 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
           throw passwordAuthDisabled();
         }
         if (isUnusedEmailCodePath(ctx.path, ctx.body)) throw new APIError("NOT_FOUND");
-        if (ctx.path === SEND_SIGN_IN_CODE_PATH && rateLimit.enabled) {
-          // The IP rule alone lets one address be probed or flooded from many IPs.
-          await limitPerEmail(ctx.context.adapter, normalizeEmail(ctx.body?.email), codeSendRule);
-        }
         if (ctx.path === SEND_SIGN_IN_CODE_PATH || ctx.path === CODE_SIGN_IN_PATH) {
           // Before the plugin stores or sends a code. Existing and new users alike.
           if (env.emailAllowlist && !(await isEmailInvited(prisma, ctx.body?.email))) {
             throw notInvited();
+          }
+          if (ctx.path === SEND_SIGN_IN_CODE_PATH && rateLimit.enabled) {
+            // The IP rule alone lets one address be probed or flooded from many IPs.
+            // Counted only after the invite check, so an uninvited sender cannot
+            // use up an invited person's budget.
+            await limitPerEmail(ctx.context.adapter, normalizeEmail(ctx.body?.email), codeSendRule);
           }
           // A code for an unknown address creates an account, so it passes the
           // same registration policy as password signup. A refused address is
@@ -738,7 +740,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
   const baseHandler = auth.handler;
   return Object.assign(auth, {
     handler: async (request: Request) =>
-      ssoCallbackContract(request, Boolean(env.oidc), () => baseHandler(request)),
+      ssoCallbackContract(request, Boolean(env.oidc), env.webOrigin, () => baseHandler(request)),
     emailCodeSignIn,
     /** Encrypts OAuth tokens stored before encryption was enabled. Safe to rerun. */
     encryptStoredOAuthTokens: async () => encryptStoredOAuthTokens(prisma, await tokenKey()),
@@ -875,8 +877,8 @@ interface RateLimitAdapter {
 
 /**
  * A fixed window per normalized address in Better Auth's shared `rateLimit`
- * table, beside its per-IP keys. Counted before the invite check, so invited
- * and uninvited addresses are throttled alike.
+ * table, beside its per-IP keys. With the invite list on, only invited
+ * addresses are counted; uninvited ones get 403 and the IP rule alone.
  */
 async function limitPerEmail(
   adapter: unknown,
@@ -958,14 +960,17 @@ function localeFromAuthContext(ctx: unknown): string | undefined {
 }
 
 /**
- * The agreed EMAIL_NOT_INVITED contract for the SSO callback. With OIDC off the
- * callback does not exist: 404. A refused invite becomes exactly
- * `302 Location: <error page>?error=EMAIL_NOT_INVITED` with no cookies, so
- * the client shows the not-invited screen and holds no session or OAuth state.
+ * The agreed error contract for the SSO callback. With OIDC off the callback
+ * does not exist: 404. A refused invite or an email that already belongs to
+ * another account becomes exactly
+ * `302 Location: <web origin>/sign-in?error=<CODE>` with no cookies, so the
+ * client shows the matching screen and holds no session or OAuth state. The
+ * origin is the configured web origin, never the request URL or Host header.
  */
 export async function ssoCallbackContract(
   request: Request,
   oidcEnabled: boolean,
+  webOrigin: string,
   handle: () => Promise<Response>,
 ): Promise<Response> {
   if (!new URL(request.url).pathname.endsWith("/callback/oidc")) return handle();
@@ -973,12 +978,18 @@ export async function ssoCallbackContract(
   const response = await handle();
   const location = response.headers.get("location");
   if (!location) return response;
-  const target = new URL(location, request.url);
-  if (target.searchParams.get("error") !== EMAIL_NOT_INVITED) return response;
+  const error = new URL(location, request.url).searchParams.get("error");
+  const code =
+    error === EMAIL_NOT_INVITED
+      ? EMAIL_NOT_INVITED
+      : error === "account_not_linked"
+        ? ACCOUNT_NOT_LINKED
+        : undefined;
+  if (!code) return response;
   return new Response(null, {
     status: 302,
     headers: {
-      location: `${target.origin}${target.pathname}?error=${EMAIL_NOT_INVITED}`,
+      location: `${new URL(webOrigin).origin}/sign-in?error=${code}`,
       "cache-control": "no-store",
     },
   });
