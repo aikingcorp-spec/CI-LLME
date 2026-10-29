@@ -52,6 +52,7 @@ test("create opens dialog, then empty chat; picker lists bots; sidebar collapses
   const shapes = createDialog.locator('[data-testid^="vnbot-shape-"]');
   await expect(shapes).toHaveCount(5);
   await expect(shapes.first()).toHaveAttribute("data-testid", "vnbot-shape-non");
+  await expect(createDialog.getByTestId("vnbot-shape-non")).toHaveAttribute("aria-pressed", "true");
   await createDialog.getByTestId("vnbot-shape-chung").click();
   await createDialog.getByRole("button", { name: "Color #10B981", exact: true }).click();
   await expect(createDialog.getByTestId("vnbot-shape-chung")).toHaveAttribute(
@@ -142,7 +143,7 @@ test("create opens dialog, then empty chat; picker lists bots; sidebar collapses
   expect(organicAvatarFamily(page.url().split("/").pop()!)).toBe(family);
 });
 
-test("the default VNBot preview keeps its seeded identity and colour after creation and reload", async ({
+test("the default VNBot preview is Nón and keeps its seeded colour after creation and reload", async ({
   page,
 }, testInfo) => {
   await signup(page, `preview-colour-${Date.now()}@rakazo.test`, "password12", "Preview Colour");
@@ -154,9 +155,8 @@ test("the default VNBot preview keeps its seeded identity and colour after creat
   const colour = (
     await preview.evaluate((node) => (node as HTMLElement).style.getPropertyValue("--body"))
   ).toUpperCase();
-  const shape = await preview.getAttribute("data-vnbot-shape");
+  await expect(preview).toHaveAttribute("data-vnbot-shape", "non");
   await dialog.getByPlaceholder("Name your Bot").fill("Seed preview");
-  await expect(preview).toHaveAttribute("data-vnbot-shape", shape!);
   await captureScreenshot(page, testInfo, "create-bot-seeded-preview");
   await dialog.getByRole("button", { name: "Create", exact: true }).click();
   await expect(dialog).toBeHidden();
@@ -170,10 +170,13 @@ test("the default VNBot preview keeps its seeded identity and colour after creat
     "bots/list",
     {},
   );
-  expect(bots.find((bot) => bot.id === id)).toMatchObject({ color: colour, avatarSet: "vnbot" });
+  expect(bots.find((bot) => bot.id === id)).toMatchObject({
+    color: `${colour}::shape_0`,
+    avatarSet: "vnbot",
+  });
   await expect(
     page.locator(`[data-roster-bot-id="${id}"]`).locator("[data-vnbot-avatar]").first(),
-  ).toHaveAttribute("data-vnbot-shape", shape!);
+  ).toHaveAttribute("data-vnbot-shape", "non");
 });
 
 test("a stale roster refresh started before creation keeps the new bot selected", async ({

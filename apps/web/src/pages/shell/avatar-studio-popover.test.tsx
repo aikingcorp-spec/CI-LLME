@@ -148,6 +148,6 @@ describe("selectable bot icon sets", () => {
     expect(changed).toHaveBeenLastCalledWith("#10B981::shape_2", undefined);
     expect(button("Classic").getAttribute("aria-selected")).toBe("true");
     await click("VNBot");
-    expect(changed).toHaveBeenLastCalledWith("#10B981", "vnbot");
+    expect(changed).toHaveBeenLastCalledWith("#10B981::shape_0", "vnbot");
   });
 });

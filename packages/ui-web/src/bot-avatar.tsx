@@ -75,6 +75,11 @@ export function defaultBotAvatarValue(rawColor: string): string {
   return DEFAULT_BOT_AVATAR_COLOR;
 }
 
+/** The VNBot set opens on Nón unless the person picks another shape. */
+export function defaultVnbotAvatarValue(rawColor: string): string {
+  return `${defaultBotAvatarValue(rawColor)}::shape_${VNBOT_SHAPES.indexOf("non")}`;
+}
+
 export interface BotAvatarProps {
   color: string;
   avatarSet?: BotAvatarSet;

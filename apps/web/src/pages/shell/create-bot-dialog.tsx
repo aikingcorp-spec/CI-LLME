@@ -18,6 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  defaultVnbotAvatarValue,
   Input,
   parseBotAvatar,
 } from "@rakazo/ui-web";
@@ -64,10 +65,11 @@ export function CreateBotDialog({
   });
   const [look, setLook] = useState(() => ({
     // Seed the preview from the default set's own palette, so a new vnbot bot
-    // is created with a body colour from vnbotBodyColors (PR #2 contract).
+    // is created with a body colour from vnbotBodyColors (PR #2 contract) and
+    // the Nón shape until the person picks another.
     value:
       DEFAULT_NEW_BOT_AVATAR_SET === "vnbot"
-        ? seededVnbotBodyColor(previewId)
+        ? defaultVnbotAvatarValue(seededVnbotBodyColor(previewId))
         : seededLogoAvatarColor(previewId),
     identity: pick(ORGANIC_IDENTITIES),
   }));

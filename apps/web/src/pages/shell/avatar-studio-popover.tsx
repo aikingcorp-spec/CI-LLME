@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   defaultBotAvatarValue,
+  defaultVnbotAvatarValue,
   parseBotAvatar,
   Tabs,
   TabsContent,
@@ -77,7 +78,10 @@ export function BotLookPicker({
       <Tabs
         value={selectedSet}
         onValueChange={(next) =>
-          onAvatarSetChange?.(next === "vnbot" ? "vnbot" : "organic", defaultBotAvatarValue(value))
+          onAvatarSetChange?.(
+            next === "vnbot" ? "vnbot" : "organic",
+            next === "vnbot" ? defaultVnbotAvatarValue(value) : defaultBotAvatarValue(value),
+          )
         }
       >
         <TabsList className="w-full" aria-label={t`Icon set`}>

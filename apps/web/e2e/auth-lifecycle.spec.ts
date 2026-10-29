@@ -247,7 +247,10 @@ test("logout protects bot deep links and sign-in restores the session", async ({
   await page.getByRole("button", { name: "Send code", exact: true }).click();
   await page.getByLabel("6-digit sign-in code").fill("000000");
   await expect(page.getByRole("alert")).toContainText("That code isn't right");
-  await expect(page).toHaveURL(/\/sign-in$/);
+  // The deep link rides along as ?next= so sign-in can restore it.
+  await expect(page).toHaveURL((url) => {
+    return url.pathname === "/sign-in" && url.searchParams.get("next") === protectedBotPath;
+  });
   await captureScreenshot(page, testInfo, "39-invalid-credentials");
 
   await page.getByLabel("6-digit sign-in code").fill(await readSignInCode(page, email));

@@ -6,6 +6,7 @@ export {
   BotShapePreview,
   DEFAULT_BOT_AVATAR_COLOR,
   defaultBotAvatarValue,
+  defaultVnbotAvatarValue,
   parseBotAvatar,
   resolvePersonaColorDef,
   Wordmark,
