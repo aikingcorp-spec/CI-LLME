@@ -53,12 +53,16 @@ it("maps legacy funding advice to API key setup", () => {
   const translated = "Verbinde deinen eigenen API-Schlüssel in Modelle.";
   i18n.load("de", { [current]: translated });
   i18n.activate("de");
-  expect(
-    translateRunError(
-      "Connect your own API key in Models or choose Rakazo credits in Billing.",
-      undefined,
-    ),
-  ).toBe(translated);
+  for (const legacy of [
+    "Connect your own API key in Models or choose Rakazo credits in Billing.",
+    "Connect your own API key in Models or choose VNBot credits in Billing.",
+    "Subscribe in Billing to keep running bots.",
+  ]) {
+    expect(normalizeRunError(legacy, translateRunError, i18n.locale)).toMatchObject({
+      summary: translated,
+      recovery: "connection",
+    });
+  }
   expect(translateRunError(current, undefined)).toBe(translated);
 });
 

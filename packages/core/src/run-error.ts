@@ -26,6 +26,8 @@ export const MISSING_MODEL_RUN_ERROR = "Connect a model in Settings before runni
 
 /** A deployment model run while the organization has not configured an API key. */
 export const HOSTED_MODEL_CREDITS_REQUIRED_ERROR = "Connect your own API key in Models.";
+/** Pre-free servers asked users to subscribe before running bots. */
+const LEGACY_SUBSCRIBE_ADVICE = /^Subscribe in \p{L}+ to keep running bots\.$/u;
 
 /** A run in a billing organization without a paid plan, credits, or free period. */
 export const MODEL_ACCESS_REQUIRED_RUN_ERROR = "Connect your own API key in Models.";
@@ -250,14 +252,11 @@ export function normalizeRunError(
       ].join("\n"),
     };
   }
-  // Older nodes and persisted runs can still return the former funding advice.
+  // Older nodes and persisted runs can still return the former funding advice. Match it by
+  // shape, not by its literal copy, so that copy never ships in the web bundle.
   if (
-    [
-      "Connect your own API key in Models.",
-      "Connect your own API key in Models or choose Rakazo credits in Billing.",
-      "Connect your own API key in Models or choose VNBot credits in Billing.",
-      "Subscribe in Billing to keep running bots.",
-    ].includes(trimmed)
+    trimmed.startsWith(HOSTED_MODEL_CREDITS_REQUIRED_ERROR.slice(0, -1)) ||
+    LEGACY_SUBSCRIBE_ADVICE.test(trimmed)
   ) {
     return {
       summary: translate(HOSTED_MODEL_CREDITS_REQUIRED_ERROR),
