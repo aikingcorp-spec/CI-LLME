@@ -182,7 +182,7 @@ describe("importing instead", () => {
         />,
       );
     });
-    await act(async () => button("Import").click());
+    await act(async () => button("Import an agent").click());
     expect(onImport).toHaveBeenCalledTimes(1);
   });
 });

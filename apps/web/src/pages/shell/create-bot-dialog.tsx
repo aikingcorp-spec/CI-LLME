@@ -169,7 +169,7 @@ export function CreateBotDialog({
                 data-testid="create-bot-import"
                 onClick={onImport}
               >
-                <Trans>Import</Trans>
+                <Trans>Import an agent</Trans>
               </Button>
             ) : null}
             <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
