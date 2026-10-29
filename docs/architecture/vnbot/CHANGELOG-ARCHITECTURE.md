@@ -6,7 +6,7 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 
 ## 2026-10-29 — SSO redirect origin, ACCOUNT_NOT_LINKED, send-limit order, compose defaults
 
-- What changed versus baseline: SSO callback redirects are built from the configured web origin instead of the Host header. An SSO email that already has an account gets a bare 302 to `/sign-in?error=ACCOUNT_NOT_LINKED` (no implicit linking; link from Settings while signed in), with VI/EN copy in `@rakazo/contracts`. The per-address send bucket is consumed only after the invite check passes; uninvited addresses get 403 and are limited per IP only. Compose defaults are `AUTH_EMAIL_CODE_ONLY=true` and `AUTH_EMAIL_ALLOWLIST=on`.
+- What changed versus baseline: SSO callback redirects are built from the configured web origin instead of the Host header. An SSO email that already has an account gets a bare 302 to `/sign-in?error=ACCOUNT_NOT_LINKED` (no implicit linking; link from Settings while signed in), with VI/EN copy in `@rakazo/contracts`. The per-address send bucket is consumed only after the invite check passes; uninvited addresses get 403 and are limited per IP only. Compose defaults are `AUTH_EMAIL_ALLOWLIST=on` everywhere and `AUTH_EMAIL_CODE_ONLY=true` only in the production stack (code-only refuses to start without an email sender).
 - Why: Rex review v2 of pull request 2 (N1 open redirect, N2 linking, N3 lockout, N4 safe defaults).
 - Files / modules: `packages/auth/src/index.ts`, `packages/contracts/src/auth.ts`, `apps/web/src/lib/user-error.ts`, `infra/compose/*.yml`.
 - Invariants affected: no auth redirect depends on request headers. Requests for other addresses cannot lock an invited address out of codes.

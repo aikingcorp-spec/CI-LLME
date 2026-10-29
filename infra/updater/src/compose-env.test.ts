@@ -273,3 +273,18 @@ describe("api and worker environment allowlists", () => {
     },
   );
 });
+
+describe("sign-in defaults", () => {
+  // Email-code-only refuses to start without an email sender, so only the
+  // production stack (which configures one) turns it on by default.
+  it.each([
+    ["docker-compose.prod.yml", "true"],
+    ["docker-compose.yml", "false"],
+    ["docker-compose.images.yml", "false"],
+    ["docker-compose.topology.yml", "false"],
+  ])("%s defaults AUTH_EMAIL_CODE_ONLY to %s and the invite list to on", (file, codeOnly) => {
+    const env = (loadServices(file).api?.environment ?? {}) as Record<string, unknown>;
+    expect(env.AUTH_EMAIL_CODE_ONLY).toBe(`\${AUTH_EMAIL_CODE_ONLY:-${codeOnly}}`);
+    expect(env.AUTH_EMAIL_ALLOWLIST).toBe("${AUTH_EMAIL_ALLOWLIST:-on}");
+  });
+});
