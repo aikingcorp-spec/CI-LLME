@@ -1,4 +1,5 @@
 import { once } from "node:events";
+import { setTimeout } from "node:timers/promises";
 import type { DataChannel, IceServer } from "node-datachannel";
 import { PeerConnection } from "node-datachannel";
 import type { RawData } from "ws";
@@ -29,6 +30,7 @@ export interface DataPeer {
   localCandidates: string[];
   selectedPair(): { local: string; remote: string } | null;
   close(): void;
+  closeGracefully(): Promise<void>;
 }
 
 const CHANNEL_LABEL = "rakazo";
@@ -86,6 +88,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   pc.onSignalingStateChange((state) => debug(`onSignalingStateChange ${state}`));
   const queue = createMessageQueue();
   let channel: DataChannel | undefined;
+  let channelClosed = false;
   let markOpen = (): void => {};
   let rejectOpen = (_error: Error): void => {};
   const open = new Promise<void>((resolve, reject) => {
@@ -99,6 +102,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     channel = dc;
     dc.onMessage((msg) => queue.push(typeof msg === "string" ? msg : msg.toString()));
     dc.onClosed(() => {
+      channelClosed = true;
       queue.end();
       rejectOpen(new Error("channel closed"));
     });
@@ -156,6 +160,28 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     unlisten?.();
     ws?.close();
   };
+  let gracefulClose: Promise<void> | undefined;
+  const closeGracefully = (): Promise<void> => {
+    gracefulClose ??= (async () => {
+      try {
+        // Drain the last frame before starting SCTP's channel reset handshake.
+        const drainDeadline = Date.now() + 2000;
+        while (!closed && channel?.isOpen() && channel.bufferedAmount() > 0) {
+          if (Date.now() >= drainDeadline) break;
+          await setTimeout(10);
+        }
+        if (!closed && channel && !channelClosed) {
+          channel.close();
+          // Keep the connection alive until the remote has observed the reset.
+          const closeDeadline = Date.now() + 2000;
+          while (!closed && !channelClosed && Date.now() < closeDeadline) await setTimeout(10);
+        }
+      } finally {
+        close();
+      }
+    })();
+    return gracefulClose;
+  };
   o.signal?.addEventListener("abort", close, { once: true });
   try {
     unlisten = o.signaling?.listen(receive);
@@ -195,5 +221,6 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
       channel.sendMessage(text);
     },
     close,
+    closeGracefully,
   };
 }

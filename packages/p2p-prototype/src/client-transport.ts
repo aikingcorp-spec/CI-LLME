@@ -103,7 +103,11 @@ export class DataChannelClientTransport implements ClientTransport {
     assertion: string,
   ) {
     this.ready = (async () => {
-      await peer.open;
+      try {
+        await peer.open;
+      } catch (cause) {
+        throw new Error("denied: channel closed before welcome", { cause });
+      }
       peer.send(JSON.stringify({ t: "hello", assertion }));
       for await (const bearer of this.handshake.read()) {
         this.bearer = bearer;
@@ -157,7 +161,9 @@ export class DataChannelClientTransport implements ClientTransport {
         else if (frame.t === "response" || frame.t === "chunk") queue.push(frame);
         else throw new Error("invalid server frame");
       }
-      this.fail(new Error("channel closed"));
+      this.fail(
+        new Error(this.bearer ? "channel closed" : "denied: channel closed before welcome"),
+      );
     } catch (error) {
       this.fail(error instanceof Error ? error : new Error("channel failed"));
       this.peer.close();

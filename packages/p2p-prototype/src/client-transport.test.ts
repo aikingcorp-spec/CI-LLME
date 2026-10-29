@@ -29,6 +29,27 @@ const request = (
   signal,
 });
 
+it.each(["before open", "after open"])(
+  "rejects a channel closing %s before welcome",
+  async (when) => {
+    const peer: DataPeer = {
+      open:
+        when === "before open" ? Promise.reject(new Error("channel closed")) : Promise.resolve(),
+      messages: {
+        async *[Symbol.asyncIterator]() {},
+      },
+      send: vi.fn(),
+      close: vi.fn(),
+      closeGracefully: vi.fn(async () => {}),
+      localCandidates: [],
+      selectedPair: () => null,
+    };
+    const client = new DataChannelClientTransport(peer, "invalid");
+    await expect(client.ready).rejects.toThrow("denied: channel closed before welcome");
+    await expect(client.call(request())).rejects.toThrow("denied: channel closed before welcome");
+  },
+);
+
 describe("ClientTransport over a real gateway and node agent", () => {
   const keyPair = generateKeyPair();
   const gatewayKey = generateKeyPair();

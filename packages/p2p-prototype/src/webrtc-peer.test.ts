@@ -64,7 +64,14 @@ describe("webrtc peer", () => {
 
     expect(fromA.value).toBe("ping");
     expect(fromB.value).toBe("pong");
-    a.close();
+    // A queued terminal message must arrive before the remote observes closure.
+    const terminal = "x".repeat(256 * 1024);
+    a.send(terminal);
+    const closing = a.closeGracefully();
+    const messages = b.messages[Symbol.asyncIterator]();
+    expect(await messages.next()).toEqual({ value: terminal, done: false });
+    expect((await messages.next()).done).toBe(true);
+    await closing;
     b.close();
   }, 20_000);
 });

@@ -30,9 +30,11 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
     async accept(peer: DataPeer): Promise<void> {
       let session: NodeSession | undefined;
       const active = new Map<string, AbortController>();
-      const close = (): void => {
+      let closing: Promise<void> | undefined;
+      const close = (): Promise<void> => {
         for (const controller of active.values()) controller.abort();
-        peer.close();
+        closing ??= peer.closeGracefully();
+        return closing;
       };
       const send = (frame: ChannelFrame): void => peer.send(JSON.stringify(frame));
       const dispatch = async (
@@ -74,6 +76,7 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
       try {
         await peer.open;
         for await (const raw of peer.messages) {
+          if (closing) break;
           const frame = decodeChannelFrame(raw);
           if (!session) {
             session = frame.t === "hello" ? auth.acceptAssertion(frame.assertion) : undefined;
@@ -81,7 +84,9 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
               send({ t: "denied" });
               break;
             }
-            channels.set(session.bearer, close);
+            channels.set(session.bearer, () => {
+              void close().catch(() => {});
+            });
             send({ t: "welcome", bearer: session.bearer });
             continue;
           }
@@ -102,7 +107,7 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
       } catch {
         // Malformed frames terminate the channel without exposing auth details.
       } finally {
-        close();
+        await close();
         if (session) {
           channels.delete(session.bearer);
           auth.revokeBearer(session.bearer);
