@@ -16,6 +16,7 @@ import {
   spokenMemory,
 } from "@rakazo/core";
 import { useSyncExternalStore } from "react";
+import { setCallActive } from "./call-active.js";
 import { pickUp } from "./call-pickup.js";
 import { dictation } from "./dictation.js";
 import {
@@ -153,6 +154,7 @@ export function startCall(call: {
     heard: "",
     exchanges: [],
   };
+  setCallActive(true);
   unsubSpeech = speaker.subscribe((speech) => {
     if (!state || state.phase === "ringing") return;
     if (openingPending && speech.status === "idle") openingPending = false;
@@ -250,6 +252,7 @@ export function endCall(): void {
   spokenMemory.clear();
   if (!state) return;
   state = null;
+  setCallActive(false);
   emit();
 }
 
