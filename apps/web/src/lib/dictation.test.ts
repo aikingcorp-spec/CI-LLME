@@ -301,6 +301,9 @@ describe("Dictation recorder fallback", () => {
   });
 
   it("tells the provider which language the caller speaks", async () => {
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => (key === "rakazo.uiLocale" ? "es" : null),
+    });
     const track = { stop: vi.fn() };
     vi.stubGlobal("navigator", {
       userAgent:
@@ -839,6 +842,9 @@ describe("Dictation web speech", () => {
   });
 
   it("maps a regional browser language onto the app's own tag", async () => {
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => (key === "rakazo.uiLocale" ? "nl" : null),
+    });
     vi.stubGlobal("navigator", { language: "nl-BE" });
 
     const dictation = new Dictation();
@@ -848,6 +854,9 @@ describe("Dictation web speech", () => {
   });
 
   it("keeps the browser language when the app has no catalog for it", async () => {
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => (key === "rakazo.uiLocale" ? "en" : null),
+    });
     vi.stubGlobal("navigator", { language: "it-IT" });
 
     const dictation = new Dictation();
@@ -1681,6 +1690,9 @@ describe("Dictation web speech", () => {
 
 describe("transcriptionLanguage", () => {
   it("hints the provider with the language the caller picked", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => (key === "rakazo.uiLocale" ? "es" : null),
+    });
     vi.stubGlobal("navigator", { language: "es-ES" });
     expect(transcriptionLanguage()).toBe("es");
   });

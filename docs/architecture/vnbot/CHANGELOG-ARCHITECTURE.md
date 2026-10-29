@@ -4,6 +4,15 @@ Each entry is a change versus the frozen Rakazo baseline at commit `c4b24547` (`
 
 Proposed decisions are listed so reviewers can see them. They do not change the running system until a later entry says they landed in code.
 
+## 2026-10-29 — Vietnamese web fallback independent of build env
+
+- Pull request: none (local change).
+- What changed versus baseline: web locale resolution uses saved `rakazo.uiLocale`, then a supported optional `VITE_DEFAULT_UI_LOCALE`, then Vietnamese. Browser language no longer participates; unsupported env values fall back to Vietnamese.
+- Why: `.env.*` files are excluded from the Docker build context, so the web default must hold without `.env.production`.
+- Files / modules: `apps/web/src/lib/ui-locale.ts`, `apps/web/src/lib/ui-locale.test.ts`.
+- Invariants affected: saved-choice normalization and storage key are unchanged. Playwright retains its English env override. Shared core and mobile locale behavior are unchanged.
+- ADR: [0004](adr/0004-vietnamese-default-locale.md) (update).
+
 ## 2026-10-29 — VN Bot wordmark swap
 
 - What changed versus baseline: the web wordmark SVGs and the sign-in email PNG are the new "VN Bot" artwork. The aspect ratio is narrower (SVG viewBox 445.5×87.4 to 383.4×100.1, powered 445.5×123.4 to 383.4×136.1; email PNG 446×87 to 240×63, `@2x` 480×125). The sign-in code email keeps its 32 px height, so the `<img>` width is 123 in the VI and EN templates (was 164). Web components size the wordmark by height only and are unchanged.

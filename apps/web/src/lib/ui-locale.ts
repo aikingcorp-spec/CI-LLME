@@ -59,27 +59,16 @@ function readEnvDefault(env: { VITE_DEFAULT_UI_LOCALE?: string } | undefined): s
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function readNavigatorLanguage(
-  nav: Pick<Navigator, "language" | "languages"> | null | undefined,
-): string | null {
-  if (!nav) return null;
-  if (typeof nav.language === "string" && nav.language) return nav.language;
-  const first = nav.languages?.[0];
-  return typeof first === "string" && first ? first : null;
-}
-
 export type ResolveUiLocaleOptions = {
   stored?: string | null;
   envDefault?: string | null;
-  navigatorLanguage?: string | null;
   storage?: Pick<Storage, "getItem"> | null;
   env?: { VITE_DEFAULT_UI_LOCALE?: string };
-  navigator?: Pick<Navigator, "language" | "languages"> | null;
 };
 
 /**
- * Order: saved choice (`localStorage`) → `VITE_DEFAULT_UI_LOCALE` →
- * `navigator.language` → English.
+ * Order: saved choice (`localStorage`) → valid `VITE_DEFAULT_UI_LOCALE` → Vietnamese.
+ * Browser language never overrides the default.
  */
 export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale {
   const stored =
@@ -101,17 +90,14 @@ export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale 
                 }
               : undefined),
         );
-  if (envDefault) return normalizeUiLocale(envDefault);
+  if (envDefault) {
+    const locale = normalizeUiLocale(envDefault);
+    // The shared normalizer also returns English for unsupported values.
+    const language = envDefault.trim().toLowerCase().split(/[-_]/)[0];
+    if (locale !== "en" || language === "en") return locale;
+  }
 
-  const navigatorLanguage =
-    options.navigatorLanguage !== undefined
-      ? options.navigatorLanguage
-      : readNavigatorLanguage(
-          options.navigator ?? (typeof navigator !== "undefined" ? navigator : null),
-        );
-  if (navigatorLanguage) return normalizeUiLocale(navigatorLanguage);
-
-  return "en";
+  return "vi";
 }
 
 export function persistUiLocale(

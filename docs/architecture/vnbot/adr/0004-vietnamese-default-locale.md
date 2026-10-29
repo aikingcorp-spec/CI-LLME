@@ -19,3 +19,9 @@ The shared core fallback stays English. Mobile locales are unchanged.
 ## Consequences
 
 A fresh web session is Vietnamese. Choosing English in settings still stores `rakazo.uiLocale` and sticks. Strings without a Vietnamese translation fall back to English.
+
+## Update — 2026-10-29
+
+The web resolution order is now saved `rakazo.uiLocale` → valid optional `VITE_DEFAULT_UI_LOCALE` override → `vi`. Missing or unsupported env values fall back to Vietnamese; browser language never participates. Saved-choice normalization is unchanged, and Playwright keeps its English env override.
+
+The Compose Dockerfile builds the web app, but `.dockerignore` excludes `.env.*`, so `apps/web/.env.production` never reaches that build. Relying on its Vietnamese setting let English browsers receive English. The Vietnamese fallback now lives in the resolver itself.
