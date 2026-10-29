@@ -34,5 +34,10 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      ...process.env,
+      // Selectors are English. The product default (vi) is set in apps/web/.env.*.
+      VITE_DEFAULT_UI_LOCALE: process.env.VITE_DEFAULT_UI_LOCALE ?? "en",
+    },
   },
 });

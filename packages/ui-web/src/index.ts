@@ -53,3 +53,6 @@ export { GroupAvatar, type GroupAvatarMember, type GroupAvatarProps } from "./gr
 export { cn } from "./lib/utils.js";
 export { LogoAvatar } from "./logo-avatar.js";
 export { ModelThinkingOptions } from "./model-thinking-options.js";
+export { prefixSvgIds } from "./svg-ids.js";
+export type { VnbotShape } from "./vnbot-avatar.js";
+export { VNBOT_SHAPES, VnbotAvatar, vnbotShape } from "./vnbot-avatar.js";

@@ -63,6 +63,9 @@ export function BotLookPicker({
         }
       >
         <TabsList className="w-full" aria-label={t`Icon set`}>
+          <TabsTrigger value="vnbot" className="flex-1">
+            <Trans>VNBot</Trans>
+          </TabsTrigger>
           <TabsTrigger value="rakazo" className="flex-1">
             <Trans>Rakazo</Trans>
           </TabsTrigger>

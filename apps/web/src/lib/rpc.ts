@@ -10,6 +10,7 @@ import { CLIENT_BUILD } from "./client-build";
 import { i18n } from "./i18n";
 import { identityLabels } from "./identity-display";
 import { reportClientError } from "./monitoring";
+import { EMAIL_NOT_INVITED } from "./user-error";
 
 const SPACE_STORAGE_KEY = "rakazo:space-id";
 
@@ -93,6 +94,7 @@ const link = new RPCLink<RpcClientContext>({
     }
     // Server exceptions are reported by the API; do not report every HTTP failure twice.
     recheckSessionOnUnauthorized(response.status);
+    if (response.status === 401) void signOutIfNotInvited(response.clone());
     if (response.status === 401 && spaceId && spaceId === selectedSpaceId())
       void leaveUnavailableSpace(spaceId);
     for (const listener of responseListeners) listener(response);
@@ -107,6 +109,39 @@ const link = new RPCLink<RpcClientContext>({
  */
 export function recheckSessionOnUnauthorized(status: number): void {
   if (status === 401) authClient.$store.notify("$sessionSignal");
+}
+
+let leavingNotInvited = false;
+
+/** Reads `code` from a JSON error body, plain (`{ code }`) or oRPC-wrapped (`{ json: { code } }`). */
+export async function errorBodyCode(response: Response): Promise<string | null> {
+  try {
+    const body = (await response.json()) as { code?: unknown; json?: { code?: unknown } } | null;
+    const code = body?.code ?? body?.json?.code;
+    return typeof code === "string" ? code : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * HTTP 401 `{ code: "EMAIL_NOT_INVITED" }`: the email was removed from the allowlist and the
+ * server already revoked the session (email-otp spec, SSO error contract). Clear what the client
+ * still holds and land on the not-invited screen.
+ */
+export async function signOutIfNotInvited(response: Response): Promise<boolean> {
+  if (response.status !== 401 || leavingNotInvited) return false;
+  if ((await errorBodyCode(response)) !== EMAIL_NOT_INVITED) return false;
+  leavingNotInvited = true;
+  clearSpaceSelection();
+  await authClient.signOut().catch(() => undefined);
+  if (typeof window !== "undefined") window.location.assign(`/sign-in?error=${EMAIL_NOT_INVITED}`);
+  return true;
+}
+
+/** Test hook. */
+export function resetNotInvitedGuardForTests(): void {
+  leavingNotInvited = false;
 }
 
 let leavingSpace: Promise<void> | null = null;

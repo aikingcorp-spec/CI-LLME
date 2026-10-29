@@ -8,6 +8,7 @@ import {
   organicAvatarFamily,
   organicAvatarSampleIdentity,
   seededLogoAvatarColor,
+  seededVnbotBodyColor,
 } from "@rakazo/core";
 import {
   BotAvatar,
@@ -62,7 +63,12 @@ export function CreateBotDialog({
     return id;
   });
   const [look, setLook] = useState(() => ({
-    value: seededLogoAvatarColor(previewId),
+    // Seed the preview from the default set's own palette, so a new vnbot bot
+    // is created with a body colour from vnbotBodyColors (PR #2 contract).
+    value:
+      DEFAULT_NEW_BOT_AVATAR_SET === "vnbot"
+        ? seededVnbotBodyColor(previewId)
+        : seededLogoAvatarColor(previewId),
     identity: pick(ORGANIC_IDENTITIES),
   }));
   const [avatarSet, setAvatarSet] = useState<BotAvatarSet>(DEFAULT_NEW_BOT_AVATAR_SET);

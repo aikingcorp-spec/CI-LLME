@@ -409,6 +409,10 @@ msgstr ""
 msgid "1 space"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "6-digit sign-in code"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr ""
@@ -705,9 +709,9 @@ msgstr "Permitido uma vez"
 msgid "Already connected"
 msgstr "Já conectado"
 
-#: src/pages/Auth.tsx
-msgid "Already have an account?"
-msgstr "Você já tem cadastro?"
+#: src/components/PasskeySignIn.tsx
+msgid "Already set up a passkey?"
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
@@ -734,8 +738,8 @@ msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Há uma chave de API armazenada para este provedor, não um login de assinatura."
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "An existing Honcho peer to read from. Rakazo never writes to it."
-msgstr "Um peer existente do Honcho para leitura. O Rakazo nunca grava nele."
+msgid "An existing Honcho peer to read from. VNBot never writes to it."
+msgstr "Um peer existente do Honcho para leitura. O VNBot nunca grava nele."
 
 #: src/lib/agent-import-errors.ts
 msgid "An imported API key could not be checked. Try again."
@@ -961,7 +965,6 @@ msgstr "Estúdio de avatar"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/components/integrations/skills-dialog.tsx
-#: src/pages/Auth.tsx
 #: src/pages/Board.tsx
 #: src/pages/NavLinkPage.tsx
 #: src/pages/PluginsOverlay.tsx
@@ -970,10 +973,6 @@ msgstr "Estúdio de avatar"
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr "Voltar"
-
-#: src/pages/Auth.tsx
-msgid "Back to sign in"
-msgstr "Voltar para o login"
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Base URL"
@@ -1091,6 +1090,10 @@ msgstr ""
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
 msgstr "Integrado"
+
+#: src/pages/Auth.tsx
+msgid "By continuing, you agree to VNBot's <0>Terms of Use</0> and <1>Privacy Policy</1>."
+msgstr ""
 
 #: src/pages/shell/chat-header.tsx
 msgid "Call"
@@ -1292,10 +1295,6 @@ msgstr "Escolha uma forma e cor do bot, ou envie uma imagem"
 msgid "Choose a model"
 msgstr "Escolha um modelo"
 
-#: src/pages/Auth.tsx
-msgid "Choose a new password"
-msgstr "Escolha uma nova senha"
-
 #: src/pages/Onboarding.tsx
 msgid "Choose a provider"
 msgstr ""
@@ -1315,7 +1314,7 @@ msgstr "Escolher pasta"
 
 #: src/components/ModelCredits.tsx
 #: src/components/SubscriptionGate.tsx
-msgid "Choose how to use Rakazo"
+msgid "Choose how to use VNBot"
 msgstr ""
 
 #: src/lib/localized-provider-hint.ts
@@ -1422,11 +1421,6 @@ msgstr "Nuvem"
 
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
-msgid "Code"
-msgstr "Código"
-
-#: src/pages/Auth.tsx
-msgctxt "email sign-in"
 msgid "Code"
 msgstr "Código"
 
@@ -1544,7 +1538,6 @@ msgid "Confirm it's you"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Confirm password"
 msgstr "Confirmar senha"
 
@@ -1616,8 +1609,8 @@ msgstr "Conecte primeiro o provedor deste modelo."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "Connect your own API key in Models or choose Rakazo credits in Billing."
-msgstr "Conecte sua própria chave de API em Modelos ou escolha créditos Rakazo em Faturamento."
+msgid "Connect your own API key in Models or choose VNBot credits in Billing."
+msgstr "Conecte sua própria chave de API em Modelos ou escolha créditos VNBot em Faturamento."
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2034,7 +2027,6 @@ msgstr "Não foi possível acessar o servidor do modelo."
 #: src/lib/computer-sandbox.ts
 #: src/lib/user-error.ts
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Could not reach the server"
 msgstr "Não foi possível acessar o servidor"
 
@@ -2085,10 +2077,6 @@ msgstr "Não foi possível renomear o espaço"
 #: src/pages/shell/message-cards.tsx
 msgid "Could not render chart"
 msgstr "Não foi possível renderizar o gráfico"
-
-#: src/pages/Auth.tsx
-msgid "Could not reset password"
-msgstr "Não foi possível redefinir a senha"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not revoke connection"
@@ -2155,10 +2143,6 @@ msgstr "Não foi possível salvar esta opção"
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not search catalog"
 msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "Could not send reset email"
-msgstr "Não foi possível enviar o e-mail de redefinição"
 
 #: src/components/call/IncomingCall.tsx
 #: src/lib/call-session.ts
@@ -2245,6 +2229,10 @@ msgstr ""
 msgid "Couldn't load your wallet"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Couldn't reach the server. Try again."
+msgstr ""
+
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Couldn't update messaging settings"
 msgstr ""
@@ -2270,10 +2258,6 @@ msgstr "Criar"
 msgid "Create a section and move {0} into it."
 msgstr "Crie uma seção e mova {0} para ela."
 
-#: src/pages/Auth.tsx
-msgid "Create account"
-msgstr "Criar Conta"
-
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "Criar grupo"
@@ -2286,10 +2270,6 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Create space"
 msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "Create your Rakazo"
-msgstr "Crie o seu Rakazo"
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2518,6 +2498,10 @@ msgstr "Detalhes"
 msgid "Developer"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Didn't get it? Resend in {resendLabel}"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Disable a tool"
 msgstr "Desativar uma ferramenta"
@@ -2600,10 +2584,6 @@ msgstr "Documentação"
 #: src/pages/KnowledgeSection.tsx
 msgid "Document changed. Reopen to edit the latest version."
 msgstr "O documento mudou. Reabra para editar a versão mais recente."
-
-#: src/pages/Auth.tsx
-msgid "Don’t have an account?"
-msgstr "Não tem uma conta?"
 
 #: src/components/ToolActivityDisclosure.tsx
 #: src/lib/ticket-status.ts
@@ -2714,6 +2694,10 @@ msgstr "Digite uma senha"
 msgid "Enter a valid email"
 msgstr "Digite um e-mail válido"
 
+#: src/pages/Auth.tsx
+msgid "Enter a valid email address."
+msgstr ""
+
 #: src/pages/model-settings/use-model-settings.ts
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to {MAX_MODEL_CONTEXT_WINDOW} for the context limit."
@@ -2732,6 +2716,14 @@ msgstr "Digite um número inteiro de 1 a 1000 para o limite de imagens."
 #: src/lib/model-connection-preflight.ts
 msgid "Enter an API key before testing."
 msgstr "Informe uma chave de API antes de testar."
+
+#: src/pages/Auth.tsx
+msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Enter your email to get a 6-digit sign-in code. If you don't have an account yet, VNBot will create one for you."
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Environment variables"
@@ -2947,10 +2939,6 @@ msgstr "Concluído."
 msgid "Finishing MCP connection…"
 msgstr "Finalizando conexão MCP…"
 
-#: src/pages/Auth.tsx
-msgid "Forgot password?"
-msgstr "Esqueceu a senha?"
-
 #: src/components/ModelCredits.tsx
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
@@ -2990,6 +2978,18 @@ msgstr "ID do gateway"
 #: src/pages/SettingsOverlay.tsx
 msgid "General"
 msgstr "Geral"
+
+#: src/pages/Auth.tsx
+msgid "Get in touch (opens in new tab)"
+msgstr ""
+
+#: src/pages/Welcome.tsx
+msgid "Get started"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Get started with VNBot"
+msgstr ""
 
 #: src/components/SidebarFooter.tsx
 msgid "Get the mobile app"
@@ -3123,7 +3123,7 @@ msgid "How to check"
 msgstr "Como verificar"
 
 #: src/components/SignupSurvey.tsx
-msgid "How will you use Rakazo?"
+msgid "How will you use VNBot?"
 msgstr ""
 
 #: src/pages/shell/computer-release-actions.tsx
@@ -3270,10 +3270,6 @@ msgstr "Quantidade Intervalo"
 msgid "Interval unit"
 msgstr "Unidade do intervalo:"
 
-#: src/lib/user-error.ts
-msgid "Invalid code"
-msgstr "Código inválido"
-
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
@@ -3346,6 +3342,10 @@ msgstr "Rótulo"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
 msgstr "Idioma"
+
+#: src/components/LanguageSwitch.tsx
+msgid "Language: {label}"
+msgstr ""
 
 #. placeholder {0}: new Date(state.checkedAt).toLocaleString()
 #: src/pages/RoutineEditor.tsx
@@ -3836,7 +3836,6 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/VaultSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/model-settings/providers-section.tsx
@@ -3903,6 +3902,10 @@ msgstr ""
 msgid "New bot"
 msgstr "Novo bot"
 
+#: src/pages/Auth.tsx
+msgid "New code sent. The old code no longer works."
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
 msgid "New group"
 msgstr "Novo grupo"
@@ -3920,7 +3923,6 @@ msgid "New open-work item"
 msgstr "Novo item de trabalho aberto"
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "New password"
 msgstr "Nova senha"
 
@@ -4079,13 +4081,13 @@ msgstr "Ainda não verificado"
 msgid "Not imported"
 msgstr "Não importado"
 
-#: src/pages/shell/import-status.ts
-msgid "Not in Rakazo's catalog"
-msgstr "Fora do catálogo do Rakazo"
-
 #: src/pages/PluginsOverlay.tsx
 msgid "Not in the plugin catalog"
 msgstr ""
+
+#: src/pages/shell/import-status.ts
+msgid "Not in VNBot's catalog"
+msgstr "Fora do catálogo do VNBot"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
@@ -4093,12 +4095,12 @@ msgstr "Agora não"
 
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
-msgid "Not supported in Rakazo"
-msgstr "Não compatível com o Rakazo"
+msgid "Not supported in VNBot"
+msgstr "Não compatível com o VNBot"
 
 #: src/pages/shell/agent-import.tsx
-msgid "Not used by Rakazo"
-msgstr "Não usado pelo Rakazo"
+msgid "Not used by VNBot"
+msgstr "Não usado pelo VNBot"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Not working"
@@ -4304,7 +4306,6 @@ msgstr "Chaves de acesso"
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/VaultSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Password"
 msgstr "Senha"
 
@@ -4312,21 +4313,15 @@ msgstr "Senha"
 msgid "Password must be {MAX_PASSWORD_LENGTH} characters or fewer"
 msgstr ""
 
-#: src/pages/Auth.tsx
-msgid "Password recovery is not configured for this server"
-msgstr "A recuperação de senha não está configurada para este servidor"
-
 #: src/lib/user-error.ts
 msgid "Password sign-in is turned off on this server"
 msgstr "O login com senha está desativado neste servidor"
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Password updated"
 msgstr "Senha atualizada"
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Passwords do not match"
 msgstr "As senhas não coincidem"
 
@@ -4340,8 +4335,8 @@ msgid "Paste a replacement key"
 msgstr "Cole uma chave de substituição"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
-msgid "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed."
-msgstr "Cole o endereço compatível com OpenAI do seu servidor. Rakazo adiciona /v1 se necessário."
+msgid "Paste the OpenAI-compatible address from your server. VNBot adds /v1 if needed."
+msgstr "Cole o endereço compatível com OpenAI do seu servidor. VNBot adiciona /v1 se necessário."
 
 #: src/pages/shell/agent-import.tsx
 msgid "Paste the reply"
@@ -4512,13 +4507,8 @@ msgstr "Na fila"
 msgid "Rakazo"
 msgstr "Rakazo"
 
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Rakazo credits"
-msgstr ""
-
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "rakazo-shared and IDs starting with bot- are reserved for Rakazo."
+msgid "rakazo-shared and IDs starting with bot- are reserved for VNBot."
 msgstr ""
 
 #: src/pages/shell/message-hover-actions.tsx
@@ -4806,16 +4796,16 @@ msgstr ""
 msgid "Replying to {0}"
 msgstr ""
 
-#: src/lib/user-error.ts
-msgid "Request a new code"
-msgstr "Solicite um novo código"
-
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Requests"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Research & writing"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Resend code"
 msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
@@ -4834,14 +4824,6 @@ msgstr "Redefinir computador"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Reset computer?"
 msgstr "Redefinir o computador?"
-
-#: src/pages/Auth.tsx
-msgid "Reset password"
-msgstr "Redefinir senha"
-
-#: src/pages/Auth.tsx
-msgid "Reset your password"
-msgstr "Redefina sua senha"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Resetting…"
@@ -4906,8 +4888,8 @@ msgid "Return to call with {0}"
 msgstr ""
 
 #: src/pages/McpOAuthCallback.tsx
-msgid "Return to Rakazo"
-msgstr "Retorno a Rakazo"
+msgid "Return to VNBot"
+msgstr "Retorno a VNBot"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -4915,6 +4897,14 @@ msgstr "Revise as configurações do provedor e teste novamente."
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Right now, only invited emails can sign in."
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Right now, only invited emails can sign in. <0>{trimmedEmail}</0> isn't on the list yet."
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
@@ -5157,6 +5147,10 @@ msgstr ""
 msgid "Send <0>{linkCode}</0> to <1>{linkAddress}</1> from {linkApp} within 10 minutes."
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Send a new code"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Send answer"
 msgstr "Enviar resposta"
@@ -5164,6 +5158,10 @@ msgstr "Enviar resposta"
 #: src/pages/shell/composer-error.tsx
 msgid "Send as file"
 msgstr "Enviar como arquivo"
+
+#: src/pages/Auth.tsx
+msgid "Send code"
+msgstr ""
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
@@ -5177,13 +5175,13 @@ msgstr "Enviar"
 msgid "Send recording"
 msgstr ""
 
-#: src/pages/Auth.tsx
-msgid "Send reset link"
-msgstr "Enviar link de redefinição"
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Send with Enter"
 msgstr "Enviar com Enter"
+
+#: src/pages/Auth.tsx
+msgid "Sending code…"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Sending…"
@@ -5307,7 +5305,6 @@ msgstr ""
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/lib/localized-provider-hint.ts
-#: src/pages/Auth.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/PluginsOverlay.tsx
@@ -5329,26 +5326,17 @@ msgstr "Entre novamente"
 msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "Entre em <0>{0}</0> e cole o código aqui."
 
-#: src/pages/Auth.tsx
-msgid "Sign in to Rakazo"
-msgstr "Entrar no Rakazo"
-
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
 msgstr "Entre na sua conta existente para vincular SSO"
 
 #: src/components/PasskeySignIn.tsx
-msgid "Sign in with passkey"
-msgstr "Entrar com chave de acesso"
+msgid "Sign in with a passkey"
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
 msgstr "Entre com a assinatura ou teste a chave de API."
-
-#: src/pages/Auth.tsx
-#: src/pages/Welcome.tsx
-msgid "Sign up"
-msgstr "Cadastre-se"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Sign-in cancelled. Try again."
@@ -5567,8 +5555,8 @@ msgid "Subscribe for ${0} / month"
 msgstr "Assinar por ${0} / mês"
 
 #: src/components/ModelCredits.tsx
-msgid "Subscribe to Rakazo credits"
-msgstr "Assinar créditos do Rakazo"
+msgid "Subscribe to VNBot credits"
+msgstr "Assinar créditos do VNBot"
 
 #: src/components/ModelCredits.tsx
 msgid "Subscribe with your own AI"
@@ -5665,6 +5653,10 @@ msgstr ""
 #: src/pages/McpServersOverlay.tsx
 msgid "Testing…"
 msgstr "Testando…"
+
+#: src/lib/user-error.ts
+msgid "That code isn't right. Check your email and try again."
+msgstr ""
 
 #: src/pages/shell/agent-import-undo.tsx
 msgid "The bot and what its import added will be removed."
@@ -5775,6 +5767,10 @@ msgstr "Essa ação não pode ser desfeita."
 msgid "This chat is view-only"
 msgstr "Este chat é somente leitura"
 
+#: src/lib/user-error.ts
+msgid "This code has expired. Send a new one to continue."
+msgstr ""
+
 #: src/pages/HostComputerPrompt.tsx
 msgid "this computer"
 msgstr "Este computador"
@@ -5848,10 +5844,6 @@ msgstr "Este provedor ainda não está conectado."
 msgid "This removes the connection from every space."
 msgstr ""
 
-#: src/pages/Auth.tsx
-msgid "This reset link is invalid or expired"
-msgstr "Este link de redefinição é inválido ou expirou"
-
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
 msgstr "Este servidor não pode ser atribuído sem um bot."
@@ -5865,8 +5857,8 @@ msgid "This server is already connected. Disconnect it first to authorize again.
 msgstr "Este servidor já está conectado. Desconecte-o primeiro para autorizar novamente."
 
 #: src/pages/model-settings/connection-controls.tsx
-msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
-msgstr "Este login de assinatura ainda não está disponível no Rakazo. Use uma credencial de implantação ou escolha outro provedor."
+msgid "This subscription sign-in is not available in VNBot yet. Use a deployment credential or choose another provider."
+msgstr "Este login de assinatura ainda não está disponível no VNBot. Use uma credencial de implantação ou escolha outro provedor."
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
@@ -6124,6 +6116,10 @@ msgstr "Usar {hostLabel}"
 msgid "Use {oauthEnvReference} for the access token."
 msgstr "Use {oauthEnvReference} para o token de acesso."
 
+#: src/pages/Auth.tsx
+msgid "Use a different email"
+msgstr ""
+
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Use a found model"
@@ -6157,16 +6153,16 @@ msgstr ""
 msgid "Use Protected input for passwords."
 msgstr ""
 
-#: src/components/ModelCredits.tsx
-msgid "Use Rakazo credits"
-msgstr ""
-
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Use space default"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Use up to 512 letters, digits, _ or -."
+msgstr ""
+
+#: src/components/ModelCredits.tsx
+msgid "Use VNBot credits"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
@@ -6213,6 +6209,7 @@ msgstr "Cofre"
 msgid "Verify and add"
 msgstr "Verificar e adicionar"
 
+#: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Verifying…"
 msgstr "Verificando…"
@@ -6227,6 +6224,20 @@ msgstr ""
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "View source"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "VNBot"
+msgstr "VNBot"
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "VNBot credits"
+msgstr ""
+
+#: src/lib/user-error.ts
+#: src/pages/Auth.tsx
+msgid "VNBot is in limited preview"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
@@ -6250,6 +6261,10 @@ msgstr "Aguardando…"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Wallet"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Want early access? <0>Get in touch</0>"
 msgstr ""
 
 #: src/components/ModelCredits.tsx
@@ -6287,7 +6302,7 @@ msgid "Weekends"
 msgstr "Fins de semana"
 
 #: src/components/SignupSurvey.tsx
-msgid "Welcome to Rakazo"
+msgid "Welcome to VNBot"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -6299,7 +6314,7 @@ msgid "What can this space use?"
 msgstr ""
 
 #: src/components/SignupSurvey.tsx
-msgid "What do you most want Rakazo to help with?"
+msgid "What do you most want VNBot to help with?"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -6372,7 +6387,6 @@ msgstr "Instruções de trabalho"
 
 #: src/components/ToolActivityDisclosure.tsx
 #: src/lib/roster-status.ts
-#: src/pages/Auth.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Working…"
 msgstr "Trabalhando…"
@@ -6444,10 +6458,6 @@ msgstr "Seu primeiro bot já existe."
 msgid "Your model provider"
 msgstr "Seu provedor de modelos"
 
-#: src/pages/Auth.tsx
-msgid "Your name"
-msgstr "O seu nome"
-
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Your OpenAI"
@@ -6467,8 +6477,8 @@ msgid "Your subscription or API key"
 msgstr ""
 
 #: src/pages/Welcome.tsx
-msgid "Your team of always-on agents<0/>that you can give real work to."
-msgstr "Sua equipe de agentes sempre ativos<0/>, a quem você pode dar trabalho de verdade."
+msgid "Your team of always-on bots<0/>that you can give real work to."
+msgstr ""
 
 #: src/lib/user-error.ts
 msgid "Your voice provider is out of credit."

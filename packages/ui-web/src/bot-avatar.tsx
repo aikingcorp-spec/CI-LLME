@@ -13,6 +13,7 @@ import {
   SHIPPED_BOT_AVATAR_SHAPES,
   SHIPPED_BOT_AVATAR_VIEWBOX,
   shippedBotAvatarShapePath,
+  vnbotBodyTone,
 } from "@rakazo/core";
 import { tokens } from "@rakazo/ui-tokens";
 import type { ComponentProps, CSSProperties } from "react";
@@ -20,6 +21,7 @@ import { memo, useId, useMemo, useSyncExternalStore } from "react";
 import { useBotAvatarActivity } from "./bot-avatar-activity.js";
 import { cn } from "./lib/utils.js";
 import { LogoAvatar } from "./logo-avatar.js";
+import { VnbotAvatar, vnbotShape } from "./vnbot-avatar.js";
 import "./styles.css";
 
 export type { BotColorDef };
@@ -140,6 +142,45 @@ export const BotAvatar = memo(function BotAvatar({
     );
   }
 
+  if (parsed.shapeIndex === undefined && avatarSet === "vnbot") {
+    return (
+      <div
+        className={cn("rakazo-bot-avatar relative shrink-0 select-none", className)}
+        data-working={isWorking}
+        style={{ width: size, height: size }}
+      >
+        <VnbotAvatar
+          shape={vnbotShape(effectiveId)}
+          body={colorDef.hex}
+          tone={vnbotBodyTone(colorDef.hex)}
+          size={size}
+        />
+        {isWorking ? (
+          <svg
+            className="rakazo-bot-avatar-ring rakazo-bot-avatar-ring-working absolute pointer-events-none"
+            style={{
+              inset: -4,
+              width: size + 8,
+              height: size + 8,
+            }}
+            viewBox="0 0 48 48"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="24"
+              cy="24"
+              r="22"
+              className="stroke-status-working"
+              strokeWidth="3.2"
+              strokeLinecap="round"
+              strokeDasharray="45 80"
+            />
+          </svg>
+        ) : null}
+      </div>
+    );
+  }
   if (parsed.shapeIndex === undefined && avatarSet === "rakazo") {
     const Avatar = activity === undefined ? LiveLogoAvatar : LogoAvatar;
     return (

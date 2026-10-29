@@ -1,6 +1,13 @@
 import type { Request } from "@playwright/test";
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup, signupThroughForm } from "./helpers";
+import {
+  captureScreenshot,
+  completeOnboarding,
+  readSignInCode,
+  signInWithEmailCode,
+  signup,
+  signupThroughForm,
+} from "./helpers";
 
 test("sign-up stays blank until session and sign-in options are ready", async ({
   page,
@@ -37,7 +44,7 @@ test("sign-up stays blank until session and sign-in options are ready", async ({
   await captureScreenshot(page, testInfo, "signup-options-pending");
 
   releaseCapabilities();
-  await expect(page.getByRole("heading", { name: "Create your Rakazo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Get started with VNBot" })).toBeVisible();
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "signup-ready");
 });
@@ -74,30 +81,78 @@ for (const mode of ["sign-in", "sign-up", "sso-only"] as const) {
   });
 }
 
-test("restricted signup waits for mailbox verification", async ({ page }, testInfo) => {
+test("an email that is not invited stays on the email step", async ({ page }, testInfo) => {
   await page.route("**/api/auth/get-session**", (route) => route.fulfill({ json: null }));
   await page.route("**/api/auth/capabilities", (route) =>
     route.fulfill({
-      json: { passwordAuth: true, sso: null, passwordReset: false, resetUrl: null },
+      json: {
+        passwordAuth: true,
+        emailCode: true,
+        sso: null,
+        passwordReset: false,
+        resetUrl: null,
+      },
     }),
   );
-  await page.route("**/api/auth/sign-up/email", (route) =>
+  await page.route("**/send-verification-otp", (route) =>
     route.fulfill({
-      json: { token: null, user: { id: "pending-user", emailVerified: false } },
+      status: 403,
+      json: { code: "EMAIL_NOT_INVITED", message: "This email is not invited yet" },
     }),
   );
-  await page.goto("/sign-up");
-  await page.getByLabel("Name").fill("Pending User");
-  await page.getByLabel("Email").fill("pending@example.test");
-  await page.getByLabel("Password", { exact: true }).fill("password12");
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.goto("/sign-in");
+  await page.getByLabel("Email", { exact: true }).fill("mai@vnbot.vn");
+  await page.getByRole("button", { name: "Send code", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("VNBot is in limited preview");
+  await expect(page.getByLabel("6-digit sign-in code")).toHaveCount(0);
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue("mai@vnbot.vn");
+  const contact = page.getByRole("link", { name: "Get in touch (opens in new tab)" });
+  await expect(contact).toHaveAttribute("href", "https://aikingx.com");
+  await expect(contact).toHaveAttribute("target", "_blank");
+  await expect(contact).toHaveAttribute("rel", "noopener noreferrer");
+  await captureScreenshot(page, testInfo, "not-invited");
+});
+
+test("sign-in keeps the code step across a reload and switches language in place", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/get-session**", (route) => route.fulfill({ json: null }));
+  await page.route("**/api/auth/capabilities", (route) =>
+    route.fulfill({
+      json: {
+        passwordAuth: true,
+        emailCode: true,
+        sso: null,
+        passwordReset: false,
+        resetUrl: null,
+      },
+    }),
+  );
+  await page.route("**/send-verification-otp", (route) =>
+    route.fulfill({ json: { success: true } }),
+  );
+  await page.goto("/sign-in");
+  const email = page.getByLabel("Email", { exact: true });
+  await page.getByRole("button", { name: "Send code", exact: true }).click();
+  await expect(email).toHaveAttribute("aria-invalid", "true");
+  const describedBy = await email.getAttribute("aria-describedby");
+  await expect(page.locator(`#${describedBy}`)).toHaveText("Enter a valid email address.");
+  await email.fill("lan@vnbot.vn");
+  await expect(email).not.toHaveAttribute("aria-invalid", "true");
+  await page.getByRole("button", { name: "Send code", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
-  await expect(page).toHaveURL(/\/sign-up\?verify=email$/);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
-  await captureScreenshot(page, testInfo, "signup-verification-required");
-  await page.getByRole("link", { name: "Back to sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Sign in to Rakazo" })).toBeVisible();
+  await expect(page.getByText("lan@vnbot.vn")).toBeVisible();
+
+  // Keyboard-only language switch (email-otp spec §6.6).
+  await page.getByRole("button", { name: /^Language: / }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("menuitemradio", { name: "Tiếng Việt" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Kiểm tra email của bạn" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "vi");
+  expect(await page.evaluate(() => localStorage.getItem("rakazo.uiLocale"))).toBe("vi");
 });
 
 test("signed-out welcome fits a narrow phone and offers sign in", async ({ page }, testInfo) => {
@@ -110,13 +165,13 @@ test("signed-out welcome fits a narrow phone and offers sign in", async ({ page 
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/");
   const main = page.getByRole("main");
-  await expect(main.getByRole("heading", { name: "Rakazo", level: 1 })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Sign up", exact: true })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "VNBot", level: 1 })).toBeVisible();
+  await expect(main.getByRole("button", { name: /^Get started/ })).toBeVisible();
   await expect(page.locator("body")).toHaveJSProperty("scrollWidth", 320);
   await captureScreenshot(page, testInfo, "logged-out-welcome-phone");
   await main.getByRole("link", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
-  await expect(page.getByRole("heading", { name: "Sign in to Rakazo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Get started with VNBot" })).toBeVisible();
 });
 
 test("logout protects bot deep links and sign-in restores the session", async ({
@@ -127,13 +182,9 @@ test("logout protects bot deep links and sign-in restores the session", async ({
   const password = "password12";
   const userName = "Auth Lifecycle";
 
-  await page.goto("/sign-up");
-  await expect(page.getByLabel("Name")).toHaveAttribute("autocomplete", "name");
-  await expect(page.getByLabel("Email")).toHaveAttribute("autocomplete", "username");
-  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
-    "autocomplete",
-    "new-password",
-  );
+  await page.goto("/sign-in");
+  await expect(page.getByLabel("Email")).toHaveAttribute("autocomplete", "username webauthn");
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
 
   await signupThroughForm(page, email, password, userName);
   await completeOnboarding(page);
@@ -169,45 +220,37 @@ test("logout protects bot deep links and sign-in restores the session", async ({
   };
   page.on("request", trackRefresh);
   await page.getByRole("button", { name: "Log out" }).click();
-  await expect(page.getByRole("heading", { name: "Sign in to Rakazo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Get started with VNBot" })).toBeVisible();
   page.off("request", trackRefresh);
   await Promise.all(refreshes);
   await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 250)));
   expect(pageErrors).toEqual([]);
   await page.goto("/");
   await expect(page.locator('[data-rakazo-surface="welcome"]')).toBeVisible();
-  await expect(page.getByText(/Your team of always-on agents/)).toBeVisible();
-  await page.getByRole("button", { name: /Sign up/ }).click();
-  await expect(page).toHaveURL(/\/sign-up$/);
-  await expect(page.getByRole("heading", { name: "Create your Rakazo" })).toBeVisible();
+  await expect(page.getByText(/Your team of always-on bots/)).toBeVisible();
+  await page.getByRole("button", { name: /^Get started/ }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole("heading", { name: "Get started with VNBot" })).toBeVisible();
   await page.goto("/");
   await captureScreenshot(page, testInfo, "37-logged-out-welcome");
 
   await page.goto(protectedBotPath);
   await page.waitForURL((url) => url.pathname === "/sign-in");
-  await expect(page.getByRole("heading", { name: "Sign in to Rakazo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Get started with VNBot" })).toBeVisible();
   await expect(page.getByText("Chief", { exact: true })).toHaveCount(0);
   await expect(page.getByText(userName, { exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Email")).toHaveAttribute("autocomplete", "username webauthn");
-  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
-    "autocomplete",
-    "current-password",
-  );
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "38-protected-deep-link-sign-in");
 
   await page.getByPlaceholder("Your email address").fill(email);
-  await page.getByPlaceholder("Password").fill("wrong-password12");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(
-    page
-      .locator("form")
-      .getByText(/invalid email or password|invalid credentials|incorrect password/i),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Send code", exact: true }).click();
+  await page.getByLabel("6-digit sign-in code").fill("000000");
+  await expect(page.getByRole("alert")).toContainText("That code isn't right");
   await expect(page).toHaveURL(/\/sign-in$/);
   await captureScreenshot(page, testInfo, "39-invalid-credentials");
 
-  await page.getByPlaceholder("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByLabel("6-digit sign-in code").fill(await readSignInCode(page, email));
   await page.waitForURL((url) => url.pathname === protectedBotPath, {
     timeout: 20_000,
   });
@@ -249,7 +292,6 @@ test("changes and recovers an email password", async ({ page }, testInfo) => {
   const email = `password-recovery-${stamp}@rakazo.test`;
   const originalPassword = "password12";
   const changedPassword = "changed-password12";
-  const resetPassword = "reset-password12";
   const userName = "Password Recovery";
 
   await signup(page, email, originalPassword, userName);
@@ -300,63 +342,10 @@ test("changes and recovers an email password", async ({ page }, testInfo) => {
 
   await page.getByRole("button", { name: new RegExp(userName, "i") }).click();
   await page.getByRole("button", { name: "Log out" }).click();
-  await expect(page.getByRole("link", { name: "Forgot password?" })).toBeVisible();
-  await page.getByRole("link", { name: "Forgot password?" }).click();
-  await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
-  await page.getByLabel("Email").fill(email);
-  await expect(page.getByLabel("Email")).toHaveValue(email);
-  await page.getByRole("button", { name: "Send reset link" }).click();
-  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Reset your password" })).not.toBeVisible();
-  await captureScreenshot(page, testInfo, "42-password-reset-requested");
-
-  const emailApi = process.env.API_URL ?? "http://127.0.0.1:3110";
-  // Workers share one outbox, so read only this user's mail.
-  const sentToUser = async () => {
-    const response = await page.request.get(`${emailApi}/__e2e/emails`);
-    expect(response.headers()["cache-control"]).toBe("no-store");
-    const messages = (await response.json()) as Array<{
-      to: string;
-      subject: string;
-      text: string;
-      html: string;
-    }>;
-    return messages.filter(
-      (message) => message.to === email && message.subject === "Reset your Rakazo password",
-    );
-  };
-  await expect.poll(async () => (await sentToUser()).length).toBeGreaterThan(0);
-  const resetMessage = (await sentToUser()).at(-1)!;
-  const resetUrl = resetMessage.text.match(/https?:\/\/\S+/)?.[0];
-  expect(resetUrl).toBeTruthy();
-
-  const emailPreview = await page.context().newPage();
-  try {
-    await emailPreview.setContent(resetMessage.html);
-    const resetLink = emailPreview.getByRole("link", { name: "Reset password", exact: true });
-    await expect(resetLink).toHaveAttribute("href", resetUrl!);
-    for (const width of [800, 390]) {
-      await emailPreview.setViewportSize({ width, height: 480 });
-      await expect(resetLink).toBeVisible();
-      expect(
-        await emailPreview.locator("body").evaluate((body) => body.scrollWidth),
-      ).toBeLessThanOrEqual(width);
-      await captureScreenshot(emailPreview, testInfo, `password-reset-email-${width}`);
-    }
-  } finally {
-    await emailPreview.close();
-  }
-
-  await page.goto(resetUrl!);
-  await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
-  await page.getByLabel("New password").fill(resetPassword);
-  await page.getByLabel("Confirm password").fill(resetPassword);
-  await page.getByRole("button", { name: "Reset password" }).click();
-  await expect(page.getByText("Password updated")).toBeVisible();
-  await page.getByRole("link", { name: "Sign in" }).click();
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(resetPassword);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Get started with VNBot" })).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+  await captureScreenshot(page, testInfo, "42-signed-out-email-code");
+  await signInWithEmailCode(page, email);
   await page.waitForURL(/\/app(?:\/|$)/);
 });
 

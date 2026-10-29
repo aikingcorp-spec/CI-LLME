@@ -410,6 +410,10 @@ msgstr "每月 ${0}"
 msgid "1 space"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "6-digit sign-in code"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr "什麼都做一點"
@@ -706,9 +710,9 @@ msgstr "已允許一次"
 msgid "Already connected"
 msgstr "已連結"
 
-#: src/pages/Auth.tsx
-msgid "Already have an account?"
-msgstr "已有帳號？"
+#: src/components/PasskeySignIn.tsx
+msgid "Already set up a passkey?"
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
@@ -735,8 +739,8 @@ msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "此供應商儲存的是 API 金鑰，不是訂閱登入。"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "An existing Honcho peer to read from. Rakazo never writes to it."
-msgstr "用於讀取資料的現有 Honcho peer。Rakazo 絕不會向其寫入資料。"
+msgid "An existing Honcho peer to read from. VNBot never writes to it."
+msgstr "用於讀取資料的現有 Honcho peer。VNBot 絕不會向其寫入資料。"
 
 #: src/lib/agent-import-errors.ts
 msgid "An imported API key could not be checked. Try again."
@@ -962,7 +966,6 @@ msgstr "頭像工作室"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/components/integrations/skills-dialog.tsx
-#: src/pages/Auth.tsx
 #: src/pages/Board.tsx
 #: src/pages/NavLinkPage.tsx
 #: src/pages/PluginsOverlay.tsx
@@ -971,10 +974,6 @@ msgstr "頭像工作室"
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr "返回"
-
-#: src/pages/Auth.tsx
-msgid "Back to sign in"
-msgstr "返回登入"
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Base URL"
@@ -1092,6 +1091,10 @@ msgstr "瀏覽 MCP 伺服器"
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
 msgstr "內建"
+
+#: src/pages/Auth.tsx
+msgid "By continuing, you agree to VNBot's <0>Terms of Use</0> and <1>Privacy Policy</1>."
+msgstr ""
 
 #: src/pages/shell/chat-header.tsx
 msgid "Call"
@@ -1293,10 +1296,6 @@ msgstr "選擇機器人形狀和顏色，或上傳圖片"
 msgid "Choose a model"
 msgstr "選擇模型"
 
-#: src/pages/Auth.tsx
-msgid "Choose a new password"
-msgstr "設定新密碼"
-
 #: src/pages/Onboarding.tsx
 msgid "Choose a provider"
 msgstr "選擇供應商"
@@ -1316,8 +1315,8 @@ msgstr "選擇資料夾"
 
 #: src/components/ModelCredits.tsx
 #: src/components/SubscriptionGate.tsx
-msgid "Choose how to use Rakazo"
-msgstr "選擇 Rakazo 的使用方式"
+msgid "Choose how to use VNBot"
+msgstr "選擇 VNBot 的使用方式"
 
 #: src/lib/localized-provider-hint.ts
 msgid "Claude subscription"
@@ -1425,11 +1424,6 @@ msgstr "雲端"
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Code"
 msgstr "程式碼"
-
-#: src/pages/Auth.tsx
-msgctxt "email sign-in"
-msgid "Code"
-msgstr "驗證碼"
 
 #. placeholder {0}: headerName(group)
 #: src/pages/shell/sidebar-roster.tsx
@@ -1545,7 +1539,6 @@ msgid "Confirm it's you"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Confirm password"
 msgstr "確認密碼"
 
@@ -1617,8 +1610,8 @@ msgstr "請先連結此模型的供應商。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "Connect your own API key in Models or choose Rakazo credits in Billing."
-msgstr "請在「模型」中連接你自己的 API 金鑰，或在「帳務」中選擇 Rakazo 點數。"
+msgid "Connect your own API key in Models or choose VNBot credits in Billing."
+msgstr "請在「模型」中連接你自己的 API 金鑰，或在「帳務」中選擇 VNBot 點數。"
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2035,7 +2028,6 @@ msgstr "無法連線到模型伺服器。"
 #: src/lib/computer-sandbox.ts
 #: src/lib/user-error.ts
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Could not reach the server"
 msgstr "無法連線伺服器"
 
@@ -2086,10 +2078,6 @@ msgstr "無法重新命名空間"
 #: src/pages/shell/message-cards.tsx
 msgid "Could not render chart"
 msgstr "無法渲染圖表"
-
-#: src/pages/Auth.tsx
-msgid "Could not reset password"
-msgstr "無法重設密碼"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not revoke connection"
@@ -2156,10 +2144,6 @@ msgstr "無法儲存此選擇"
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not search catalog"
 msgstr "無法搜尋目錄"
-
-#: src/pages/Auth.tsx
-msgid "Could not send reset email"
-msgstr "無法傳送重設郵件"
 
 #: src/components/call/IncomingCall.tsx
 #: src/lib/call-session.ts
@@ -2246,6 +2230,10 @@ msgstr "無法載入訊息設定"
 msgid "Couldn't load your wallet"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Couldn't reach the server. Try again."
+msgstr ""
+
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Couldn't update messaging settings"
 msgstr "無法更新訊息設定"
@@ -2271,10 +2259,6 @@ msgstr "建立"
 msgid "Create a section and move {0} into it."
 msgstr "建立分組並把 {0} 移入。"
 
-#: src/pages/Auth.tsx
-msgid "Create account"
-msgstr "建立帳號"
-
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "建立群組"
@@ -2287,10 +2271,6 @@ msgstr "建立例行任務"
 #: src/pages/shell/dialogs.tsx
 msgid "Create space"
 msgstr "建立空間"
-
-#: src/pages/Auth.tsx
-msgid "Create your Rakazo"
-msgstr "建立你的 Rakazo"
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2519,6 +2499,10 @@ msgstr "詳細資訊"
 msgid "Developer"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Didn't get it? Resend in {resendLabel}"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Disable a tool"
 msgstr "停用工具"
@@ -2601,10 +2585,6 @@ msgstr "說明文件"
 #: src/pages/KnowledgeSection.tsx
 msgid "Document changed. Reopen to edit the latest version."
 msgstr "文件已變更，請重新開啟以編輯最新版本。"
-
-#: src/pages/Auth.tsx
-msgid "Don’t have an account?"
-msgstr "還沒有帳號？"
 
 #: src/components/ToolActivityDisclosure.tsx
 #: src/lib/ticket-status.ts
@@ -2715,6 +2695,10 @@ msgstr "請輸入密碼"
 msgid "Enter a valid email"
 msgstr "請輸入有效的電子郵件地址"
 
+#: src/pages/Auth.tsx
+msgid "Enter a valid email address."
+msgstr ""
+
 #: src/pages/model-settings/use-model-settings.ts
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to {MAX_MODEL_CONTEXT_WINDOW} for the context limit."
@@ -2733,6 +2717,14 @@ msgstr "請輸入 1 到 1000 之間的整數作為影像限制。"
 #: src/lib/model-connection-preflight.ts
 msgid "Enter an API key before testing."
 msgstr "測試前請輸入 API 金鑰。"
+
+#: src/pages/Auth.tsx
+msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Enter your email to get a 6-digit sign-in code. If you don't have an account yet, VNBot will create one for you."
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Environment variables"
@@ -2948,10 +2940,6 @@ msgstr "已完成。"
 msgid "Finishing MCP connection…"
 msgstr "正在完成 MCP 連線…"
 
-#: src/pages/Auth.tsx
-msgid "Forgot password?"
-msgstr "忘記密碼？"
-
 #: src/components/ModelCredits.tsx
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
@@ -2991,6 +2979,18 @@ msgstr "閘道器 ID"
 #: src/pages/SettingsOverlay.tsx
 msgid "General"
 msgstr "一般"
+
+#: src/pages/Auth.tsx
+msgid "Get in touch (opens in new tab)"
+msgstr ""
+
+#: src/pages/Welcome.tsx
+msgid "Get started"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Get started with VNBot"
+msgstr ""
 
 #: src/components/SidebarFooter.tsx
 msgid "Get the mobile app"
@@ -3124,8 +3124,8 @@ msgid "How to check"
 msgstr "如何檢查"
 
 #: src/components/SignupSurvey.tsx
-msgid "How will you use Rakazo?"
-msgstr "你會如何使用 Rakazo？"
+msgid "How will you use VNBot?"
+msgstr "你會如何使用 VNBot？"
 
 #: src/pages/shell/computer-release-actions.tsx
 msgid "I’m done"
@@ -3271,10 +3271,6 @@ msgstr "間隔數量"
 msgid "Interval unit"
 msgstr "間隔單位"
 
-#: src/lib/user-error.ts
-msgid "Invalid code"
-msgstr "驗證碼無效"
-
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
@@ -3347,6 +3343,10 @@ msgstr "標籤"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
 msgstr "語言"
+
+#: src/components/LanguageSwitch.tsx
+msgid "Language: {label}"
+msgstr ""
 
 #. placeholder {0}: new Date(state.checkedAt).toLocaleString()
 #: src/pages/RoutineEditor.tsx
@@ -3837,7 +3837,6 @@ msgstr "已靜音"
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/VaultSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/model-settings/providers-section.tsx
@@ -3904,6 +3903,10 @@ msgstr "新增"
 msgid "New bot"
 msgstr "新增機器人"
 
+#: src/pages/Auth.tsx
+msgid "New code sent. The old code no longer works."
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
 msgid "New group"
 msgstr "新增群組"
@@ -3921,7 +3924,6 @@ msgid "New open-work item"
 msgstr "新的待辦"
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "New password"
 msgstr "新密碼"
 
@@ -4080,13 +4082,13 @@ msgstr "尚未檢查"
 msgid "Not imported"
 msgstr "未匯入"
 
-#: src/pages/shell/import-status.ts
-msgid "Not in Rakazo's catalog"
-msgstr "不在 Rakazo 目錄中"
-
 #: src/pages/PluginsOverlay.tsx
 msgid "Not in the plugin catalog"
 msgstr "不在外掛程式目錄中"
+
+#: src/pages/shell/import-status.ts
+msgid "Not in VNBot's catalog"
+msgstr "不在 VNBot 目錄中"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
@@ -4094,12 +4096,12 @@ msgstr "暫不"
 
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
-msgid "Not supported in Rakazo"
-msgstr "Rakazo 不支援"
+msgid "Not supported in VNBot"
+msgstr "VNBot 不支援"
 
 #: src/pages/shell/agent-import.tsx
-msgid "Not used by Rakazo"
-msgstr "Rakazo 不使用"
+msgid "Not used by VNBot"
+msgstr "VNBot 不使用"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Not working"
@@ -4305,7 +4307,6 @@ msgstr "通行金鑰"
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/VaultSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Password"
 msgstr "密碼"
 
@@ -4313,21 +4314,15 @@ msgstr "密碼"
 msgid "Password must be {MAX_PASSWORD_LENGTH} characters or fewer"
 msgstr "密碼不得超過 {MAX_PASSWORD_LENGTH} 個字元"
 
-#: src/pages/Auth.tsx
-msgid "Password recovery is not configured for this server"
-msgstr "此伺服器尚未設定密碼復原功能"
-
 #: src/lib/user-error.ts
 msgid "Password sign-in is turned off on this server"
 msgstr "此伺服器已關閉密碼登入"
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Password updated"
 msgstr "密碼已更新"
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/Auth.tsx
 msgid "Passwords do not match"
 msgstr "兩次密碼不一致"
 
@@ -4341,8 +4336,8 @@ msgid "Paste a replacement key"
 msgstr "貼上替換金鑰"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
-msgid "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed."
-msgstr "貼上伺服器的 OpenAI 相容地址。需要時 Rakazo 會補上 /v1。"
+msgid "Paste the OpenAI-compatible address from your server. VNBot adds /v1 if needed."
+msgstr "貼上伺服器的 OpenAI 相容地址。需要時 VNBot 會補上 /v1。"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Paste the reply"
@@ -4513,14 +4508,9 @@ msgstr "排隊中"
 msgid "Rakazo"
 msgstr "Rakazo"
 
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Rakazo credits"
-msgstr "Rakazo 額度"
-
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "rakazo-shared and IDs starting with bot- are reserved for Rakazo."
-msgstr "rakazo-shared 與以 bot- 開頭的 ID 保留給 Rakazo 使用。"
+msgid "rakazo-shared and IDs starting with bot- are reserved for VNBot."
+msgstr "rakazo-shared 與以 bot- 開頭的 ID 保留給 VNBot 使用。"
 
 #: src/pages/shell/message-hover-actions.tsx
 msgid "React"
@@ -4807,10 +4797,6 @@ msgstr "已取消回覆"
 msgid "Replying to {0}"
 msgstr "正在回覆 {0}"
 
-#: src/lib/user-error.ts
-msgid "Request a new code"
-msgstr "請重新獲取驗證碼"
-
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Requests"
 msgstr "請求"
@@ -4818,6 +4804,10 @@ msgstr "請求"
 #: src/pages/shell/message-cards.tsx
 msgid "Research & writing"
 msgstr "調研和寫作"
+
+#: src/pages/Auth.tsx
+msgid "Resend code"
+msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -4835,14 +4825,6 @@ msgstr "重設電腦"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Reset computer?"
 msgstr "重設電腦？"
-
-#: src/pages/Auth.tsx
-msgid "Reset password"
-msgstr "重設密碼"
-
-#: src/pages/Auth.tsx
-msgid "Reset your password"
-msgstr "重設你的密碼"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Resetting…"
@@ -4907,8 +4889,8 @@ msgid "Return to call with {0}"
 msgstr "返回與 {0} 的通話"
 
 #: src/pages/McpOAuthCallback.tsx
-msgid "Return to Rakazo"
-msgstr "返回 Rakazo"
+msgid "Return to VNBot"
+msgstr "返回 VNBot"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -4917,6 +4899,14 @@ msgstr "請檢查供應商設定並重新測試。"
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
 msgstr "撤銷授權"
+
+#: src/pages/Auth.tsx
+msgid "Right now, only invited emails can sign in."
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Right now, only invited emails can sign in. <0>{trimmedEmail}</0> isn't on the list yet."
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Room guidance"
@@ -5158,6 +5148,10 @@ msgstr "請在 10 分鐘內從 {linkApp} 傳送 <0>{linkCode}</0>。"
 msgid "Send <0>{linkCode}</0> to <1>{linkAddress}</1> from {linkApp} within 10 minutes."
 msgstr "請在 10 分鐘內從 {linkApp} 將 <0>{linkCode}</0> 傳送到 <1>{linkAddress}</1>。"
 
+#: src/pages/Auth.tsx
+msgid "Send a new code"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Send answer"
 msgstr "傳送回答"
@@ -5165,6 +5159,10 @@ msgstr "傳送回答"
 #: src/pages/shell/composer-error.tsx
 msgid "Send as file"
 msgstr "以檔案傳送"
+
+#: src/pages/Auth.tsx
+msgid "Send code"
+msgstr ""
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
@@ -5178,13 +5176,13 @@ msgstr "傳送"
 msgid "Send recording"
 msgstr "傳送錄製內容"
 
-#: src/pages/Auth.tsx
-msgid "Send reset link"
-msgstr "傳送重設連結"
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Send with Enter"
 msgstr "按 Enter 傳送"
+
+#: src/pages/Auth.tsx
+msgid "Sending code…"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Sending…"
@@ -5308,7 +5306,6 @@ msgstr "側邊欄密度"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/lib/localized-provider-hint.ts
-#: src/pages/Auth.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/PluginsOverlay.tsx
@@ -5330,26 +5327,17 @@ msgstr "重新登入"
 msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "在 <0>{0}</0> 登入，然後將代碼貼到這裡。"
 
-#: src/pages/Auth.tsx
-msgid "Sign in to Rakazo"
-msgstr "登入 Rakazo"
-
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
 msgstr "請登入現有帳號以關聯 SSO"
 
 #: src/components/PasskeySignIn.tsx
-msgid "Sign in with passkey"
-msgstr "使用通行金鑰登入"
+msgid "Sign in with a passkey"
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
 msgstr "請使用訂閱登入，或改為測試 API 金鑰。"
-
-#: src/pages/Auth.tsx
-#: src/pages/Welcome.tsx
-msgid "Sign up"
-msgstr "註冊"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Sign-in cancelled. Try again."
@@ -5568,8 +5556,8 @@ msgid "Subscribe for ${0} / month"
 msgstr "以每月 ${0} 訂閱"
 
 #: src/components/ModelCredits.tsx
-msgid "Subscribe to Rakazo credits"
-msgstr "訂閱 Rakazo 額度"
+msgid "Subscribe to VNBot credits"
+msgstr "訂閱 VNBot 額度"
 
 #: src/components/ModelCredits.tsx
 msgid "Subscribe with your own AI"
@@ -5666,6 +5654,10 @@ msgstr "測試執行"
 #: src/pages/McpServersOverlay.tsx
 msgid "Testing…"
 msgstr "正在測試…"
+
+#: src/lib/user-error.ts
+msgid "That code isn't right. Check your email and try again."
+msgstr ""
 
 #: src/pages/shell/agent-import-undo.tsx
 msgid "The bot and what its import added will be removed."
@@ -5776,6 +5768,10 @@ msgstr "此操作無法復原。"
 msgid "This chat is view-only"
 msgstr "此對話為唯讀"
 
+#: src/lib/user-error.ts
+msgid "This code has expired. Send a new one to continue."
+msgstr ""
+
 #: src/pages/HostComputerPrompt.tsx
 msgid "this computer"
 msgstr "這臺電腦"
@@ -5849,10 +5845,6 @@ msgstr "此供應商尚未連線。"
 msgid "This removes the connection from every space."
 msgstr "這將從每個空間移除該連線。"
 
-#: src/pages/Auth.tsx
-msgid "This reset link is invalid or expired"
-msgstr "此重設連結無效或已過期"
-
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
 msgstr "沒有機器人就無法分配此伺服器。"
@@ -5866,8 +5858,8 @@ msgid "This server is already connected. Disconnect it first to authorize again.
 msgstr "此伺服器已連線。請先中斷再重新授權。"
 
 #: src/pages/model-settings/connection-controls.tsx
-msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
-msgstr "此訂閱登入在 Rakazo 中尚不可用。請使用部署憑證或選擇其他供應商。"
+msgid "This subscription sign-in is not available in VNBot yet. Use a deployment credential or choose another provider."
+msgstr "此訂閱登入在 VNBot 中尚不可用。請使用部署憑證或選擇其他供應商。"
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
@@ -6125,6 +6117,10 @@ msgstr "使用 {hostLabel}"
 msgid "Use {oauthEnvReference} for the access token."
 msgstr "存取權杖請使用 {oauthEnvReference}。"
 
+#: src/pages/Auth.tsx
+msgid "Use a different email"
+msgstr ""
+
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Use a found model"
@@ -6158,10 +6154,6 @@ msgstr "使用我的訂閱或 API 金鑰"
 msgid "Use Protected input for passwords."
 msgstr "輸入密碼時，請使用受保護的輸入。"
 
-#: src/components/ModelCredits.tsx
-msgid "Use Rakazo credits"
-msgstr "使用 Rakazo 額度"
-
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Use space default"
 msgstr "使用空間預設模型"
@@ -6169,6 +6161,10 @@ msgstr "使用空間預設模型"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Use up to 512 letters, digits, _ or -."
 msgstr "最多可使用 512 個英文字母、數字、_ 或 -。"
+
+#: src/components/ModelCredits.tsx
+msgid "Use VNBot credits"
+msgstr "使用 VNBot 額度"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "User peer"
@@ -6214,6 +6210,7 @@ msgstr "保管庫"
 msgid "Verify and add"
 msgstr "驗證並新增"
 
+#: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Verifying…"
 msgstr "正在驗證…"
@@ -6228,6 +6225,20 @@ msgstr ""
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "View source"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "VNBot"
+msgstr "VNBot"
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "VNBot credits"
+msgstr "VNBot 額度"
+
+#: src/lib/user-error.ts
+#: src/pages/Auth.tsx
+msgid "VNBot is in limited preview"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
@@ -6251,6 +6262,10 @@ msgstr "等待中…"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Wallet"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Want early access? <0>Get in touch</0>"
 msgstr ""
 
 #: src/components/ModelCredits.tsx
@@ -6288,8 +6303,8 @@ msgid "Weekends"
 msgstr "週末"
 
 #: src/components/SignupSurvey.tsx
-msgid "Welcome to Rakazo"
-msgstr "歡迎使用 Rakazo"
+msgid "Welcome to VNBot"
+msgstr "歡迎使用 VNBot"
 
 #: src/pages/shell/dialogs.tsx
 msgid "What about its memories?"
@@ -6300,8 +6315,8 @@ msgid "What can this space use?"
 msgstr ""
 
 #: src/components/SignupSurvey.tsx
-msgid "What do you most want Rakazo to help with?"
-msgstr "你最希望 Rakazo 幫你做什麼？"
+msgid "What do you most want VNBot to help with?"
+msgstr "你最希望 VNBot 幫你做什麼？"
 
 #: src/pages/shell/message-cards.tsx
 msgid "What do you want me on first?"
@@ -6373,7 +6388,6 @@ msgstr "工作指示"
 
 #: src/components/ToolActivityDisclosure.tsx
 #: src/lib/roster-status.ts
-#: src/pages/Auth.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Working…"
 msgstr "處理中…"
@@ -6445,10 +6459,6 @@ msgstr "你的第一個機器人已存在。"
 msgid "Your model provider"
 msgstr "你的模型供應商"
 
-#: src/pages/Auth.tsx
-msgid "Your name"
-msgstr "你的名字"
-
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Your OpenAI"
@@ -6468,8 +6478,8 @@ msgid "Your subscription or API key"
 msgstr "你的訂閱或 API 金鑰"
 
 #: src/pages/Welcome.tsx
-msgid "Your team of always-on agents<0/>that you can give real work to."
-msgstr "隨時待命的代理程式團隊<0/>讓你交付實際工作。"
+msgid "Your team of always-on bots<0/>that you can give real work to."
+msgstr ""
 
 #: src/lib/user-error.ts
 msgid "Your voice provider is out of credit."

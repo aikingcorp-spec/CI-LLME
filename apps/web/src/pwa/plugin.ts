@@ -14,11 +14,18 @@ export function webManifest() {
     src: `/icon-${size}.png`,
     sizes: `${size}x${size}`,
     type: "image/png",
+    purpose: "any",
+  }));
+  const maskable = [192, 512].map((size) => ({
+    src: `/icon-maskable-${size}.png`,
+    sizes: `${size}x${size}`,
+    type: "image/png",
+    purpose: "maskable",
   }));
   return {
     id: "/",
-    name: "Rakazo",
-    short_name: "Rakazo",
+    name: "VNBot",
+    short_name: "VNBot",
     description: "Your team of always-on agents.",
     start_url: "/",
     scope: "/",
@@ -26,10 +33,7 @@ export function webManifest() {
     background_color: webDarkTokens.background,
     theme_color: webDarkTokens.background,
     // The icons are full-bleed, so the same art also works under a launcher mask.
-    icons: [
-      ...icons.map((icon) => ({ ...icon, purpose: "any" })),
-      ...icons.map((icon) => ({ ...icon, purpose: "maskable" })),
-    ],
+    icons: [...icons, ...maskable],
   };
 }
 

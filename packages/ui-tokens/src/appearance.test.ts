@@ -350,8 +350,8 @@ describe("web palette", () => {
   });
 
   it.each([
-    ["dark", webDarkTokens, { primaryHover: "#DBDBDB", primaryDisabled: "#F5F5F521" }],
-    ["light", webLightTokens, { primaryHover: "#363636", primaryDisabled: "#1C1C1C26" }],
+    ["dark", webDarkTokens, { primaryHover: "#A5B577", primaryDisabled: "#93A46040" }],
+    ["light", webLightTokens, { primaryHover: "#5E6C33", primaryDisabled: "#6D7C3D40" }],
   ] as const)("gives the %s primary fill web-only hover and disabled states", (_, web, states) => {
     expect(web).toMatchObject(states);
     const css = renderTokensCss();

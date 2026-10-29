@@ -1,6 +1,6 @@
 # Bản đồ VNBot
 
-VNBot hôm nay vẫn là Rakazo gốc, cộng hai thay đổi đã vào mã. Bản đóng băng tại commit `c4b24547` nằm ở `docs/architecture/rakazo-baseline/ban-do-rakazo-goc.md`. Nhật ký nằm ở `docs/architecture/vnbot/CHANGELOG-ARCHITECTURE.md`.
+VNBot hôm nay vẫn chạy hệ Rakazo trên máy khách. Web đã đổi lớp nhìn thấy: màu ôliu, đăng nhập bằng email rồi mã 6 số, và tiếng Việt là ngôn ngữ mặc định. Cổng vnbot.run và kênh WebRTC vẫn là đề xuất, chưa có trong mã đang chạy. Bản đóng băng tại commit `c4b24547` nằm ở `docs/architecture/rakazo-baseline/ban-do-rakazo-goc.md`. Những gì đã đổi được ghi ở `docs/architecture/vnbot/CHANGELOG-ARCHITECTURE.md`.
 
 Đăng nhập có thể chỉ còn mã email: `AUTH_EMAIL_CODE_ONLY` đóng đường mật khẩu, passkey vẫn dùng được. `AUTH_EMAIL_ALLOWLIST=on` thì chỉ email trong bảng `auth_email_allowlist` nhận được mã, tạo được tài khoản, hoặc mở được phiên. Địa chỉ không có trong danh sách nhận HTTP 403 `EMAIL_NOT_INVITED` và không có email. Bot mới mặc định bộ avatar `vnbot`; bot cũ giữ bộ đã lưu.
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { ORGANIC_AVATAR_LOOKS, seededLogoAvatarColor } from "@rakazo/core";
+import { ORGANIC_AVATAR_LOOKS, seededVnbotBodyColor } from "@rakazo/core";
 import type { ReactNode } from "react";
 import { act } from "react";
 import type { Root } from "react-dom/client";
@@ -79,14 +79,14 @@ describe("CreateBotDialog", () => {
   it("defaults new bots to the vnbot set without an organic family override", async () => {
     const onCreate = vi.fn(async (_input: CreateBotDialogInput) => undefined);
     await render(onCreate);
-    expect(document.querySelector(".rakazo-organic-avatar")).not.toBeNull();
+    expect(document.querySelector("[data-vnbot-avatar]")).not.toBeNull();
     await typeName("Scout");
     await click(button("Create"));
     expect(onCreate.mock.lastCall?.[0]).toMatchObject({ name: "Scout", avatarSet: "vnbot" });
     expect(onCreate.mock.lastCall?.[0]).not.toHaveProperty("avatarFamily");
     const input = onCreate.mock.lastCall![0];
     expect(input.id).toMatch(/^c[a-z0-9]{24}$/);
-    expect(input.color).toBe(seededLogoAvatarColor(input.id!));
+    expect(input.color).toBe(seededVnbotBodyColor(input.id!));
   });
 
   it("preserves an explicitly chosen colour through a failed create and retry", async () => {

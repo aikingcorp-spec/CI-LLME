@@ -38,8 +38,8 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
       });
     case "Connect your own API key in Models or choose Rakazo credits in Billing.":
       return i18n._({
-        id: "Connect your own API key in Models or choose Rakazo credits in Billing.",
-        message: "Connect your own API key in Models or choose Rakazo credits in Billing.",
+        id: "Connect your own API key in Models or choose VNBot credits in Billing.",
+        message: "Connect your own API key in Models or choose VNBot credits in Billing.",
         values,
       });
     case "The model provider returned an error.":

@@ -40,9 +40,22 @@ export function credentialIssueText(field: CredentialField): string {
   return field === "email" ? t`Enter a valid email` : t`Enter a password`;
 }
 
+/**
+ * HTTP 403 body `{ code: "EMAIL_NOT_INVITED", message: "This email is not invited yet" }`
+ * from the auth server when the email is not on the invite list. Same top-level shape
+ * as `PASSWORD_AUTH_DISABLED`.
+ */
+export const EMAIL_NOT_INVITED = "EMAIL_NOT_INVITED";
+
+/** Code from a Better Auth error body (`{ code, message }`), when it has one. */
+export function authErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("code" in error)) return undefined;
+  return typeof error.code === "string" && error.code ? error.code : undefined;
+}
+
 /** Text for a failed Better Auth client result (`{ code, message }`). */
 export function authErrorText(error: unknown, fallback: string): string {
-  const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+  const code = authErrorCode(error);
   if (code === "SSO_UNAVAILABLE") return t`SSO is temporarily unavailable. Try again.`;
   if (code === "account_not_linked" || code === "ACCOUNT_NOT_LINKED")
     return t`Sign in to your existing account to link SSO`;
@@ -55,8 +68,10 @@ export function authErrorText(error: unknown, fallback: string): string {
   if (code === "PASSWORD_TOO_LONG")
     return t`Password must be ${MAX_PASSWORD_LENGTH} characters or fewer`;
   if (code === "EMAIL_DELETION_UNAVAILABLE") return t`Could not continue`;
-  if (code === "INVALID_OTP") return t`Invalid code`;
-  if (code === "OTP_EXPIRED" || code === "TOO_MANY_ATTEMPTS") return t`Request a new code`;
+  if (code === EMAIL_NOT_INVITED) return t`VNBot is in limited preview`;
+  if (code === "INVALID_OTP") return t`That code isn't right. Check your email and try again.`;
+  if (code === "OTP_EXPIRED" || code === "TOO_MANY_ATTEMPTS")
+    return t`This code has expired. Send a new one to continue.`;
   return authErrorMessage(error, {
     fallback,
     email: credentialIssueText("email"),

@@ -41,9 +41,6 @@ import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
 import { ShellPage } from "./pages/Shell";
 
 const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => module.AuthPage));
-const PasswordResetPage = lazyComponent(() =>
-  import("./pages/Auth").then((module) => module.PasswordResetPage),
-);
 const OnboardingPage = lazyComponent(() =>
   import("./pages/Onboarding").then((module) => module.OnboardingPage),
 );
@@ -69,6 +66,14 @@ function SsoCallbackPage() {
 const linkFavicons: LinkFavicons = {
   load: (origin) => rpc.links.favicon({ origin }),
 };
+
+/** Email and code are one flow. `/sign-up` keeps `?next` and lands on sign-in. */
+function SignUpRedirect({ signedIn }: { signedIn: boolean }) {
+  const [params] = useSearchParams();
+  if (signedIn) return <Navigate to="/onboarding" replace />;
+  const next = params.get("next");
+  return <Navigate to={next ? `/sign-in?next=${encodeURIComponent(next)}` : "/sign-in"} replace />;
+}
 
 export function App() {
   const loadRemoteImages = useSyncExternalStore(
@@ -169,27 +174,11 @@ function SessionApp() {
               <Route path="/" element={user ? <Navigate to="/app" replace /> : <WelcomePage />} />
               <Route
                 path="/sign-in"
-                element={
-                  user ? (
-                    <Navigate to={signInDestination} replace />
-                  ) : (
-                    <AuthPage key="in" mode="in" />
-                  )
-                }
+                element={user ? <Navigate to={signInDestination} replace /> : <AuthPage key="in" />}
               />
-              <Route
-                path="/sign-up"
-                element={
-                  user ? <Navigate to="/onboarding" replace /> : <AuthPage key="up" mode="up" />
-                }
-              />
-              <Route
-                path="/forgot-password"
-                element={
-                  user ? <Navigate to="/app" replace /> : <AuthPage key="forgot" mode="forgot" />
-                }
-              />
-              <Route path="/reset-password" element={<PasswordResetPage />} />
+              <Route path="/sign-up" element={<SignUpRedirect signedIn={Boolean(user)} />} />
+              <Route path="/forgot-password" element={<Navigate to="/sign-in" replace />} />
+              <Route path="/reset-password" element={<Navigate to="/sign-in" replace />} />
               <Route
                 path={MCP_OAUTH_CALLBACK_PATH}
                 element={

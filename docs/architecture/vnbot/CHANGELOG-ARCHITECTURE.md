@@ -12,6 +12,16 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Invariants affected: no auth redirect depends on request headers. Requests for other addresses cannot lock an invited address out of codes.
 - Links: [ADR 0002](adr/0002-email-code-sign-in-and-invite-list.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
 
+## 2026-10-29 — VNBot default avatar, sign-in language switch, review fixes
+
+- Date: 2026-10-29
+- Pull request: this pull request (review fixes on top of the 2026-10-28 entry). It depends on pull request #2 (`cursor/vnbot-ui-wave1-backend-8223`) and should merge after it.
+- What changed versus the baseline: new bots default to the `vnbot` avatar set. The default comes from `DEFAULT_NEW_BOT_AVATAR_SET` in `packages/contracts`, as pull request #2 defines it; this change does not redefine it. There is one seeded body color, `seededVnbotBodyColor` in `packages/core/src/logo-avatar-traits.ts`, which draws from `vnbotBodyColors` in `packages/ui-tokens`. `packages/core/src/vnbot-palette.ts` keeps only the tone lookup and no longer has its own palette or seed. Welcome and the sign-in frame show a vi/en `LanguageSwitch`. The email-code step survives a reload through `sessionStorage` key `vnbot.signIn`. The "Get in touch" link reads `VITE_VNBOT_CONTACT_URL` (default `https://aikingx.com`). The web client handles HTTP 401 `EMAIL_NOT_INVITED` from the API by clearing the space, signing out and opening `/sign-in?error=EMAIL_NOT_INVITED`, which shows the not-invited screen. The web light `input` and `faintForeground` tokens and the web dark `input` token changed (VNBot web themes only).
+- Why: review findings from Rex (sign-in accessibility, losing the code step on F5, a missing language control before sign-in, copy) and Mai (input and faint-text contrast). Pull request #2 owns the avatar contract. A second seed and palette in `@rakazo/core` would give a duplicate export and two different colors for the same bot.
+- Files / modules: `packages/contracts`, `packages/db`, `packages/core` (avatar default and seed, the same as pull request #2), `packages/ui-tokens` (`webLightOverrides.input`, `webLightOverrides.faintForeground`, `webDarkOverrides.input`, regenerated `tokens.css`), `apps/web` (`components/LanguageSwitch.tsx`, `lib/sign-in-progress.ts`, `lib/vnbot-links.ts`, `pages/Welcome.tsx`, `pages/Auth.tsx`, `components/PasskeySignIn.tsx`, `pages/shell/create-bot-dialog.tsx`, the vi and en catalogs).
+- Invariants affected: `rakazo.uiLocale` stays the only saved locale key; the switch calls the same `setUiLocale` as Settings. The sign-in code is never stored; `sessionStorage` holds only the email, the step and the send time, and they are cleared on sign-in. Mobile tokens are unchanged. Existing bots keep their stored avatar set.
+- ADR: [0006](adr/0006-sign-in-language-switch-and-step-restore.md), [0007](adr/0007-vnbot-default-avatar.md); tokens amend [0002](adr/0002-web-brand-color-tokens.md).
+
 ## 2026-10-29 — Invite list hardening after review
 
 - What changed versus baseline: removing an invite deletes that account's sessions, and a live session whose address left the list is deleted on read (401 `EMAIL_NOT_INVITED`). The OIDC callback answers a bare 302 to `/sign-in?error=EMAIL_NOT_INVITED` for an uninvited provider email, with no cookie or rows. Email normalization is trim, NFC, zero-width strip, lowercase, in code and in the table CHECK. The send-code limit is also keyed on the normalized address (5 per 15 minutes with the list on, 10 otherwise) and holds outside production while the list is on; the counter uses conditional writes so concurrent sends cannot pass the cap. `auth_email_allowlist` has FORCE row-level security with a WITH CHECK policy, and the runtime login lost UPDATE on it. `bootstrap-owner` invites the owner after the account is verified or created. Sign-in code locale is read only from `x-rakazo-locale`. Failed deliveries reach `onEmailError` without the message text.
@@ -28,13 +38,15 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Invariants affected: password routes can be refused while email codes and passkeys still open a session. With the invite list on, an address outside `auth_email_allowlist` cannot receive a code, create a user, or create a session. The table is system-only under row-level security. Allowlist reads run in a system context so that connection has `app.rls_bypass` on. Threads, runs, and vault rows are unchanged.
 - Links: [ADR 0002](adr/0002-email-code-sign-in-and-invite-list.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
 
-## 2026-10-28 — Avatar set `vnbot`
+## 2026-10-28 — Web brand, email-code sign-in, Vietnamese default
 
-- What changed versus baseline: the bot avatar contract accepts `vnbot` beside `organic` and `rakazo`. `resolveBotAvatarSet` keeps `vnbot` instead of folding it into `organic`. New bots default to `vnbot`. The id seed matches the logo set (no organic family). Body colour is `seededVnbotBodyColor`, which indexes `vnbotBodyColors` in `@rakazo/ui-tokens` (the twelve palette hexes, `la-ma` through `cham`). No database migration: `bots.avatarSet` is text and stays default `rakazo` at the column.
-- Why: VNBot mascots are a third set. Duplicate and import must not turn a vnbot bot into organic.
-- Files / modules: `packages/contracts/src/bot-avatar.ts`, `packages/db/src/bot-avatar-choice.ts`, `packages/core/src/logo-avatar-traits.ts`, `packages/ui-tokens/src/index.ts` (`vnbotBodyColors`).
-- Invariants affected: unknown sets still resolve to `organic`. Stored `organic` and `rakazo` rows are unchanged. A client that does not render `vnbot` falls through to the organic avatar.
-- Links: [ADR 0003](adr/0003-vnbot-avatar-set.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/2
+- Date: 2026-10-28
+- Pull request: this pull request
+- What changed versus the baseline: the web and Electron color tokens use the VNBot olive primary, link, and sidebar accent. The web sign-in page is email then a 6-digit code, and `/sign-up` redirects to `/sign-in`. Vietnamese is a web locale and the default when nothing is saved. Inline mascot SVGs prefix their ids per instance. A `vnbot` bot avatar set is accepted; new bots still default to `rakazo` (superseded on 2026-10-29: the default is `vnbot`).
+- Why: the web product is VNBot, in Vietnamese, with one invite-aware sign-in and brand green. Mobile palettes and the password change screen inside settings stay as they were. The auth server returns HTTP 403 `{ code: "EMAIL_NOT_INVITED", message: "This email is not invited yet" }` using the existing Better Auth error body; this change only reads that code. The send-code request sends `x-rakazo-locale` (`vi` or `en`) because the body schema drops unknown fields.
+- Files / modules: `packages/ui-tokens` (web overrides and `tokens.css`), `packages/ui-web` (palette stylesheet, link button, mascot avatar, SVG id prefix), `packages/contracts` (`vnbot` on the avatar-set enum), `packages/core` (body palette), `packages/db` (seeded mascot color when the set is `vnbot`), `apps/web` (welcome, auth, sidebar, locale, PWA name and icons).
+- Invariants affected: web primary is no longer ink. Sign-in on the web no longer collects a password. `rakazo.uiLocale` and `rakazo.uiAppearance` are unchanged. Chat, runs, and RLS are unchanged. Mobile color tokens are unchanged.
+- ADR: [0002](adr/0002-web-brand-color-tokens.md), [0003](adr/0003-email-code-sign-in.md), [0004](adr/0004-vietnamese-default-locale.md), [0005](adr/0005-inline-svg-id-prefixes.md)
 
 ## 2026-10-28 — No architecture change yet
 

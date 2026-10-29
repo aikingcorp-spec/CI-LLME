@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   normalizeUiLocale,
@@ -75,6 +76,11 @@ describe("normalizeUiLocale", () => {
     expect(normalizeUiLocale("de-HK")).toBe("de");
   });
 
+  it("accepts Vietnamese and its region tag", () => {
+    expect(normalizeUiLocale("vi")).toBe("vi");
+    expect(normalizeUiLocale("vi-VN")).toBe("vi");
+  });
+
   it("falls back to English for unknown locales", () => {
     expect(normalizeUiLocale("sv-SE")).toBe("en");
     expect(normalizeUiLocale("")).toBe("en");
@@ -91,6 +97,16 @@ describe("resolveUiLocale", () => {
         navigatorLanguage: "en-US",
       }),
     ).toBe("ko");
+  });
+
+  it("uses Vietnamese when that is the configured default", () => {
+    expect(
+      resolveUiLocale({
+        stored: null,
+        envDefault: "vi",
+        navigatorLanguage: "en-US",
+      }),
+    ).toBe("vi");
   });
 
   it("uses VITE_DEFAULT_UI_LOCALE when nothing is saved", () => {
@@ -161,6 +177,18 @@ describe("resolveUiLocale", () => {
     };
     expect(resolveUiLocale({ storage, envDefault: null, navigatorLanguage: null })).toBe("de");
   });
+});
+
+it("ships Vietnamese as the web build default", () => {
+  for (const file of [
+    "../../../../.env.example",
+    "../../.env.development",
+    "../../.env.production",
+  ]) {
+    expect(readFileSync(new URL(file, import.meta.url), "utf8")).toMatch(
+      /^VITE_DEFAULT_UI_LOCALE=vi$/m,
+    );
+  }
 });
 
 describe("persistUiLocale", () => {

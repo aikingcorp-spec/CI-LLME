@@ -34,12 +34,19 @@ vi.mock("./lib/auth", () => ({
 }));
 vi.mock("./pages/Auth", async () => {
   const { useEffect } = await import("react");
+  const { useLocation } = await import("react-router-dom");
   return {
-    AuthPage: ({ mode }: { mode: string }) => {
+    AuthPage: () => {
+      const location = useLocation();
       useEffect(() => {
         capability.authMounts += 1;
       }, []);
-      return <div>Auth {mode}</div>;
+      return (
+        <div>
+          Auth {location.pathname}
+          {location.search}
+        </div>
+      );
     },
   };
 });
@@ -144,13 +151,35 @@ it("keeps the sign-in page mounted while a signed-out session refetches", async 
   try {
     capability.authMounts = 0;
     await render({ isPending: false, data: null, error: null });
-    expect(container.textContent).toBe("Auth in");
+    expect(container.textContent).toContain("Auth /sign-in");
     // Better Auth refetches a null session when the tab regains focus.
     await render({ isPending: true, data: null, error: null });
-    expect(container.textContent).toBe("Auth in");
+    expect(container.textContent).toContain("Auth /sign-in");
     await render({ isPending: false, data: null, error: null });
-    expect(container.textContent).toBe("Auth in");
+    expect(container.textContent).toContain("Auth /sign-in");
     expect(capability.authMounts).toBe(1);
+  } finally {
+    capability.session = null;
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+it("redirects /sign-up to /sign-in and keeps next", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    capability.session = { isPending: false, data: null, error: null };
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/sign-up?next=/onboarding"]}>
+          <App />
+        </MemoryRouter>,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(container.textContent).toContain("Auth /sign-in?next=%2Fonboarding");
   } finally {
     capability.session = null;
     await act(async () => root.unmount());

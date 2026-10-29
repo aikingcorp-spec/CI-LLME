@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" class="vnbot-icon vnbot-ran">
+  <defs>
+    <symbol id="eye" viewBox="0 0 12 22"><rect width="12" height="22" rx="6" fill="#000"/></symbol>
+    <pattern id="gingham" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#fff"/><rect width="8" height="16" fill="#000" fill-opacity=".45"/><rect width="16" height="8" fill="#000" fill-opacity=".45"/></pattern>
+  </defs>
+  <ellipse id="shadow" cx="128" cy="216" rx="76" ry="7" fill="#000" fill-opacity=".08"/>
+  <g id="body">
+    <g id="feet" fill="var(--body,#3F5694)"><rect x="80" y="196" width="30" height="20" rx="10"/><rect x="146" y="196" width="30" height="20" rx="10"/>
+      <rect x="80" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/><rect x="146" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/></g>
+    <path fill="var(--body,#3F5694)" d="M54 190 C46 116 80 70 128 70 C176 70 210 116 202 190 C200 208 56 208 54 190 Z"/>
+  </g>
+    <g id="acc-khan-ran" stroke="#1E1E1E" stroke-width="3" stroke-linejoin="round">
+    <path d="M150 156 L178 160 L186 210 L160 212 Z" fill="url(#gingham)"/>
+    <path d="M44 138 Q128 160 212 138 L210 160 Q128 182 46 160 Z" fill="url(#gingham)"/>
+  </g>
+  <g id="eyes"><use href="#eye" xlink:href="#eye" x="102" y="112" width="12" height="22"/><use href="#eye" xlink:href="#eye" x="142" y="112" width="12" height="22"/></g>
+</svg>

@@ -1,6 +1,7 @@
 import { matchUiLocale } from "@rakazo/core";
 
 export const UI_LOCALES = [
+  "vi",
   "en",
   "de",
   "ko",
@@ -22,6 +23,7 @@ export type UiLocale = (typeof UI_LOCALES)[number];
 export const UI_LOCALE_STORAGE_KEY = "rakazo.uiLocale";
 
 export const UI_LOCALE_LABELS: Record<UiLocale, string> = {
+  vi: "Tiếng Việt",
   en: "English",
   de: "Deutsch",
   ko: "한국어",

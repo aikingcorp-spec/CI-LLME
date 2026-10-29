@@ -7,7 +7,11 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
+import { getActiveUiLocale } from "../lib/i18n";
 import { clearSpaceSelection } from "../lib/rpc";
+import { SIGN_IN_PROGRESS_KEY } from "../lib/sign-in-progress";
+import { EMAIL_NOT_INVITED } from "../lib/user-error";
+import { VNBOT_CONTACT_URL } from "../lib/vnbot-links";
 import { AuthPage } from "./Auth";
 
 vi.mock("@lingui/react/macro", () => ({
@@ -58,20 +62,41 @@ vi.mock("@rakazo/ui-web", () => ({
     </label>
   ),
 }));
+vi.mock("../components/VnbotWordmark", () => ({
+  VnbotWordmark: () => <img alt="VNBot" />,
+}));
+vi.mock("../components/LanguageSwitch", () => ({
+  LanguageSwitch: () => <button type="button" data-testid="language-switch" />,
+}));
+vi.mock("../components/PasskeySignIn", () => ({
+  PasskeySignIn: () => (
+    <p>
+      Already set up a passkey? <button type="button">Sign in with a passkey</button>
+    </p>
+  ),
+}));
 vi.mock("../lib/auth-capabilities", () => ({ fetchAuthCapabilities: vi.fn() }));
 vi.mock("../lib/auth", () => ({
   authClient: {
-    signIn: { social: vi.fn(async () => ({})), email: vi.fn(), emailOtp: vi.fn() },
+    signIn: { social: vi.fn(async () => ({})), emailOtp: vi.fn() },
     emailOtp: { sendVerificationOtp: vi.fn() },
   },
 }));
 vi.mock("../lib/rpc", () => ({ clearSpaceSelection: vi.fn() }));
+
 const capabilities: AuthCapabilities = {
   passwordAuth: false,
   sso: { name: "Example", availability: "unavailable" },
   passwordReset: false,
   resetUrl: null,
 };
+const emailCapabilities: AuthCapabilities = {
+  ...capabilities,
+  sso: null,
+  passwordAuth: true,
+  emailCode: true,
+};
+
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
@@ -83,14 +108,15 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  sessionStorage.clear();
   vi.restoreAllMocks();
   delete window.rakazoDesktop;
 });
-async function render(mode: "in" | "up" | "forgot" = "in") {
+async function render() {
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <AuthPage mode={mode} />
+        <AuthPage />
       </MemoryRouter>,
     ),
   );
@@ -102,220 +128,250 @@ async function enter(input: Element | null, value: string) {
   });
 }
 function button(text: string) {
-  return [...host.querySelectorAll("button")].find((button) => button.textContent === text)!;
+  return [...host.querySelectorAll("button")].find((item) => item.textContent === text)!;
 }
 async function submit() {
   await act(async () => {
     host.querySelector("form")!.requestSubmit();
   });
 }
-it.each(["in", "up", "forgot"] as const)(
-  "stays blank while capabilities load on %s",
-  async (mode) => {
-    vi.mocked(fetchAuthCapabilities).mockReturnValue(new Promise(() => undefined));
-    await render(mode);
-    expect(host.querySelector("input")).toBeNull();
-    expect(host.textContent).toBe("");
-    expect(host.querySelector("form")).toBeNull();
-  },
-);
-it.each(["in", "up"] as const)("offers SSO and hides credentials on %s", async (mode) => {
+
+it("stays blank while capabilities load", async () => {
+  vi.mocked(fetchAuthCapabilities).mockReturnValue(new Promise(() => undefined));
+  await render();
+  expect(host.querySelector("input")).toBeNull();
+  expect(host.textContent).toBe("");
+  expect(host.querySelector("form")).toBeNull();
+});
+
+it("offers SSO and hides the email form when passwords and codes are off", async () => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue(capabilities);
-  await render(mode);
+  await render();
   expect(host.textContent).toContain("Continue with Example");
   expect(host.querySelector("input")).toBeNull();
-  const sso = host.querySelector("button")!;
+  const sso = [...host.querySelectorAll("button")].find((item) =>
+    item.textContent?.includes("Continue with Example"),
+  )!;
   expect(sso.dataset.variant).toBe("default");
   expect(sso.className).toContain("w-full");
 });
+
 it("retries failed capabilities without exposing a password form", async () => {
   vi.mocked(fetchAuthCapabilities)
     .mockRejectedValueOnce(new Error())
     .mockResolvedValueOnce(capabilities);
   await render();
   expect(host.textContent).toContain("Could not load sign-in options");
-  expect(host.querySelector("input")).toBeNull();
-  const retry = [...host.querySelectorAll("button")].find(
-    (button) => button.textContent === "Retry",
-  )!;
-  await act(async () => retry.click());
+  expect(host.querySelector('input[type="password"]')).toBeNull();
+  await act(async () => button("Retry").click());
   expect(fetchAuthCapabilities).toHaveBeenCalledTimes(2);
   expect(host.textContent).toContain("Continue with Example");
 });
-it.each(["in", "up"] as const)("puts quiet SSO below the primary action on %s", async (mode) => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
-  await render(mode);
-  const email = host.querySelector('input[name="email"]')!;
-  const password = host.querySelector('input[type="password"]')!;
-  const submit = host.querySelector('button[type="submit"]')!;
-  const sso = [...host.querySelectorAll("button")].find(
-    (button) => button.textContent === "Continue with Example",
-  )!;
-  for (const [first, second] of [
-    [email, password],
-    [password, submit],
-    [submit, sso],
-  ] as const) {
-    expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  }
-  expect(submit.getAttribute("data-variant")).toBe("default");
-  expect(sso.dataset.variant).toBe("link");
-  expect(sso.dataset.size).toBe("sm");
-});
 
-it("hides SSO in password recovery", async () => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
-  await render("forgot");
-  expect(host.textContent).not.toContain("Continue with Example");
-});
-
-it("selects a non-redirecting SSO request on desktop", async () => {
-  vi.spyOn(window, "open").mockReturnValue({ close: vi.fn() } as unknown as Window);
-  window.rakazoDesktop = {} as NonNullable<Window["rakazoDesktop"]>;
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue(capabilities);
-  vi.mocked(authClient.signIn.social).mockResolvedValue({
-    data: null,
-    error: { message: "Unavailable", status: 503, statusText: "Unavailable" },
+it("puts quiet SSO below the email code action and has no password field", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...emailCapabilities,
+    sso: capabilities.sso,
   });
   await render();
-  const button = Array.from(host.querySelectorAll("button")).find((button) =>
-    button.textContent?.includes("Continue with"),
-  );
-  expect(button).toBeDefined();
-  await act(async () => button!.click());
-  expect(authClient.signIn.social).toHaveBeenCalledWith(
-    expect.objectContaining({ provider: "oidc", disableRedirect: true }),
-  );
-});
-
-it("keeps SSO available for retry while an authorization request is pending", async () => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue(capabilities);
-  vi.mocked(authClient.signIn.social).mockReturnValue(new Promise(() => undefined));
-  await render();
-  const button = Array.from(host.querySelectorAll("button")).find((button) =>
-    button.textContent?.includes("Continue with"),
+  expect(host.querySelector('input[type="password"]')).toBeNull();
+  const email = host.querySelector('input[name="email"]')!;
+  const submitButton = host.querySelector('button[type="submit"]')!;
+  const sso = [...host.querySelectorAll("button")].find(
+    (item) => item.textContent === "Continue with Example",
   )!;
-  await act(async () => button.click());
-  expect(button.disabled).toBe(false);
-  await act(async () => button.click());
-  expect(authClient.signIn.social).toHaveBeenCalledTimes(2);
+  expect(
+    email.compareDocumentPosition(submitButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(submitButton.compareDocumentPosition(sso) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(submitButton.textContent).toBe("Send code");
+  expect(sso.dataset.variant).toBe("link");
 });
 
-const codeCapabilities: AuthCapabilities = {
-  ...capabilities,
-  sso: null,
-  passwordAuth: true,
-  emailCode: true,
-};
-
-it("signs in with an emailed code when the password is blank", async () => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue(codeCapabilities);
+it("sends a code, masks it, and signs in with a name taken from the email", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
     data: { success: true },
     error: null,
   } as never);
   vi.mocked(authClient.signIn.emailOtp).mockResolvedValue({ data: {}, error: null } as never);
   await render();
+  expect(host.querySelector("h1")!.textContent).toBe("Get started with VNBot");
   await enter(host.querySelector('input[name="email"]'), " person@example.com ");
-  expect(host.querySelector('button[type="submit"]')!.textContent).toBe("Continue");
   await submit();
   expect(authClient.emailOtp.sendVerificationOtp).toHaveBeenCalledWith({
     email: "person@example.com",
     type: "sign-in",
+    fetchOptions: {
+      headers: { "x-rakazo-locale": getActiveUiLocale() === "vi" ? "vi" : "en" },
+    },
   });
   expect(host.querySelector("h1")!.textContent).toBe("Check your email");
-  const code = host.querySelector('input[aria-label="Code"]')!;
+  const code = host.querySelector('input[aria-label="6-digit sign-in code"]')!;
   expect(code.getAttribute("autocomplete")).toBe("one-time-code");
   await enter(code, "123456");
+  expect(host.textContent).not.toContain("123456");
   expect(authClient.signIn.emailOtp).toHaveBeenCalledWith({
     email: "person@example.com",
     otp: "123456",
-    name: undefined,
+    name: "person",
   });
-  // The session refetch moves a signed-in user on; until then the form stays busy.
   expect(clearSpaceSelection).toHaveBeenCalled();
-  expect(button("Working…").disabled).toBe(true);
+  expect(button("Verifying…").disabled).toBe(true);
 });
 
-it("names a new account and keeps the email when going back from the code", async () => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue(codeCapabilities);
+it("shows the not-invited panel for EMAIL_NOT_INVITED and keeps the email", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+    data: null,
+    error: {
+      code: EMAIL_NOT_INVITED,
+      message: "This email is not invited yet",
+      status: 403,
+      statusText: "",
+    },
+  } as never);
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "mai@vnbot.vn");
+  await submit();
+  const status = host.querySelector('[role="status"]')!;
+  expect(status.textContent).toContain("VNBot is in limited preview");
+  expect(status.textContent).toContain("mai@vnbot.vn");
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.querySelector("h1")!.textContent).toBe("Get started with VNBot");
+  expect(host.querySelector<HTMLInputElement>('input[name="email"]')!.value).toBe("mai@vnbot.vn");
+  const contact = host.querySelector<HTMLAnchorElement>(`a[href="${VNBOT_CONTACT_URL}"]`)!;
+  expect(contact).not.toBeNull();
+  expect(contact.target).toBe("_blank");
+  expect(contact.rel).toBe("noopener noreferrer");
+  expect(contact.className).toContain("underline");
+  expect(contact.getAttribute("aria-label")).toBe("Get in touch (opens in new tab)");
+  expect(contact.textContent).toBe("Get in touch");
+  await enter(host.querySelector('input[name="email"]'), "other@vnbot.vn");
+  expect(host.querySelector('[role="status"]')).toBeNull();
+});
+
+it("rejects a bad code without leaving the digits on the page, and offers a new code when it expires", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
     data: { success: true },
     error: null,
   } as never);
-  vi.mocked(authClient.signIn.emailOtp)
-    .mockResolvedValueOnce({
-      data: null,
-      error: { code: "INVALID_OTP", message: "Invalid OTP", status: 400, statusText: "" },
-    } as never)
-    .mockResolvedValueOnce({ data: {}, error: null } as never);
-  await render("up");
-  await enter(host.querySelector('input[name="name"]'), "Ada");
+  vi.mocked(authClient.signIn.emailOtp).mockResolvedValue({
+    data: null,
+    error: { code: "OTP_EXPIRED", message: "expired", status: 400, statusText: "" },
+  } as never);
+  await render();
   await enter(host.querySelector('input[name="email"]'), "ada@example.com");
   await submit();
-  await enter(host.querySelector('input[aria-label="Code"]'), "111111");
-  expect(host.querySelector('[role="alert"]')!.textContent).toBe("Invalid code");
-  await act(async () => button("Back").click());
+  await enter(host.querySelector('input[aria-label="6-digit sign-in code"]'), "111111");
+  expect(host.textContent).not.toContain("111111");
+  expect(host.querySelector('[role="alert"]')!.textContent).toContain("This code has expired");
+  expect(button("Send a new code")).toBeTruthy();
+  await act(async () => button("Use a different email").click());
   expect(host.querySelector<HTMLInputElement>('input[name="email"]')!.value).toBe(
     "ada@example.com",
   );
-  await submit();
-  expect(authClient.emailOtp.sendVerificationOtp).toHaveBeenCalledTimes(2);
-  await enter(host.querySelector('input[aria-label="Code"]'), "222222");
-  expect(authClient.signIn.emailOtp).toHaveBeenLastCalledWith({
-    email: "ada@example.com",
-    otp: "222222",
-    name: "Ada",
-  });
-  // The session refetch moves a signed-in user on; until then the form stays busy.
-  expect(clearSpaceSelection).toHaveBeenCalled();
-  expect(button("Working…").disabled).toBe(true);
 });
 
-it("sends the code on the first Continue but never submits an unfinished code", async () => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue(codeCapabilities);
+it("does not submit an unfinished code", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
     data: { success: true },
     error: null,
   } as never);
   await render();
   await enter(host.querySelector('input[name="email"]'), "person@example.com");
-  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
   await submit();
-  expect(authClient.emailOtp.sendVerificationOtp).toHaveBeenCalledTimes(1);
   const continueButton = host.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   expect(continueButton.disabled).toBe(true);
-  await submit();
-  await enter(host.querySelector('input[aria-label="Code"]'), "12345");
+  await enter(host.querySelector('input[aria-label="6-digit sign-in code"]'), "12345");
   expect(continueButton.disabled).toBe(true);
   await submit();
   expect(authClient.signIn.emailOtp).not.toHaveBeenCalled();
-  expect(authClient.emailOtp.sendVerificationOtp).toHaveBeenCalledTimes(1);
 });
 
-it("signs in with a typed password and emails a code when it is blank", async () => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue(codeCapabilities);
-  vi.mocked(authClient.signIn.email).mockResolvedValue({ data: {}, error: null } as never);
+it("asks for a valid email before sending a code", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   await render();
-  const password = host.querySelector<HTMLInputElement>('input[type="password"]')!;
-  expect(password.required).toBe(false);
-  expect(host.querySelector('button[type="submit"]')!.textContent).toBe("Continue");
-  expect(host.textContent).not.toContain("Use password");
-  await enter(host.querySelector('input[name="email"]'), "person@example.com");
-  await enter(password, "example-password");
-  expect(host.querySelector('button[type="submit"]')!.textContent).toBe("Sign in");
+  await enter(host.querySelector('input[name="email"]'), "not-an-email");
   await submit();
-  expect(authClient.signIn.email).toHaveBeenCalledWith({
-    email: "person@example.com",
-    password: "example-password",
-  });
   expect(authClient.emailOtp.sendVerificationOtp).not.toHaveBeenCalled();
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe("Enter a valid email address.");
 });
 
-it("leaves the password form unchanged without email codes", async () => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+it("marks an empty or bad email invalid and points it at the error", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   await render();
-  expect(host.querySelector('input[type="password"]')).not.toBeNull();
-  expect(host.querySelector<HTMLInputElement>('input[type="password"]')!.required).toBe(true);
-  expect(host.querySelector('button[type="submit"]')!.textContent).toBe("Sign in");
+  const input = () => host.querySelector<HTMLInputElement>('input[name="email"]')!;
+  expect(input().hasAttribute("aria-invalid")).toBe(false);
+  await submit();
+  expect(input().getAttribute("aria-invalid")).toBe("true");
+  const errorId = input().getAttribute("aria-describedby")!;
+  expect(host.querySelector(`#${errorId}`)!.getAttribute("role")).toBe("alert");
+  await enter(input(), "a");
+  expect(input().hasAttribute("aria-invalid")).toBe(false);
+  expect(input().hasAttribute("aria-describedby")).toBe(false);
+});
+
+it("renders the language switch outside the form", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  await render();
+  const language = host.querySelector('[data-testid="language-switch"]')!;
+  expect(language).not.toBeNull();
+  expect(host.querySelector("form")!.contains(language)).toBe(false);
+});
+
+it("restores the code step and email after a reload, and forgets them on sign-in", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+    data: { success: true },
+    error: null,
+  } as never);
+  vi.mocked(authClient.signIn.emailOtp).mockResolvedValue({ data: {}, error: null } as never);
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "lan@vnbot.vn");
+  await submit();
+  expect(JSON.parse(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)!)).toMatchObject({
+    email: "lan@vnbot.vn",
+    step: "code",
+  });
+  // Simulate F5: a fresh mount reads the same tab's sessionStorage.
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  await render();
+  expect(host.querySelector("h1")!.textContent).toBe("Check your email");
+  expect(host.textContent).toContain("lan@vnbot.vn");
+  expect(host.textContent).not.toContain("Resend code");
+  await enter(host.querySelector('input[aria-label="6-digit sign-in code"]'), "123456");
+  expect(authClient.signIn.emailOtp).toHaveBeenCalledWith({
+    email: "lan@vnbot.vn",
+    otp: "123456",
+    name: "lan",
+  });
+  expect(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)).toBeNull();
+});
+
+it("shows the not-invited state for ?error=EMAIL_NOT_INVITED (OIDC callback / revoked session)", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  sessionStorage.setItem(
+    "vnbot.signIn",
+    JSON.stringify({ email: "old@vnbot.vn", step: "code", sentAt: Date.now() }),
+  );
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/sign-in?error=EMAIL_NOT_INVITED"]}>
+        <AuthPage />
+      </MemoryRouter>,
+    ),
+  );
+  const status = host.querySelector('[role="status"]')!;
+  expect(status.textContent).toContain("VNBot is in limited preview");
+  expect(status.textContent).toContain("Right now, only invited emails can sign in.");
+  expect(status.textContent).not.toContain("isn't on");
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.querySelector('input[name="email"]')).not.toBeNull();
+  expect(host.querySelector<HTMLInputElement>('input[name="email"]')!.value).toBe("");
+  expect(sessionStorage.getItem("vnbot.signIn")).toBeNull();
+  expect(host.querySelector(`a[href="${VNBOT_CONTACT_URL}"]`)).not.toBeNull();
 });

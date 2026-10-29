@@ -1,5 +1,4 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { authClient } from "../lib/auth";
 import {
@@ -9,17 +8,18 @@ import {
   usePasskeysSupported,
 } from "../lib/passkeys";
 
+const linkClass =
+  "font-medium text-link underline underline-offset-4 hover:decoration-2 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
+
 /**
- * Passkey sign-in for the sign-in form: a button, plus browser autofill on the
- * email field (`autocomplete="username webauthn"`) where conditional UI exists.
+ * Passkey sign-in as a secondary line under the email form, plus browser autofill
+ * on the email field where conditional UI exists. Hidden on the code step by the caller.
  */
 export function PasskeySignIn({
-  className,
   disabled,
   onSignedIn,
   onError,
 }: {
-  className?: string;
   disabled?: boolean;
   onSignedIn: () => void;
   onError: (message: string | null) => void;
@@ -50,14 +50,12 @@ export function PasskeySignIn({
     mounted.current = true;
     return () => {
       mounted.current = false;
-      // Leaving the form (or switching to the code step) must not leave autofill waiting.
       cancelPasskeyRequest();
     };
   }, []);
 
   useEffect(() => {
     if (!supported) return;
-    // Starting another ceremony aborts this one; an unmounted page ignores its result.
     void conditionalPasskeyAvailable().then((available) => {
       if (available && mounted.current) void signIn(true);
     });
@@ -65,21 +63,22 @@ export function PasskeySignIn({
 
   if (!supported) return null;
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="lg"
-      disabled={disabled || pending}
-      className={className}
-      onClick={() => {
-        setPending(true);
-        onError(null);
-        void signIn(false).finally(() => {
-          if (mounted.current) setPending(false);
-        });
-      }}
-    >
-      <Trans>Sign in with passkey</Trans>
-    </Button>
+    <p className="mt-6 text-center text-body1 text-muted-foreground">
+      <Trans>Already set up a passkey?</Trans>{" "}
+      <button
+        type="button"
+        disabled={disabled || pending}
+        className={`${linkClass} disabled:opacity-50`}
+        onClick={() => {
+          setPending(true);
+          onError(null);
+          void signIn(false).finally(() => {
+            if (mounted.current) setPending(false);
+          });
+        }}
+      >
+        <Trans>Sign in with a passkey</Trans>
+      </button>
+    </p>
   );
 }
