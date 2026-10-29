@@ -14,7 +14,6 @@ import {
   OLLAMA_CLOUD_BASE_URL,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   openAiCompatibleConnectReady,
-  openAiCompatibleProbeSuccessMessage,
   parseModelContextWindow,
   parseModelMaxImagesPerPrompt,
   parseModelMaxTokens,
@@ -55,6 +54,7 @@ import type { ModelCatalogEntry } from "../lib/model-auth";
 import type { ModelPreflightFailure } from "../lib/model-connection-preflight";
 import {
   classifyModelConnectionFailure,
+  compatibleProbeSuccessMessage,
   modelPreflightSuccessMessage,
   runModelConnectionPreflight,
   unavailableSelectedModel,
@@ -407,7 +407,7 @@ export function OnboardingPage() {
         }
         setPreflightTarget(null);
         setPreflightFailure(null);
-        setNotice(openAiCompatibleProbeSuccessMessage(models.length));
+        setNotice(compatibleProbeSuccessMessage(models.length));
       },
       onError: (err) => {
         if (!preflightStillCurrent(revision)) return;
@@ -730,7 +730,7 @@ export function OnboardingPage() {
                             invalidatePreflight();
                           }}
                           aria-label={t`Model id`}
-                          placeholder="exact-model-id"
+                          placeholder={t`exact-model-id`}
                           className="mt-2"
                         />
                       )}

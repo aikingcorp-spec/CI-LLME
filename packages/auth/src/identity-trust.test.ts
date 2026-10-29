@@ -748,7 +748,6 @@ describe("identity confirmation", () => {
     expect(f.messages.at(-1)).toMatchObject({
       to: "approved@example.test",
       subject: "Mã xác nhận VNBot của bạn",
-
     });
     const code = f.lastCode();
     expect(JSON.stringify(f.data.verification)).not.toContain(code);

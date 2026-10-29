@@ -16,6 +16,7 @@ import {
 } from "../components/integrations/space-availability";
 import { SettingsSectionHeading } from "../components/SettingsSectionHeading";
 import { downloadArtifactBytes } from "../lib/artifact-open";
+import { catalogDescription, isForeignProductName } from "../lib/catalog-text";
 import { useSpaceQueries } from "../lib/query";
 import { useSpaceRpc } from "../lib/space-rpc";
 
@@ -327,7 +328,13 @@ export function AgentSkills() {
   // The same list the composer offers as skill mentions, so a change here shows there at once.
   const list = queries.agentSkills.list.queryOptions();
   const listQuery = useQuery({ ...list, refetchOnMount: "always" });
-  const skills = (listQuery.data ?? NO_SKILLS).filter((skill) => skill.source !== "plugin");
+  const skills = (listQuery.data ?? NO_SKILLS)
+    .filter((skill) => skill.source !== "plugin")
+    .filter((skill) => !isForeignProductName(skill.name))
+    .map((skill) => ({
+      ...skill,
+      description: catalogDescription(skill.description),
+    }));
   const loading = listQuery.isPending;
   const [open, setOpen] = useState<AgentSkill | null>(null);
   const [creating, setCreating] = useState(false);

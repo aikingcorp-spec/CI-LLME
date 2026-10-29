@@ -52,3 +52,8 @@ export function catalogDescription(text: string): string {
     .replace(/\s{2,}/gu, " ")
     .trim();
 }
+
+/** True when a third-party catalog entry is named after another product, so the list can hide it. */
+export function isForeignProductName(text: string): boolean {
+  return /\b(?:Grok(?: Build)?|Rakazo|Cursor)\b/u.test(text);
+}

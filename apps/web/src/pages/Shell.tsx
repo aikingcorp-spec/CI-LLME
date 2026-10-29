@@ -363,7 +363,7 @@ function SpaceShell() {
           ? [
               {
                 id: bootstrapMe.spaceId,
-                name: "Personal",
+                name: t`Personal`,
                 isDefault: true,
                 hasContent: true,
                 canRename: false,
@@ -374,7 +374,7 @@ function SpaceShell() {
               },
             ]
           : [],
-    [bootstrapMe, botSections, bots, groups, spaces],
+    [bootstrapMe, botSections, bots, groups, spaces, t],
   );
   const sidebarGroups = useMemo(
     () =>

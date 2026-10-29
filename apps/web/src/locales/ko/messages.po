@@ -498,6 +498,10 @@ msgstr "HTTPS 서버 URL을 입력하세요."
 msgid "Add another"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Add connector"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Add credential"
 msgstr ""
@@ -558,6 +562,10 @@ msgstr "기존 봇에 추가"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "자동 실행에 추가"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Add to scratchpad"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Add trigger"
@@ -801,6 +809,10 @@ msgstr ""
 msgid "Archive"
 msgstr "보관"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Archive bot"
+msgstr ""
+
 #: src/pages/shell/message-view.tsx
 msgid "archived"
 msgstr "보관됨"
@@ -826,6 +838,10 @@ msgstr "묻기"
 msgid "Ask rule"
 msgstr "승인 규칙"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Ask you"
+msgstr ""
+
 #. placeholder {0}: preset.time
 #: src/lib/cron.ts
 msgid "at {0}"
@@ -839,6 +855,7 @@ msgstr "{timeSelect}에"
 msgid "Attach"
 msgstr "첨부"
 
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "파일 첨부"
@@ -964,6 +981,10 @@ msgstr ""
 msgid "Board"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Board tickets"
+msgstr ""
+
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
 msgid "Booting live desktop…"
@@ -1028,6 +1049,18 @@ msgstr ""
 msgid "Browse MCP servers"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser act"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser navigate"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser snapshot"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
@@ -1044,6 +1077,10 @@ msgstr ""
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Call with {0}"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Call you"
 msgstr ""
 
 #: src/components/call/VoiceChatCard.tsx
@@ -1090,6 +1127,10 @@ msgstr "이미지를 읽을 수 없음"
 msgid "Cancel"
 msgstr "취소"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel cloud agent"
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
 msgstr "새 Bot 만들기 취소"
@@ -1101,6 +1142,10 @@ msgstr "새 그룹 만들기 취소"
 #: src/pages/shell/chat-context.tsx
 msgid "Cancel reply"
 msgstr "답장 취소"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel schedule"
+msgstr ""
 
 #: src/components/CloudAgentCard.tsx
 msgid "cancelled"
@@ -1355,6 +1400,10 @@ msgstr ""
 msgid "Cloud"
 msgstr "클라우드"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cloud agent status"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Code"
@@ -1403,6 +1452,10 @@ msgstr "명령 변수"
 msgid "Comment"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Comment on ticket"
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Communication"
 msgstr ""
@@ -1415,6 +1468,10 @@ msgstr ""
 msgid "Complete"
 msgstr "완료"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Complete scratchpad item"
+msgstr ""
+
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "완료"
@@ -1424,6 +1481,10 @@ msgstr "완료"
 #: src/pages/shell/message-view.tsx
 msgid "Computer"
 msgstr "컴퓨터"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer act"
+msgstr ""
 
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
@@ -1442,6 +1503,10 @@ msgstr "컴퓨터가 절전 상태입니다. 열어 깨우세요."
 #: src/pages/shell/computer-view.tsx
 msgid "Computer is stopped"
 msgstr "컴퓨터가 중지됨"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer observe"
+msgstr ""
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
@@ -1514,9 +1579,17 @@ msgstr "AI 모델 연결"
 msgid "Connect a model in Settings before running bots."
 msgstr "봇을 실행하기 전에 설정에서 모델을 연결하세요."
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect agent"
+msgstr ""
+
 #: src/pages/model-settings/connection-controls.tsx
 msgid "Connect API key"
 msgstr "API 키 연결"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect app"
+msgstr ""
 
 #: src/components/SidebarFooter.tsx
 msgid "Connect apps"
@@ -2162,6 +2235,15 @@ msgstr "만들기"
 msgid "Create a section and move {0} into it."
 msgstr "새 섹션을 만들고 {0}을 옮깁니다."
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create bot"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create child routine"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "그룹 만들기"
@@ -2170,10 +2252,23 @@ msgstr "그룹 만들기"
 msgid "Create Routine"
 msgstr "자동 실행 만들기"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create schedule"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create skill"
+msgstr ""
+
 #: src/components/AskCard.tsx
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/dialogs.tsx
 msgid "Create space"
 msgstr "스페이스 만들기"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create ticket"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2338,6 +2433,10 @@ msgstr "기억도 함께 삭제"
 #: src/pages/shell/sidebar-roster.tsx
 msgid "Delete section"
 msgstr "섹션 삭제"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Delete skill"
+msgstr ""
 
 #: src/pages/shell/shell-dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
@@ -2563,10 +2662,14 @@ msgstr ""
 msgid "Email verification required"
 msgstr "이메일 인증이 필요합니다"
 
-#. placeholder {0}: humanizeTool(toolName)
+#. placeholder {0}: builtinToolLabel(toolName)
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "{0} 활성화"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "End call"
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
@@ -2682,6 +2785,11 @@ msgstr "매월"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "매주"
+
+#: src/pages/model-settings/compatible-model-fields.tsx
+#: src/pages/Onboarding.tsx
+msgid "exact-model-id"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
@@ -2825,6 +2933,22 @@ msgstr "완료되었습니다."
 msgid "Finishing MCP connection…"
 msgstr "MCP 연결을 마무리하는 중…"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget memory"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget secret"
+msgstr ""
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found {modelCount} models."
+msgstr ""
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found 1 model."
+msgstr ""
+
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
 msgstr "무료"
@@ -2860,6 +2984,18 @@ msgstr "게이트웨이 ID"
 msgid "General"
 msgstr "일반"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate image"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate secret"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate video"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Get in touch (opens in new tab)"
 msgstr ""
@@ -2875,6 +3011,10 @@ msgstr ""
 #: src/components/SidebarFooter.tsx
 msgid "Get the mobile app"
 msgstr "모바일 앱 다운로드"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Get ticket"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -2897,6 +3037,10 @@ msgstr "그룹 설정"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Group updates"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Hand off to bot"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
@@ -3250,6 +3394,14 @@ msgstr "마지막 확인 {0}: 변경 없음"
 msgid "Later"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch app"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch cloud agent"
+msgstr ""
+
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Leave"
 msgstr "나가기"
@@ -3277,6 +3429,26 @@ msgstr "DM 연결"
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
 msgstr "SSO 연결"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List files"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List fleet"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List schedules"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List scratchpad"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List secrets"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "List view"
@@ -3539,6 +3711,14 @@ msgstr "메시지"
 msgid "Message {activeName}"
 msgstr "{activeName}에게 메시지 보내기"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Message agent"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message bot"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "메시지 작성기"
@@ -3554,6 +3734,10 @@ msgstr "{peer}의 메시지"
 #: src/lib/activity-list-filters.ts
 msgid "Message from another agent"
 msgstr "다른 Agent의 메시지"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message you"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message…"
@@ -4091,6 +4275,10 @@ msgstr "전체 창으로 열기"
 msgid "Open navigation"
 msgstr "메뉴 열기"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Open path"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
 msgstr "진행 중인 작업"
@@ -4128,6 +4316,10 @@ msgstr "또는 API 키 붙여넣기"
 msgid "Organization API key"
 msgstr "조직 API 키"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Organize bot"
+msgstr ""
+
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "원본 메시지를 사용할 수 없습니다"
@@ -4153,6 +4345,10 @@ msgstr "{page} / {count}페이지"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty 인시던트"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Paid request"
+msgstr ""
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4228,6 +4424,7 @@ msgid "Persona"
 msgstr "페르소나"
 
 #: src/components/SignupSurvey.tsx
+#: src/pages/Shell.tsx
 msgid "Personal"
 msgstr ""
 
@@ -4341,6 +4538,10 @@ msgstr ""
 msgid "Program: {name}"
 msgstr "프로그램: {name}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Propose instructions update"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
 msgstr ""
@@ -4359,6 +4560,10 @@ msgstr "서비스"
 msgid "Pull request"
 msgstr "풀 리퀘스트"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Purchase status"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "대기 중"
@@ -4371,9 +4576,21 @@ msgstr "반응하기"
 msgid "Reactions"
 msgstr "반응"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Read file"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read history"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "답변을 자동으로 읽기"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read skill"
+msgstr ""
 
 #: src/pages/shell/import-status.ts
 msgid "Ready"
@@ -4386,6 +4603,10 @@ msgstr "추론 강도"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall and write"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Recall memory"
 msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -4503,6 +4724,10 @@ msgstr "제어권 넘기기"
 msgid "Reload"
 msgstr "새로고침"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Remember"
+msgstr ""
+
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/integrations/plugin-marketplace.tsx
@@ -4545,6 +4770,10 @@ msgstr "변경 트리거 제거"
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Remove from every space?"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Remove from scratchpad"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -4604,6 +4833,10 @@ msgstr "이름 변경"
 msgid "Rename section"
 msgstr "섹션 이름 바꾸기"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Render plot"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "다시 열기"
@@ -4634,9 +4867,25 @@ msgstr "답장"
 msgid "Reply cancelled"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Reply to cloud agent"
+msgstr ""
+
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request purchase"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request secret"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request takeover"
 msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
@@ -4679,6 +4928,10 @@ msgstr ""
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "패널 크기 조절"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Respond to agent connection"
+msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -4781,6 +5034,10 @@ msgstr "실행 시간"
 msgid "Run history"
 msgstr "실행 기록"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Run subagent"
+msgstr ""
+
 #: src/pages/shell/use-routine-editor.ts
 msgid "Run time must be in the future."
 msgstr "실행 시간은 미래여야 합니다."
@@ -4838,8 +5095,16 @@ msgstr "저장"
 msgid "Save credential"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Save memory"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Save new value"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Save shared memory"
 msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
@@ -4926,6 +5191,10 @@ msgstr ""
 msgid "Search by domain"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Search history"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
 msgstr ""
@@ -4953,6 +5222,10 @@ msgstr ""
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "검색 중…"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Secret request"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Security"
@@ -5038,6 +5311,10 @@ msgstr "Sentry 알림"
 msgid "Serenity endpoint is required."
 msgstr ""
 
+#: src/lib/model-connection-preflight.ts
+msgid "Server found. Enter a model name."
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Server name"
 msgstr "서버 이름"
@@ -5049,6 +5326,14 @@ msgstr "서버 이름"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Server URL"
 msgstr "서버 URL"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child bot model"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child instructions"
+msgstr ""
 
 #: src/components/call/CallCard.tsx
 #: src/components/SidebarFooter.tsx
@@ -5091,6 +5376,14 @@ msgstr "함께 사용"
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared memory"
 msgstr "공유 기억"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell on your computer"
+msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Show"
@@ -5420,6 +5713,10 @@ msgstr ""
 msgid "Take control"
 msgstr "제어권 가져오기"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Task catalog"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
 msgstr "작업 가르치기"
@@ -5600,6 +5897,10 @@ msgstr "이 컴퓨터"
 msgid "This connection's request limit is too small. Choose another model."
 msgstr "이 연결의 요청 한도가 너무 낮습니다. 다른 모델을 선택하세요."
 
+#: src/lib/user-error.ts
+msgid "This connector has a tool with the same name as a built-in tool."
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This conversation is too long for the model. Retrying won't help. Start a new chat or shorten your message."
@@ -5655,6 +5956,10 @@ msgstr "계정과 데이터가 영구적으로 삭제됩니다."
 #: src/pages/shell/dialogs.tsx
 msgid "This permanently removes every message and stops current work. The chat remains available."
 msgstr "모든 메시지를 영구적으로 삭제하고 진행 중인 작업을 중지합니다. 채팅은 계속 사용할 수 있습니다."
+
+#: src/lib/user-error.ts
+msgid "This plugin has a skill with the same name as a built-in skill."
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "This provider cannot be tested without saving."
@@ -5848,6 +6153,10 @@ msgstr "지원하지 않는 파일 형식: {0}"
 msgid "Up to date"
 msgstr "최신 상태"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update bot"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Update computer"
 msgstr "컴퓨터 업데이트"
@@ -5864,12 +6173,32 @@ msgstr "{name}의 업데이트"
 msgid "Update from {name}: {text}"
 msgstr "{name}의 업데이트: {text}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update group"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Update instructions?"
 msgstr "지침을 업데이트할까요?"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Update progress"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update schedule"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update scratchpad"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update skill"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update ticket"
 msgstr ""
 
 #: src/components/VaultSettings.tsx
@@ -6054,6 +6383,14 @@ msgstr "기다리는 중…"
 msgid "Want early access? <0>Get in touch</0>"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Web fetch"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Web search"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
 msgstr "웹훅"
@@ -6172,6 +6509,10 @@ msgstr "처리 중…"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Workspace"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Write file"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx

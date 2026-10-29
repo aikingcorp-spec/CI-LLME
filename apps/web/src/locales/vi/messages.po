@@ -498,6 +498,10 @@ msgstr "Thêm URL máy chủ HTTPS."
 msgid "Add another"
 msgstr "Thêm mục khác"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Add connector"
+msgstr "Thêm kết nối"
+
 #: src/components/VaultSettings.tsx
 msgid "Add credential"
 msgstr "Thêm thông tin xác thực"
@@ -558,6 +562,10 @@ msgstr "Thêm vào một bot đã có"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "Thêm vào quy trình"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Add to scratchpad"
+msgstr "Thêm vào sổ nháp"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Add trigger"
@@ -801,6 +809,10 @@ msgstr "Ứng dụng"
 msgid "Archive"
 msgstr "Lưu trữ"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Archive bot"
+msgstr "Lưu trữ bot"
+
 #: src/pages/shell/message-view.tsx
 msgid "archived"
 msgstr "đã lưu trữ"
@@ -826,6 +838,10 @@ msgstr "Hỏi"
 msgid "Ask rule"
 msgstr "Quy tắc hỏi"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Ask you"
+msgstr "Hỏi bạn"
+
 #. placeholder {0}: preset.time
 #: src/lib/cron.ts
 msgid "at {0}"
@@ -839,6 +855,7 @@ msgstr "lúc {timeSelect}"
 msgid "Attach"
 msgstr "Đính kèm"
 
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "Đính kèm tệp"
@@ -964,6 +981,10 @@ msgstr "Đã chặn"
 msgid "Board"
 msgstr "Bảng việc"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Board tickets"
+msgstr "Phiếu trên bảng"
+
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
 msgid "Booting live desktop…"
@@ -1028,6 +1049,18 @@ msgstr "Duyệt"
 msgid "Browse MCP servers"
 msgstr "Duyệt máy chủ MCP"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser act"
+msgstr "Thao tác trình duyệt"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser navigate"
+msgstr "Điều hướng trình duyệt"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser snapshot"
+msgstr "Chụp trình duyệt"
+
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
@@ -1045,6 +1078,10 @@ msgstr "Gọi lại"
 #: src/components/call/CallCard.tsx
 msgid "Call with {0}"
 msgstr "Cuộc gọi với {0}"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Call you"
+msgstr "Gọi cho bạn"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Calling you…"
@@ -1090,6 +1127,10 @@ msgstr "Không đọc được ảnh"
 msgid "Cancel"
 msgstr "Hủy"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel cloud agent"
+msgstr "Hủy tác nhân đám mây"
+
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
 msgstr "Hủy bot mới"
@@ -1101,6 +1142,10 @@ msgstr "Hủy tạo nhóm"
 #: src/pages/shell/chat-context.tsx
 msgid "Cancel reply"
 msgstr "Hủy trả lời"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel schedule"
+msgstr "Hủy lịch"
 
 #: src/components/CloudAgentCard.tsx
 msgid "cancelled"
@@ -1355,6 +1400,10 @@ msgstr "Đám mây"
 msgid "Cloud"
 msgstr "Đám mây"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cloud agent status"
+msgstr "Trạng thái tác nhân đám mây"
+
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Code"
@@ -1403,6 +1452,10 @@ msgstr "Biến lệnh"
 msgid "Comment"
 msgstr "Bình luận"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Comment on ticket"
+msgstr "Bình luận phiếu"
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Communication"
 msgstr "Giao tiếp"
@@ -1415,6 +1468,10 @@ msgstr "Gọn"
 msgid "Complete"
 msgstr "Hoàn tất"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Complete scratchpad item"
+msgstr "Hoàn tất mục trong sổ nháp"
+
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "Đã hoàn tất"
@@ -1424,6 +1481,10 @@ msgstr "Đã hoàn tất"
 #: src/pages/shell/message-view.tsx
 msgid "Computer"
 msgstr "Máy tính"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer act"
+msgstr "Thao tác máy tính"
 
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
@@ -1442,6 +1503,10 @@ msgstr "Máy tính đang ngủ. Mở để đánh thức."
 #: src/pages/shell/computer-view.tsx
 msgid "Computer is stopped"
 msgstr "Máy tính đã dừng"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer observe"
+msgstr "Quan sát máy tính"
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
@@ -1514,9 +1579,17 @@ msgstr "Kết nối mô hình"
 msgid "Connect a model in Settings before running bots."
 msgstr "Bạn hãy kết nối mô hình trong Cài đặt trước khi chạy bot."
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect agent"
+msgstr "Kết nối tác nhân"
+
 #: src/pages/model-settings/connection-controls.tsx
 msgid "Connect API key"
 msgstr "Kết nối bằng khóa API"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect app"
+msgstr "Kết nối ứng dụng"
 
 #: src/components/SidebarFooter.tsx
 msgid "Connect apps"
@@ -2162,6 +2235,15 @@ msgstr "Tạo"
 msgid "Create a section and move {0} into it."
 msgstr "Tạo mục và chuyển {0} vào đó."
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create bot"
+msgstr "Tạo bot"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create child routine"
+msgstr "Tạo tác vụ định kỳ cho bot con"
+
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "Tạo nhóm"
@@ -2170,10 +2252,23 @@ msgstr "Tạo nhóm"
 msgid "Create Routine"
 msgstr "Tạo quy trình"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create schedule"
+msgstr "Tạo lịch"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create skill"
+msgstr "Tạo kỹ năng"
+
 #: src/components/AskCard.tsx
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/dialogs.tsx
 msgid "Create space"
 msgstr "Tạo không gian"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create ticket"
+msgstr "Tạo phiếu"
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2338,6 +2433,10 @@ msgstr "Xóa cả trí nhớ"
 #: src/pages/shell/sidebar-roster.tsx
 msgid "Delete section"
 msgstr "Xoá mục"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Delete skill"
+msgstr "Xóa kỹ năng"
 
 #: src/pages/shell/shell-dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
@@ -2563,10 +2662,14 @@ msgstr "Gửi mã qua email"
 msgid "Email verification required"
 msgstr "Cần xác minh email"
 
-#. placeholder {0}: humanizeTool(toolName)
+#. placeholder {0}: builtinToolLabel(toolName)
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "Bật {0}"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "End call"
+msgstr "Kết thúc cuộc gọi"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
@@ -2682,6 +2785,11 @@ msgstr "Mỗi tháng"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "Mỗi tuần"
+
+#: src/pages/model-settings/compatible-model-fields.tsx
+#: src/pages/Onboarding.tsx
+msgid "exact-model-id"
+msgstr "id-mô-hình-chính-xác"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
@@ -2825,6 +2933,22 @@ msgstr "Đã xong."
 msgid "Finishing MCP connection…"
 msgstr "Đang hoàn tất kết nối MCP…"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget memory"
+msgstr "Xóa khỏi bộ nhớ"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget secret"
+msgstr "Quên bí mật"
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found {modelCount} models."
+msgstr "Đã tìm thấy {modelCount} mô hình."
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found 1 model."
+msgstr "Đã tìm thấy 1 mô hình."
+
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
 msgstr "Miễn phí"
@@ -2860,6 +2984,18 @@ msgstr "ID cổng kết nối"
 msgid "General"
 msgstr "Chung"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate image"
+msgstr "Tạo ảnh"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate secret"
+msgstr "Tạo bí mật"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate video"
+msgstr "Tạo video"
+
 #: src/pages/Auth.tsx
 msgid "Get in touch (opens in new tab)"
 msgstr "Liên hệ (mở trong thẻ mới)"
@@ -2875,6 +3011,10 @@ msgstr "Bắt đầu với VNBot"
 #: src/components/SidebarFooter.tsx
 msgid "Get the mobile app"
 msgstr "Tải ứng dụng di động"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Get ticket"
+msgstr "Xem phiếu"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -2898,6 +3038,10 @@ msgstr "Cài đặt nhóm"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Group updates"
 msgstr "Cập nhật nhóm"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Hand off to bot"
+msgstr "Chuyển cho bot"
 
 #: src/components/call/CallCard.tsx
 msgid "Hang up"
@@ -3250,6 +3394,14 @@ msgstr "Kiểm tra lần cuối {0}: không có thay đổi"
 msgid "Later"
 msgstr "Để sau"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch app"
+msgstr "Mở ứng dụng"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch cloud agent"
+msgstr "Chạy tác nhân đám mây"
+
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Leave"
 msgstr "Rời khỏi"
@@ -3277,6 +3429,26 @@ msgstr "Liên kết tin nhắn riêng"
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
 msgstr "Liên kết SSO"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List files"
+msgstr "Liệt kê tệp"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List fleet"
+msgstr "Liệt kê đội bot"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List schedules"
+msgstr "Liệt kê lịch"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List scratchpad"
+msgstr "Liệt kê sổ nháp"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List secrets"
+msgstr "Liệt kê bí mật"
 
 #: src/pages/Artifacts.tsx
 msgid "List view"
@@ -3539,6 +3711,14 @@ msgstr "Nhắn tin"
 msgid "Message {activeName}"
 msgstr "Nhắn cho {activeName}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Message agent"
+msgstr "Nhắn tác nhân"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message bot"
+msgstr "Nhắn bot"
+
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "Ô soạn tin nhắn"
@@ -3554,6 +3734,10 @@ msgstr "Tin nhắn từ {peer}"
 #: src/lib/activity-list-filters.ts
 msgid "Message from another agent"
 msgstr "Tin nhắn từ bot khác"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message you"
+msgstr "Nhắn cho bạn"
 
 #: src/pages/shell/composer.tsx
 msgid "Message…"
@@ -4091,6 +4275,10 @@ msgstr "Mở trong toàn bộ cửa sổ"
 msgid "Open navigation"
 msgstr "Mở thanh điều hướng"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Open path"
+msgstr "Mở đường dẫn"
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
 msgstr "Công việc đang mở"
@@ -4128,6 +4316,10 @@ msgstr "Hoặc dán khóa API"
 msgid "Organization API key"
 msgstr "Khóa API tổ chức"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Organize bot"
+msgstr "Sắp xếp bot"
+
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "Tin nhắn gốc không còn khả dụng"
@@ -4153,6 +4345,10 @@ msgstr "Trang {page} / {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "Sự cố PagerDuty"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Paid request"
+msgstr "Yêu cầu trả phí"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4228,6 +4424,7 @@ msgid "Persona"
 msgstr "Nhân cách"
 
 #: src/components/SignupSurvey.tsx
+#: src/pages/Shell.tsx
 msgid "Personal"
 msgstr "Cá nhân"
 
@@ -4341,6 +4538,10 @@ msgstr "Năng suất"
 msgid "Program: {name}"
 msgstr "Chương trình: {name}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Propose instructions update"
+msgstr "Đề xuất cập nhật hướng dẫn"
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
 msgstr "Nhập liệu được bảo vệ"
@@ -4359,6 +4560,10 @@ msgstr "Nhà cung cấp"
 msgid "Pull request"
 msgstr "Yêu cầu hợp nhất"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Purchase status"
+msgstr "Trạng thái mua hàng"
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "Đang xếp hàng"
@@ -4371,9 +4576,21 @@ msgstr "Thả biểu cảm"
 msgid "Reactions"
 msgstr "Biểu cảm"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Read file"
+msgstr "Đọc tệp"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read history"
+msgstr "Đọc lịch sử"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "Đọc câu trả lời thành tiếng"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read skill"
+msgstr "Đọc kỹ năng"
 
 #: src/pages/shell/import-status.ts
 msgid "Ready"
@@ -4387,6 +4604,10 @@ msgstr "Mức suy luận"
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall and write"
 msgstr "Nhớ lại và ghi"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Recall memory"
+msgstr "Gợi lại bộ nhớ"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
@@ -4503,6 +4724,10 @@ msgstr "Trả quyền điều khiển"
 msgid "Reload"
 msgstr "Tải lại"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Remember"
+msgstr "Ghi nhớ"
+
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/integrations/plugin-marketplace.tsx
@@ -4546,6 +4771,10 @@ msgstr "Gỡ điều kiện kích hoạt khi có thay đổi"
 #: src/pages/PluginsOverlay.tsx
 msgid "Remove from every space?"
 msgstr "Gỡ khỏi mọi không gian?"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Remove from scratchpad"
+msgstr "Xóa khỏi sổ nháp"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
@@ -4604,6 +4833,10 @@ msgstr "Đổi tên"
 msgid "Rename section"
 msgstr "Đổi tên mục"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Render plot"
+msgstr "Vẽ biểu đồ"
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Mở lại"
@@ -4634,10 +4867,26 @@ msgstr "Trả lời"
 msgid "Reply cancelled"
 msgstr "Đã hủy trả lời"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Reply to cloud agent"
+msgstr "Trả lời tác nhân đám mây"
+
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
 msgstr "Đang trả lời {0}"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request purchase"
+msgstr "Yêu cầu mua hàng"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request secret"
+msgstr "Yêu cầu bí mật"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request takeover"
+msgstr "Yêu cầu tiếp quản"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Requests"
@@ -4679,6 +4928,10 @@ msgstr "Đổi kích thước thanh bot"
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "Đổi kích thước bảng điều khiển"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Respond to agent connection"
+msgstr "Phản hồi kết nối tác nhân"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -4781,6 +5034,10 @@ msgstr "Chạy lúc"
 msgid "Run history"
 msgstr "Lịch sử chạy"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Run subagent"
+msgstr "Chạy tác nhân phụ"
+
 #: src/pages/shell/use-routine-editor.ts
 msgid "Run time must be in the future."
 msgstr "Thời gian chạy phải ở tương lai."
@@ -4838,9 +5095,17 @@ msgstr "Lưu"
 msgid "Save credential"
 msgstr "Lưu thông tin xác thực"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Save memory"
+msgstr "Lưu vào bộ nhớ"
+
 #: src/components/VaultSettings.tsx
 msgid "Save new value"
 msgstr "Lưu giá trị mới"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Save shared memory"
+msgstr "Lưu vào bộ nhớ chung"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
@@ -4926,6 +5191,10 @@ msgstr "Tìm bot và chuyển cuộc trò chuyện"
 msgid "Search by domain"
 msgstr "Tìm theo tên miền"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Search history"
+msgstr "Tìm trong lịch sử"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
 msgstr "Tìm trên integrations.sh"
@@ -4953,6 +5222,10 @@ msgstr "Tìm kiếm: {0}"
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "Đang tìm…"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Secret request"
+msgstr "Yêu cầu bí mật"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Security"
@@ -5038,6 +5311,10 @@ msgstr "Cảnh báo Sentry"
 msgid "Serenity endpoint is required."
 msgstr "Cần có điểm cuối Serenity."
 
+#: src/lib/model-connection-preflight.ts
+msgid "Server found. Enter a model name."
+msgstr "Đã tìm thấy máy chủ. Hãy nhập tên mô hình."
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Server name"
 msgstr "Tên máy chủ"
@@ -5049,6 +5326,14 @@ msgstr "Tên máy chủ"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Server URL"
 msgstr "URL máy chủ"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child bot model"
+msgstr "Đặt mô hình cho bot con"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child instructions"
+msgstr "Đặt hướng dẫn cho bot con"
 
 #: src/components/call/CallCard.tsx
 #: src/components/SidebarFooter.tsx
@@ -5091,6 +5376,14 @@ msgstr "Dùng chung"
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared memory"
 msgstr "Trí nhớ dùng chung"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell"
+msgstr "Dòng lệnh"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell on your computer"
+msgstr "Dòng lệnh trên máy tính của bạn"
 
 #: src/components/VaultSettings.tsx
 msgid "Show"
@@ -5420,6 +5713,10 @@ msgstr "Viên nén"
 msgid "Take control"
 msgstr "Tiếp quản"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Task catalog"
+msgstr "Danh mục tác vụ"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
 msgstr "Dạy một việc"
@@ -5600,6 +5897,10 @@ msgstr "máy tính này"
 msgid "This connection's request limit is too small. Choose another model."
 msgstr "Giới hạn yêu cầu của kết nối này quá nhỏ. Bạn hãy chọn mô hình khác."
 
+#: src/lib/user-error.ts
+msgid "This connector has a tool with the same name as a built-in tool."
+msgstr "Kết nối này có một công cụ trùng tên với công cụ có sẵn."
+
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This conversation is too long for the model. Retrying won't help. Start a new chat or shorten your message."
@@ -5655,6 +5956,10 @@ msgstr "Thao tác này xóa vĩnh viễn tài khoản và dữ liệu của bạ
 #: src/pages/shell/dialogs.tsx
 msgid "This permanently removes every message and stops current work. The chat remains available."
 msgstr "Thao tác này xóa vĩnh viễn mọi tin nhắn và dừng công việc hiện tại. Bạn vẫn có thể dùng cuộc trò chuyện."
+
+#: src/lib/user-error.ts
+msgid "This plugin has a skill with the same name as a built-in skill."
+msgstr "Plugin này có một kỹ năng trùng tên với kỹ năng có sẵn."
 
 #: src/lib/model-connection-preflight.ts
 msgid "This provider cannot be tested without saving."
@@ -5848,6 +6153,10 @@ msgstr "Loại tệp không được hỗ trợ: {0}"
 msgid "Up to date"
 msgstr "Đã là bản mới nhất"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update bot"
+msgstr "Cập nhật bot"
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Update computer"
 msgstr "Cập nhật máy tính"
@@ -5864,6 +6173,10 @@ msgstr "Cập nhật từ {name}"
 msgid "Update from {name}: {text}"
 msgstr "Cập nhật từ {name}: {text}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update group"
+msgstr "Cập nhật nhóm"
+
 #: src/components/AskCard.tsx
 msgid "Update instructions?"
 msgstr "Cập nhật chỉ dẫn?"
@@ -5871,6 +6184,22 @@ msgstr "Cập nhật chỉ dẫn?"
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Update progress"
 msgstr "Tiến độ cập nhật"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update schedule"
+msgstr "Cập nhật lịch"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update scratchpad"
+msgstr "Cập nhật sổ nháp"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update skill"
+msgstr "Cập nhật kỹ năng"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update ticket"
+msgstr "Cập nhật phiếu"
 
 #: src/components/VaultSettings.tsx
 msgid "Updated {updated}"
@@ -6054,6 +6383,14 @@ msgstr "Đang chờ…"
 msgid "Want early access? <0>Get in touch</0>"
 msgstr "Muốn dùng sớm? <0>Liên hệ</0>"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Web fetch"
+msgstr "Tải trang web"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Web search"
+msgstr "Tìm kiếm web"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
 msgstr "Webhook"
@@ -6173,6 +6510,10 @@ msgstr "Đang làm…"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Workspace"
 msgstr "Vùng làm việc"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Write file"
+msgstr "Ghi tệp"
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/sidebar-roster.tsx

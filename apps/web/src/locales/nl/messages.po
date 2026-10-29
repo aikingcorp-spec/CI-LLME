@@ -498,6 +498,10 @@ msgstr "Voeg een HTTPS-server-URL toe."
 msgid "Add another"
 msgstr "Nog een toevoegen"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Add connector"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Add credential"
 msgstr "Gegeven toevoegen"
@@ -558,6 +562,10 @@ msgstr "Aan een bestaande bot toevoegen"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "Aan routine toevoegen"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Add to scratchpad"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Add trigger"
@@ -801,6 +809,10 @@ msgstr ""
 msgid "Archive"
 msgstr "Archiveren"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Archive bot"
+msgstr ""
+
 #: src/pages/shell/message-view.tsx
 msgid "archived"
 msgstr "gearchiveerd"
@@ -826,6 +838,10 @@ msgstr "Vragen"
 msgid "Ask rule"
 msgstr "Goedkeuringsregel"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Ask you"
+msgstr ""
+
 #. placeholder {0}: preset.time
 #: src/lib/cron.ts
 msgid "at {0}"
@@ -839,6 +855,7 @@ msgstr "om {timeSelect}"
 msgid "Attach"
 msgstr "Bijvoegen"
 
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "Bestand bijvoegen"
@@ -964,6 +981,10 @@ msgstr "Geblokkeerd"
 msgid "Board"
 msgstr "Bord"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Board tickets"
+msgstr ""
+
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
 msgid "Booting live desktop…"
@@ -1028,6 +1049,18 @@ msgstr ""
 msgid "Browse MCP servers"
 msgstr "MCP-servers doorzoeken"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser act"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser navigate"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser snapshot"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
@@ -1045,6 +1078,10 @@ msgstr "Terugbellen"
 #: src/components/call/CallCard.tsx
 msgid "Call with {0}"
 msgstr "Bellen met {0}"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Call you"
+msgstr ""
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Calling you…"
@@ -1090,6 +1127,10 @@ msgstr "Kan afbeeldingen niet lezen"
 msgid "Cancel"
 msgstr "Annuleren"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel cloud agent"
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
 msgstr "Nieuwe bot annuleren"
@@ -1101,6 +1142,10 @@ msgstr "Nieuwe groep annuleren"
 #: src/pages/shell/chat-context.tsx
 msgid "Cancel reply"
 msgstr "Antwoord annuleren"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel schedule"
+msgstr ""
 
 #: src/components/CloudAgentCard.tsx
 msgid "cancelled"
@@ -1355,6 +1400,10 @@ msgstr ""
 msgid "Cloud"
 msgstr "Cloud"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cloud agent status"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Code"
@@ -1403,6 +1452,10 @@ msgstr "Commandovariabele"
 msgid "Comment"
 msgstr "Opmerking"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Comment on ticket"
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Communication"
 msgstr ""
@@ -1415,6 +1468,10 @@ msgstr "Compact"
 msgid "Complete"
 msgstr "Voltooid"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Complete scratchpad item"
+msgstr ""
+
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "Voltooid"
@@ -1424,6 +1481,10 @@ msgstr "Voltooid"
 #: src/pages/shell/message-view.tsx
 msgid "Computer"
 msgstr "Computer"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer act"
+msgstr ""
 
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
@@ -1442,6 +1503,10 @@ msgstr "De computer is in slaapstand. Open hem om hem te laten ontwaken."
 #: src/pages/shell/computer-view.tsx
 msgid "Computer is stopped"
 msgstr "De computer is gestopt"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer observe"
+msgstr ""
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
@@ -1514,9 +1579,17 @@ msgstr "Een model koppelen"
 msgid "Connect a model in Settings before running bots."
 msgstr "Verbind een model in Instellingen voordat je bots uitvoert."
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect agent"
+msgstr ""
+
 #: src/pages/model-settings/connection-controls.tsx
 msgid "Connect API key"
 msgstr "API-sleutel koppelen"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect app"
+msgstr ""
 
 #: src/components/SidebarFooter.tsx
 msgid "Connect apps"
@@ -2162,6 +2235,15 @@ msgstr "Aanmaken"
 msgid "Create a section and move {0} into it."
 msgstr "Maak een sectie aan en verplaats {0} erin."
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create bot"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create child routine"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "Groep aanmaken"
@@ -2170,10 +2252,23 @@ msgstr "Groep aanmaken"
 msgid "Create Routine"
 msgstr "Routine aanmaken"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create schedule"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create skill"
+msgstr ""
+
 #: src/components/AskCard.tsx
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/dialogs.tsx
 msgid "Create space"
 msgstr "Space aanmaken"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create ticket"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2338,6 +2433,10 @@ msgstr "Herinneringen ook verwijderen"
 #: src/pages/shell/sidebar-roster.tsx
 msgid "Delete section"
 msgstr "Sectie verwijderen"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Delete skill"
+msgstr ""
 
 #: src/pages/shell/shell-dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
@@ -2563,10 +2662,14 @@ msgstr ""
 msgid "Email verification required"
 msgstr "E-mailverificatie vereist"
 
-#. placeholder {0}: humanizeTool(toolName)
+#. placeholder {0}: builtinToolLabel(toolName)
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "{0} inschakelen"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "End call"
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
@@ -2682,6 +2785,11 @@ msgstr "Elke maand"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "Elke week"
+
+#: src/pages/model-settings/compatible-model-fields.tsx
+#: src/pages/Onboarding.tsx
+msgid "exact-model-id"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
@@ -2825,6 +2933,22 @@ msgstr "Voltooid."
 msgid "Finishing MCP connection…"
 msgstr "MCP-verbinding afronden…"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget memory"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget secret"
+msgstr ""
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found {modelCount} models."
+msgstr ""
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found 1 model."
+msgstr ""
+
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
 msgstr "Gratis"
@@ -2860,6 +2984,18 @@ msgstr "Gateway-ID"
 msgid "General"
 msgstr "Algemeen"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate image"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate secret"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate video"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Get in touch (opens in new tab)"
 msgstr ""
@@ -2875,6 +3011,10 @@ msgstr ""
 #: src/components/SidebarFooter.tsx
 msgid "Get the mobile app"
 msgstr "De mobiele app downloaden"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Get ticket"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -2898,6 +3038,10 @@ msgstr "Groepsinstellingen"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Group updates"
 msgstr "Groepsupdates"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Hand off to bot"
+msgstr ""
 
 #: src/components/call/CallCard.tsx
 msgid "Hang up"
@@ -3250,6 +3394,14 @@ msgstr "Laatste controle {0}: geen wijzigingen"
 msgid "Later"
 msgstr "Later"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch app"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch cloud agent"
+msgstr ""
+
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Leave"
 msgstr "Verlaten"
@@ -3277,6 +3429,26 @@ msgstr "DM’s koppelen"
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
 msgstr "SSO koppelen"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List files"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List fleet"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List schedules"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List scratchpad"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List secrets"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "List view"
@@ -3539,6 +3711,14 @@ msgstr "Bericht"
 msgid "Message {activeName}"
 msgstr "{activeName} berichten"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Message agent"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message bot"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "Berichteditor"
@@ -3554,6 +3734,10 @@ msgstr "Bericht van {peer}"
 #: src/lib/activity-list-filters.ts
 msgid "Message from another agent"
 msgstr "Bericht van een andere agent"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message you"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message…"
@@ -4091,6 +4275,10 @@ msgstr "In volledig venster openen"
 msgid "Open navigation"
 msgstr "Navigatie openen"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Open path"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
 msgstr "Openstaand werk"
@@ -4128,6 +4316,10 @@ msgstr "Of plak een API-sleutel"
 msgid "Organization API key"
 msgstr "Organisatie-API-sleutel"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Organize bot"
+msgstr ""
+
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "Oorspronkelijk bericht niet beschikbaar"
@@ -4153,6 +4345,10 @@ msgstr "Pagina {page} van {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty-incident"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Paid request"
+msgstr ""
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4228,6 +4424,7 @@ msgid "Persona"
 msgstr "Persona"
 
 #: src/components/SignupSurvey.tsx
+#: src/pages/Shell.tsx
 msgid "Personal"
 msgstr ""
 
@@ -4341,6 +4538,10 @@ msgstr ""
 msgid "Program: {name}"
 msgstr "Programma: {name}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Propose instructions update"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
 msgstr "Beveiligde invoer"
@@ -4359,6 +4560,10 @@ msgstr "Aanbieders"
 msgid "Pull request"
 msgstr "Pull request"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Purchase status"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "In wachtrij"
@@ -4371,9 +4576,21 @@ msgstr "Reageren"
 msgid "Reactions"
 msgstr "Reacties"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Read file"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read history"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "Antwoorden hardop voorlezen"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read skill"
+msgstr ""
 
 #: src/pages/shell/import-status.ts
 msgid "Ready"
@@ -4387,6 +4604,10 @@ msgstr "Redeneerinspanning"
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall and write"
 msgstr "Ophalen en schrijven"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Recall memory"
+msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
@@ -4503,6 +4724,10 @@ msgstr "Controle vrijgeven"
 msgid "Reload"
 msgstr "Herladen"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Remember"
+msgstr ""
+
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/integrations/plugin-marketplace.tsx
@@ -4545,6 +4770,10 @@ msgstr "Wijzigingstrigger verwijderen"
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Remove from every space?"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Remove from scratchpad"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -4604,6 +4833,10 @@ msgstr "Naam wijzigen"
 msgid "Rename section"
 msgstr "Sectie hernoemen"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Render plot"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Heropenen"
@@ -4634,10 +4867,26 @@ msgstr "Beantwoorden"
 msgid "Reply cancelled"
 msgstr "Antwoord geannuleerd"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Reply to cloud agent"
+msgstr ""
+
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
 msgstr "Antwoordt op {0}"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request purchase"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request secret"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request takeover"
+msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Requests"
@@ -4679,6 +4928,10 @@ msgstr ""
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "Paneel van grootte veranderen"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Respond to agent connection"
+msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -4781,6 +5034,10 @@ msgstr "Uitvoeren om"
 msgid "Run history"
 msgstr "Rungeschiedenis"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Run subagent"
+msgstr ""
+
 #: src/pages/shell/use-routine-editor.ts
 msgid "Run time must be in the future."
 msgstr "Het uitvoertijdstip moet in de toekomst liggen."
@@ -4838,9 +5095,17 @@ msgstr "Opslaan"
 msgid "Save credential"
 msgstr "Gegeven opslaan"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Save memory"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Save new value"
 msgstr "Nieuwe waarde opslaan"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Save shared memory"
+msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
@@ -4926,6 +5191,10 @@ msgstr "Zoek bots en wissel van gesprek"
 msgid "Search by domain"
 msgstr "Zoeken op domein"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Search history"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
 msgstr "integrations.sh doorzoeken"
@@ -4953,6 +5222,10 @@ msgstr "Zoeken: {0}"
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "Bezig met zoeken…"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Secret request"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Security"
@@ -5038,6 +5311,10 @@ msgstr "Sentry-melding"
 msgid "Serenity endpoint is required."
 msgstr "Serenity-eindpunt is vereist."
 
+#: src/lib/model-connection-preflight.ts
+msgid "Server found. Enter a model name."
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Server name"
 msgstr "Servernaam"
@@ -5049,6 +5326,14 @@ msgstr "Servernaam"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Server URL"
 msgstr "Server-URL"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child bot model"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child instructions"
+msgstr ""
 
 #: src/components/call/CallCard.tsx
 #: src/components/SidebarFooter.tsx
@@ -5091,6 +5376,14 @@ msgstr "Gedeeld"
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared memory"
 msgstr "Gedeeld geheugen"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell on your computer"
+msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Show"
@@ -5420,6 +5713,10 @@ msgstr ""
 msgid "Take control"
 msgstr "Controle overnemen"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Task catalog"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
 msgstr "Een taak aanleren"
@@ -5600,6 +5897,10 @@ msgstr "deze computer"
 msgid "This connection's request limit is too small. Choose another model."
 msgstr "De aanvraaglimiet van deze verbinding is te laag. Kies een ander model."
 
+#: src/lib/user-error.ts
+msgid "This connector has a tool with the same name as a built-in tool."
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This conversation is too long for the model. Retrying won't help. Start a new chat or shorten your message."
@@ -5655,6 +5956,10 @@ msgstr "Hiermee worden je account en gegevens definitief verwijderd."
 #: src/pages/shell/dialogs.tsx
 msgid "This permanently removes every message and stops current work. The chat remains available."
 msgstr "Hiermee worden alle berichten definitief verwijderd en lopend werk gestopt. De chat blijft beschikbaar."
+
+#: src/lib/user-error.ts
+msgid "This plugin has a skill with the same name as a built-in skill."
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "This provider cannot be tested without saving."
@@ -5848,6 +6153,10 @@ msgstr "Niet-ondersteund bestandstype: {0}"
 msgid "Up to date"
 msgstr "Actueel"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update bot"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Update computer"
 msgstr "Computer bijwerken"
@@ -5864,6 +6173,10 @@ msgstr "Update van {name}"
 msgid "Update from {name}: {text}"
 msgstr "Update van {name}: {text}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update group"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Update instructions?"
 msgstr "Instructies bijwerken?"
@@ -5871,6 +6184,22 @@ msgstr "Instructies bijwerken?"
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Update progress"
 msgstr "Updatevoortgang"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update schedule"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update scratchpad"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update skill"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update ticket"
+msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Updated {updated}"
@@ -6054,6 +6383,14 @@ msgstr "Wachten…"
 msgid "Want early access? <0>Get in touch</0>"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Web fetch"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Web search"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
 msgstr "Webhook"
@@ -6173,6 +6510,10 @@ msgstr "Bezig…"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Workspace"
 msgstr "Werkruimte"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Write file"
+msgstr ""
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/sidebar-roster.tsx

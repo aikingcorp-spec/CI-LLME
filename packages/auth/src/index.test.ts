@@ -192,7 +192,6 @@ describe("passwordResetEmail", () => {
     expect(message).toMatchObject({
       to: "ada@example.test",
       subject: "Đặt lại mật khẩu VNBot",
-
     });
     expect(message.text).toContain("https://rakazo.test/reset-password?token=secret&next=1");
     expect(message.html).toContain("&lt;Ada &amp; &quot;team&quot;&gt;");

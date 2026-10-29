@@ -498,6 +498,10 @@ msgstr "HTTPSのサーバーURLを追加してください。"
 msgid "Add another"
 msgstr "別のものを追加"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Add connector"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Add credential"
 msgstr "認証情報を追加"
@@ -558,6 +562,10 @@ msgstr "既存のボットに追加"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "ルーティンに追加"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Add to scratchpad"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Add trigger"
@@ -801,6 +809,10 @@ msgstr ""
 msgid "Archive"
 msgstr "アーカイブ"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Archive bot"
+msgstr ""
+
 #: src/pages/shell/message-view.tsx
 msgid "archived"
 msgstr "アーカイブ済み"
@@ -826,6 +838,10 @@ msgstr "確認"
 msgid "Ask rule"
 msgstr "確認ルール"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Ask you"
+msgstr ""
+
 #. placeholder {0}: preset.time
 #: src/lib/cron.ts
 msgid "at {0}"
@@ -839,6 +855,7 @@ msgstr "{timeSelect}に"
 msgid "Attach"
 msgstr "添付"
 
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "ファイルを添付"
@@ -964,6 +981,10 @@ msgstr "ブロック中"
 msgid "Board"
 msgstr "ボード"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Board tickets"
+msgstr ""
+
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
 msgid "Booting live desktop…"
@@ -1028,6 +1049,18 @@ msgstr ""
 msgid "Browse MCP servers"
 msgstr "MCPサーバーを探す"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser act"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser navigate"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser snapshot"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
@@ -1045,6 +1078,10 @@ msgstr "折り返し通話"
 #: src/components/call/CallCard.tsx
 msgid "Call with {0}"
 msgstr "{0}と通話"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Call you"
+msgstr ""
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Calling you…"
@@ -1090,6 +1127,10 @@ msgstr "画像を読み取れません"
 msgid "Cancel"
 msgstr "キャンセル"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel cloud agent"
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
 msgstr "新しいボットをキャンセル"
@@ -1101,6 +1142,10 @@ msgstr "新しいグループをキャンセル"
 #: src/pages/shell/chat-context.tsx
 msgid "Cancel reply"
 msgstr "返信をキャンセル"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel schedule"
+msgstr ""
 
 #: src/components/CloudAgentCard.tsx
 msgid "cancelled"
@@ -1355,6 +1400,10 @@ msgstr ""
 msgid "Cloud"
 msgstr "クラウド"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cloud agent status"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Code"
@@ -1403,6 +1452,10 @@ msgstr "コマンド変数"
 msgid "Comment"
 msgstr "コメント"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Comment on ticket"
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Communication"
 msgstr ""
@@ -1415,6 +1468,10 @@ msgstr "コンパクト"
 msgid "Complete"
 msgstr "完了"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Complete scratchpad item"
+msgstr ""
+
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "完了"
@@ -1424,6 +1481,10 @@ msgstr "完了"
 #: src/pages/shell/message-view.tsx
 msgid "Computer"
 msgstr "コンピューター"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer act"
+msgstr ""
 
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
@@ -1442,6 +1503,10 @@ msgstr "コンピューターはスリープ中です。開くと起動します
 #: src/pages/shell/computer-view.tsx
 msgid "Computer is stopped"
 msgstr "コンピューターは停止しています"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer observe"
+msgstr ""
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
@@ -1514,9 +1579,17 @@ msgstr "モデルを接続"
 msgid "Connect a model in Settings before running bots."
 msgstr "ボットを実行する前に、設定でモデルを接続してください。"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect agent"
+msgstr ""
+
 #: src/pages/model-settings/connection-controls.tsx
 msgid "Connect API key"
 msgstr "APIキーを接続"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect app"
+msgstr ""
 
 #: src/components/SidebarFooter.tsx
 msgid "Connect apps"
@@ -2162,6 +2235,15 @@ msgstr "作成"
 msgid "Create a section and move {0} into it."
 msgstr "セクションを作成して{0}を移動します。"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create bot"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create child routine"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "グループを作成"
@@ -2170,10 +2252,23 @@ msgstr "グループを作成"
 msgid "Create Routine"
 msgstr "ルーティンを作成"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create schedule"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create skill"
+msgstr ""
+
 #: src/components/AskCard.tsx
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/dialogs.tsx
 msgid "Create space"
 msgstr "スペースを作成"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create ticket"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2338,6 +2433,10 @@ msgstr "メモリも削除"
 #: src/pages/shell/sidebar-roster.tsx
 msgid "Delete section"
 msgstr "セクションを削除"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Delete skill"
+msgstr ""
 
 #: src/pages/shell/shell-dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
@@ -2563,10 +2662,14 @@ msgstr ""
 msgid "Email verification required"
 msgstr "メールアドレスの確認が必要です"
 
-#. placeholder {0}: humanizeTool(toolName)
+#. placeholder {0}: builtinToolLabel(toolName)
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "{0}を有効にする"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "End call"
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
@@ -2682,6 +2785,11 @@ msgstr "毎月"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "毎週"
+
+#: src/pages/model-settings/compatible-model-fields.tsx
+#: src/pages/Onboarding.tsx
+msgid "exact-model-id"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
@@ -2825,6 +2933,22 @@ msgstr "完了しました。"
 msgid "Finishing MCP connection…"
 msgstr "MCP接続を完了しています…"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget memory"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget secret"
+msgstr ""
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found {modelCount} models."
+msgstr ""
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found 1 model."
+msgstr ""
+
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
 msgstr "無料"
@@ -2860,6 +2984,18 @@ msgstr "ゲートウェイID"
 msgid "General"
 msgstr "一般"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate image"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate secret"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate video"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Get in touch (opens in new tab)"
 msgstr ""
@@ -2875,6 +3011,10 @@ msgstr ""
 #: src/components/SidebarFooter.tsx
 msgid "Get the mobile app"
 msgstr "モバイルアプリを入手"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Get ticket"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -2898,6 +3038,10 @@ msgstr "グループ設定"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Group updates"
 msgstr "更新をまとめる"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Hand off to bot"
+msgstr ""
 
 #: src/components/call/CallCard.tsx
 msgid "Hang up"
@@ -3250,6 +3394,14 @@ msgstr "前回の確認 {0}: 変更なし"
 msgid "Later"
 msgstr "後で"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch app"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch cloud agent"
+msgstr ""
+
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Leave"
 msgstr "退出"
@@ -3277,6 +3429,26 @@ msgstr "DMを連携"
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
 msgstr "SSOを連携"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List files"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List fleet"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List schedules"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List scratchpad"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List secrets"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "List view"
@@ -3539,6 +3711,14 @@ msgstr "メッセージ"
 msgid "Message {activeName}"
 msgstr "{activeName}にメッセージを送信"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Message agent"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message bot"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "メッセージ入力欄"
@@ -3554,6 +3734,10 @@ msgstr "{peer}からのメッセージ"
 #: src/lib/activity-list-filters.ts
 msgid "Message from another agent"
 msgstr "他のエージェントからのメッセージ"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message you"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message…"
@@ -4091,6 +4275,10 @@ msgstr "フルウィンドウで開く"
 msgid "Open navigation"
 msgstr "ナビゲーションを開く"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Open path"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
 msgstr "未完了の作業"
@@ -4128,6 +4316,10 @@ msgstr "またはAPIキーを貼り付け"
 msgid "Organization API key"
 msgstr "組織のAPIキー"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Organize bot"
+msgstr ""
+
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "元のメッセージを表示できません"
@@ -4153,6 +4345,10 @@ msgstr "{page} / {count} ページ"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDutyインシデント"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Paid request"
+msgstr ""
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4228,6 +4424,7 @@ msgid "Persona"
 msgstr "ペルソナ"
 
 #: src/components/SignupSurvey.tsx
+#: src/pages/Shell.tsx
 msgid "Personal"
 msgstr "個人"
 
@@ -4341,6 +4538,10 @@ msgstr ""
 msgid "Program: {name}"
 msgstr "プログラム: {name}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Propose instructions update"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
 msgstr "保護された入力"
@@ -4359,6 +4560,10 @@ msgstr "プロバイダー"
 msgid "Pull request"
 msgstr "プルリクエスト"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Purchase status"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "待機中"
@@ -4371,9 +4576,21 @@ msgstr "リアクション"
 msgid "Reactions"
 msgstr "リアクション"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Read file"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read history"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "返信を読み上げる"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read skill"
+msgstr ""
 
 #: src/pages/shell/import-status.ts
 msgid "Ready"
@@ -4387,6 +4604,10 @@ msgstr "推論レベル"
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall and write"
 msgstr "参照と書き込み"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Recall memory"
+msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
@@ -4503,6 +4724,10 @@ msgstr "操作を戻す"
 msgid "Reload"
 msgstr "再読み込み"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Remember"
+msgstr ""
+
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/integrations/plugin-marketplace.tsx
@@ -4545,6 +4770,10 @@ msgstr "変更トリガーを削除"
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Remove from every space?"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Remove from scratchpad"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -4604,6 +4833,10 @@ msgstr "名前を変更"
 msgid "Rename section"
 msgstr "セクション名を変更"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Render plot"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "再度開く"
@@ -4634,10 +4867,26 @@ msgstr "返信"
 msgid "Reply cancelled"
 msgstr "返信をキャンセルしました"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Reply to cloud agent"
+msgstr ""
+
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
 msgstr "{0}に返信中"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request purchase"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request secret"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request takeover"
+msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Requests"
@@ -4679,6 +4928,10 @@ msgstr "ボットサイドバーのサイズを変更"
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "パネルのサイズを変更"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Respond to agent connection"
+msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -4781,6 +5034,10 @@ msgstr "実行日時"
 msgid "Run history"
 msgstr "実行履歴"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Run subagent"
+msgstr ""
+
 #: src/pages/shell/use-routine-editor.ts
 msgid "Run time must be in the future."
 msgstr "実行日時は未来の日時を指定してください。"
@@ -4838,9 +5095,17 @@ msgstr "保存"
 msgid "Save credential"
 msgstr "認証情報を保存"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Save memory"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Save new value"
 msgstr "新しい値を保存"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Save shared memory"
+msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
@@ -4926,6 +5191,10 @@ msgstr "ボットを検索して会話を切り替え"
 msgid "Search by domain"
 msgstr "ドメインで検索"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Search history"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
 msgstr "integrations.shを検索"
@@ -4953,6 +5222,10 @@ msgstr "検索: {0}"
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "検索中…"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Secret request"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Security"
@@ -5038,6 +5311,10 @@ msgstr "Sentryアラート"
 msgid "Serenity endpoint is required."
 msgstr "Serenityのエンドポイントは必須です。"
 
+#: src/lib/model-connection-preflight.ts
+msgid "Server found. Enter a model name."
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Server name"
 msgstr "サーバー名"
@@ -5049,6 +5326,14 @@ msgstr "サーバー名"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Server URL"
 msgstr "サーバーURL"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child bot model"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child instructions"
+msgstr ""
 
 #: src/components/call/CallCard.tsx
 #: src/components/SidebarFooter.tsx
@@ -5091,6 +5376,14 @@ msgstr "共有"
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared memory"
 msgstr "共有メモリ"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell on your computer"
+msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Show"
@@ -5420,6 +5713,10 @@ msgstr ""
 msgid "Take control"
 msgstr "操作を引き継ぐ"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Task catalog"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
 msgstr "タスクを教える"
@@ -5600,6 +5897,10 @@ msgstr "このコンピューター"
 msgid "This connection's request limit is too small. Choose another model."
 msgstr "この接続のリクエスト上限が小さすぎます。別のモデルを選択してください。"
 
+#: src/lib/user-error.ts
+msgid "This connector has a tool with the same name as a built-in tool."
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This conversation is too long for the model. Retrying won't help. Start a new chat or shorten your message."
@@ -5655,6 +5956,10 @@ msgstr "アカウントとデータが完全に削除されます。"
 #: src/pages/shell/dialogs.tsx
 msgid "This permanently removes every message and stops current work. The chat remains available."
 msgstr "すべてのメッセージが完全に削除され、実行中の作業は停止します。チャット自体は引き続き利用できます。"
+
+#: src/lib/user-error.ts
+msgid "This plugin has a skill with the same name as a built-in skill."
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "This provider cannot be tested without saving."
@@ -5848,6 +6153,10 @@ msgstr "サポートされていないファイル形式です: {0}"
 msgid "Up to date"
 msgstr "最新です"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update bot"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Update computer"
 msgstr "コンピューターを更新"
@@ -5864,6 +6173,10 @@ msgstr "{name}からの更新"
 msgid "Update from {name}: {text}"
 msgstr "{name}からの更新: {text}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update group"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Update instructions?"
 msgstr "指示を更新しますか？"
@@ -5871,6 +6184,22 @@ msgstr "指示を更新しますか？"
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Update progress"
 msgstr "更新の進行状況"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update schedule"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update scratchpad"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update skill"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update ticket"
+msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Updated {updated}"
@@ -6054,6 +6383,14 @@ msgstr "待機中…"
 msgid "Want early access? <0>Get in touch</0>"
 msgstr ""
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Web fetch"
+msgstr ""
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Web search"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
 msgstr "Webhook"
@@ -6173,6 +6510,10 @@ msgstr "処理中…"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Workspace"
 msgstr "ワークスペース"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Write file"
+msgstr ""
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/sidebar-roster.tsx

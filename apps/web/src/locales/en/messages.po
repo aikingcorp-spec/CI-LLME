@@ -498,6 +498,10 @@ msgstr "Add an HTTPS server URL."
 msgid "Add another"
 msgstr "Add another"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Add connector"
+msgstr "Add connector"
+
 #: src/components/VaultSettings.tsx
 msgid "Add credential"
 msgstr "Add credential"
@@ -558,6 +562,10 @@ msgstr "Add to an existing bot"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "Add to routine"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Add to scratchpad"
+msgstr "Add to scratchpad"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Add trigger"
@@ -801,6 +809,10 @@ msgstr "Apps"
 msgid "Archive"
 msgstr "Archive"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Archive bot"
+msgstr "Archive bot"
+
 #: src/pages/shell/message-view.tsx
 msgid "archived"
 msgstr "archived"
@@ -826,6 +838,10 @@ msgstr "Ask"
 msgid "Ask rule"
 msgstr "Ask rule"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Ask you"
+msgstr "Ask you"
+
 #. placeholder {0}: preset.time
 #: src/lib/cron.ts
 msgid "at {0}"
@@ -839,6 +855,7 @@ msgstr "at {timeSelect}"
 msgid "Attach"
 msgstr "Attach"
 
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "Attach file"
@@ -964,6 +981,10 @@ msgstr "Blocked"
 msgid "Board"
 msgstr "Board"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Board tickets"
+msgstr "Board tickets"
+
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
 msgid "Booting live desktop…"
@@ -1028,6 +1049,18 @@ msgstr "Browse"
 msgid "Browse MCP servers"
 msgstr "Browse MCP servers"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser act"
+msgstr "Browser act"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser navigate"
+msgstr "Browser navigate"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Browser snapshot"
+msgstr "Browser snapshot"
+
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
@@ -1045,6 +1078,10 @@ msgstr "Call back"
 #: src/components/call/CallCard.tsx
 msgid "Call with {0}"
 msgstr "Call with {0}"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Call you"
+msgstr "Call you"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Calling you…"
@@ -1090,6 +1127,10 @@ msgstr "Can't read images"
 msgid "Cancel"
 msgstr "Cancel"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel cloud agent"
+msgstr "Cancel cloud agent"
+
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
 msgstr "Cancel new bot"
@@ -1101,6 +1142,10 @@ msgstr "Cancel new group"
 #: src/pages/shell/chat-context.tsx
 msgid "Cancel reply"
 msgstr "Cancel reply"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Cancel schedule"
+msgstr "Cancel schedule"
 
 #: src/components/CloudAgentCard.tsx
 msgid "cancelled"
@@ -1355,6 +1400,10 @@ msgstr "cloud"
 msgid "Cloud"
 msgstr "Cloud"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Cloud agent status"
+msgstr "Cloud agent status"
+
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Code"
@@ -1403,6 +1452,10 @@ msgstr "Command variable"
 msgid "Comment"
 msgstr "Comment"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Comment on ticket"
+msgstr "Comment on ticket"
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Communication"
 msgstr "Communication"
@@ -1415,6 +1468,10 @@ msgstr "Compact"
 msgid "Complete"
 msgstr "Complete"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Complete scratchpad item"
+msgstr "Complete scratchpad item"
+
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "Completed"
@@ -1424,6 +1481,10 @@ msgstr "Completed"
 #: src/pages/shell/message-view.tsx
 msgid "Computer"
 msgstr "Computer"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer act"
+msgstr "Computer act"
 
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
@@ -1442,6 +1503,10 @@ msgstr "Computer is asleep. Open it to wake."
 #: src/pages/shell/computer-view.tsx
 msgid "Computer is stopped"
 msgstr "Computer is stopped"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Computer observe"
+msgstr "Computer observe"
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
@@ -1514,9 +1579,17 @@ msgstr "Connect a model"
 msgid "Connect a model in Settings before running bots."
 msgstr "Connect a model in Settings before running bots."
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect agent"
+msgstr "Connect agent"
+
 #: src/pages/model-settings/connection-controls.tsx
 msgid "Connect API key"
 msgstr "Connect API key"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Connect app"
+msgstr "Connect app"
 
 #: src/components/SidebarFooter.tsx
 msgid "Connect apps"
@@ -2162,6 +2235,15 @@ msgstr "Create"
 msgid "Create a section and move {0} into it."
 msgstr "Create a section and move {0} into it."
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create bot"
+msgstr "Create bot"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create child routine"
+msgstr "Create child routine"
+
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "Create group"
@@ -2170,10 +2252,23 @@ msgstr "Create group"
 msgid "Create Routine"
 msgstr "Create Routine"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Create schedule"
+msgstr "Create schedule"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create skill"
+msgstr "Create skill"
+
 #: src/components/AskCard.tsx
+#: src/lib/builtin-tool-labels.ts
 #: src/pages/shell/dialogs.tsx
 msgid "Create space"
 msgstr "Create space"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Create ticket"
+msgstr "Create ticket"
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2338,6 +2433,10 @@ msgstr "Delete memories too"
 #: src/pages/shell/sidebar-roster.tsx
 msgid "Delete section"
 msgstr "Delete section"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Delete skill"
+msgstr "Delete skill"
 
 #: src/pages/shell/shell-dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
@@ -2563,10 +2662,14 @@ msgstr "Email me a code"
 msgid "Email verification required"
 msgstr "Email verification required"
 
-#. placeholder {0}: humanizeTool(toolName)
+#. placeholder {0}: builtinToolLabel(toolName)
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "Enable {0}"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "End call"
+msgstr "End call"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
@@ -2682,6 +2785,11 @@ msgstr "Every month"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "Every week"
+
+#: src/pages/model-settings/compatible-model-fields.tsx
+#: src/pages/Onboarding.tsx
+msgid "exact-model-id"
+msgstr "exact-model-id"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
@@ -2825,6 +2933,22 @@ msgstr "Finished."
 msgid "Finishing MCP connection…"
 msgstr "Finishing MCP connection…"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget memory"
+msgstr "Forget memory"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Forget secret"
+msgstr "Forget secret"
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found {modelCount} models."
+msgstr "Found {modelCount} models."
+
+#: src/lib/model-connection-preflight.ts
+msgid "Found 1 model."
+msgstr "Found 1 model."
+
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
 msgstr "Free"
@@ -2860,6 +2984,18 @@ msgstr "Gateway ID"
 msgid "General"
 msgstr "General"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate image"
+msgstr "Generate image"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate secret"
+msgstr "Generate secret"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Generate video"
+msgstr "Generate video"
+
 #: src/pages/Auth.tsx
 msgid "Get in touch (opens in new tab)"
 msgstr "Get in touch (opens in new tab)"
@@ -2875,6 +3011,10 @@ msgstr "Get started with VNBot"
 #: src/components/SidebarFooter.tsx
 msgid "Get the mobile app"
 msgstr "Get the mobile app"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Get ticket"
+msgstr "Get ticket"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -2898,6 +3038,10 @@ msgstr "Group settings"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Group updates"
 msgstr "Group updates"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Hand off to bot"
+msgstr "Hand off to bot"
 
 #: src/components/call/CallCard.tsx
 msgid "Hang up"
@@ -3250,6 +3394,14 @@ msgstr "Last check {0}: no changes"
 msgid "Later"
 msgstr "Later"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch app"
+msgstr "Launch app"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Launch cloud agent"
+msgstr "Launch cloud agent"
+
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Leave"
 msgstr "Leave"
@@ -3277,6 +3429,26 @@ msgstr "Link DMs"
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
 msgstr "Link SSO"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List files"
+msgstr "List files"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List fleet"
+msgstr "List fleet"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List schedules"
+msgstr "List schedules"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List scratchpad"
+msgstr "List scratchpad"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "List secrets"
+msgstr "List secrets"
 
 #: src/pages/Artifacts.tsx
 msgid "List view"
@@ -3539,6 +3711,14 @@ msgstr "Message"
 msgid "Message {activeName}"
 msgstr "Message {activeName}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Message agent"
+msgstr "Message agent"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message bot"
+msgstr "Message bot"
+
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "Message composer"
@@ -3554,6 +3734,10 @@ msgstr "Message from {peer}"
 #: src/lib/activity-list-filters.ts
 msgid "Message from another agent"
 msgstr "Message from another agent"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Message you"
+msgstr "Message you"
 
 #: src/pages/shell/composer.tsx
 msgid "Message…"
@@ -4091,6 +4275,10 @@ msgstr "Open in full window"
 msgid "Open navigation"
 msgstr "Open navigation"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Open path"
+msgstr "Open path"
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
 msgstr "Open work"
@@ -4128,6 +4316,10 @@ msgstr "Or paste an API key"
 msgid "Organization API key"
 msgstr "Organization API key"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Organize bot"
+msgstr "Organize bot"
+
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "Original message unavailable"
@@ -4153,6 +4345,10 @@ msgstr "Page {page} of {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty incident"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Paid request"
+msgstr "Paid request"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4228,6 +4424,7 @@ msgid "Persona"
 msgstr "Persona"
 
 #: src/components/SignupSurvey.tsx
+#: src/pages/Shell.tsx
 msgid "Personal"
 msgstr "Personal"
 
@@ -4341,6 +4538,10 @@ msgstr "Productivity"
 msgid "Program: {name}"
 msgstr "Program: {name}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Propose instructions update"
+msgstr "Propose instructions update"
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
 msgstr "Protected input"
@@ -4359,6 +4560,10 @@ msgstr "Providers"
 msgid "Pull request"
 msgstr "Pull request"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Purchase status"
+msgstr "Purchase status"
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "Queued"
@@ -4371,9 +4576,21 @@ msgstr "React"
 msgid "Reactions"
 msgstr "Reactions"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Read file"
+msgstr "Read file"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read history"
+msgstr "Read history"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "Read replies aloud"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Read skill"
+msgstr "Read skill"
 
 #: src/pages/shell/import-status.ts
 msgid "Ready"
@@ -4387,6 +4604,10 @@ msgstr "Reasoning effort"
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall and write"
 msgstr "Recall and write"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Recall memory"
+msgstr "Recall memory"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
@@ -4503,6 +4724,10 @@ msgstr "Release control"
 msgid "Reload"
 msgstr "Reload"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Remember"
+msgstr "Remember"
+
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/integrations/plugin-marketplace.tsx
@@ -4546,6 +4771,10 @@ msgstr "Remove change trigger"
 #: src/pages/PluginsOverlay.tsx
 msgid "Remove from every space?"
 msgstr "Remove from every space?"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Remove from scratchpad"
+msgstr "Remove from scratchpad"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
@@ -4604,6 +4833,10 @@ msgstr "Rename"
 msgid "Rename section"
 msgstr "Rename section"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Render plot"
+msgstr "Render plot"
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Reopen"
@@ -4634,10 +4867,26 @@ msgstr "Reply"
 msgid "Reply cancelled"
 msgstr "Reply cancelled"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Reply to cloud agent"
+msgstr "Reply to cloud agent"
+
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
 msgstr "Replying to {0}"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request purchase"
+msgstr "Request purchase"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request secret"
+msgstr "Request secret"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Request takeover"
+msgstr "Request takeover"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Requests"
@@ -4679,6 +4928,10 @@ msgstr "Resize bots sidebar"
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "Resize panel"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Respond to agent connection"
+msgstr "Respond to agent connection"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -4781,6 +5034,10 @@ msgstr "Run at"
 msgid "Run history"
 msgstr "Run history"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Run subagent"
+msgstr "Run subagent"
+
 #: src/pages/shell/use-routine-editor.ts
 msgid "Run time must be in the future."
 msgstr "Run time must be in the future."
@@ -4838,9 +5095,17 @@ msgstr "Save"
 msgid "Save credential"
 msgstr "Save credential"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Save memory"
+msgstr "Save memory"
+
 #: src/components/VaultSettings.tsx
 msgid "Save new value"
 msgstr "Save new value"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Save shared memory"
+msgstr "Save shared memory"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
@@ -4926,6 +5191,10 @@ msgstr "Search bots and switch conversations"
 msgid "Search by domain"
 msgstr "Search by domain"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Search history"
+msgstr "Search history"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
 msgstr "Search integrations.sh"
@@ -4953,6 +5222,10 @@ msgstr "Search: {0}"
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "Searching…"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Secret request"
+msgstr "Secret request"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Security"
@@ -5038,6 +5311,10 @@ msgstr "Sentry alert"
 msgid "Serenity endpoint is required."
 msgstr "Serenity endpoint is required."
 
+#: src/lib/model-connection-preflight.ts
+msgid "Server found. Enter a model name."
+msgstr "Server found. Enter a model name."
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Server name"
 msgstr "Server name"
@@ -5049,6 +5326,14 @@ msgstr "Server name"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Server URL"
 msgstr "Server URL"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child bot model"
+msgstr "Set child bot model"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Set child instructions"
+msgstr "Set child instructions"
 
 #: src/components/call/CallCard.tsx
 #: src/components/SidebarFooter.tsx
@@ -5091,6 +5376,14 @@ msgstr "Shared"
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared memory"
 msgstr "Shared memory"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell"
+msgstr "Shell"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Shell on your computer"
+msgstr "Shell on your computer"
 
 #: src/components/VaultSettings.tsx
 msgid "Show"
@@ -5420,6 +5713,10 @@ msgstr "tablet"
 msgid "Take control"
 msgstr "Take control"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Task catalog"
+msgstr "Task catalog"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
 msgstr "Teach a task"
@@ -5600,6 +5897,10 @@ msgstr "this computer"
 msgid "This connection's request limit is too small. Choose another model."
 msgstr "This connection's request limit is too small. Choose another model."
 
+#: src/lib/user-error.ts
+msgid "This connector has a tool with the same name as a built-in tool."
+msgstr "This connector has a tool with the same name as a built-in tool."
+
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This conversation is too long for the model. Retrying won't help. Start a new chat or shorten your message."
@@ -5655,6 +5956,10 @@ msgstr "This permanently deletes your account and data."
 #: src/pages/shell/dialogs.tsx
 msgid "This permanently removes every message and stops current work. The chat remains available."
 msgstr "This permanently removes every message and stops current work. The chat remains available."
+
+#: src/lib/user-error.ts
+msgid "This plugin has a skill with the same name as a built-in skill."
+msgstr "This plugin has a skill with the same name as a built-in skill."
 
 #: src/lib/model-connection-preflight.ts
 msgid "This provider cannot be tested without saving."
@@ -5848,6 +6153,10 @@ msgstr "Unsupported file type: {0}"
 msgid "Up to date"
 msgstr "Up to date"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update bot"
+msgstr "Update bot"
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Update computer"
 msgstr "Update computer"
@@ -5864,6 +6173,10 @@ msgstr "Update from {name}"
 msgid "Update from {name}: {text}"
 msgstr "Update from {name}: {text}"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Update group"
+msgstr "Update group"
+
 #: src/components/AskCard.tsx
 msgid "Update instructions?"
 msgstr "Update instructions?"
@@ -5871,6 +6184,22 @@ msgstr "Update instructions?"
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Update progress"
 msgstr "Update progress"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update schedule"
+msgstr "Update schedule"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update scratchpad"
+msgstr "Update scratchpad"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update skill"
+msgstr "Update skill"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Update ticket"
+msgstr "Update ticket"
 
 #: src/components/VaultSettings.tsx
 msgid "Updated {updated}"
@@ -6054,6 +6383,14 @@ msgstr "Waiting…"
 msgid "Want early access? <0>Get in touch</0>"
 msgstr "Want early access? <0>Get in touch</0>"
 
+#: src/lib/builtin-tool-labels.ts
+msgid "Web fetch"
+msgstr "Web fetch"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Web search"
+msgstr "Web search"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
 msgstr "Webhook"
@@ -6173,6 +6510,10 @@ msgstr "Working…"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Workspace"
 msgstr "Workspace"
+
+#: src/lib/builtin-tool-labels.ts
+msgid "Write file"
+msgstr "Write file"
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/sidebar-roster.tsx

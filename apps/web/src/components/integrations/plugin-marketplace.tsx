@@ -12,7 +12,7 @@ import { installedPluginParts } from "@rakazo/core";
 import { Button, Spinner } from "@rakazo/ui-web";
 import { ArrowUpRight, Check, ChevronLeft, FileText, Plug } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { catalogDescription } from "../../lib/catalog-text";
+import { catalogDescription, isForeignProductName } from "../../lib/catalog-text";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -108,6 +108,7 @@ export function PluginRow({
   installed: boolean;
   onOpen: () => void;
 }) {
+  if (isForeignProductName(name)) return null;
   return (
     <div
       data-testid="plugin-row"
@@ -317,7 +318,7 @@ export function PluginDetail({
   // An ignored manifest field loses nothing, so it isn't reported.
   const notAdded = (detail?.skipped ?? []).filter((entry) => entry.kind !== "unsupported_field");
   const prefix = `${detail?.name ?? ""}: `;
-  const skills = detail?.skills ?? [];
+  const skills = (detail?.skills ?? []).filter((skill) => !isForeignProductName(skill.name));
   const shownSkills = allSkills ? skills : skills.slice(0, SKILLS_SHOWN);
   const connectorCount = detail?.mcpServers.length ?? 0;
   // Without a connector there is nothing to connect, so the page adds the skills instead.

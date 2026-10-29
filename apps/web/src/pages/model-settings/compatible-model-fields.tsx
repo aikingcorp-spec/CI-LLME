@@ -173,7 +173,7 @@ export function CompatibleModelFields({
               setNotice(null);
             }}
             aria-label={t`Model id`}
-            placeholder="exact-model-id"
+            placeholder={t`exact-model-id`}
             className="mt-2 h-10 text-foreground"
           />
         )}

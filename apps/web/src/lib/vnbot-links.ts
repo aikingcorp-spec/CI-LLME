@@ -22,3 +22,7 @@ export const VNBOT_CONTACT_URL = httpsUrl(
 );
 
 export const VNBOT_DOCS_URL = "https://vnbot.run";
+export const VNBOT_DOWNLOAD_URL = httpsUrl(
+  import.meta.env.VITE_DOWNLOAD_URL,
+  "https://vnbot.run/#tai-ve",
+);

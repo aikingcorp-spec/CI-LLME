@@ -189,7 +189,6 @@ export function createRouterContext(deps: RouterDeps) {
               auth.secretIdByProvider[entry.provider]
                 ? entry.billing
                 : "Uses the model set up on this VNBot server",
-
           }
         : entry,
     );

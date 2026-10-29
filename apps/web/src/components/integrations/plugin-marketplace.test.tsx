@@ -300,3 +300,15 @@ it("filters catalog descriptions only when rendering a plugin row", () => {
   expect(html).not.toContain("open-source");
   expect(description).toBe("An open-source Cursor tool");
 });
+
+it("hides a plugin row named after another product", () => {
+  const html = renderToStaticMarkup(
+    <PluginRow
+      name="Grok Voice"
+      description="Add voice to an app"
+      installed={false}
+      onOpen={() => undefined}
+    />,
+  );
+  expect(html).toBe("");
+});

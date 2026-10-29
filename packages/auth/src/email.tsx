@@ -53,7 +53,6 @@ export function verificationEmail(email: string, url: string): Promise<Transacti
       <Text>Sau đó quay lại VNBot để đăng nhập.</Text>
       <Text>Liên kết hết hạn sau một giờ. Nếu bạn không đăng ký, hãy bỏ qua email này.</Text>
       <Text>{EMAIL_SIGNATURE}</Text>
-
     </>,
   );
 }

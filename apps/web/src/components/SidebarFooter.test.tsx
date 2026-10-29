@@ -162,14 +162,17 @@ it("omits Board when unavailable", async () => {
   );
 });
 
-it("offers the existing Android download on Android", async () => {
-  vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Android");
-  await render();
-  const mobile = [...document.querySelectorAll("a")].find(
-    (link) => link.textContent === "Get the mobile app",
-  )!;
-  expect(mobile.href).toBe("https://vnbot.run/#tai-ve");
-});
+it.each(["Android", "iPhone"])(
+  "links the mobile app to the VNBot download page on %s",
+  async (agent) => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(agent);
+    await render();
+    const mobile = [...document.querySelectorAll("a")].find(
+      (link) => link.textContent === "Get the mobile app",
+    )!;
+    expect(mobile.href).toBe("https://vnbot.run/#tai-ve");
+  },
+);
 
 it("falls back when app artwork fails and accepts replacement artwork", async () => {
   await render("Demo User", undefined, undefined, undefined, [

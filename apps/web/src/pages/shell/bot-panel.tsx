@@ -45,6 +45,7 @@ import { Suspense, useEffect, useId, useRef, useState } from "react";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
 import { InstructionSettings } from "../../components/InstructionSettings";
 import { botProfilePatch } from "../../lib/bot-profile-patch";
+import { builtinToolLabel } from "../../lib/builtin-tool-labels";
 import { thinkingLevelLabel } from "../../lib/model-catalog";
 import { lazyComponent } from "../../lib/preload-recovery";
 import { useSpaceQueries } from "../../lib/query";
@@ -799,7 +800,7 @@ export function BotSettings({
                         (name) => !disabledBuiltinTools.includes(name),
                       ).map((name) => (
                         <NativeSelectOption key={name} value={name}>
-                          {humanizeTool(name)}
+                          {builtinToolLabel(name)}
                         </NativeSelectOption>
                       ))}
                     </NativeSelect>
@@ -809,13 +810,13 @@ export function BotSettings({
                       key={toolName}
                       className="flex min-h-11 items-center justify-between gap-3 text-sm"
                     >
-                      <span>{humanizeTool(toolName)}</span>
+                      <span>{builtinToolLabel(toolName)}</span>
                       <Button
                         id={`${ids}-disabled-${toolName}`}
                         variant="ghost"
                         size="icon-xs"
-                        aria-label={t`Enable ${humanizeTool(toolName)}`}
-                        title={t`Enable ${humanizeTool(toolName)}`}
+                        aria-label={t`Enable ${builtinToolLabel(toolName)}`}
+                        title={t`Enable ${builtinToolLabel(toolName)}`}
                         onClick={() => {
                           const next = disabledBuiltinTools.filter((entry) => entry !== toolName);
                           setDisabledBuiltinTools(next);
@@ -967,8 +968,4 @@ function SettingsGroup({
       </div>
     </section>
   );
-}
-function humanizeTool(name: string) {
-  const words = name.replaceAll("_", " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
 }

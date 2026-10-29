@@ -68,7 +68,6 @@ export function marketingEmailRoutes(prisma: PrismaClient, secret: string) {
     verifiedUser(c.req.url)
       ? page(`<form method="post"><button type="submit">Hủy nhận email VNBot</button></form>`)
       : page("Liên kết này không hợp lệ.", 400),
-
   );
   app.post(UNSUBSCRIBE_PATH, async (c) => {
     const userId = verifiedUser(c.req.url);

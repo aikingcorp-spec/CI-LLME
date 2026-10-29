@@ -5,7 +5,6 @@ import { lightTokens } from "@rakazo/ui-tokens";
 import { Hr, Link, Text } from "react-email";
 import { EMAIL_SIGNATURE, message } from "./email.js";
 
-
 export function welcomeEmail(
   user: { email: string; name: string },
   unsubscribeUrl: string,
@@ -26,7 +25,6 @@ export function welcomeEmail(
       <Text style={{ color: lightTokens.mutedForeground, fontSize: "12px" }}>
         <Link href={unsubscribeUrl} style={{ color: lightTokens.mutedForeground }}>
           Hủy nhận email
-
         </Link>
       </Text>
     </>,
