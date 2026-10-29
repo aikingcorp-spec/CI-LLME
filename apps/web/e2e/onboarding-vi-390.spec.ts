@@ -77,7 +77,7 @@ test("a new Vietnamese user reaches the first chat on a 390px phone", async ({
   await expect(page.getByRole("heading", { name: "Chào mừng đến với VNBot" })).toBeVisible();
   await expect(page).toHaveURL(/\/onboarding\/survey$/);
   await expect(page.getByText("Bạn sẽ dùng VNBot thế nào?", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Nhập một bot" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Nhập bot có sẵn" })).toBeVisible();
   await expectNoEnglish(page, ["Welcome to", "How will you use", "Personal", "Import an agent"]);
   await expectNoHorizontalOverflow(page);
   await expectTappable(page.getByRole("button", { name: "Cá nhân", exact: true }));
