@@ -83,3 +83,19 @@ describe("check-banned-brand", () => {
     expect(scanUrls("u.ts", src)).toEqual([]);
   });
 });
+
+it("flags new forbidden content case-insensitively in translations and descriptions, not functional URLs", () => {
+  expect(
+    terms(scanPo("vi.po", 'msgid "a"\nmsgstr "XAI VNBOT VOICE vnbot sdk cursor.COM"\n')),
+  ).toEqual(["XAI", "VNBOT VOICE", "vnbot sdk", "cursor.COM"]);
+  expect(
+    terms(
+      scanAllLiterals("catalog-descriptions-vi.ts", 'const descriptions = { "entry": "xAI" };'),
+    ),
+  ).toEqual(["xAI"]);
+  // Functional endpoint URLs (API hosts, registry sources) are not descriptions.
+  expect(terms(scanUrls("a.ts", 'const url = "https://cursor.com/apps";'))).toEqual([]);
+  expect(terms(scanUrls("a.ts", 'const u = "https://github.com/elie222/x";'))).toEqual([
+    "github.com/elie222",
+  ]);
+});

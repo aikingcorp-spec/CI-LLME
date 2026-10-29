@@ -4,8 +4,6 @@
 export const CATALOG_DESCRIPTIONS_VI: Readonly<Record<string, string>> = {
   "AI video generator and AI video editor. Go from text to video, image to video, or script to video, then export an MP4.":
     "Tạo và chỉnh sửa video bằng AI. Chuyển văn bản, hình ảnh hoặc kịch bản thành video rồi xuất tệp MP4.",
-  "Add VNBot voice to an app: realtime speech-to-speech, speech-to-text dictation, text-to-speech read-aloud, and a log-driven fix loop for voice sessions.":
-    "Thêm giọng nói VNBot vào ứng dụng: hội thoại bằng giọng nói theo thời gian thực, nhập liệu bằng giọng nói, đọc văn bản và quy trình sửa lỗi phiên thoại dựa trên nhật ký.",
   "Adversarial review of a diff/PR/plan. Review only; never applies fixes.":
     "Rà soát phản biện một diff, PR hoặc kế hoạch. Chỉ rà soát, không tự sửa.",
   "Brainstorm domain names and check availability.": "Gợi ý tên miền và kiểm tra khả năng đăng ký.",
@@ -64,10 +62,6 @@ export const CATALOG_DESCRIPTIONS_VI: Readonly<Record<string, string>> = {
     "Kiểm tra và quản lý điều kiện bật tính năng, thử nghiệm, cấu hình động và chỉ số.",
   "Keep your coding agent up to date with modern web platform best practices":
     "Cập nhật các phương pháp phát triển web hiện đại cho tác nhân lập trình.",
-  "Let VNBot Bot reach MCP servers on your private Tailscale network: connect your own tailnet, or your team's company tailnets turned on by a team admin, with each member using their own device.":
-    "Cho phép VNBot Bot truy cập máy chủ MCP trên mạng Tailscale riêng: kết nối tailnet cá nhân hoặc tailnet công ty do quản trị viên nhóm bật, mỗi thành viên dùng thiết bị riêng.",
-  "Link your bank, card, and investment accounts through Plaid so VNBot can answer questions about balances, spending, subscriptions, and investments. You'll share contact details, account and balance info, transactions, credit and loans, and investments. VNBot syncs and stores your linked account data so the connector can work, and VNBot Bot's privacy mode still controls whether your conversations are stored or used for training. Access is read-only, xAI never sees or stores your bank login, and you can unlink accounts anytime from cursor.com.":
-    "Liên kết tài khoản ngân hàng, thẻ và đầu tư qua Plaid để VNBot trả lời về số dư, chi tiêu, dịch vụ đăng ký và đầu tư. Bạn sẽ chia sẻ thông tin liên hệ, tài khoản, số dư, giao dịch, tín dụng, khoản vay và đầu tư. VNBot đồng bộ và lưu dữ liệu tài khoản đã liên kết để trình kết nối hoạt động; chế độ riêng tư của VNBot Bot vẫn quyết định việc lưu hội thoại hoặc dùng để huấn luyện. Quyền truy cập chỉ cho phép đọc; xAI không xem hay lưu thông tin đăng nhập ngân hàng. Bạn có thể hủy liên kết bất cứ lúc nào trong phần quản lý tài khoản.",
   "List, create, update, and cancel Microsoft Outlook calendar events.":
     "Liệt kê, tạo, cập nhật và hủy sự kiện trên lịch Microsoft Outlook.",
   "Live web and news search, broad multi-angle search, and clean URL extraction via Octen's hosted MCP server. Connects over HTTP and authorizes with OAuth in the browser — nothing to install, no API key to paste.":
@@ -196,8 +190,6 @@ export const CATALOG_DESCRIPTIONS_VI: Readonly<Record<string, string>> = {
     "Tích hợp giám sát lỗi Sentry. Truy cập báo cáo lỗi, phân tích dấu vết ngăn xếp, tìm vấn đề theo dấu nhận diện và gỡ lỗi trên môi trường vận hành ngay từ môi trường phát triển.",
   "Skill mapping, practice plans, and learning retrospectives.":
     "Lập bản đồ kỹ năng, kế hoạch luyện tập và nhìn lại quá trình học.",
-  "Skills for building on the VNBot Origin API. Fetch the live spec first, then follow the Origin rules for credentials, scopes, webhooks, paging, and errors. Includes a skill that plans the port of an existing GitHub App.":
-    "Bộ kỹ năng phát triển với VNBot Origin API. Lấy đặc tả hiện hành trước, sau đó tuân thủ quy tắc Origin về thông tin xác thực, phạm vi quyền, webhook, phân trang và lỗi. Bao gồm kỹ năng lập kế hoạch chuyển đổi GitHub App hiện có.",
   "Skills for the Cloudflare developer platform: Workers, Durable Objects, Agents SDK, MCP servers, Wrangler CLI, and web performance.":
     "Bộ kỹ năng cho nền tảng phát triển Cloudflare: Workers, Durable Objects, Agents SDK, máy chủ MCP, Wrangler CLI và hiệu năng web.",
   "Skills for the Netlify platform: serverless and edge functions, Blobs storage, managed Postgres, Image CDN, forms, identity, caching, AI Gateway, framework adapters, and the Netlify CLI and deploys.":

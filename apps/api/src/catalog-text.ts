@@ -7,23 +7,23 @@ import type {
   PluginPreview,
 } from "@rakazo/contracts";
 import { PluginPreviewSchema } from "@rakazo/contracts";
-import { BANNED_CATALOG_TERMS } from "@rakazo/core/banned-brand";
+import { BANNED_CATALOG_TERMS, EXCLUDED_CATALOG_CONTENT } from "@rakazo/core/banned-brand";
 import { CATALOG_DESCRIPTIONS_VI } from "./catalog-descriptions-vi.js";
 
 /** Names VNBot must never show in catalog text; the term list lives in @rakazo/core/banned-brand. */
 export { BANNED_CATALOG_TERMS } from "@rakazo/core/banned-brand";
 
 const REWRITES: Array<[RegExp, string]> = [
-  [/[ \t]*\b(?:for|in|with|inside)[ \t]+(?:the[ \t]+)?(?:Grok[ \t]+Build|Grok|Rakazo)\b/gi, ""],
+  [/[ \t]*\b(?:for|in|with|inside)[ \t]+(?:the[ \t]+)?(?:Rakazo)\b/gi, ""],
   [/[ \t]*\b(?:[Ff]or|[Ii]n|[Ww]ith|[Ii]nside)[ \t]+(?:the[ \t]+)?(?:Cursor|CURSOR)\b/g, ""],
-  [/\b(?:Grok[ \t]+Build|SuperGrok|Grok|Rakazo)\b/gi, "VNBot"],
+  [/\b(?:Rakazo)\b/gi, "VNBot"],
   [/\b(?:Cursor|CURSOR)\b/g, "VNBot"],
   [/[ \t]*\bopen[ \t-]?source\b/gi, ""],
   [/[ \t]*mã nguồn mở/gi, ""],
 ];
 
 /** Third-party catalogs (integrations.sh, plugin registries) describe themselves for
- * other agent hosts. Reword those mentions to VNBot at the API boundary. */
+ * other agent hosts. Exclude foreign product content before localizing responses. */
 const uiLocale = new AsyncLocalStorage<string | null>();
 
 /** Runs a request with the UI locale the web client sent (x-vnbot-ui-locale). */
@@ -43,9 +43,11 @@ function sanitizeDescription(value: string): string {
 }
 
 export function sanitizeCatalogText(value: string): string {
+  if (EXCLUDED_CATALOG_CONTENT.test(value)) return "";
   let text = value;
   for (const [pattern, replacement] of REWRITES) text = text.replace(pattern, replacement);
   text = text.replace(/\bVNBot([ \t]+VNBot)+\b/g, "VNBot").replace(/(\S)[ \t]{2,}(?=\S)/g, "$1 ");
+  if (EXCLUDED_CATALOG_CONTENT.test(text)) return "";
   return text
     .replace(/[ \t]+([.,:;!?])/g, "$1")
     .replace(/([,;:])(?:\s*[,;:])+/g, "$1")
@@ -56,7 +58,7 @@ export function sanitizeCatalogText(value: string): string {
 export function sanitizePluginCatalog(catalog: PluginMarketplaceCatalog): PluginMarketplaceCatalog {
   return {
     ...catalog,
-    entries: catalog.entries.map((entry) => ({
+    entries: catalog.entries.filter(isCatalogContentAllowed).map((entry) => ({
       ...entry,
       displayName: sanitizeCatalogText(entry.displayName),
       description: sanitizeDescription(entry.description),
@@ -69,7 +71,7 @@ export function sanitizePluginCatalog(catalog: PluginMarketplaceCatalog): Plugin
 export function sanitizeIntegrationResults(
   results: IntegrationCatalogResult[],
 ): IntegrationCatalogResult[] {
-  return results.map((result) => ({
+  return results.filter(isCatalogContentAllowed).map((result) => ({
     ...result,
     name: sanitizeCatalogText(result.name),
     description: sanitizeCatalogText(result.description),
@@ -91,7 +93,7 @@ export function sanitizePluginPreview(preview: PluginPreview): PluginPreview {
     author: preview.author === null ? null : sanitizeCatalogText(preview.author),
     license: preview.license === null ? null : sanitizeCatalogText(preview.license),
     keywords: preview.keywords.filter((keyword) => !BANNED_CATALOG_TERMS.test(keyword)),
-    skills: preview.skills.map((skill) => ({
+    skills: preview.skills.filter(isCatalogContentAllowed).map((skill) => ({
       ...skill,
       name: sanitizeCatalogText(skill.name),
       description: sanitizeDescription(skill.description),
@@ -113,7 +115,7 @@ export function sanitizeCatalogInstall(install: CapabilityInstall): CapabilityIn
   const preview = PluginPreviewSchema.safeParse(install.config);
   return {
     ...install,
-    name: sanitizeCatalogText(install.name),
+    name: sanitizeCatalogText(install.name) || "Tiện ích",
     config: preview.success
       ? { ...install.config, ...sanitizePluginPreview(preview.data) }
       : install.config,
@@ -129,4 +131,16 @@ export function sanitizeAgentSkill<T extends Omit<AgentSkill, "content">>(skill:
       ? { content: sanitizeCatalogText(skill.content) }
       : {}),
   };
+}
+
+/** Scan content and URLs, leaving registry/protocol identifiers out of the product policy. */
+export function isCatalogContentAllowed(value: unknown): boolean {
+  if (typeof value === "string") return !EXCLUDED_CATALOG_CONTENT.test(value);
+  if (Array.isArray(value)) return value.every(isCatalogContentAllowed);
+  if (!value || typeof value !== "object") return true;
+  return Object.entries(value).every(
+    ([key, item]) =>
+      ["id", "registry", "format", "content", "files"].includes(key) ||
+      isCatalogContentAllowed(item),
+  );
 }

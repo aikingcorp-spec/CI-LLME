@@ -61,7 +61,8 @@ export const SUBSCRIPTION_SIGN_IN_PROVIDERS: Record<
     mode: "device-code",
     loginLabel: "Sign in with SuperGrok or X Premium",
     hint: "SuperGrok / key",
-    billing: "Đăng nhập bằng SuperGrok hoặc X Premium, hoặc dán khóa API xAI. VNBot không trả phí.",
+    billing:
+      "Đăng nhập bằng SuperGrok hoặc X Premium, hoặc dán khóa API của bạn. VNBot không trả phí.",
   },
   [ANTHROPIC_OAUTH_PROVIDER]: {
     mode: "auth-url",

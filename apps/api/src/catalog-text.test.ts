@@ -5,8 +5,10 @@ import type { Actor } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   BANNED_CATALOG_TERMS,
+  isCatalogContentAllowed,
   sanitizeAgentSkill,
   sanitizeCatalogText,
+  sanitizePluginCatalog,
   withCatalogLocale,
 } from "./catalog-text.js";
 import type { RouterDeps } from "./router.js";
@@ -76,11 +78,11 @@ function setup(fetch?: typeof globalThis.fetch, overrides: Partial<RouterDeps> =
 }
 
 describe("catalog text", () => {
-  it("rewords other hosts' names out of catalog copy", () => {
+  it("does not relabel foreign product copy", () => {
     expect(sanitizeCatalogText("Stripe development plugin for Grok Build: best practices.")).toBe(
-      "Stripe development plugin: best practices.",
+      "",
     );
-    expect(sanitizeCatalogText("Give Grok a real browser")).toBe("Give VNBot a real browser");
+    expect(sanitizeCatalogText("Give Grok a real browser")).toBe("");
     expect(sanitizeCatalogText("An open-source Rakazo tool")).toBe("An VNBot tool");
   });
 
@@ -88,7 +90,9 @@ describe("catalog text", () => {
     const client = setup();
     const result = await client.marketplace.catalog({ query: "" });
     const names = result.entries.map((entry) => entry.name);
-    expect(names).toEqual(expect.arrayContaining(["stripe", "supabase"]));
+    expect(names).not.toContain("stripe");
+    expect(names).not.toContain("supabase");
+    expect(names).not.toContain("notes");
     const offending = catalogStrings({ catalog: result }).filter((text) =>
       BANNED_CATALOG_TERMS.test(text),
     );
@@ -118,9 +122,8 @@ describe("catalog text", () => {
     ) as unknown as typeof globalThis.fetch;
     const client = setup(fetch);
     const result = await client.capabilities.catalogSearch({ query: "supabase" });
-    expect(result.results).toHaveLength(1);
+    expect(result.results).toHaveLength(0);
     const visible = catalogStrings(result.results);
-    expect(result.results[0]?.description).toBe("Official Supabase plugin, works.");
     expect(visible.filter((text) => BANNED_CATALOG_TERMS.test(text))).toEqual([]);
   });
 });
@@ -243,25 +246,16 @@ describe("catalog text keeps ordinary prose and markdown", () => {
 });
 
 describe("whole Skills screen responses", () => {
-  it("removes banned terms recursively from third-party catalog text", async () => {
+  it("omits foreign skills and rejects direct catalog previews without mutating stored rows", async () => {
     const { client, row } = await skillsClient();
-    const response = {
-      catalog: await client.marketplace.catalog({ query: "" }),
-      installs: await client.capabilities.list(),
-      preview: await client.capabilities.pluginPreview({ source: skillSource }),
-      skills: await client.agentSkills.list(),
-      skill: await client.agentSkills.get({ skillId: row.id }),
-    };
-    expect(
-      catalogStrings(response).filter(
-        (value) => value !== row.name && BANNED_CATALOG_TERMS.test(value),
-      ),
-    ).toEqual([]);
-    expect(response.skills.find((skill) => skill.id === row.id)?.name).toBe(row.name);
-    expect(response.skill.name).toBe(row.name);
-    expect(response.skill.id).toBe(row.id);
-    expect(response.installs[0]?.source).toBe(skillSource);
-    expect(response.preview.pinnedSource).toContain(skillSource);
+    expect((await client.agentSkills.list()).some((skill) => skill.id === row.id)).toBe(false);
+    await expect(client.agentSkills.get({ skillId: row.id })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(client.capabilities.pluginPreview({ source: skillSource })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Chưa thể xem trước tiện ích này. Vui lòng thử lại sau.",
+    });
     expect(row.name).toBe("Grok Voice");
     expect(row.content).toBe(skillContent);
   });
@@ -302,5 +296,72 @@ describe("catalog description locale", () => {
     expect(sanitizeAgentSkill({ ...skill, description: "Brand new entry." }).description).toBe(
       "Brand new entry.",
     );
+  });
+});
+
+describe("catalog exclusion policy", () => {
+  it.each([
+    "xAI",
+    "GROK Voice",
+    "https://cursor.com/account",
+    "vnbot SDK",
+    "VNBot Bot",
+    "VNBot syncs and stores",
+  ])("rejects %s in names, descriptions and URLs", (text) => {
+    for (const key of ["name", "displayName", "description", "homepage", "source", "url"])
+      expect(isCatalogContentAllowed({ [key]: text })).toBe(false);
+    expect(isCatalogContentAllowed({ surfaces: [{ url: text }] })).toBe(false);
+  });
+  it("filters before translation and stays idempotent without mutating input", () => {
+    const entry = {
+      name: "notes",
+      displayName: "Notes",
+      description: "Daily notes",
+      keywords: [],
+      category: null,
+      source: "https://github.com/example/notes",
+    };
+    const catalog = {
+      entries: [
+        entry,
+        { ...entry, description: "Plaid linked by xAI" },
+        { ...entry, displayName: "Grok SDK" },
+      ],
+      unavailableRegistries: [],
+      skippedEntries: 0,
+    } as unknown as Parameters<typeof sanitizePluginCatalog>[0];
+    const result = sanitizePluginCatalog(catalog);
+    expect(result.entries).toHaveLength(1);
+    expect(sanitizePluginCatalog(result)).toEqual(result);
+    expect(catalog.entries).toHaveLength(3);
+  });
+});
+
+it("keeps searchable apps after a preview transport failure and hides technical causes", async () => {
+  const client = setup(undefined, {
+    pluginRepoFetcher: async () => {
+      throw new Error("Request failed: HTTP 403");
+    },
+  });
+  const before = await client.marketplace.catalog({ query: "figma" });
+  expect(before.entries).toHaveLength(1);
+  await expect(
+    client.capabilities.pluginPreview({ source: before.entries[0]!.source }),
+  ).rejects.toMatchObject({
+    code: "BAD_REQUEST",
+    message: "Chưa thể xem trước tiện ích này. Vui lòng thử lại sau.",
+  });
+  expect(await client.marketplace.catalog({ query: "figma" })).toEqual(before);
+});
+
+it("returns a friendly catalog search error without the upstream cause", async () => {
+  const client = setup(
+    vi.fn(async () => {
+      throw new Error("upstream catalog unavailable");
+    }) as unknown as typeof globalThis.fetch,
+  );
+  await expect(client.capabilities.catalogSearch({ query: "Sentry" })).rejects.toMatchObject({
+    code: "BAD_GATEWAY",
+    message: "Chưa thể tìm ứng dụng lúc này. Vui lòng thử lại sau.",
   });
 });

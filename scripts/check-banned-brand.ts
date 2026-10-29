@@ -22,12 +22,20 @@ function allowed(lines: string[], line: number) {
   return ALLOW.test(lines[line - 1] ?? "") || ALLOW.test(lines[line - 2] ?? "");
 }
 
-function collect(file: string, source: string, spans: Array<[number, string]>): Finding[] {
+function collect(
+  file: string,
+  source: string,
+  spans: Array<[number, string]>,
+  url = false,
+): Finding[] {
   const lines = source.split("\n");
   return spans.flatMap(([index, text]) => {
     const line = lineOf(source, index);
     if (allowed(lines, line)) return [];
-    return findBannedBrandTerms(text).map((term) => ({ file, line, term, text: text.trim() }));
+    return findBannedBrandTerms(text, {
+      modelProviderList: file === "packages/adapters/src/pi-models.ts",
+      url,
+    }).map((term) => ({ file, line, term, text: text.trim() }));
   });
 }
 
@@ -118,7 +126,7 @@ export function scanUrls(file: string, source: string): Finding[] {
   const spans: Array<[number, string]> = [];
   for (const [index, text] of stringLiterals(source))
     for (const m of text.matchAll(URL_TOKEN)) spans.push([index, m[0]]);
-  return collect(file, source, spans);
+  return collect(file, source, spans, true);
 }
 
 function walk(dir: string, accept: (path: string) => boolean): string[] {
@@ -156,9 +164,11 @@ export function scanRepo(root = ROOT): Finding[] {
       )
       .filter((p) => !p.endsWith("packages/core/src/banned-brand.ts"))
       .flatMap((p) => scanUrls(rel(p), read(p))),
-    ...["packages/auth/src/email.tsx", "packages/adapters/src/pi-runtime.ts"].flatMap((p) =>
-      scanAllLiterals(p, read(join(root, p))),
-    ),
+    ...[
+      "apps/api/src/catalog-descriptions-vi.ts",
+      "packages/auth/src/email.tsx",
+      "packages/adapters/src/pi-runtime.ts",
+    ].flatMap((p) => scanAllLiterals(p, read(join(root, p)))),
   ];
 }
 

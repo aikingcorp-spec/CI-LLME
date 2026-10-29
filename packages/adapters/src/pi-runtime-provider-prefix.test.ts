@@ -327,7 +327,7 @@ describe("Pi outgoing provider prefixes", () => {
         expect(request.messages[0]).toMatchObject({
           role: "system",
           content: expect.stringMatching(
-            /^You are a VNBot bot\.[^\n]*\n\nStable guidance\.\nStable constraints\./,
+            /^You are an assistant in VNBot\.[^\n]*\n\nStable guidance\.\nStable constraints\./,
           ),
         });
       const first = requests[0]!.messages[0]!.content;
