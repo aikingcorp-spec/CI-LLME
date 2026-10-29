@@ -217,6 +217,14 @@ async function readWithRetry(
         headers,
       );
     } catch (error) {
+      // GitHub answers an exhausted unauthenticated quota with 403; that says nothing about the
+      // plugin, so report it as a rate limit and keep the plugin in browse.
+      if (
+        url.startsWith("https://api.github.com/") &&
+        error instanceof Error &&
+        /HTTP 403\b/.test(error.message)
+      )
+        throw new Error("Request failed: HTTP 429 (GitHub API rate limit; set GITHUB_TOKEN)");
       if (attempt >= 1 || deadline.aborted || !isTransientFetchError(error)) throw error;
     }
   }
