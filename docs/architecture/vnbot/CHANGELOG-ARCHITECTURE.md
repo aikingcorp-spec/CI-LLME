@@ -4,6 +4,16 @@ Each entry is a change versus the frozen Rakazo baseline at commit `c4b24547` (`
 
 Proposed decisions are listed so reviewers can see them. They do not change the running system until a later entry says they landed in code.
 
+## 2026-10-29 — Catalog registry value hidden; Sentry false positive fixed
+
+- Date: 2026-10-29.
+- Pull request: none (local commit).
+- What changed versus baseline: marketplace responses no longer carry a banned brand as the registry name (`registry` and `unavailableRegistries` entries become empty; the value is removed, not renamed). URL values (install source, homepage, endpoints) are judged by host and owner (`xAI`, `x.ai`, `cursor.com`, `VNBot Voice/SDK/Bot`) and no longer by the word "grok", which matched repository slugs such as `getsentry/plugin-grok` and wrongly dropped Sentry. Names, descriptions and keywords keep the full rule.
+- Why: the registry field showed xAI and Cursor to users, and the whole-word `grok` rule on install URLs hid a legitimate app.
+- Files / modules: `packages/core/src/banned-brand.ts`, `apps/api/src/catalog-text.ts` and their tests.
+- Invariants affected: install sources, ids and pins are unchanged; the guard still bans the same brand terms in text.
+- ADR: none.
+
 ## 2026-10-29 — Catalog content exclusion and preview recovery
 
 - Date: 2026-10-29.
