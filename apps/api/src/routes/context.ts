@@ -29,6 +29,7 @@ import type {
   ModelRoleChoice,
   ModelRoleSettings,
   ModelRoleView,
+  SettingsScope,
 } from "@rakazo/contracts";
 import {
   appContract,
@@ -36,7 +37,13 @@ import {
   modelSupportsRole,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@rakazo/contracts";
-import { createGroupRepos, createRepos, recordSecurityEvent, runAsTenant } from "@rakazo/db";
+import {
+  appliedModelRole,
+  createGroupRepos,
+  createRepos,
+  recordSecurityEvent,
+  runAsTenant,
+} from "@rakazo/db";
 import { createAgentImportServices } from "../agent-import-services.js";
 import { createAgentSkillsService } from "../agent-skills.js";
 import { createBotRemoval } from "../bot-removal.js";
@@ -198,17 +205,20 @@ export function createRouterContext(deps: RouterDeps) {
   const withDeploymentDefault = async (
     role: ModelRole,
     settings: ModelRoleSettings,
+    actor: Actor,
+    scope?: SettingsScope,
   ): Promise<ModelRoleView> => {
-    const defaults =
-      role === "main"
-        ? {
-            settings: await deps.prisma.deploymentSettings.findUnique({ where: { id: "default" } }),
-            // Only a model the deployment can run stands in for the member's choice.
-            deployment: deps.env.deploymentModelConfigured
-              ? { provider: deps.env.defaultProvider, model: deps.env.defaultModel }
-              : null,
-          }
-        : { env: process.env };
+    if (role === "approval") {
+      const main = await appliedModelRole(deps.prisma, actor, "main", scope);
+      return { ...settings, deploymentPrimary: main.primary };
+    }
+    const defaults = {
+      settings: await deps.prisma.deploymentSettings.findUnique({ where: { id: "default" } }),
+      // Only a model the deployment can run stands in for the member's choice.
+      deployment: deps.env.deploymentModelConfigured
+        ? { provider: deps.env.defaultProvider, model: deps.env.defaultModel }
+        : null,
+    };
     return { ...settings, deploymentPrimary: deploymentModelRole(role, defaults).primary };
   };
   const modelRoleCatalog = async (actor: Actor, role: ModelRole): Promise<ModelCatalogEntry[]> => {

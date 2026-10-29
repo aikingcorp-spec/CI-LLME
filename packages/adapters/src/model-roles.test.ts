@@ -222,7 +222,7 @@ describe("model roles", () => {
       deploymentModelRole("approval", {
         env: { RAKAZO_AUTO_REVIEW_PROVIDER: "local-provider", RAKAZO_AUTO_REVIEW_MODEL: "judge" },
       }),
-    ).toEqual({ primary: { provider: "local-provider", modelId: "judge" }, backups: [] });
+    ).toEqual({ primary: null, backups: [] });
   });
 
   it("uses the deployment's defaults for a member who chose nothing", async () => {
@@ -344,5 +344,28 @@ describe("model roles", () => {
 
     expect(resolved).toMatchObject({ provider: "openai-compatible", modelId: "model-b" });
     expect(resolved?.credential?.id).toBe("b");
+  });
+});
+
+it("defaults approvals to the member's primary model, retaining its connection", async () => {
+  const primary = {
+    role: "main",
+    position: 0,
+    provider: "local",
+    modelId: "chosen",
+    credentialId: "connection",
+    thinkingLevel: null,
+  };
+  await expect(
+    effectiveModelRole(roleClient([primary]), scope, "approval", {}),
+  ).resolves.toMatchObject({
+    primary: { provider: "local", modelId: "chosen", credentialId: "connection" },
+  });
+});
+it("does not invent an approval connection when the member has no primary", async () => {
+  await expect(effectiveModelRole(roleClient([]), scope, "approval", {})).resolves.toEqual({
+    primary: null,
+    backups: [],
+    primarySource: null,
   });
 });

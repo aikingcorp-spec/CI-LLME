@@ -8,7 +8,6 @@ import type {
 import { backupChoiceKey, usableModelId } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { appliedModelRole } from "@rakazo/db";
-import { resolveAutoReviewChecker } from "./auto-review.js";
 import type { ModelChoice, ModelCredential } from "./model-selection.js";
 import { findConnectedModelCredential } from "./model-selection.js";
 
@@ -26,13 +25,7 @@ export function deploymentModelRole(
   role: ModelRole,
   defaults: DeploymentModelDefaults,
 ): ModelRoleSettings {
-  if (role === "approval") {
-    const checker = resolveAutoReviewChecker(defaults.env);
-    return {
-      primary: checker ? { provider: checker.provider, modelId: checker.model } : null,
-      backups: [],
-    };
-  }
+  if (role === "approval") return { primary: null, backups: [] };
   const provider = defaults.settings?.defaultModelProvider ?? defaults.deployment?.provider;
   const modelId =
     usableModelId(defaults.settings?.defaultModelId) ?? usableModelId(defaults.deployment?.model);
@@ -57,6 +50,14 @@ export async function effectiveModelRole(
 ): Promise<EffectiveModelRole> {
   const own = await appliedModelRole(prisma, scope, role, requested);
   if (own.primary) return { ...own, primarySource: "member" };
+  if (role === "approval") {
+    const main = await appliedModelRole(prisma, scope, "main", requested);
+    return {
+      primary: main.primary,
+      backups: own.backups,
+      primarySource: main.primary ? "member" : null,
+    };
+  }
   const deployment = deploymentModelRole(role, defaults);
   return {
     primary: deployment.primary,

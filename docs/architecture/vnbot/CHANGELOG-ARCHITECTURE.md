@@ -4,6 +4,16 @@ Each entry is a change versus the frozen Rakazo baseline at commit `c4b24547` (`
 
 Proposed decisions are listed so reviewers can see them. They do not change the running system until a later entry says they landed in code.
 
+## 2026-10-29 — Approval follows the selected primary model
+
+- Date: 2026-10-29.
+- Pull request: none (local change).
+- What changed versus baseline: when no approval model is selected, the API settings view and runtime approval resolution follow the member's primary model and its connection, including the requested account or space scope. No implicit hosted approval model is advertised when the primary is empty.
+- Why: an unconnected provider was displayed as the approval default, implying a model was available without a user connection.
+- Modules and files: `packages/adapters/src/model-roles.ts` and tests; `apps/api/src/routes/context.ts`, `apps/api/src/routes/models.ts`, `apps/api/src/models-backups.test.ts`.
+- Invariants affected: explicit approval choices and backups retain precedence; connection credentials and tenant scope remain intact. No migrations, gateway storage or required hosted providers.
+- ADR: none; correction to default selection within existing boundaries.
+
 ## 2026-10-29 — Catalog registry value hidden; Sentry false positive fixed
 
 - Date: 2026-10-29.
