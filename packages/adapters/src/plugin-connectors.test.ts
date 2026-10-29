@@ -346,7 +346,7 @@ describe("GitHub acquisition", () => {
   it("retries one stalled GitHub request instead of failing the preview", async () => {
     const inner = reader();
     let stalled = false;
-    const read = vi.fn(async (url: string, max: number, signal?: AbortSignal) => {
+    const read = vi.fn(async (url: string, _max: number, _signal?: AbortSignal) => {
       if (!stalled && url.includes("raw.githubusercontent.com")) {
         stalled = true;
         throw Object.assign(new Error("The operation timed out"), { name: "TimeoutError" });
@@ -417,6 +417,21 @@ describe("GitHub acquisition", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+  it("fetches and parses the VNBot manifest", async () => {
+    const read = reader([
+      { path: ".vnbot-plugin/plugin.json", type: "blob", mode: "100644", size: 80 },
+    ]);
+    const repo = await fetchGitHubRepo(
+      parsePluginSource("https://github.com/example/plugin"),
+      undefined,
+      read,
+    );
+    expect(repo.files.map((file) => file.path)).toEqual([".vnbot-plugin/plugin.json"]);
+    expect(parsePluginDirectory(repo)).toMatchObject({
+      name: "example-plugin",
+      format: "agent-plugins",
+    });
   });
   it("resolves once then fetches an immutable tree and raw files", async () => {
     const read = reader();
@@ -535,6 +550,20 @@ describe("GitHub acquisition", () => {
 });
 
 describe("repositories publishing multiple plugin formats", () => {
+  it("prefers the VNBot manifest over legacy and root manifests", () => {
+    const preview = parse([
+      ...files(),
+      { path: ".cursor-plugin/plugin.json", content: JSON.stringify({ name: "legacy" }) },
+      {
+        path: ".vnbot-plugin/plugin.json",
+        content: JSON.stringify({ ...manifest, name: "vnbot-package" }),
+      },
+    ]);
+    expect(preview.name).toBe("vnbot-package");
+    expect(preview.format).toBe("agent-plugins");
+    expect(preview.mcpServers).toHaveLength(1);
+  });
+
   it("previews the Figma layout without applying the root schema to legacy MCP config", async () => {
     const preview = await previewPluginInstall({
       source: "https://github.com/figma/mcp-server-guide",

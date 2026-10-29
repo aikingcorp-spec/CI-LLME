@@ -66,9 +66,14 @@ const SCHEMAS = new Set([
   "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "https://agent-plugins.org/schemas/1.1.0/plugin.schema.json",
 ]);
-// Repositories can publish independent formats together. Prefer the legacy package
-// when present: its HTTP MCP config must not inherit the root Agent Plugins schema.
-const MANIFESTS = [".cursor-plugin/plugin.json", ".grok-plugin/plugin.json", "plugin.json"];
+// Prefer a VNBot Agent Plugins manifest. Keep legacy packages ahead of the root
+// manifest so their HTTP MCP config does not inherit an unrelated root schema.
+const MANIFESTS = [
+  ".vnbot-plugin/plugin.json",
+  ".cursor-plugin/plugin.json",
+  ".grok-plugin/plugin.json",
+  "plugin.json",
+];
 /** Parts that only run inside an editor or execute the plugin's own code on the host. */
 const UNSUPPORTED_DIRS = new Set(["rules", "hooks", "automations"]);
 const UNSUPPORTED_FILES = new Set([".lsp.json"]);
@@ -589,7 +594,7 @@ export function parsePluginDirectory(input: {
   const raw: unknown = JSON.parse(files.get(manifestPath) ?? "");
   if (!object(raw)) throw new Error("Plugin manifest must be an object");
   const format =
-    manifestPath === "plugin.json"
+    manifestPath === "plugin.json" || manifestPath === ".vnbot-plugin/plugin.json"
       ? "agent-plugins"
       : manifestPath.startsWith(".cursor")
         ? "cursor"
