@@ -981,6 +981,32 @@ describe("email code sign-in", () => {
   });
 });
 
+describe("sign-in code language over HTTP", () => {
+  const send = (f: ReturnType<typeof fixture>, body: object, headers: Record<string, string>) =>
+    f.request(
+      "/email-otp/send-verification-otp",
+      { email: "ada@example.test", type: "sign-in", ...body },
+      undefined,
+      headers,
+    );
+
+  it("lets the x-rakazo-locale header win over a body locale", async () => {
+    const f = fixture({ emailCodeOnly: true });
+    expect((await send(f, { locale: "vi" }, { "x-rakazo-locale": "en" })).status).toBe(200);
+    expect(f.messages.at(-1)?.subject).toBe("Your VNBot sign-in code");
+    expect((await send(f, { locale: "en" }, { "x-rakazo-locale": "vi" })).status).toBe(200);
+    expect(f.messages.at(-1)?.subject).toBe("Mã đăng nhập VNBot của bạn");
+  });
+
+  it("ignores a body locale and defaults to Vietnamese without the header", async () => {
+    const f = fixture({ emailCodeOnly: true });
+    await send(f, { locale: "en" }, {});
+    expect(f.messages.at(-1)?.subject).toBe("Mã đăng nhập VNBot của bạn");
+    await send(f, {}, {});
+    expect(f.messages.at(-1)?.subject).toBe("Mã đăng nhập VNBot của bạn");
+  });
+});
+
 describe("email invite list", () => {
   it("sends no code and returns EMAIL_NOT_INVITED for an address that is not invited", async () => {
     const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });

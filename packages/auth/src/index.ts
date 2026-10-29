@@ -850,12 +850,9 @@ export function initialAccountName(
 
 function localeFromAuthContext(ctx: unknown): string | undefined {
   if (!ctx || typeof ctx !== "object") return undefined;
-  const record = ctx as {
-    body?: { locale?: unknown };
-    headers?: Headers;
-    request?: Request;
-  };
-  if (typeof record.body?.locale === "string") return record.body.locale;
+  // The agreed carrier is the x-rakazo-locale header only. The endpoint's body
+  // schema has no locale field, so a body value could never be honoured anyway.
+  const record = ctx as { headers?: Headers; request?: Request };
   return (
     record.headers?.get("x-rakazo-locale") ??
     record.request?.headers.get("x-rakazo-locale") ??
