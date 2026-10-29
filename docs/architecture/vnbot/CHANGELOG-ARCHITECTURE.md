@@ -4,6 +4,16 @@ Each entry is a change versus the frozen Rakazo baseline at commit `c4b24547` (`
 
 Proposed decisions are listed so reviewers can see them. They do not change the running system until a later entry says they landed in code.
 
+## 2026-10-29 — Skills catalog response branding
+
+- Date: 2026-10-29
+- Pull request: not opened; local backend change.
+- What changed versus the baseline: the API applies the existing catalog text cleaner to third-party plugin previews, installed plugin names and preview metadata, and builtin/plugin skill list and detail responses. Plugin install and part-update responses use the same presentation mapping. Marketplace browse and integration search retain their existing cleaning.
+- Why: the Skills screen also reads installed and preview metadata, so cleaning only marketplace browse leaves third-party brand terms visible.
+- Files / modules: `apps/api/src/catalog-text.ts`, `apps/api/src/catalog-text.test.ts`, `apps/api/src/routes/mcp.ts`, `apps/api/src/routes/memory.ts`.
+- Invariants affected: cleaning changes response copies only. Stored identifiers, upstream marketplace slugs, install sources, hashes, format enums, file paths, and execution data remain intact. User-authored and taught skills are unchanged. No gateway persistence or provider requirement is added.
+- ADR: none; extends the existing catalog presentation rule.
+
 ## 2026-10-29 — Server-side audit fixes (APP-AUDIT-333cae3e)
 
 - Date: 2026-10-29
