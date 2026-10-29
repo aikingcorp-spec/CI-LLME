@@ -1719,15 +1719,6 @@ export function PluginsOverlay({
               ) : null}
 
               {catalogLoaded &&
-              catalog.length === 0 &&
-              !showFeatured &&
-              !pluginMatches.length &&
-              !brandMatches.length ? (
-                <p className="text-muted-foreground/80">
-                  <Trans>No managed app catalog is configured on this deployment.</Trans>
-                </p>
-              ) : null}
-              {catalogLoaded &&
               visible.length === 0 &&
               !showFeatured &&
               !pluginMatches.length &&

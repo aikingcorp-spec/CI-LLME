@@ -4076,7 +4076,7 @@ msgstr "Không còn hoạt động"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No managed app catalog is configured on this deployment."
-msgstr "Bản triển khai này chưa cấu hình danh mục ứng dụng được quản lý."
+msgstr "Chưa có ứng dụng để hiển thị."
 
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."

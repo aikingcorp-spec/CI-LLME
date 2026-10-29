@@ -32,6 +32,7 @@ import {
   serverSecretSpace,
 } from "../availability.js";
 import {
+  isCatalogContentAllowed,
   sanitizeCatalogInstall,
   sanitizeIntegrationResults,
   sanitizePluginCatalog,
@@ -155,8 +156,11 @@ export function mcpRoutes(ctx: RouterContext) {
           });
           return { enabled: true, results: sanitizeIntegrationResults(results) };
         } catch (error) {
+          getLogger().warn("integration catalog search failed", {
+            cause: error instanceof Error ? error.message : String(error),
+          });
           throw new ORPCError("BAD_GATEWAY", {
-            message: error instanceof Error ? error.message : "Integration catalog search failed",
+            message: "Chưa thể tìm ứng dụng lúc này. Vui lòng thử lại sau.",
           });
         }
       }),
@@ -302,11 +306,15 @@ export function mcpRoutes(ctx: RouterContext) {
       }),
       pluginPreview: authed.capabilities.pluginPreview.handler(async ({ context, input }) => {
         try {
+          if (!isCatalogContentAllowed({ source: input.source }))
+            throw new Error("Plugin source excluded by catalog content policy");
           const preview = await previewPluginInstall({
             source: input.source,
             signal: context.signal,
             fetcher: deps.pluginRepoFetcher,
           });
+          if (!isCatalogContentAllowed(pluginPreviewDto(preview)))
+            throw new Error("Plugin excluded by catalog content policy");
           for (const server of preview.mcpServers) {
             await assertMcpRemoteEndpoint(server.endpoint, deps);
           }
@@ -329,9 +337,10 @@ export function mcpRoutes(ctx: RouterContext) {
             transient,
             cause: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
           });
-          if (!transient) pluginMarketplace.markUnreadable(input.source);
+          // A failed preview must not erase a searchable app; explicit partial previews
+          // above still suppress plugins known to be incomplete.
           throw new ORPCError("BAD_REQUEST", {
-            message: "Could not preview a supported plugin from this repository",
+            message: "Chưa thể xem trước tiện ích này. Vui lòng thử lại sau.",
           });
         }
       }),
