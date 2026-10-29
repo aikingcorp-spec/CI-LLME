@@ -36,7 +36,7 @@ import {
   signInCodeLocale,
   verificationEmail,
 } from "./email.js";
-import { isEmailInvited, notInvited } from "./email-allowlist.js";
+import { isEmailInvited, notInvited, sessionNotInvited } from "./email-allowlist.js";
 import { hasRecentIdentityConfirmation, identityConfirmation } from "./identity-confirmation.js";
 import type { OidcConfig } from "./oidc.js";
 import { isCurrentOidcAccount, oidcDiscovery } from "./oidc.js";
@@ -483,6 +483,15 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
                 findSession: async (token: string) => {
                   const session = await findSession(token);
                   if (!session || isMessagingEmail(session.user.email)) return null;
+                  // Backstop for sessions that outlived their invite: removal deletes
+                  // them too, but a session read here after removal still ends here.
+                  if (env.emailAllowlist && !(await isEmailInvited(prisma, session.user.email))) {
+                    await ctx.context.internalAdapter.deleteUserSessions(session.user.id);
+                    // Only an auth HTTP request answers with the code; in-process
+                    // callers such as the RPC layer just see no session (401).
+                    if (ctx.request) throw sessionNotInvited();
+                    return null;
+                  }
                   if (session.user.emailVerified) return session;
                   if (env.oidc?.allowSignupBypass) {
                     const accounts = await ctx.context.internalAdapter.findAccounts(

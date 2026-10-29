@@ -28,6 +28,14 @@ export function notInvited(): APIError {
   });
 }
 
+/** A live session whose address left the invite list: 401 with the same code. */
+export function sessionNotInvited(): APIError {
+  return new APIError("UNAUTHORIZED", {
+    code: EMAIL_NOT_INVITED,
+    message: EMAIL_NOT_INVITED_MESSAGE,
+  });
+}
+
 export async function isEmailInvited(prisma: PrismaClient, raw: unknown): Promise<boolean> {
   const email = normalizeEmail(raw);
   if (!isAllowlistEmail(email)) return false;
@@ -67,14 +75,23 @@ export async function addAllowlistEmail(
   }
 }
 
+/**
+ * Removes the invite and, in the same transaction, deletes every session of the
+ * account with that address, so a removed person is signed out everywhere.
+ */
 export async function removeAllowlistEmail(
   prisma: PrismaClient,
   raw: unknown,
-): Promise<{ email: string; removed: boolean }> {
+): Promise<{ email: string; removed: boolean; sessionsRevoked: number }> {
   const email = normalizeEmail(raw);
   if (!isAllowlistEmail(email)) throw new Error("Email is not a usable invite address");
-  const result = await prisma.authEmailAllowlist.deleteMany({ where: { email } });
-  return { email, removed: result.count > 0 };
+  const [removed, revoked] = await prisma.$transaction([
+    prisma.authEmailAllowlist.deleteMany({ where: { email } }),
+    prisma.session.deleteMany({
+      where: { user: { email: { equals: email, mode: "insensitive" } } },
+    }),
+  ]);
+  return { email, removed: removed.count > 0, sessionsRevoked: revoked.count };
 }
 
 export async function listAllowlistEmails(prisma: PrismaClient): Promise<AllowlistEntry[]> {
@@ -100,7 +117,8 @@ export async function runEmailAllowlist(
   }
   if (command.action === "remove") {
     const result = await removeAllowlistEmail(prisma, command.email);
-    return result.removed ? `removed ${result.email}\n` : `not listed ${result.email}\n`;
+    if (!result.removed) return `not listed ${result.email}\n`;
+    return `removed ${result.email} (signed out ${result.sessionsRevoked} session${result.sessionsRevoked === 1 ? "" : "s"})\n`;
   }
   const result = await addAllowlistEmail(prisma, command.email, {
     note: command.note,

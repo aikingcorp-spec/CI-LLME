@@ -38,7 +38,22 @@ describe("invite list commands", () => {
       string,
       { email: string; note: string | null; addedBy: string | null; createdAt: Date }
     >();
+    const sessions: { userEmail: string }[] = [
+      { userEmail: "Lan@Gmail.com" },
+      { userEmail: "x@y.z" },
+    ];
     const prisma = {
+      $transaction: vi.fn(async (operations: Promise<unknown>[]) => Promise.all(operations)),
+      session: {
+        deleteMany: vi.fn(async ({ where }: { where: { user: { email: { equals: string } } } }) => {
+          const before = sessions.length;
+          const kept = sessions.filter(
+            (row) => row.userEmail.toLowerCase() !== where.user.email.equals,
+          );
+          sessions.splice(0, sessions.length, ...kept);
+          return { count: before - kept.length };
+        }),
+      },
       $queryRaw: vi.fn(async () => [{ bypass: "off" }]),
       $executeRaw: vi.fn(async () => 0),
       authEmailAllowlist: {
@@ -70,11 +85,11 @@ describe("invite list commands", () => {
         }),
       },
     };
-    return { prisma: prisma as never, rows };
+    return { prisma: prisma as never, rows, sessions };
   }
 
   it("adds, lists, and removes normalized addresses", async () => {
-    const { prisma, rows } = memory();
+    const { prisma, rows, sessions } = memory();
     expect(
       parseEmailAllowlistArgs(["add", "Lan@Gmail.com", "--note", "wave 1", "--added-by", "ops"]),
     ).toEqual({
@@ -102,7 +117,9 @@ describe("invite list commands", () => {
     expect(await removeAllowlistEmail(prisma, "lan@gmail.com")).toEqual({
       email: "lan@gmail.com",
       removed: true,
+      sessionsRevoked: 1,
     });
+    expect(sessions).toEqual([{ userEmail: "x@y.z" }]);
     expect(await isEmailInvited(prisma, "lan@gmail.com")).toBe(false);
     expect(
       await runEmailAllowlist(prisma, parseEmailAllowlistArgs(["remove", "missing@x.test"])),

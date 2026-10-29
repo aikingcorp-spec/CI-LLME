@@ -1007,6 +1007,23 @@ describe("email invite list", () => {
     expect(f.data.user).toHaveLength(0);
     expect((await f.signup("lan@gmail.com")).status).toBe(200);
   });
+  it("revokes a live session once the address leaves the invite list (401 EMAIL_NOT_INVITED)", async () => {
+    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
+    const { token } = (await (await f.signup("lan@gmail.com")).json()) as { token: string };
+    expect((await f.request("/get-session", undefined, token)).status).toBe(200);
+    expect(f.data.session).toHaveLength(1);
+
+    f.invited.delete("lan@gmail.com");
+    const revoked = await f.request("/get-session", undefined, token);
+    expect(revoked.status).toBe(401);
+    expect(await revoked.json()).toMatchObject({
+      code: "EMAIL_NOT_INVITED",
+      message: "This email is not invited yet",
+    });
+    expect(f.data.session).toHaveLength(0);
+    // The RPC layer reads sessions in-process: no session, so it answers 401 itself.
+    expect(await f.sessionFor(token)).toBeNull();
+  });
 });
 describe("passkeys", () => {
   const webOrigin = "https://web.example.test";
