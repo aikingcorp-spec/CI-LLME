@@ -233,7 +233,6 @@ export async function openUserSettings(
     | "memory"
     | "voice"
     | "vault"
-    | "wallet"
     | "usage"
     | "computer"
     | "billing"
