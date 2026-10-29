@@ -59,6 +59,7 @@ export {
 } from "./email.js";
 export {
   ALLOWLIST_USAGE,
+  addAllowlistEmail,
   EMAIL_NOT_INVITED_MESSAGE,
   isAllowlistEmail,
   normalizeEmail,
