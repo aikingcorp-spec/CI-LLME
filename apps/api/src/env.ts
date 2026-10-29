@@ -62,7 +62,8 @@ export interface AppEnv {
   ticketBoardEnabled: boolean;
   /** USER_DEVICES_ENABLED=false stops users connecting their own computers. Default on. */
   userDevicesEnabled: boolean;
-  /** Operator menu links that frame a same-origin page (RAKAZO_NAV_LINKS). */
+  /** Operator menu links that frame a same-origin page (VNBOT_NAV_LINKS, or legacy RAKAZO_NAV_LINKS). The label is shown as written,
+   * so write it in the users' language (e.g. "Khách hàng"). */
   navLinks?: NavLink[];
   phoneCallsEnabled: boolean;
   phoneCallRingSeconds: number;
@@ -245,7 +246,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     piSessionRecording: source.PI_SESSION_RECORDING === "true",
     ticketBoardEnabled: source.TICKET_BOARD_ENABLED === "true",
     userDevicesEnabled: source.USER_DEVICES_ENABLED !== "false",
-    navLinks: parseNavLinks(source.RAKAZO_NAV_LINKS),
+    // VNBOT_NAV_LINKS wins; RAKAZO_NAV_LINKS still works for older deployments.
+    navLinks: parseNavLinks(source.VNBOT_NAV_LINKS ?? source.RAKAZO_NAV_LINKS),
     ...phoneCallSettings(source),
     maxUploadSizeBytes: uploadSizeFromEnv(source),
     voiceSummaryMinChars: voiceSummaryMinCharsFromEnv(source.VOICE_SUMMARY_MIN_CHARS),

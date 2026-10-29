@@ -11,6 +11,8 @@ export const BANNED_BRAND_TERMS_ANY_CASE = [
   "open[\\s-]?source",
   "mã nguồn mở",
   "github\\.com/elie222",
+  // The upstream owner in any URL form: ghcr.io/…, raw.githubusercontent.com/…, api.github.com/repos/….
+  "elie222",
   "apps\\.apple\\.com/app/rakazo",
 ] as const;
 

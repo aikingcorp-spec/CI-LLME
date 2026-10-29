@@ -379,6 +379,7 @@ function isAliasModelId(id: string, providerModelIds: readonly string[]): boolea
   );
 }
 
+/** Shown as provider guidance; VNBot is Vietnamese-first (PRODUCT.md) and the catalog has no request locale. */
 function catalogBilling(
   providerId: string,
   name: string,
@@ -387,18 +388,18 @@ function catalogBilling(
   const signInMeta = SUBSCRIPTION_SIGN_IN_PROVIDERS[providerId];
   if (signInMeta) return signInMeta.billing;
   if (providerId === LOCAL_PROVIDER_ID) {
-    return "Runs on infrastructure configured by the server operator. No model charges from VNBot.";
+    return "Chạy trên hạ tầng do người quản trị máy chủ cấu hình. VNBot không thu phí mô hình.";
   }
   if (providerId === OPENAI_COMPATIBLE_PROVIDER_ID) {
-    return "Runs on a URL you control. VNBot does not pay for model usage.";
+    return "Chạy trên địa chỉ do bạn quản lý. VNBot không trả phí dùng mô hình.";
   }
   if (opts.oauth && !opts.apiKey) {
-    return `${name} subscription login is not in the VNBot UI yet. Skip if this deployment already has credentials.`;
+    return `Giao diện VNBot chưa hỗ trợ đăng nhập gói ${name}. Bỏ qua nếu máy chủ này đã có thông tin đăng nhập.`;
   }
   if (opts.apiKey) {
-    return `Uses your ${name} API key. VNBot does not pay for model usage.`;
+    return `Dùng khóa API ${name} của bạn. VNBot không trả phí dùng mô hình.`;
   }
-  return `Uses your ${name} key. VNBot does not pay for model usage.`;
+  return `Dùng khóa ${name} của bạn. VNBot không trả phí dùng mô hình.`;
 }
 
 export const scriptedCatalogEntry: PiCatalogEntry = {

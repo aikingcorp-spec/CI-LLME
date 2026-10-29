@@ -343,6 +343,44 @@ describe("GitHub acquisition", () => {
       return JSON.stringify(manifest);
     });
   }
+  it("retries one stalled GitHub request instead of failing the preview", async () => {
+    const inner = reader();
+    let stalled = false;
+    const read = vi.fn(async (url: string, max: number, signal?: AbortSignal) => {
+      if (!stalled && url.includes("raw.githubusercontent.com")) {
+        stalled = true;
+        throw Object.assign(new Error("The operation timed out"), { name: "TimeoutError" });
+      }
+      return inner(url);
+    });
+    const repo = await fetchGitHubRepo(
+      parsePluginSource("https://github.com/example/plugin@main"),
+      undefined,
+      read,
+    );
+    expect(repo.resolvedSha).toBe(SHA);
+    expect(read.mock.calls.filter(([url]) => url.includes("raw.githubusercontent")).length).toBe(2);
+  });
+  it("sends GITHUB_TOKEN only to the GitHub API, never to raw file hosts", async () => {
+    const read = reader();
+    vi.stubEnv("GITHUB_TOKEN", "test-token");
+    try {
+      await fetchGitHubRepo(
+        parsePluginSource("https://github.com/example/plugin@main"),
+        undefined,
+        read,
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    for (const [url, , , headers] of read.mock.calls as unknown as Array<
+      [string, number, AbortSignal, Record<string, string> | undefined]
+    >) {
+      if (url.startsWith("https://api.github.com/"))
+        expect(headers?.authorization).toBe("Bearer test-token");
+      else expect(headers?.authorization).toBeUndefined();
+    }
+  });
   it("resolves once then fetches an immutable tree and raw files", async () => {
     const read = reader();
     const repo = await fetchGitHubRepo(

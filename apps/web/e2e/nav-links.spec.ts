@@ -15,15 +15,15 @@ test("an operator menu link opens its page sandboxed inside the app", async ({
   await completeOnboarding(page);
 
   await page.getByTestId("user-menu-trigger").click();
-  await page.getByRole("button", { name: "Clients", exact: true }).click();
+  await page.getByRole("button", { name: "Khách hàng", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/x\/clients$/);
-  await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
-  const frame = page.locator("iframe[title='Clients']");
+  await expect(page.getByRole("heading", { name: "Khách hàng", exact: true })).toBeVisible();
+  const frame = page.locator("iframe[title='Khách hàng']");
   await expect(frame).toHaveAttribute(
     "sandbox",
     "allow-scripts allow-forms allow-popups allow-downloads",
   );
-  await expect(page.frameLocator("iframe[title='Clients']").getByRole("heading")).toHaveText(
+  await expect(page.frameLocator("iframe[title='Khách hàng']").getByRole("heading")).toHaveText(
     "Client list",
   );
   await captureScreenshot(page, testInfo, "nav-link-page");

@@ -44,7 +44,7 @@ function isCurrentPage(href: string): boolean {
   return (href.replace(/\/+$/, "") || "/") === currentPath;
 }
 
-type FooterLink = { href: string; label: string; external?: boolean };
+type FooterLink = { href: string | null; label: string; external?: boolean };
 
 const columns: Array<{ heading: string; links: FooterLink[] }> = [
   {
@@ -114,13 +114,17 @@ const columns: Array<{ heading: string; links: FooterLink[] }> = [
           <ul>
             {column.links.map((link) => (
               <li>
-                <a
-                  href={link.href}
-                  aria-current={!link.external && isCurrentPage(link.href) ? "page" : undefined}
-                  {...(link.external ? { target: "_blank", rel: "noreferrer" } : {})}
-                >
-                  {link.label}
-                </a>
+                {link.href === null ? (
+                  <span>{link.label}</span>
+                ) : (
+                  <a
+                    href={link.href}
+                    aria-current={!link.external && isCurrentPage(link.href) ? "page" : undefined}
+                    {...(link.external ? { target: "_blank", rel: "noreferrer" } : {})}
+                  >
+                    {link.label}
+                  </a>
+                )}
               </li>
             ))}
           </ul>

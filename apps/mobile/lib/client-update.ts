@@ -52,7 +52,8 @@ export async function applyRequiredUpdate(): Promise<void> {
   } catch {
     // An unreachable update server falls through to the store.
   }
-  await Linking.openURL(Platform.OS === "ios" ? IOS_APP_STORE_URL : ANDROID_APK_URL).catch(
+  // No iOS listing yet: the download page says "iOS sắp có" and links the builds that exist.
+  await Linking.openURL((Platform.OS === "ios" && IOS_APP_STORE_URL) || ANDROID_APK_URL).catch(
     () => undefined,
   );
 }

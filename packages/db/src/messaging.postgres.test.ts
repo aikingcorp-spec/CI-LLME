@@ -60,7 +60,7 @@ describePostgres("provisionMessagingIdentity (PostgreSQL)", () => {
     expect(user!.members[0]!.role).toBe("owner");
 
     const org = await asSystem(prisma).organization.findUnique({ where: { id: result.spaceId } });
-    expect(org!.name).toBe("Personal");
+    expect(org!.name).toBe("Cá nhân");
     expect(org!.slug).toBe(`user-${result.userId.slice(0, 12)}`);
 
     const space = await asSystem(prisma).space.findUnique({
@@ -69,7 +69,7 @@ describePostgres("provisionMessagingIdentity (PostgreSQL)", () => {
     });
     expect(space).toMatchObject({
       organizationId: org!.id,
-      name: "Personal",
+      name: "Cá nhân",
     });
     expect(space!.memberships).toEqual([expect.objectContaining({ userId: result.userId })]);
 

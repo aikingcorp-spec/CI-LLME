@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 /**
- * Operator-configured menu links (RAKAZO_NAV_LINKS) that open a same-origin page inside the app.
+ * Operator-configured menu links (VNBOT_NAV_LINKS, legacy RAKAZO_NAV_LINKS) that open a same-origin page inside the app.
  * The operator's reverse proxy serves the path; Rakazo only frames it.
  */
 
@@ -10,7 +10,9 @@ const RESERVED_PREFIXES = ["/app", "/api", "/rpc", "/novnc", "/health"];
 
 function isSameOriginPath(path: string) {
   if (!path.startsWith("/") || path.startsWith("//") || /[\\\s]/.test(path)) return false;
+  // brand-allow: parse-only base URL, never requested or shown 2026-12-31 Kai (chờ Maya duyệt)
   const url = new URL(path, "http://rakazo.invalid");
+  // brand-allow: parse-only base URL, never requested or shown 2026-12-31 Kai (chờ Maya duyệt)
   if (url.origin !== "http://rakazo.invalid") return false;
   return !RESERVED_PREFIXES.some(
     (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
@@ -37,12 +39,12 @@ export function parseNavLinks(value: string | undefined): NavLink[] {
   try {
     json = JSON.parse(value);
   } catch {
-    throw new Error("RAKAZO_NAV_LINKS must be a JSON array");
+    throw new Error("VNBOT_NAV_LINKS must be a JSON array");
   }
   const parsed = NavLinksSchema.safeParse(json);
   if (!parsed.success) {
     throw new Error(
-      `Invalid RAKAZO_NAV_LINKS: ${parsed.error.issues.map((issue) => `${issue.path.join(".") || "value"}: ${issue.message}`).join("; ")}`,
+      `Invalid VNBOT_NAV_LINKS: ${parsed.error.issues.map((issue) => `${issue.path.join(".") || "value"}: ${issue.message}`).join("; ")}`,
     );
   }
   return parsed.data;

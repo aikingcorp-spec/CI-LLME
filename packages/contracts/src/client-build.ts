@@ -16,7 +16,8 @@ export const CLIENT_KINDS = ["web", "mobile"] as const;
 export type ClientKind = (typeof CLIENT_KINDS)[number];
 export type MinimumClientBuilds = Partial<Record<ClientKind, string>>;
 
-export const IOS_APP_STORE_URL = "https://apps.apple.com/app/rakazo/id6801531099";
+/** iOS is not released yet (PRODUCT.md: "iOS sắp có"). Null until there is a real App Store listing. */
+export const IOS_APP_STORE_URL: string | null = null;
 export const ANDROID_APK_URL = "https://vnbot.run/#tai-ve";
 
 const BUILD_ID = /^\d{14}$/;

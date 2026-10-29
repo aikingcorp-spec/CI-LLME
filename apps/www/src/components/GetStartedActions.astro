@@ -16,7 +16,11 @@ const { class: className, copy } = Astro.props;
   <a class="button button--primary" href={APP_URL} data-show="mac windows linux web">
     {copy.getStarted}
   </a>
-  <a class="button button--primary" href={IOS_APP_URL} data-show="ios">{copy.download.ios}</a>
+  {IOS_APP_URL ? (
+    <a class="button button--primary" href={IOS_APP_URL} data-show="ios">{copy.download.ios}</a>
+  ) : (
+    <span class="button button--primary" aria-disabled="true" data-show="ios">{copy.download.ios}</span>
+  )}
   <a class="button button--primary" href={ANDROID_APK_URL} data-show="android">
     {copy.download.android}
   </a>

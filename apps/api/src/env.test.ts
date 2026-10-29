@@ -52,7 +52,14 @@ describe("loadEnv", () => {
     ).toEqual([{ id: "clients", label: "Clients", path: "/ext/clients/", trusted: false }]);
     expect(() =>
       loadEnv({ ...base, RAKAZO_NAV_LINKS: '[{"id":"x","label":"X","path":"/api/me"}]' }),
-    ).toThrow("RAKAZO_NAV_LINKS");
+    ).toThrow("VNBOT_NAV_LINKS");
+    expect(
+      loadEnv({
+        ...base,
+        RAKAZO_NAV_LINKS: '[{"id":"old","label":"Old","path":"/ext/old/"}]',
+        VNBOT_NAV_LINKS: '[{"id":"clients","label":"Khách hàng","path":"/ext/clients/"}]',
+      }).navLinks,
+    ).toEqual([{ id: "clients", label: "Khách hàng", path: "/ext/clients/", trusted: false }]);
   });
   it("keeps Crisp chat off unless a valid website ID is set", () => {
     expect(loadEnv(base).crispWebsiteId).toBeNull();

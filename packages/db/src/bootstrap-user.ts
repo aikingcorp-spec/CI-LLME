@@ -16,6 +16,9 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 /** Provision a personal workspace. Signup never grants deployment administration. */
+/** VNBot is Vietnamese-first (PRODUCT.md); the user can rename this space in Settings. */
+export const DEFAULT_PERSONAL_SPACE_NAME = "Cá nhân";
+
 export async function bootstrapUserSpace(
   prisma: PrismaClient,
   user: { id: string },
@@ -28,7 +31,7 @@ export async function bootstrapUserSpace(
   let orgId = newId();
   try {
     await prisma.organization.create({
-      data: { id: orgId, name: "Personal", slug, createdAt: new Date() },
+      data: { id: orgId, name: DEFAULT_PERSONAL_SPACE_NAME, slug, createdAt: new Date() },
     });
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
@@ -52,7 +55,7 @@ export async function bootstrapUserSpace(
       data: {
         id: orgId,
         organizationId: orgId,
-        name: "Personal",
+        name: DEFAULT_PERSONAL_SPACE_NAME,
         isDefault: true,
         createdByUserId: user.id,
         createdAt: new Date(),

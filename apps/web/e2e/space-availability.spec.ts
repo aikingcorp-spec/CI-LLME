@@ -45,8 +45,8 @@ test("a new space chooses what it can use, and a skill can be limited to some sp
   await yours.getByRole("button", { name: /weekly-review/ }).click();
   const availability = yours.getByTestId("availability");
   await expect(availability).toContainText("Available in");
-  await availability.getByRole("button", { name: /Personal/ }).click();
-  await expect(page.getByRole("menuitemcheckbox", { name: "Personal" })).toBeChecked();
+  await availability.getByRole("button", { name: /Cá nhân/ }).click();
+  await expect(page.getByRole("menuitemcheckbox", { name: "Cá nhân" })).toBeChecked();
   await expect(page.getByRole("menuitemcheckbox", { name: "Clients" })).not.toBeChecked();
   await captureScreenshot(page, testInfo, "skill-available-in");
 });

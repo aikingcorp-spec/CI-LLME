@@ -184,9 +184,57 @@ export type PluginTextReader = (
   url: string,
   maxBytes: number,
   signal?: AbortSignal,
+  headers?: Record<string, string>,
 ) => Promise<string>;
-const readPublicText: PluginTextReader = async (url, maxBytes, signal) =>
-  (await fetchSafeWebText(url, { maxBytes, signal })).body;
+const readPublicText: PluginTextReader = async (url, maxBytes, signal, headers) =>
+  (await fetchSafeWebText(url, { maxBytes, signal, headers })).body;
+
+/** Unauthenticated GitHub API calls share 60 per hour per server IP. An operator can set
+ * GITHUB_TOKEN (any read-only token) to raise that; it is sent only to api.github.com. */
+export function githubApiHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { accept: "application/vnd.github+json" };
+  const token = process.env.GITHUB_TOKEN?.trim();
+  if (token) headers.authorization = `Bearer ${token}`;
+  return headers;
+}
+
+/** One stalled connection must not eat the whole preview budget: each request gets its own
+ * short deadline and one retry, inside the overall deadline. */
+const ATTEMPT_TIMEOUT_MS = 8_000;
+async function readWithRetry(
+  read: PluginTextReader,
+  url: string,
+  maxBytes: number,
+  deadline: AbortSignal,
+  headers?: Record<string, string>,
+): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await read(
+        url,
+        maxBytes,
+        AbortSignal.any([deadline, AbortSignal.timeout(ATTEMPT_TIMEOUT_MS)]),
+        headers,
+      );
+    } catch (error) {
+      // GitHub answers an exhausted unauthenticated quota with 403; that says nothing about the
+      // plugin, so report it as a rate limit and keep the plugin in browse.
+      if (
+        url.startsWith("https://api.github.com/") &&
+        error instanceof Error &&
+        /HTTP 403\b/.test(error.message)
+      )
+        throw new Error("Request failed: HTTP 429 (GitHub API rate limit; set GITHUB_TOKEN)");
+      if (attempt >= 1 || deadline.aborted || !isTransientFetchError(error)) throw error;
+    }
+  }
+}
+
+/** Files at a resolved commit never change, so repeat previews of the same plugin skip the
+ * tree and file downloads and cost one commit lookup. */
+const REPO_CACHE_TTL_MS = 10 * 60_000;
+const REPO_CACHE_MAX = 100;
+const repoCache = new Map<string, { expires: number; files: PluginRepoFile[] }>();
 
 export async function fetchGitHubRepo(
   ref: PluginSourceRef,
@@ -198,11 +246,14 @@ export async function fetchGitHubRepo(
     throw new Error("Only public github.com plugin sources are supported right now");
   const repo = url.pathname;
   const deadline = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(30_000)]);
+  const apiHeaders = githubApiHeaders();
   const commit = JSON.parse(
-    await read(
+    await readWithRetry(
+      read,
       `https://api.github.com/repos${repo}/commits/${encodeURIComponent(ref.ref ?? "HEAD")}`,
       512_000,
       deadline,
+      apiHeaders,
     ),
   ) as { sha?: string; commit?: { tree?: { sha?: string } } };
   const sha = commit.sha;
@@ -211,11 +262,19 @@ export async function fetchGitHubRepo(
     throw new Error("Plugin commit SHA did not match the requested pin");
   const treeSha = commit.commit?.tree?.sha;
   if (!treeSha || !FULL_SHA.test(treeSha)) throw new Error("Could not resolve plugin tree");
+  const cacheKey = `${repo}@${sha}#${ref.subdir ?? ""}`;
+  // Only the real public reader is cached; injected readers (tests, other hosts) always read.
+  const cacheable = read === readPublicText;
+  const hit = cacheable ? repoCache.get(cacheKey) : undefined;
+  if (hit && hit.expires > Date.now())
+    return { files: hit.files.map((file) => ({ ...file })), resolvedSha: sha };
   const tree = JSON.parse(
-    await read(
+    await readWithRetry(
+      read,
       `https://api.github.com/repos${repo}/git/trees/${treeSha}?recursive=1`,
       MAX_BYTES,
       deadline,
+      apiHeaders,
     ),
   ) as {
     truncated?: boolean;
@@ -258,7 +317,8 @@ export async function fetchGitHubRepo(
   await Promise.all(
     Array.from({ length: FETCH_CONCURRENCY }, async () => {
       for (let path = queue.shift(); path !== undefined; path = queue.shift()) {
-        const body = await read(
+        const body = await readWithRetry(
+          read,
           `https://raw.githubusercontent.com${repo}/${sha}/${path.split("/").map(encodeURIComponent).join("/")}`,
           MAX_FILE_BYTES,
           deadline,
@@ -271,7 +331,10 @@ export async function fetchGitHubRepo(
   );
   // Parallel downloads finish in any order; parsing must not depend on it.
   files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  return { files, resolvedSha: sha };
+  if (cacheable && repoCache.size >= REPO_CACHE_MAX)
+    repoCache.delete(repoCache.keys().next().value as string);
+  if (cacheable) repoCache.set(cacheKey, { expires: Date.now() + REPO_CACHE_TTL_MS, files });
+  return { files: files.map((file) => ({ ...file })), resolvedSha: sha };
 }
 
 function object(value: unknown): value is Record<string, unknown> {

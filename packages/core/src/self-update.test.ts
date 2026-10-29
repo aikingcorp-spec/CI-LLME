@@ -18,7 +18,7 @@ import {
 describe("normalizeRepoUrl", () => {
   it("accepts the official repository and https forks", () => {
     expect(normalizeRepoUrl(OFFICIAL_REPO_URL)).toEqual({
-      url: "https://github.com/elie222/rakazo",
+      url: "https://github.com/aikingcorp-spec/vnbot",
     });
     expect(normalizeRepoUrl("  https://github.com/me/rakazo.git/  ")).toEqual({
       url: "https://github.com/me/rakazo.git",
@@ -69,18 +69,18 @@ describe("normalizeRepoUrl", () => {
 
 describe("repoIdentity", () => {
   it("treats every spelling of the same remote as one repository", () => {
-    const identity = "github.com/elie222/rakazo";
-    expect(repoIdentity("https://github.com/elie222/rakazo")).toBe(identity);
-    expect(repoIdentity("https://github.com/elie222/rakazo.git")).toBe(identity);
-    expect(repoIdentity("git@github.com:elie222/rakazo.git")).toBe(identity);
-    expect(repoIdentity("ssh://git@github.com/Elie222/Rakazo")).toBe(identity);
+    const identity = "github.com/aikingcorp-spec/vnbot";
+    expect(repoIdentity("https://github.com/aikingcorp-spec/vnbot")).toBe(identity);
+    expect(repoIdentity("https://github.com/aikingcorp-spec/vnbot.git")).toBe(identity);
+    expect(repoIdentity("git@github.com:aikingcorp-spec/vnbot.git")).toBe(identity);
+    expect(repoIdentity("ssh://git@github.com/AikingCorp-Spec/VNBot")).toBe(identity);
     expect(repoIdentity("not a url")).toBeNull();
   });
 
   it("only calls the real upstream official", () => {
-    expect(isOfficialRepoUrl("git@github.com:elie222/rakazo.git")).toBe(true);
+    expect(isOfficialRepoUrl("git@github.com:aikingcorp-spec/vnbot.git")).toBe(true);
     expect(isOfficialRepoUrl("https://github.com/attacker/rakazo")).toBe(false);
-    expect(isOfficialRepoUrl("https://githubb.com/elie222/rakazo")).toBe(false);
+    expect(isOfficialRepoUrl("https://githubb.com/aikingcorp-spec/vnbot")).toBe(false);
   });
 });
 

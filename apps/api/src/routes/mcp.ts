@@ -321,7 +321,15 @@ export function mcpRoutes(ctx: RouterContext) {
           });
         } catch (error) {
           // Only content we can't support leaves browse; a slow or failing GitHub is retried.
-          if (!isTransientFetchError(error)) pluginMarketplace.markUnreadable(input.source);
+          const transient = isTransientFetchError(error);
+          // The client only sees a generic message; the log says whether GitHub refused
+          // (HTTP 403/429 = rate limit, set GITHUB_TOKEN), timed out, or the plugin is unsupported.
+          getLogger().warn("plugin preview failed", {
+            source: input.source,
+            transient,
+            cause: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+          });
+          if (!transient) pluginMarketplace.markUnreadable(input.source);
           throw new ORPCError("BAD_REQUEST", {
             message: "Could not preview a supported plugin from this repository",
           });

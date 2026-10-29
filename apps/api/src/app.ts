@@ -135,6 +135,7 @@ import { storeInboundAttachment } from "./artifacts.js";
 import { createBillingService } from "./billing.js";
 import { vnbotBillingProvider } from "./billing-off.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
+import { withCatalogLocale } from "./catalog-text.js";
 import { clientBuildMiddleware, readDeployedWebBuild } from "./client-build.js";
 import {
   clientIpMiddleware,
@@ -895,22 +896,25 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     if (actor) {
       enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
     }
-    const { matched, response } = await rpc.handle(c.req.raw, {
-      prefix: "/rpc",
-      context: {
-        actor,
-        sessionId: session?.sessionId,
-        signal: c.req.raw.signal,
-        // Same user in the same space, so leaving the space also ends a stream.
-        // A database failure rejects this check; only a missing membership is unauthorized.
-        stillAuthorized: async () => {
-          const current = await sessionActor(c.req.raw);
-          return Boolean(
-            actor && current?.userId === actor.userId && current.spaceId === actor.spaceId,
-          );
+    const locale = c.req.header("x-vnbot-ui-locale") ?? null;
+    const { matched, response } = await withCatalogLocale(locale, () =>
+      rpc.handle(c.req.raw, {
+        prefix: "/rpc",
+        context: {
+          actor,
+          sessionId: session?.sessionId,
+          signal: c.req.raw.signal,
+          // Same user in the same space, so leaving the space also ends a stream.
+          // A database failure rejects this check; only a missing membership is unauthorized.
+          stillAuthorized: async () => {
+            const current = await sessionActor(c.req.raw);
+            return Boolean(
+              actor && current?.userId === actor.userId && current.spaceId === actor.spaceId,
+            );
+          },
         },
-      },
-    });
+      }),
+    );
     if (matched) return c.newResponse(response.body, response);
     await next();
   });
