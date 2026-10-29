@@ -737,7 +737,7 @@ msgstr "Nhà cung cấp này đã lưu khóa API, không phải thông tin đăn
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "An existing Honcho peer to read from. VNBot never writes to it."
-msgstr "Một peer Honcho có sẵn để đọc dữ liệu. VNBot không bao giờ ghi vào đó."
+msgstr "Peer Honcho có sẵn để VNBot đọc. VNBot không ghi gì vào đây."
 
 #: src/lib/agent-import-errors.ts
 msgid "An imported API key could not be checked. Try again."
@@ -3106,7 +3106,7 @@ msgstr "Bạn hãy kết thúc cuộc gọi rồi nhập mã trên màn hình."
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "hch-…"
-msgstr "mã hch-…"
+msgstr "Khóa API (bắt đầu bằng hch-)"
 
 #: src/pages/RoutineEditor.tsx
 msgid "header"
@@ -3246,7 +3246,7 @@ msgstr "Nhập"
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Import an agent"
-msgstr "Nhập một bot"
+msgstr "Nhập bot có sẵn"
 
 #: src/pages/shell/composer.tsx
 msgid "Import this agent as a bot?"
@@ -3426,6 +3426,7 @@ msgid "Language"
 msgstr "Ngôn ngữ"
 
 #: src/components/LanguageSwitch.tsx
+#: src/components/LanguageSwitchMenu.tsx
 msgid "Language: {label}"
 msgstr "Ngôn ngữ: {label}"
 
@@ -6334,11 +6335,15 @@ msgstr "Dùng mặc định của không gian"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Use up to 512 letters, digits, _ or -."
-msgstr "Dùng tối đa 512 chữ cái, chữ số, _ hoặc -."
+msgstr "Tối đa 512 ký tự: chữ, số, _ hoặc -."
+
+#: src/pages/Onboarding.tsx
+msgid "Use your own key — VNBot doesn't provide a model"
+msgstr "Dùng key của bạn, VNBot không cung cấp model"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "User peer"
-msgstr "Peer người dùng"
+msgstr "Peer của người dùng"
 
 #: src/components/AskCard.tsx
 #: src/components/VaultSettings.tsx
@@ -6400,11 +6405,11 @@ msgstr "VNBot đang mở thử nghiệm giới hạn"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "vnbot-<space>"
-msgstr "vnbot-<space> (khoảng trống)"
+msgstr "vd: vnbot-congty"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
-msgstr "vnbot-shared và các ID bắt đầu bằng bot- được dành riêng cho VNBot."
+msgstr "vnbot-shared và các ID bắt đầu bằng bot- là của riêng VNBot."
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -6555,7 +6560,7 @@ msgstr "Đang làm…"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Workspace"
-msgstr "Vùng làm việc"
+msgstr "Không gian làm việc"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Write file"

@@ -3426,6 +3426,7 @@ msgid "Language"
 msgstr "שפה"
 
 #: src/components/LanguageSwitch.tsx
+#: src/components/LanguageSwitchMenu.tsx
 msgid "Language: {label}"
 msgstr ""
 
@@ -6334,6 +6335,10 @@ msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Use up to 512 letters, digits, _ or -."
+msgstr ""
+
+#: src/pages/Onboarding.tsx
+msgid "Use your own key — VNBot doesn't provide a model"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx

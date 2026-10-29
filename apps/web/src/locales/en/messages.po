@@ -3426,6 +3426,7 @@ msgid "Language"
 msgstr "Language"
 
 #: src/components/LanguageSwitch.tsx
+#: src/components/LanguageSwitchMenu.tsx
 msgid "Language: {label}"
 msgstr "Language: {label}"
 
@@ -6335,6 +6336,10 @@ msgstr "Use space default"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Use up to 512 letters, digits, _ or -."
 msgstr "Use up to 512 letters, digits, _ or -."
+
+#: src/pages/Onboarding.tsx
+msgid "Use your own key — VNBot doesn't provide a model"
+msgstr "Use your own key — VNBot doesn't provide a model"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "User peer"
