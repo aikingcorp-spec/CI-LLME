@@ -36,7 +36,8 @@ it.skipIf(!databaseUrl)(
         headers: { "content-type": "application/json", origin: webOrigin },
         body: JSON.stringify(body),
       });
-    const welcomes = () => email.sent.filter((message) => message.subject === "Chào mừng bạn đến với VNBot");
+    const welcomes = () =>
+      email.sent.filter((message) => message.subject === "Chào mừng bạn đến với VNBot");
     try {
       expect((await post("/api/auth/sign-up/email", { ...credentials, name: "New" })).status).toBe(
         200,
