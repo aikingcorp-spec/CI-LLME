@@ -10,8 +10,10 @@ import {
   updaterSupport,
 } from "./auto-update.js";
 
+vi.mock("./monitoring.js", () => ({ reportDesktopError: vi.fn() }));
+
 const NOW = "2026-08-22T12:00:00.000Z";
-const packaged = { packaged: true, version: "0.1.0" };
+const packaged = { disabled: false, packaged: true, version: "0.1.0" };
 const clock = { now: () => 1_000, iso: () => NOW };
 
 function apply(events: UpdaterEvent[], env = packaged) {
@@ -55,14 +57,15 @@ function deferred() {
 }
 
 describe("updaterSupport", () => {
-  it("only runs in an installed build that has not opted out", () => {
+  it("only runs in an installed build that explicitly opts in", () => {
     expect(updaterSupport(packaged).supported).toBe(true);
+    expect(updaterSupport({ packaged: true, version: "0.1.0" }).supported).toBe(false);
     expect(updaterSupport({ packaged: false, version: "0.1.0" }).supported).toBe(false);
     expect(updaterSupport({ ...packaged, disabled: true }).supported).toBe(false);
   });
 
   it("starts unsupported builds in a state that explains itself", () => {
-    const state = initialUpdateState({ packaged: false, version: "0.1.0" });
+    const state = initialUpdateState({ packaged: false, version: "0.1.0", disabled: false });
     expect(state).toMatchObject({ phase: "unsupported", currentVersion: "0.1.0" });
     expect(state.message).toContain("installed build");
   });

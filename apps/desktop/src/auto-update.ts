@@ -13,7 +13,7 @@ export interface UpdaterEnvironment {
 }
 
 export function updaterSupport(env: UpdaterEnvironment): { supported: boolean; reason: string } {
-  if (env.disabled === true) {
+  if (env.disabled !== false) {
     return { supported: false, reason: "Automatic updates are turned off for this install." };
   }
   if (!env.packaged) {

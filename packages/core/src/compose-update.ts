@@ -265,7 +265,7 @@ export function resolveExecutionMode(input: {
   hasCheckout?: boolean;
   disabled?: boolean;
 }): ExecutionModeDecision {
-  if (input.disabled === true) {
+  if (input.disabled !== false) {
     return { mode: "unavailable", reason: "Self-update is switched off for this deployment." };
   }
   if (input.hasUpdater === true) return { mode: "sidecar", reason: null };

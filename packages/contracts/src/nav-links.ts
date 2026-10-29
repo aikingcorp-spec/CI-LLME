@@ -10,10 +10,8 @@ const RESERVED_PREFIXES = ["/app", "/api", "/rpc", "/novnc", "/health"];
 
 function isSameOriginPath(path: string) {
   if (!path.startsWith("/") || path.startsWith("//") || /[\\\s]/.test(path)) return false;
-  // brand-allow: parse-only base URL, never requested or shown 2026-12-31 Kai (chờ Maya duyệt)
-  const url = new URL(path, "http://rakazo.invalid");
-  // brand-allow: parse-only base URL, never requested or shown 2026-12-31 Kai (chờ Maya duyệt)
-  if (url.origin !== "http://rakazo.invalid") return false;
+  const url = new URL(path, "http://vnbot.invalid");
+  if (url.origin !== "http://vnbot.invalid") return false;
   return !RESERVED_PREFIXES.some(
     (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
   );

@@ -122,3 +122,13 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/web/src/App.tsx`, settings, onboarding, sidebar, auth, integration catalog rendering, locale helpers and unit tests; `apps/web/index.html`; `apps/web/vite.config.ts`; `packages/core/src/run-error.ts`.
 - Invariants affected: no API endpoints, shared API types, auth policy, server defaults, data storage, or migrations change. Passkeys reuse the existing auth endpoints. Production assets omit source maps. Locale catalogs are maintained separately.
 - ADR: none
+
+## 2026-10-29 — VNBot distribution defaults
+
+- Date: 2026-10-29
+- Pull request: none (local commits only)
+- What changed versus baseline: published app, computer and updater image defaults and installation repository URLs use `aikingcorp-spec/vnbot`. Offline release fixtures use the same repository. Desktop and shared update mode selection require explicit opt-in; the updater sidecar refuses to start unless `RAKAZO_DISABLE_AUTO_UPDATE=0`, and Compose and environment examples default to `1`. Plugin preview rate-limit errors state the unauthenticated quota; the per-commit cache and optional token remain. Non-provider upstream URLs and temporary brand exceptions are removed; the site catalog has an environment override.
+- Why: installs must use the VNBot distribution rather than upstream artifacts, and unpublished releases must not trigger update attempts.
+- Modules and files: Compose manifests and examples, installer, Kubernetes sandbox default, desktop updater, shared update mode, plugin preview diagnostics, neutral emulator hosts, navigation parsing, site catalog and competitor citations, updater assertions, setup and self-host documentation.
+- Invariants affected: source package identifiers remain Rakazo; sandbox contracts and data storage are unchanged. Frozen baseline documentation is unchanged.
+- ADR: [0008 — distribution and update opt-in](adr/0008-distribution-and-update-opt-in.md)

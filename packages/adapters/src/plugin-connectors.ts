@@ -222,9 +222,11 @@ async function readWithRetry(
       if (
         url.startsWith("https://api.github.com/") &&
         error instanceof Error &&
-        /HTTP 403\b/.test(error.message)
+        /HTTP (?:403|429)\b/.test(error.message)
       )
-        throw new Error("Request failed: HTTP 429 (GitHub API rate limit; set GITHUB_TOKEN)");
+        throw new Error(
+          `Request failed: HTTP 429 (GitHub API rate limit${headers?.authorization ? "" : "; unauthenticated requests share 60/hour per server IP"}; optionally set GITHUB_TOKEN)`,
+        );
       if (attempt >= 1 || deadline.aborted || !isTransientFetchError(error)) throw error;
     }
   }

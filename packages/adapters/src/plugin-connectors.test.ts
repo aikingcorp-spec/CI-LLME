@@ -381,6 +381,43 @@ describe("GitHub acquisition", () => {
       else expect(headers?.authorization).toBeUndefined();
     }
   });
+  it("previews without a token and does not send authorization", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "");
+    const read = reader();
+    try {
+      await fetchGitHubRepo(
+        parsePluginSource("https://github.com/example/plugin@main"),
+        undefined,
+        read,
+      );
+      for (const call of read.mock.calls) {
+        expect(
+          (call as unknown as [string, number, AbortSignal, Record<string, string>])[3]
+            ?.authorization,
+        ).toBeUndefined();
+      }
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+  it.each([403, 429])("reports the unauthenticated GitHub quota for HTTP %s", async (status) => {
+    vi.stubEnv("GITHUB_TOKEN", "");
+    try {
+      const read = vi.fn(async () => {
+        throw new Error(`Request failed: HTTP ${status}`);
+      });
+      await expect(
+        fetchGitHubRepo(
+          parsePluginSource("https://github.com/example/plugin@main"),
+          undefined,
+          read,
+        ),
+      ).rejects.toThrow(/HTTP 429.*unauthenticated.*60\/hour.*optionally set GITHUB_TOKEN/);
+      expect(read).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("resolves once then fetches an immutable tree and raw files", async () => {
     const read = reader();
     const repo = await fetchGitHubRepo(

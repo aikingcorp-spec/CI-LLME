@@ -15,6 +15,7 @@ import { resolveUpdaterConfig } from "./updater-logic.js";
 const token = "fake-review-updater-token-000000000000";
 const app = createUpdaterApp(
   resolveUpdaterConfig({
+    RAKAZO_DISABLE_AUTO_UPDATE: "0",
     RAKAZO_DEPLOY_DIR: "/rakazo-updater-tests-no-such-directory",
     RAKAZO_UPDATER_TOKEN: token,
   }),
@@ -36,7 +37,11 @@ async function deployment(env = "RAKAZO_IMAGE_TAG=v1.0.0\nRAKAZO_IMAGE_TAG_PREVI
   await writeFile(path.join(deployDir, ".env"), env);
   return {
     deployDir,
-    config: resolveUpdaterConfig({ RAKAZO_DEPLOY_DIR: deployDir, RAKAZO_UPDATER_TOKEN: token }),
+    config: resolveUpdaterConfig({
+      RAKAZO_DISABLE_AUTO_UPDATE: "0",
+      RAKAZO_DEPLOY_DIR: deployDir,
+      RAKAZO_UPDATER_TOKEN: token,
+    }),
   };
 }
 

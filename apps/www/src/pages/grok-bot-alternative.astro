@@ -6,7 +6,6 @@ import Header from "../components/Header.astro";
 import RichText from "../components/RichText.astro";
 import VsCard from "../components/VsCard.astro";
 import {
-  COMPARE_NOTE,
   COMPARE_ROWS,
   GROK_ALTERNATIVE_DESCRIPTION,
   GROK_ALTERNATIVE_FAQ,
@@ -19,7 +18,6 @@ import {
   GROK_OTHER_LEAD,
   GROK_ROUTINE_FIGURE,
   GROK_SECTIONS,
-  GROK_SOURCES,
   GROK_UPDATED,
   SELF_HOST_AFTER,
   SELF_HOST_LEAD,
@@ -121,19 +119,6 @@ const card = vsCard("grok-bot-alternative");
           </tbody>
         </table>
       </div>
-      <p>{COMPARE_NOTE}</p>
-      <ul class="source-list">
-        {
-          GROK_SOURCES.map((source) => (
-            <li>
-              <a href={source.href} target="_blank" rel="noreferrer">
-                {source.label}
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-
       <h2>Run VNBot yourself</h2>
       <p>{SELF_HOST_LEAD}</p>
       {SELF_HOST_AFTER.map((paragraph) => <p>{paragraph}</p>)}

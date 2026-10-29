@@ -32,8 +32,7 @@ export class GithubWebhookEmulator {
       typeof input.payload === "string"
         ? input.payload
         : JSON.stringify(input.payload ?? { zen: "emulated", hook_id: 1 });
-    // brand-allow: local emulator host, never served 2026-12-31 Kai (chờ Maya duyệt)
-    const origin = input.origin ?? "https://rakazo.test";
+    const origin = input.origin ?? "https://vnbot.test";
     const secret = input.secret ?? this.signingSecret;
     return new Request(`${origin}/api/v1/bots/${input.botId}/github`, {
       method: "POST",

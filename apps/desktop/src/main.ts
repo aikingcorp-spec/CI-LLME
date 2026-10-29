@@ -113,7 +113,7 @@ const WARM_WINDOW_TTL_MS = warmWindowTtlMs(process.env.RAKAZO_WARM_WINDOW_TTL_MS
 const updaterEnvironment = {
   packaged: app.isPackaged,
   version: app.getVersion(),
-  disabled: process.env.RAKAZO_DISABLE_AUTO_UPDATE === "1",
+  disabled: process.env.RAKAZO_DISABLE_AUTO_UPDATE !== "0",
 };
 const desktopUpdater = new DesktopUpdateController(
   updaterEnvironment,

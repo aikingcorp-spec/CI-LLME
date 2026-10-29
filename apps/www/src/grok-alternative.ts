@@ -46,18 +46,6 @@ export const COMPARE_ROWS = [
   },
 ] as const;
 
-export const COMPARE_NOTE =
-  "The Grok Bot column follows xAI's public Grok Bot docs and pricing page.";
-
-// brand-allow: cited competitor docs on the comparison page 2026-12-31 Kai (chờ Maya duyệt)
-export const GROK_SOURCES = [
-  // brand-allow: cited competitor docs on the comparison page 2026-12-31 Kai (chờ Maya duyệt)
-  { label: "Grok Bot overview", href: "https://docs.x.ai/grok-bot/overview" },
-  // brand-allow: cited competitor docs on the comparison page 2026-12-31 Kai (chờ Maya duyệt)
-  { label: "Grok Bot FAQ", href: "https://docs.x.ai/grok-bot/faq" },
-  { label: "xAI pricing", href: "https://x.ai/pricing" },
-] as const;
-
 export const SELF_HOST_LEAD =
   "The desktop app can start VNBot on this computer, or connect to a computer you already run.";
 
@@ -289,9 +277,6 @@ export function grokAlternativeMarkdown(): string {
     "| --- | --- | --- |",
     ...COMPARE_ROWS.map((row) => `| ${row.topic} | ${row.rakazo} | ${row.grok} |`),
   ].join("\n");
-  const sources = GROK_SOURCES.map((source) => `- [${source.label}](${source.href})`).join(
-    "\n",
-  );
   const faq = GROK_ALTERNATIVE_FAQ.map(
     (item) => `### ${item.question}\n\n${absoluteMarkdown(item.answer)}`,
   ).join("\n\n");
@@ -309,10 +294,6 @@ ${GROK_SECTIONS.map((section) => sectionMarkdown(section)).join("\n\n")}
 ## How they compare
 
 ${comparison}
-
-${COMPARE_NOTE}
-
-${sources}
 
 ## Run VNBot yourself
 

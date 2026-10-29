@@ -44,6 +44,11 @@ export interface UpdaterConfig {
  * `docker compose -p` stack is the one that is updated.
  */
 export function resolveUpdaterConfig(env: NodeJS.ProcessEnv): UpdaterConfig {
+  if (env.RAKAZO_DISABLE_AUTO_UPDATE !== "0") {
+    throw new Error(
+      "Self-update is off until an official release. Set RAKAZO_DISABLE_AUTO_UPDATE=0 to opt in.",
+    );
+  }
   const deployDir = env.RAKAZO_DEPLOY_DIR?.trim() ?? "";
   if (deployDir === "" || !path.posix.isAbsolute(deployDir)) {
     throw new Error("Set RAKAZO_DEPLOY_DIR to the absolute path of the deployment directory.");

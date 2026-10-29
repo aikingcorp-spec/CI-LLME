@@ -5,8 +5,7 @@ export const SITE_DESCRIPTION =
 
 export const APP_URL = "https://vnbot.run";
 export const CATALOG_URL =
-  // brand-allow: existing public bucket name, not shown as text; rename needs a new bucket 2026-12-31 Kai (chờ Maya duyệt)
-  "https://rakazo-public.fsn1.your-objectstorage.com/integrations/catalog.json";
+  import.meta.env.PUBLIC_CATALOG_URL || "https://vnbot.run/integrations/catalog.json";
 export const SUPPORT_EMAIL = "aiking.corp@gmail.com";
 export const DOWNLOAD_URL = "https://vnbot.run/#tai-ve";
 /** iOS is not released yet (PRODUCT.md: "iOS sắp có"); null renders a "coming soon" label, not a link. */
