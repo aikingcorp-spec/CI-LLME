@@ -54,8 +54,8 @@ describe("invite list commands", () => {
       { userEmail: "Lan@Gmail.com" },
       { userEmail: "x@y.z" },
     ];
-    const prisma = {
-      $transaction: vi.fn(async (operations: Promise<unknown>[]) => Promise.all(operations)),
+    const prisma: Record<string, unknown> = {
+      $transaction: vi.fn(async (run: (tx: unknown) => Promise<unknown>) => run(prisma)),
       session: {
         deleteMany: vi.fn(async ({ where }: { where: { user: { email: { equals: string } } } }) => {
           const before = sessions.length;

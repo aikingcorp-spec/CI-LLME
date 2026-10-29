@@ -94,9 +94,10 @@ export async function removeAllowlistEmail(
 ): Promise<{ email: string; removed: boolean; sessionsRevoked: number }> {
   const email = normalizeEmail(raw);
   if (!isAllowlistEmail(email)) throw new Error("Email is not a usable invite address");
-  const [removed, revoked] = await prisma.$transaction([
-    prisma.authEmailAllowlist.deleteMany({ where: { email } }),
-    prisma.session.deleteMany({
+  // Interactive, not batch: a batch cannot carry the system row-security context.
+  const [removed, revoked] = await prisma.$transaction(async (tx) => [
+    await tx.authEmailAllowlist.deleteMany({ where: { email } }),
+    await tx.session.deleteMany({
       where: { user: { email: { equals: email, mode: "insensitive" } } },
     }),
   ]);
