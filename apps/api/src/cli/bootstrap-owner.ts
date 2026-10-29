@@ -21,9 +21,6 @@ try {
 
 async function bootstrap() {
   const email = normalizeEmail(required("OWNER_EMAIL"));
-  // The owner row is written directly below, past the auth hooks that check the
-  // invite list, so the owner is invited explicitly and can sign in when it is on.
-  await addAllowlistEmail(prisma, email, { note: "owner", addedBy: "bootstrap-owner" });
   const existing = await prisma.user.findUnique({ where: { email } });
   if (!existing?.emailVerified) {
     const password = required("OWNER_PASSWORD");
@@ -77,4 +74,6 @@ async function bootstrap() {
     where: { id: "default" },
     data: { signupsEnabled: false, signupPolicyInitialized: true },
   });
+  // The owner row bypasses the auth hooks, so invite it after bootstrap succeeds.
+  await addAllowlistEmail(prisma, email, { note: "owner", addedBy: "bootstrap-owner" });
 }
