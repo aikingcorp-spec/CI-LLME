@@ -1,8 +1,7 @@
 import "./monitoring-bootstrap";
 import { BotAvatarActivityProvider } from "@rakazo/ui-web/bot-avatar-activity";
-import { Toaster } from "@rakazo/ui-web/components/ui/sonner";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { StrictMode, useEffect, useLayoutEffect, useRef } from "react";
+import { lazy, StrictMode, Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, useLocation } from "react-router-dom";
 import { App } from "./App";
@@ -20,6 +19,10 @@ import { migrateStoredUiLocale, resolveUiLocale } from "./lib/ui-locale";
 import { registerServiceWorker } from "./pwa/register";
 import { lockStandaloneZoom } from "./pwa/standalone";
 import "./styles.css";
+
+const Toaster = lazy(() =>
+  import("@rakazo/ui-web/components/ui/sonner").then((module) => ({ default: module.Toaster })),
+);
 
 markOnce("rk:renderer:module-evaluated");
 installPreloadRecovery();
@@ -72,7 +75,9 @@ createRoot(document.getElementById("root")!, { onCaughtError: reportCaughtReactE
             <BotAvatarActivityProvider source={webLogoAvatarActivity}>
               <App />
             </BotAvatarActivityProvider>
-            <Toaster />
+            <Suspense fallback={null}>
+              <Toaster />
+            </Suspense>
           </DesktopUpdatesProvider>
         </QueryClientProvider>
       </BrowserRouter>

@@ -1,6 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
 import type { DesktopUpdateState } from "@rakazo/contracts";
-import { toast } from "@rakazo/ui-web/components/ui/sonner";
 import type { ReactNode } from "react";
 import { createContext, Suspense, useContext, useEffect, useRef, useState } from "react";
 import { desktopBridge } from "../lib/desktop";
@@ -109,20 +108,25 @@ export function DesktopUpdatesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!visible) return;
     // The app's Toaster renders inside this provider, so the toast reads live state from context.
-    toast.custom(
-      () => (
-        <Suspense fallback={null}>
-          <DesktopUpdatePrompt onLater={setDismissed} />
-        </Suspense>
-      ),
-      {
-        id: DESKTOP_UPDATE_TOAST,
-        duration: Number.POSITIVE_INFINITY,
-        dismissible: false,
-      },
-    );
+    const sonner = import("@rakazo/ui-web/components/ui/sonner");
+    void sonner.then(({ toast }) => {
+      toast.custom(
+        () => (
+          <Suspense fallback={null}>
+            <DesktopUpdatePrompt onLater={setDismissed} />
+          </Suspense>
+        ),
+        {
+          id: DESKTOP_UPDATE_TOAST,
+          duration: Number.POSITIVE_INFINITY,
+          dismissible: false,
+        },
+      );
+    });
     return () => {
-      toast.dismiss(DESKTOP_UPDATE_TOAST);
+      void sonner.then(({ toast }) => {
+        toast.dismiss(DESKTOP_UPDATE_TOAST);
+      });
     };
   }, [visible]);
   return <UpdatesContext.Provider value={updates}>{children}</UpdatesContext.Provider>;

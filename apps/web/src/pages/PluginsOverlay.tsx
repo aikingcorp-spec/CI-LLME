@@ -916,7 +916,7 @@ export function PluginsOverlay({
     if (category || searching)
       return pluginMatches.length || brandMatches.length ? (
         <section data-testid="plugin-results" className="mt-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {brandMatches.map(({ item }) => renderCatalogTile(item, item.name, item.logo))}
             {pluginMatches.slice(0, pluginCount).map(renderPluginRow)}
           </div>
@@ -957,7 +957,7 @@ export function PluginsOverlay({
             <h2 className="mb-2 px-2.5 text-[15px] font-medium text-foreground">
               <Trans>Recommended</Trans>
             </h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {recommended.map(({ entry, item }) =>
                 item ? renderCatalogTile(item, item.name, item.logo) : renderPluginRow(entry),
               )}
@@ -974,7 +974,7 @@ export function PluginsOverlay({
                 </Button>
               ) : null}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {entries.slice(0, SECTION_SIZE).map(renderPluginRow)}
             </div>
           </section>
@@ -1408,7 +1408,7 @@ export function PluginsOverlay({
                 {sourceError}
               </p>
             ) : null}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {connectedItems.map((item) =>
                 renderCatalogTile(item, item.name, item.logo, { tileTestId: false }),
               )}
@@ -1679,7 +1679,7 @@ export function PluginsOverlay({
                       </p>
                     )
                   ) : (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {featuredTiles.map((tile) => {
                         const item = tile.item;
                         const key = item ? catalogItemKey(item) : tile.id;
@@ -1745,7 +1745,7 @@ export function PluginsOverlay({
                     </h2>
                   ) : null}
                   {visible.length > 0 && !category ? (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {rendered.map((item) =>
                         renderCatalogTile(item, item.name, item.logo, {
                           // Avoid duplicate connection-tile-* ids while featured is also shown.
@@ -1772,7 +1772,7 @@ export function PluginsOverlay({
               ) : (
                 <>
                   {strongMatches.length > 0 && !category ? (
-                    <div className="mb-2 grid grid-cols-2 gap-2">
+                    <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {strongMatches.map((item) =>
                         renderCatalogTile(item, item.name, item.logo, { tileTestId: true }),
                       )}
@@ -1780,7 +1780,7 @@ export function PluginsOverlay({
                   ) : null}
                   {renderPluginSections()}
                   {rendered.length > 0 && !category ? (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {rendered.map((item) =>
                         renderCatalogTile(item, item.name, item.logo, { tileTestId: true }),
                       )}

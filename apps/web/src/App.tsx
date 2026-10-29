@@ -75,7 +75,7 @@ function FallbackButton({ className, ...props }: ComponentProps<"button">) {
   );
 }
 
-const AuthPage = lazyPage(() => import("./pages/Auth").then((module) => module.AuthPage));
+const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => module.AuthPage));
 const OnboardingPage = lazyPage(() =>
   import("./pages/Onboarding").then((module) => module.OnboardingPage),
 );

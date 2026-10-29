@@ -1,4 +1,6 @@
 import type { Bot } from "@rakazo/contracts";
+import { seededVnbotBodyColor } from "@rakazo/core";
+import { defaultVnbotAvatarValue } from "@rakazo/ui-web";
 import { useRef } from "react";
 import { importAsFirstBot } from "../lib/first-bot-import";
 import { rpc } from "../lib/rpc";
@@ -29,7 +31,16 @@ export function OnboardingImport({
       onCreated={(bot) => onDone(bot, imported.current)}
       createBot={async (input) => {
         const result = await importAsFirstBot(
-          { ...firstBot, importCreate: (request) => rpc.bots.importCreate(request) },
+          {
+            ...firstBot,
+            importCreate: (request) =>
+              rpc.bots.importCreate({
+                ...request,
+                color:
+                  request.color ?? defaultVnbotAvatarValue(seededVnbotBodyColor(firstBot.spawnKey)),
+                avatarSet: request.avatarSet ?? "vnbot",
+              }),
+          },
           input,
         );
         imported.current = result.imported;

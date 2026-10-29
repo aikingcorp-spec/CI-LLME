@@ -23,18 +23,7 @@ vi.mock("@lingui/react/macro", () => ({
   }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
-vi.mock("@rakazo/ui-web", () => ({
-  Button: ({
-    children,
-    variant,
-    size,
-    ...props
-  }: React.ComponentProps<"button"> & { variant?: string; size?: string }) => (
-    <button data-variant={variant ?? "default"} data-size={size} {...props}>
-      {children}
-    </button>
-  ),
-  Input: (props: React.ComponentProps<"input">) => <input {...props} />,
+vi.mock("@rakazo/ui-web/components/ui/input-otp", () => ({
   InputOTP: ({
     maxLength,
     onChange,
@@ -56,11 +45,6 @@ vi.mock("@rakazo/ui-web", () => ({
   ),
   InputOTPGroup: () => null,
   InputOTPSlot: () => null,
-  Label: ({ children, htmlFor, ...props }: React.ComponentProps<"label">) => (
-    <label htmlFor={htmlFor} {...props}>
-      {children}
-    </label>
-  ),
 }));
 vi.mock("../components/VnbotWordmark", () => ({
   VnbotWordmark: () => <img alt="VNBot" />,
@@ -152,7 +136,7 @@ it("offers SSO and hides the email form when passwords and codes are off", async
   const sso = [...host.querySelectorAll("button")].find((item) =>
     item.textContent?.includes("Continue with Example"),
   )!;
-  expect(sso.dataset.variant).toBe("default");
+  expect(sso.className).toContain("bg-primary");
   expect(sso.className).toContain("w-full");
 });
 
@@ -185,7 +169,7 @@ it("puts quiet SSO below the email code action and has no password field", async
   ).toBeTruthy();
   expect(submitButton.compareDocumentPosition(sso) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(submitButton.textContent).toBe("Send code");
-  expect(sso.dataset.variant).toBe("link");
+  expect(sso.className).toContain("underline-offset-4");
 });
 
 it("sends a code, masks it, and signs in with a name taken from the email", async () => {
@@ -400,6 +384,7 @@ it("keeps passkey sign-in without account creation promises and links the legal 
   for (const [name, href] of [
     ["Terms", "https://vnbot.run/dieu-khoan"],
     ["Privacy", "https://vnbot.run/quyen-rieng-tu"],
+    ["Contact", VNBOT_CONTACT_URL],
   ]) {
     const link = host.querySelector(`a[href="${href}"]`);
     expect(link?.textContent).toBe(name);

@@ -1,15 +1,20 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { credentialIssue } from "@rakazo/core";
-import { Button, Input, InputOTP, InputOTPGroup, InputOTPSlot, Label } from "@rakazo/ui-web";
-import { useEffect, useRef, useState } from "react";
+import { buttonVariants } from "@rakazo/ui-web/components/ui/button-variants";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@rakazo/ui-web/components/ui/input-otp";
+import { inputClass } from "@rakazo/ui-web/components/ui/input-variants";
+import { Label } from "@rakazo/ui-web/components/ui/label";
+import { cn } from "@rakazo/ui-web/lib/utils";
+import type { ComponentProps } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { LanguageSwitch } from "../components/LanguageSwitch";
 import { PasskeySignIn } from "../components/PasskeySignIn";
 import { VnbotWordmark } from "../components/VnbotWordmark";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import { getActiveUiLocale } from "../lib/i18n";
+import { lazyComponent } from "../lib/preload-recovery";
 import { clearSpaceSelection } from "../lib/rpc";
 import {
   clearSignInProgress,
@@ -29,7 +34,27 @@ const EMAIL_ERROR_ID = "auth-email-error";
 const linkClass =
   "font-medium text-link underline underline-offset-4 hover:decoration-2 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
+const LanguageSwitch = lazyComponent(() =>
+  import("../components/LanguageSwitch").then((module) => module.LanguageSwitch),
+);
+
 type Step = "email" | "code";
+
+function Button({
+  className,
+  variant,
+  size,
+  ...props
+}: ComponentProps<"button"> &
+  Pick<NonNullable<Parameters<typeof buttonVariants>[0]>, "variant" | "size">) {
+  return (
+    <button
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  );
+}
 
 function formatResend(seconds: number): string {
   const rest = seconds % 60;
@@ -333,7 +358,7 @@ export function AuthPage() {
               <Label htmlFor="email" className="text-muted-foreground">
                 <Trans>Email</Trans>
               </Label>
-              <Input
+              <input
                 id="email"
                 name="email"
                 autoComplete="username webauthn"
@@ -345,7 +370,9 @@ export function AuthPage() {
                 disabled={pending}
                 aria-invalid={emailInvalid || undefined}
                 aria-describedby={error ? EMAIL_ERROR_ID : undefined}
-                className={fieldClass}
+                data-slot="input"
+                data-size="default"
+                className={cn(inputClass, fieldClass)}
               />
             </div>
           )}
@@ -475,7 +502,9 @@ export function AuthFrame({
   return (
     <div className="relative flex min-h-full items-center justify-center bg-background px-6 py-16 text-foreground">
       {/* Outside the form: picking a language must never submit it. */}
-      <LanguageSwitch className="absolute end-5 top-4 max-sm:end-3 max-sm:top-3" />
+      <Suspense fallback={null}>
+        <LanguageSwitch className="absolute end-5 top-4 max-sm:end-3 max-sm:top-3" />
+      </Suspense>
       <div className="flex w-[460px] max-w-full flex-col items-center">
         <form noValidate onSubmit={onSubmit} className="flex w-full flex-col items-center">
           <VnbotWordmark variant="wordmark" className="h-8 w-auto sm:h-9" />
@@ -505,6 +534,14 @@ export function AuthFrame({
             className={linkClass}
           >
             <Trans>Privacy</Trans>
+          </a>
+          <a
+            href={VNBOT_CONTACT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClass}
+          >
+            <Trans>Contact</Trans>
           </a>
         </p>
       </div>

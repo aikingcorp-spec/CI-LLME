@@ -1,12 +1,12 @@
 import { useLingui } from "@lingui/react/macro";
 import {
-  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "@rakazo/ui-web";
+} from "@rakazo/ui-web/components/ui/dropdown-menu";
+import { cn } from "@rakazo/ui-web/lib/utils";
 import { ChevronDown, Globe } from "lucide-react";
 import { useRef, useState } from "react";
 import { getActiveUiLocale, setUiLocale } from "../lib/i18n";

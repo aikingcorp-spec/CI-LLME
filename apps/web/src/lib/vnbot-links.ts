@@ -3,7 +3,7 @@
  * form without a code search. `VITE_VNBOT_CONTACT_URL` overrides the default
  * at build time (for staging or a localized form).
  */
-const DEFAULT_CONTACT_URL = "https://aikingx.com";
+const DEFAULT_CONTACT_URL = "https://aikingx.com/lien-he/";
 
 function httpsUrl(raw: string | undefined, fallback: string): string {
   const value = raw?.trim();
