@@ -495,6 +495,8 @@ it.each([
   ["403: OpenRouter weekly key limit exceeded", "key", "weekly"],
   ["402: Monthly spending limit exceeded", "spending", "monthly"],
   ["429: insufficient_quota", "credit", "none"],
+  ["402: Payment required", "usage", "none"],
+  ["Daily usage limit exceeded", "usage", "daily"],
   ["429: Too many requests", "rate", undefined],
   ["401: Invalid API key", "auth", undefined],
   ["404: Model unavailable", "model", undefined],
@@ -829,4 +831,15 @@ it.each([
     summary: "Connect your own API key in Models.",
     recovery: "connection",
   });
+});
+
+it.each([
+  '{"type":"error","error":{"type":"FreeUsageLimitError","message":"Free usage limit reached. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go"}}',
+  "Free usage limit reached. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go",
+])("does not call a free-tier usage limit a spending limit: %s", (details) => {
+  const error = normalizeRunError(details);
+  expect(error.kind).toBe("usage");
+  expect(error.recovery).toBe("model");
+  expect(error.summary).toBe("Your model provider reached its usage limit.");
+  expect(error.summary).not.toMatch(/spending/);
 });

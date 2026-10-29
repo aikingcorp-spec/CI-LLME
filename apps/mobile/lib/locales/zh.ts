@@ -132,6 +132,10 @@ export const ZH_MESSAGES: Record<string, string> = {
   "{provider} reached its daily spending limit.": "{provider}已达到每日支出限额。",
   "{provider} reached its weekly spending limit.": "{provider}已达到每周支出限额。",
   "{provider} reached its monthly spending limit.": "{provider}已达到每月支出限额。",
+  "{provider} reached its usage limit.": "{provider}已达到使用限额。",
+  "{provider} reached its daily usage limit.": "{provider}已达到每日使用限额。",
+  "{provider} reached its weekly usage limit.": "{provider}已达到每周使用限额。",
+  "{provider} reached its monthly usage limit.": "{provider}已达到每月使用限额。",
   Details: "详情",
 
   "Couldn't refresh — showing the last loaded messages.": "无法刷新——显示最近加载的消息。",

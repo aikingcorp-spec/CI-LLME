@@ -33,6 +33,7 @@ const ACCOUNT_REFUSAL_KINDS = new Set<RunErrorKind>([
   "key",
   "credit",
   "spending",
+  "usage",
   "model",
 ]);
 

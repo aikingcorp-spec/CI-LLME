@@ -194,6 +194,30 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         message: "{provider} reached its monthly spending limit.",
         values,
       });
+    case "{provider} reached its usage limit.":
+      return i18n._({
+        id: "{provider} reached its usage limit.",
+        message: "{provider} reached its usage limit.",
+        values,
+      });
+    case "{provider} reached its daily usage limit.":
+      return i18n._({
+        id: "{provider} reached its daily usage limit.",
+        message: "{provider} reached its daily usage limit.",
+        values,
+      });
+    case "{provider} reached its weekly usage limit.":
+      return i18n._({
+        id: "{provider} reached its weekly usage limit.",
+        message: "{provider} reached its weekly usage limit.",
+        values,
+      });
+    case "{provider} reached its monthly usage limit.":
+      return i18n._({
+        id: "{provider} reached its monthly usage limit.",
+        message: "{provider} reached its monthly usage limit.",
+        values,
+      });
     case "{summary} Your backup models also failed.":
       return i18n._({
         id: "{summary} Your backup models also failed.",
