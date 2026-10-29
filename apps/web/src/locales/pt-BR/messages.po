@@ -786,6 +786,10 @@ msgstr ""
 msgid "Any model, with your own key"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Áo dài"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
@@ -974,6 +978,10 @@ msgstr "Estúdio de avatar"
 msgid "Back"
 msgstr "Voltar"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Bánh chưng"
+msgstr ""
+
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Base URL"
 msgstr "URL Base"
@@ -994,6 +1002,10 @@ msgstr "Token portador"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "blob"
 msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
@@ -1418,6 +1430,10 @@ msgstr "Fechar configurações do usuário"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Close voice settings"
 msgstr "Fechar configurações de voz"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "cloud"
+msgstr ""
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Cloud"
@@ -3058,6 +3074,10 @@ msgstr "Cabeçalhos"
 msgid "Hear a sample"
 msgstr "Ouvir uma amostra"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "hex"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Olá, é assim que vou soar quando ler as respostas em voz alta."
@@ -3333,6 +3353,10 @@ msgstr "Mantido"
 
 #: src/pages/RoutineEditor.tsx
 msgid "key"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Khăn rằn"
 msgstr ""
 
 #: src/components/LoginFields.tsx
@@ -4060,6 +4084,10 @@ msgstr ""
 msgid "No trigger"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Nón"
+msgstr ""
+
 #: src/lib/ticket-priority.ts
 msgid "Normal"
 msgstr ""
@@ -4264,10 +4292,6 @@ msgstr "Ou cole uma chave de API"
 msgid "Organization API key"
 msgstr "Chave da API da organização"
 
-#: src/pages/shell/avatar-studio-popover.tsx
-msgid "Original"
-msgstr ""
-
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "Mensagem original indisponível"
@@ -4353,6 +4377,10 @@ msgstr "Cole sua chave de API e teste novamente."
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/import-status.ts
 msgid "Paused"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "pebble"
 msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
@@ -5131,6 +5159,10 @@ msgstr "Selecione um bot"
 msgid "Self-hosted"
 msgstr "Auto-hospedado"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Sen"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "Enviar"
@@ -5454,6 +5486,10 @@ msgstr ""
 msgid "Speech model"
 msgstr "Modelo de fala"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "squircle"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO está temporariamente indisponível. Tente novamente."
@@ -5592,6 +5628,10 @@ msgstr "Sistema"
 msgid "Table"
 msgstr "Tabela"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "tablet"
+msgstr ""
+
 #: src/pages/shell/computer-overlay.tsx
 msgid "Take control"
 msgstr "Assumir o controle"
@@ -5618,6 +5658,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Teams not enabled"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "teardrop"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -6277,6 +6321,10 @@ msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Website login"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "wedge"
 msgstr ""
 
 #: src/lib/cron.ts

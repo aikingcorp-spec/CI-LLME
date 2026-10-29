@@ -786,6 +786,10 @@ msgstr ""
 msgid "Any model, with your own key"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Áo dài"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
@@ -974,6 +978,10 @@ msgstr "头像工作室"
 msgid "Back"
 msgstr "返回"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Bánh chưng"
+msgstr ""
+
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Base URL"
 msgstr "Base URL"
@@ -994,6 +1002,10 @@ msgstr "Bearer token"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "blob"
 msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
@@ -1418,6 +1430,10 @@ msgstr "关闭用户设置"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Close voice settings"
 msgstr "关闭语音设置"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "cloud"
+msgstr ""
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Cloud"
@@ -3058,6 +3074,10 @@ msgstr "请求头"
 msgid "Hear a sample"
 msgstr "试听"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "hex"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "你好，这是我朗读回复时的声音。"
@@ -3334,6 +3354,10 @@ msgstr "保留"
 #: src/pages/RoutineEditor.tsx
 msgid "key"
 msgstr "密钥"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Khăn rằn"
+msgstr ""
 
 #: src/components/LoginFields.tsx
 msgid "Label"
@@ -4060,6 +4084,10 @@ msgstr ""
 msgid "No trigger"
 msgstr "无触发器"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Nón"
+msgstr ""
+
 #: src/lib/ticket-priority.ts
 msgid "Normal"
 msgstr ""
@@ -4264,10 +4292,6 @@ msgstr "或粘贴 API 密钥"
 msgid "Organization API key"
 msgstr "组织 API 密钥"
 
-#: src/pages/shell/avatar-studio-popover.tsx
-msgid "Original"
-msgstr ""
-
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "原消息不可用"
@@ -4354,6 +4378,10 @@ msgstr "请粘贴你的 API 密钥，然后重新测试。"
 #: src/pages/shell/import-status.ts
 msgid "Paused"
 msgstr "已暂停"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "pebble"
+msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Pending"
@@ -5131,6 +5159,10 @@ msgstr "选择 Bot"
 msgid "Self-hosted"
 msgstr "自托管"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Sen"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "发送"
@@ -5454,6 +5486,10 @@ msgstr "正在说话"
 msgid "Speech model"
 msgstr "语音模型"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "squircle"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO 暂时不可用，请重试。"
@@ -5592,6 +5628,10 @@ msgstr "系统"
 msgid "Table"
 msgstr "表格"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "tablet"
+msgstr ""
+
 #: src/pages/shell/computer-overlay.tsx
 msgid "Take control"
 msgstr "接管控制权"
@@ -5618,6 +5658,10 @@ msgstr "Teams 消息"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Teams not enabled"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "teardrop"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -6277,6 +6321,10 @@ msgstr "Webhook"
 
 #: src/components/VaultSettings.tsx
 msgid "Website login"
+msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "wedge"
 msgstr ""
 
 #: src/lib/cron.ts

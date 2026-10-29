@@ -26,8 +26,12 @@ export function vnbotShape(identity: string): VnbotShape {
   return VNBOT_SHAPES[shippedHash(`vnbot-avatar/shape/v1/${identity}`) % VNBOT_SHAPES.length]!;
 }
 
+// Inline dimensions override Button's descendant SVG sizing, as the upstream avatars do.
 function sized(svg: string): string {
-  return svg.replace("<svg ", '<svg width="100%" height="100%" ');
+  return svg.replace(
+    "<svg ",
+    '<svg width="100%" height="100%" style="width:100%;height:100%;display:block" ',
+  );
 }
 
 export function VnbotAvatar({

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { organicAvatarFamily, seededLogoAvatarColor } from "@rakazo/core";
+import { organicAvatarFamily, seededVnbotBodyColor } from "@rakazo/core";
 import { captureScreenshot, completeOnboarding, createBotFromPicker, rpc, signup } from "./helpers";
 
 test("create opens dialog, then empty chat; picker lists bots; sidebar collapses", async ({
@@ -44,20 +44,20 @@ test("create opens dialog, then empty chat; picker lists bots; sidebar collapses
   await expect(create).toBeDisabled();
 
   await name.fill("New Bot");
-  // The vnbot default is neither tab's set.
-  await expect(createDialog.getByRole("tab", { name: "Classic", exact: true })).toHaveAttribute(
+  await expect(createDialog.getByRole("tab")).toHaveCount(2);
+  await expect(createDialog.getByRole("tab", { name: "VNBot", exact: true })).toHaveAttribute(
     "aria-selected",
-    "false",
+    "true",
   );
-  await expect(createDialog.getByRole("tab", { name: "Original", exact: true })).toHaveAttribute(
-    "aria-selected",
-    "false",
-  );
-  await createDialog.getByRole("tab", { name: "Original", exact: true }).click();
-  const wedge = createDialog.getByRole("button", { name: "wedge", exact: true });
-  await wedge.click();
+  const shapes = createDialog.locator('[data-testid^="vnbot-shape-"]');
+  await expect(shapes).toHaveCount(5);
+  await expect(shapes.first()).toHaveAttribute("data-testid", "vnbot-shape-non");
+  await createDialog.getByTestId("vnbot-shape-chung").click();
   await createDialog.getByRole("button", { name: "Color #10B981", exact: true }).click();
-  await expect(wedge).toHaveAttribute("aria-pressed", "true");
+  await expect(createDialog.getByTestId("vnbot-shape-chung")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await captureScreenshot(page, testInfo, "create-bot-dialog");
 
   const created = page.waitForResponse(
@@ -76,6 +76,7 @@ test("create opens dialog, then empty chat; picker lists bots; sidebar collapses
   );
   expect(afterCreate.find((bot) => bot.id === newBotId)).toMatchObject({
     color: "#10B981::shape_1",
+    avatarSet: "vnbot",
     computerMode: "team",
   });
   await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "closed");
@@ -129,7 +130,7 @@ test("create opens dialog, then empty chat; picker lists bots; sidebar collapses
   await page.getByTestId("create-menu-trigger").click();
   await picker.getByTestId("create-new-bot").click();
   await expect(createDialog).toBeVisible();
-  await createDialog.getByRole("tab", { name: "Original", exact: true }).click();
+  await createDialog.getByRole("tab", { name: "Classic", exact: true }).click();
   await createDialog.getByRole("button", { name: "Shape 3", exact: true }).click();
   const family = Number(
     await createDialog.locator(".rakazo-organic-avatar").first().getAttribute("data-shape-family"),
@@ -141,7 +142,7 @@ test("create opens dialog, then empty chat; picker lists bots; sidebar collapses
   expect(organicAvatarFamily(page.url().split("/").pop()!)).toBe(family);
 });
 
-test("the default logo preview keeps its seeded identity and colour after creation and reload", async ({
+test("the default VNBot preview keeps its seeded identity and colour after creation and reload", async ({
   page,
 }, testInfo) => {
   await signup(page, `preview-colour-${Date.now()}@rakazo.test`, "password12", "Preview Colour");
@@ -149,19 +150,19 @@ test("the default logo preview keeps its seeded identity and colour after creati
   await page.getByTestId("create-menu-trigger").click();
   await page.getByTestId("bot-create-picker").getByTestId("create-new-bot").click();
   const dialog = page.getByTestId("create-bot-dialog");
-  const preview = dialog.locator(".rakazo-organic-avatar").first();
-  const colour = (await preview.locator("path").first().getAttribute("fill"))!.toUpperCase();
+  const preview = dialog.locator("[data-vnbot-avatar]").first();
+  const colour = (
+    await preview.evaluate((node) => (node as HTMLElement).style.getPropertyValue("--body"))
+  ).toUpperCase();
+  const shape = await preview.getAttribute("data-vnbot-shape");
   await dialog.getByPlaceholder("Name your Bot").fill("Seed preview");
-  await expect(preview.locator("path").first()).toHaveAttribute(
-    "fill",
-    new RegExp(`^${colour}$`, "i"),
-  );
+  await expect(preview).toHaveAttribute("data-vnbot-shape", shape!);
   await captureScreenshot(page, testInfo, "create-bot-seeded-preview");
   await dialog.getByRole("button", { name: "Create", exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByPlaceholder("Message Seed preview")).toBeVisible();
   const id = page.url().split("/").pop()!;
-  expect(colour).toBe(seededLogoAvatarColor(id).toUpperCase());
+  expect(colour).toBe(seededVnbotBodyColor(id).toUpperCase());
   await page.reload();
   await expect(page.getByPlaceholder("Message Seed preview")).toBeVisible();
   const bots = await rpc<Array<{ id: string; color: string; avatarSet: string }>>(
@@ -171,8 +172,8 @@ test("the default logo preview keeps its seeded identity and colour after creati
   );
   expect(bots.find((bot) => bot.id === id)).toMatchObject({ color: colour, avatarSet: "vnbot" });
   await expect(
-    page.locator(`[data-roster-bot-id="${id}"]`).locator(".rakazo-organic-avatar").first(),
-  ).toBeVisible();
+    page.locator(`[data-roster-bot-id="${id}"]`).locator("[data-vnbot-avatar]").first(),
+  ).toHaveAttribute("data-vnbot-shape", shape!);
 });
 
 test("a stale roster refresh started before creation keeps the new bot selected", async ({

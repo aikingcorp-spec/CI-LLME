@@ -786,6 +786,10 @@ msgstr ""
 msgid "Any model, with your own key"
 msgstr "כל מודל, עם מפתח משלך"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Áo dài"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
@@ -974,6 +978,10 @@ msgstr "Avatar Studio"
 msgid "Back"
 msgstr "חזרה"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Bánh chưng"
+msgstr ""
+
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Base URL"
 msgstr "Base URL"
@@ -995,6 +1003,10 @@ msgstr "Bearer token"
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
 msgstr "חיוב"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "blob"
+msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -1418,6 +1430,10 @@ msgstr "סגירת הגדרות המשתמש"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Close voice settings"
 msgstr "סגירת הגדרות הקול"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "cloud"
+msgstr ""
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Cloud"
@@ -3058,6 +3074,10 @@ msgstr "Headers"
 msgid "Hear a sample"
 msgstr "השמעת דוגמה"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "hex"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "היי, כך אשמע כשאקריא תשובות בקול."
@@ -3334,6 +3354,10 @@ msgstr "יישמר"
 #: src/pages/RoutineEditor.tsx
 msgid "key"
 msgstr "מפתח"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Khăn rằn"
+msgstr ""
 
 #: src/components/LoginFields.tsx
 msgid "Label"
@@ -4060,6 +4084,10 @@ msgstr "עדיין אין כרטיסים"
 msgid "No trigger"
 msgstr "ללא טריגר"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Nón"
+msgstr ""
+
 #: src/lib/ticket-priority.ts
 msgid "Normal"
 msgstr "רגיל"
@@ -4264,10 +4292,6 @@ msgstr "או הדבקת מפתח API"
 msgid "Organization API key"
 msgstr "מפתח API של הארגון"
 
-#: src/pages/shell/avatar-studio-popover.tsx
-msgid "Original"
-msgstr ""
-
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "ההודעה המקורית אינה זמינה"
@@ -4354,6 +4378,10 @@ msgstr "יש להדביק את מפתח ה-API ולבדוק שוב."
 #: src/pages/shell/import-status.ts
 msgid "Paused"
 msgstr "מושהה"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "pebble"
+msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Pending"
@@ -5131,6 +5159,10 @@ msgstr "בחירת בוט"
 msgid "Self-hosted"
 msgstr "באירוח עצמי"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Sen"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "שליחה"
@@ -5454,6 +5486,10 @@ msgstr ""
 msgid "Speech model"
 msgstr "מודל דיבור"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "squircle"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO אינו זמין כרגע. אפשר לנסות שוב."
@@ -5592,6 +5628,10 @@ msgstr "מערכת"
 msgid "Table"
 msgstr "טבלה"
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "tablet"
+msgstr ""
+
 #: src/pages/shell/computer-overlay.tsx
 msgid "Take control"
 msgstr "השתלטות"
@@ -5619,6 +5659,10 @@ msgstr "הודעת Teams"
 #: src/pages/RoutineEditor.tsx
 msgid "Teams not enabled"
 msgstr "Teams לא מופעל"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "teardrop"
+msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Test"
@@ -6278,6 +6322,10 @@ msgstr "Webhook"
 #: src/components/VaultSettings.tsx
 msgid "Website login"
 msgstr "התחברות לאתר"
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "wedge"
+msgstr ""
 
 #: src/lib/cron.ts
 msgid "Wednesday"

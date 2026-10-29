@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
-import { ORGANIC_AVATAR_LOOKS, seededVnbotBodyColor } from "@rakazo/core";
+import {
+  ORGANIC_AVATAR_LOOKS,
+  SHIPPED_BOT_AVATAR_SHAPE_KEYS,
+  seededVnbotBodyColor,
+} from "@rakazo/core";
 import type { ReactNode } from "react";
 import { act } from "react";
 import type { Root } from "react-dom/client";
@@ -105,7 +109,12 @@ describe("CreateBotDialog", () => {
   it("sends the organic family the preview draws", async () => {
     const onCreate = vi.fn(async (_input: CreateBotDialogInput) => undefined);
     await render(onCreate);
-    await click(button("Original"));
+    await click(button("Classic"));
+    expect(document.querySelectorAll(".rakazo-organic-avatar")).toHaveLength(
+      ORGANIC_AVATAR_LOOKS.length + 1,
+    );
+    for (const key of SHIPPED_BOT_AVATAR_SHAPE_KEYS) expect(button(key)).toBeDefined();
+    expect(document.querySelector('[data-testid^="vnbot-shape-"]')).toBeNull();
     await click(button("Shape 2"));
     await click(button("Color #10B981"));
     const preview = document.querySelector(".rakazo-organic-avatar");
@@ -124,7 +133,7 @@ describe("CreateBotDialog", () => {
   it("sends a studio shape without an organic family", async () => {
     const onCreate = vi.fn(async (_input: CreateBotDialogInput) => undefined);
     await render(onCreate);
-    await click(button("Original"));
+    await click(button("Classic"));
     await click(button("Color #F97316"));
     await click(button("wedge"));
     await typeName("Scout");
@@ -169,26 +178,27 @@ describe("importing instead", () => {
   });
 });
 
-it("retains the preview identity and colour through rerenders, set toggles and a retry", async () => {
+it("retains the VNBot preview identity, selected shape and colour through a retry", async () => {
   const onCreate = vi
     .fn(async (_input: CreateBotDialogInput) => undefined)
     .mockRejectedValueOnce(new Error("Try again"));
   await render(onCreate);
-  await click(button("Classic"));
-  const colour = document.querySelector(".rakazo-logo-avatar")!.getAttribute("data-color");
+  expect([...document.querySelectorAll('[role="tab"]')].map((node) => node.textContent)).toEqual([
+    "VNBot",
+    "Classic",
+  ]);
+  const tiles = [...document.querySelectorAll<HTMLButtonElement>('[data-testid^="vnbot-shape-"]')];
+  expect(tiles).toHaveLength(5);
+  expect(tiles[0]!.dataset.testid).toBe("vnbot-shape-non");
+  await click(tiles[3]!);
+  await click(button("Color #10B981"));
   await typeName("First name");
-  await render(onCreate);
-  await click(button("Classic"));
-  expect(document.querySelector(".rakazo-logo-avatar")!.getAttribute("data-color")).toBe(colour);
-  await click(button("Original"));
-  await click(button("Classic"));
   await click(button("Create"));
   const first = onCreate.mock.lastCall![0];
+  expect(first).toMatchObject({ avatarSet: "vnbot", color: "#10B981::shape_3" });
+  expect(first.id).toMatch(/^c[a-z0-9]{24}$/);
+  expect(document.querySelector('[data-vnbot-shape="ran"]')).not.toBeNull();
   await typeName("Retry name");
   await click(button("Create"));
-  const second = onCreate.mock.lastCall![0];
-  expect(first.id).toMatch(/^c[a-z0-9]{24}$/);
-  expect(second.id).toBe(first.id);
-  expect(second.color).toBe(first.color);
-  expect(second.color?.toUpperCase()).toBe(colour?.toUpperCase());
+  expect(onCreate.mock.lastCall![0]).toMatchObject({ id: first.id, color: first.color });
 });

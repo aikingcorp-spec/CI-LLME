@@ -786,6 +786,10 @@ msgstr ""
 msgid "Any model, with your own key"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Áo dài"
+msgstr "Áo dài"
+
 #: src/components/AskCard.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
@@ -961,7 +965,7 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Avatar Studio"
-msgstr ""
+msgstr "Tùy chỉnh ảnh đại diện"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/components/integrations/skills-dialog.tsx
@@ -973,6 +977,10 @@ msgstr ""
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
 msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Bánh chưng"
+msgstr "Bánh chưng"
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Base URL"
@@ -995,6 +1003,10 @@ msgstr ""
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
 msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "blob"
+msgstr "Khối mềm"
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -1151,7 +1163,7 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Cancel"
-msgstr ""
+msgstr "Hủy"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
@@ -1288,7 +1300,7 @@ msgstr "Chọn một bot"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose a bot shape, color, or upload an image"
-msgstr ""
+msgstr "Chọn hình dáng, màu sắc hoặc tải ảnh lên cho bot"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/composer-error.tsx
@@ -1306,7 +1318,7 @@ msgstr "Chọn bản sao lưu"
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
-msgstr ""
+msgstr "Chọn tệp"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Choose folder"
@@ -1357,7 +1369,7 @@ msgstr ""
 #: src/pages/shell/avatar-studio-popover.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
-msgstr ""
+msgstr "Đóng"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Close chart"
@@ -1419,6 +1431,10 @@ msgstr ""
 msgid "Close voice settings"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "cloud"
+msgstr "Đám mây"
+
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Cloud"
 msgstr ""
@@ -1439,11 +1455,11 @@ msgstr "Thu gọn {label}"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color"
-msgstr ""
+msgstr "Màu sắc"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color {color}"
-msgstr ""
+msgstr "Màu {color}"
 
 #: src/components/markdown-copy.tsx
 msgid "column {index}"
@@ -1830,7 +1846,7 @@ msgstr "Không thể tiếp tục"
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 msgid "Could not create bot"
-msgstr ""
+msgstr "Không thể tạo bot"
 
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
@@ -2341,7 +2357,7 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Customize bot avatar"
-msgstr ""
+msgstr "Tùy chỉnh ảnh đại diện bot"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Dark"
@@ -2375,7 +2391,7 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Default"
-msgstr ""
+msgstr "Mặc định"
 
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
 #: src/pages/RoutineEditor.tsx
@@ -2591,7 +2607,7 @@ msgstr ""
 #: src/pages/shell/avatar-studio-popover.tsx
 #: src/pages/shell/import-setup-card.tsx
 msgid "Done"
-msgstr ""
+msgstr "Xong"
 
 #: src/components/ModelCredits.tsx
 msgid "Downgrade at renewal"
@@ -2625,7 +2641,7 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Drag, drop, or paste an image"
-msgstr ""
+msgstr "Kéo thả hoặc dán ảnh"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
@@ -3058,6 +3074,10 @@ msgstr ""
 msgid "Hear a sample"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "hex"
+msgstr "Lục giác"
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr ""
@@ -3132,7 +3152,7 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Icon set"
-msgstr ""
+msgstr "Bộ biểu tượng"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "If you heard that, voice is ready."
@@ -3153,7 +3173,7 @@ msgstr "Mô hình này chưa được cấu hình để nhận ảnh."
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Image upload area"
-msgstr ""
+msgstr "Vùng tải ảnh lên"
 
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/create-bot-dialog.tsx
@@ -3334,6 +3354,10 @@ msgstr "Đã giữ"
 #: src/pages/RoutineEditor.tsx
 msgid "key"
 msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Khăn rằn"
+msgstr "Khăn rằn"
 
 #: src/components/LoginFields.tsx
 msgid "Label"
@@ -3847,7 +3871,7 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Name"
-msgstr ""
+msgstr "Tên"
 
 #: src/lib/agent-import-errors.ts
 #: src/pages/shell/agent-import.tsx
@@ -3864,7 +3888,7 @@ msgstr ""
 
 #: src/pages/shell/create-bot-dialog.tsx
 msgid "Name your Bot"
-msgstr ""
+msgstr "Đặt tên cho bot"
 
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
@@ -4059,6 +4083,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Nón"
+msgstr "Nón"
 
 #: src/lib/ticket-priority.ts
 msgid "Normal"
@@ -4264,10 +4292,6 @@ msgstr ""
 msgid "Organization API key"
 msgstr ""
 
-#: src/pages/shell/avatar-studio-popover.tsx
-msgid "Original"
-msgstr ""
-
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr ""
@@ -4354,6 +4378,10 @@ msgstr ""
 #: src/pages/shell/import-status.ts
 msgid "Paused"
 msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "pebble"
+msgstr "Viên sỏi"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Pending"
@@ -4807,7 +4835,7 @@ msgstr "Gửi lại mã"
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Reset"
-msgstr ""
+msgstr "Đặt lại"
 
 #: src/pages/ActivityList.tsx
 msgid "Reset all"
@@ -5131,6 +5159,10 @@ msgstr "Chọn một bot"
 msgid "Self-hosted"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "Sen"
+msgstr "Sen"
+
 #: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr ""
@@ -5233,12 +5265,12 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Shape"
-msgstr ""
+msgstr "Hình dáng"
 
 #. placeholder {0}: index + 1
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Shape {0}"
-msgstr ""
+msgstr "Hình {0}"
 
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -5454,6 +5486,10 @@ msgstr ""
 msgid "Speech model"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "squircle"
+msgstr "Vuông bo góc"
+
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO tạm thời không khả dụng. Hãy thử lại."
@@ -5592,6 +5628,10 @@ msgstr ""
 msgid "Table"
 msgstr ""
 
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "tablet"
+msgstr "Viên nén"
+
 #: src/pages/shell/computer-overlay.tsx
 msgid "Take control"
 msgstr ""
@@ -5619,6 +5659,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Teams not enabled"
 msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "teardrop"
+msgstr "Giọt nước"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Test"
@@ -6087,7 +6131,7 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
-msgstr ""
+msgstr "Tải lên"
 
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
@@ -6224,7 +6268,7 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "VNBot"
-msgstr ""
+msgstr "VNBot"
 
 #: src/components/ModelCredits.tsx
 #: src/pages/Onboarding.tsx
@@ -6278,6 +6322,10 @@ msgstr ""
 #: src/components/VaultSettings.tsx
 msgid "Website login"
 msgstr ""
+
+#: src/pages/shell/avatar-studio-popover.tsx
+msgid "wedge"
+msgstr "Hình nêm"
 
 #: src/lib/cron.ts
 msgid "Wednesday"

@@ -18,24 +18,24 @@ test("set selection preserves legacy, shapes and photos and persists an explicit
     await expect(photo.locator("img")).toBeVisible();
     await legacy.getByTestId("avatar-studio-trigger").click();
     const studio = page.getByTestId("avatar-studio");
-    await expect(studio.getByRole("tab", { name: "Original", exact: true })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await studio.getByRole("tab", { name: "Classic", exact: true }).click();
-    await expect(studio.locator(".rakazo-logo-avatar").first()).toBeVisible();
-    await captureScreenshot(page, testInfo, `avatar-set-studio-${theme}`);
-    await studio.getByRole("button", { name: "Done", exact: true }).click();
-    await page.reload();
-    await expect(legacy.locator(".rakazo-logo-avatar")).toBeVisible();
-    await expect(shape.locator(".bot-character-eyes")).toBeVisible();
-    await expect(photo.locator("img")).toBeVisible();
-    await legacy.getByTestId("avatar-studio-trigger").click();
     await expect(studio.getByRole("tab", { name: "Classic", exact: true })).toHaveAttribute(
       "aria-selected",
       "true",
     );
-    await studio.getByRole("tab", { name: "Original", exact: true }).click();
+    await studio.getByRole("tab", { name: "VNBot", exact: true }).click();
+    await expect(studio.locator("[data-vnbot-avatar]").first()).toBeVisible();
+    await captureScreenshot(page, testInfo, `avatar-set-studio-${theme}`);
+    await studio.getByRole("button", { name: "Done", exact: true }).click();
+    await page.reload();
+    await expect(legacy.locator("[data-vnbot-avatar]")).toBeVisible();
+    await expect(shape.locator(".bot-character-eyes")).toBeVisible();
+    await expect(photo.locator("img")).toBeVisible();
+    await legacy.getByTestId("avatar-studio-trigger").click();
+    await expect(studio.getByRole("tab", { name: "VNBot", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await studio.getByRole("tab", { name: "Classic", exact: true }).click();
     await studio.getByRole("button", { name: "Done", exact: true }).click();
     await expect(legacy.locator(".rakazo-organic-avatar")).toBeVisible();
   }
@@ -48,7 +48,7 @@ test("new-bot dialog defaults to vnbot and submits its explicit set", async ({
   await page.goto("/e2e/fixtures/avatar-sets.html");
   await page.getByRole("button", { name: "New bot", exact: true }).click();
   const dialog = page.getByTestId("create-bot-dialog");
-  await expect(dialog.locator(".rakazo-organic-avatar").first()).toBeVisible();
+  await expect(dialog.locator("[data-vnbot-avatar]").first()).toBeVisible();
   await captureScreenshot(page, testInfo, "create-bot-default-vnbot");
   await dialog.getByPlaceholder("Name your Bot").fill("New example");
   await dialog.getByRole("button", { name: "Create", exact: true }).click();

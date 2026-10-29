@@ -21,7 +21,7 @@ import { memo, useId, useMemo, useSyncExternalStore } from "react";
 import { useBotAvatarActivity } from "./bot-avatar-activity.js";
 import { cn } from "./lib/utils.js";
 import { LogoAvatar } from "./logo-avatar.js";
-import { VnbotAvatar, vnbotShape } from "./vnbot-avatar.js";
+import { VNBOT_SHAPES, VnbotAvatar, vnbotShape } from "./vnbot-avatar.js";
 import "./styles.css";
 
 export type { BotColorDef };
@@ -142,7 +142,7 @@ export const BotAvatar = memo(function BotAvatar({
     );
   }
 
-  if (parsed.shapeIndex === undefined && avatarSet === "vnbot") {
+  if (avatarSet === "vnbot") {
     return (
       <div
         className={cn("rakazo-bot-avatar relative shrink-0 select-none", className)}
@@ -150,7 +150,11 @@ export const BotAvatar = memo(function BotAvatar({
         style={{ width: size, height: size }}
       >
         <VnbotAvatar
-          shape={vnbotShape(effectiveId)}
+          shape={
+            parsed.shapeIndex === undefined
+              ? vnbotShape(effectiveId)
+              : VNBOT_SHAPES[parsed.shapeIndex % VNBOT_SHAPES.length]!
+          }
           body={colorDef.hex}
           tone={vnbotBodyTone(colorDef.hex)}
           size={size}
