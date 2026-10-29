@@ -13,6 +13,16 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. js-lingui-explicit-id
+#: src/App.tsx
+msgid "Page not found"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/App.tsx
+msgid "Go home"
+msgstr ""
+
 #: src/pages/shell/sidebar-roster.tsx
 msgid " (unread)"
 msgstr "（未読）"
@@ -146,10 +156,6 @@ msgstr "{0}は直接のメンションには引き続き応答します。"
 msgid "{0}'s screen"
 msgstr "{0}の画面"
 
-#: src/lib/billing.ts
-msgid "{amount} / {period}"
-msgstr "{amount} / {period}"
-
 #: src/pages/shell/dialogs.tsx
 msgid "{botCount, plural, one {Delete {name} and its # bot?} other {Delete {name} and its # bots?}}"
 msgstr "{botCount, plural, other {{name} と # 個のボットを削除しますか？}}"
@@ -169,22 +175,6 @@ msgstr ""
 #: src/components/markdown-copy.tsx
 msgid "{count, plural, one {# row} other {# rows}}"
 msgstr "{count, plural, one {# 行} other {# 行}}"
-
-#: src/lib/billing.ts
-msgid "{count} days"
-msgstr "{count}日"
-
-#: src/lib/billing.ts
-msgid "{count} months"
-msgstr "{count}か月"
-
-#: src/lib/billing.ts
-msgid "{count} weeks"
-msgstr "{count}週間"
-
-#: src/lib/billing.ts
-msgid "{count} years"
-msgstr "{count}年"
 
 #: src/lib/relative-time.ts
 msgid "{days}d ago"
@@ -296,23 +286,8 @@ msgstr "{provider}のキーが週間の上限に達しました。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "{provider} reached its credit limit."
-msgstr "{provider}のクレジット上限に達しました。"
-
-#. js-lingui-explicit-id
-#: src/lib/run-error.ts
-msgid "{provider} reached its daily credit limit."
-msgstr "{provider}の1日のクレジット上限に達しました。"
-
-#. js-lingui-explicit-id
-#: src/lib/run-error.ts
 msgid "{provider} reached its daily spending limit."
 msgstr "{provider}の1日の利用額上限に達しました。"
-
-#. js-lingui-explicit-id
-#: src/lib/run-error.ts
-msgid "{provider} reached its monthly credit limit."
-msgstr "{provider}の月間クレジット上限に達しました。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -323,11 +298,6 @@ msgstr "{provider}の月間利用額上限に達しました。"
 #: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
 msgstr "{provider}の利用額上限に達しました。"
-
-#. js-lingui-explicit-id
-#: src/lib/run-error.ts
-msgid "{provider} reached its weekly credit limit."
-msgstr "{provider}の週間クレジット上限に達しました。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -347,10 +317,6 @@ msgstr "{provider}の応答に時間がかかりすぎました。もう一度�
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left"
 msgstr "残り{remaining}"
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "{seats, plural, one {# seat} other {# seats}}"
-msgstr "{seats, plural, one {#席} other {#席}}"
 
 #: src/components/ArtifactFileCard.tsx
 msgid "{size} B"
@@ -398,12 +364,6 @@ msgstr "{toolCount, plural, one {#個のツール} other {#個のツール}}"
 #: src/pages/shell/composer.tsx
 msgid "@{0}"
 msgstr "@{0}"
-
-#. placeholder {0}: amount / 100
-#. placeholder {0}: status.byokPriceCents / 100
-#: src/components/ModelCredits.tsx
-msgid "${0} / month"
-msgstr "${0} / 月"
 
 #: src/components/integrations/space-availability.tsx
 msgid "1 space"
@@ -472,7 +432,6 @@ msgstr "{0}の操作"
 msgid "Actions for space"
 msgstr "スペースの操作"
 
-#: src/pages/BillingSettingsPanel.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Active"
 msgstr "有効"
@@ -542,10 +501,6 @@ msgstr "別のものを追加"
 #: src/components/VaultSettings.tsx
 msgid "Add credential"
 msgstr "認証情報を追加"
-
-#: src/components/ModelCredits.tsx
-msgid "Add credits"
-msgstr "クレジットを追加"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Add custom"
@@ -649,11 +604,6 @@ msgstr "エージェント:"
 #: src/pages/PluginsOverlay.tsx
 msgid "All"
 msgstr ""
-
-#. placeholder {0}: amount / 100
-#: src/components/ModelCredits.tsx
-msgid "All ${0} goes to model usage."
-msgstr "${0} はすべてモデルの利用に充てられます。"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/agent-import.tsx
@@ -781,10 +731,6 @@ msgstr "回答済み: {answer}"
 #: src/pages/Onboarding.tsx
 msgid "Anthropic API"
 msgstr "Anthropic API"
-
-#: src/pages/Paywall.tsx
-msgid "Any model, with your own key"
-msgstr "自分のキーで、あらゆるモデルを"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Áo dài"
@@ -951,10 +897,6 @@ msgstr "自動送信者は、ここに投稿すると表示されます。"
 msgid "Available after the routine is saved"
 msgstr "ルーティンの保存後に利用可能"
 
-#: src/components/ModelCredits.tsx
-msgid "Available credits"
-msgstr "利用可能なクレジット"
-
 #: src/components/integrations/space-availability.tsx
 msgid "Available in"
 msgstr ""
@@ -999,10 +941,6 @@ msgstr "Basic認証（{username}）"
 #: src/pages/PluginsOverlay.tsx
 msgid "Bearer token"
 msgstr "Bearerトークン"
-
-#: src/pages/SettingsOverlay.tsx
-msgid "Billing"
-msgstr "請求"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "blob"
@@ -1078,14 +1016,6 @@ msgstr "両方"
 msgid "Bots"
 msgstr "ボット"
 
-#: src/components/ModelCredits.tsx
-msgid "Bots and browser automation"
-msgstr "ボットとブラウザ自動化"
-
-#: src/pages/Paywall.tsx
-msgid "Bots with their own computer and browser"
-msgstr "専用のコンピューターとブラウザを持つボット"
-
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Brain label"
 msgstr "Brainラベル"
@@ -1102,10 +1032,6 @@ msgstr "MCPサーバーを探す"
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
 msgstr "組み込み"
-
-#: src/pages/Auth.tsx
-msgid "By continuing, you agree to VNBot's <0>Terms of Use</0> and <1>Privacy Policy</1>."
-msgstr ""
 
 #: src/pages/shell/chat-header.tsx
 msgid "Call"
@@ -1157,7 +1083,6 @@ msgstr "画像を読み取れません"
 #: src/pages/model-settings/space-bots-model.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/shell/agent-import-undo.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1176,10 +1101,6 @@ msgstr "新しいグループをキャンセル"
 #: src/pages/shell/chat-context.tsx
 msgid "Cancel reply"
 msgstr "返信をキャンセル"
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Canceled"
-msgstr "キャンセル済み"
 
 #: src/components/CloudAgentCard.tsx
 msgid "cancelled"
@@ -1323,11 +1244,6 @@ msgstr "ファイルを選択"
 #: src/pages/shell/agent-import.tsx
 msgid "Choose folder"
 msgstr "フォルダを選択"
-
-#: src/components/ModelCredits.tsx
-#: src/components/SubscriptionGate.tsx
-msgid "Choose how to use VNBot"
-msgstr "VNBotの使い方を選択"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Classic"
@@ -1576,7 +1492,6 @@ msgstr "このブラウザセッションからURLにアクセスできること
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/model-settings/role-model-picker.tsx
-#: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "接続"
@@ -1615,10 +1530,6 @@ msgstr "MCPサーバー「{name}」を接続"
 msgid "Connect memory provider"
 msgstr "メモリプロバイダーを接続"
 
-#: src/components/ModelCredits.tsx
-msgid "Connect my own"
-msgstr "自分のキーを接続"
-
 #: src/pages/McpServersOverlay.tsx
 msgid "Connect OAuth"
 msgstr "OAuthを接続"
@@ -1629,8 +1540,12 @@ msgstr "先にこのモデルのプロバイダーを接続してください。
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "Connect your own API key in Models or choose VNBot credits in Billing."
-msgstr "モデルで自分のAPIキーを接続するか、請求でVNBotクレジットを選択してください。"
+msgid "Connect your own API key in Models."
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "Connect your own API key in Models."
+msgstr ""
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1699,10 +1614,6 @@ msgstr "続行"
 msgid "Continue in Background"
 msgstr "バックグラウンドで続行"
 
-#: src/components/ModelCredits.tsx
-msgid "Continue to checkout"
-msgstr "購入手続きへ進む"
-
 #. placeholder {0}: reset.sso.name
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
@@ -1747,10 +1658,6 @@ msgstr "プロンプトをコピー"
 #: src/components/markdown-copy.tsx
 msgid "Copy rows"
 msgstr "行をコピー"
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Cost"
-msgstr "コスト"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not add"
@@ -1960,10 +1867,6 @@ msgstr "承認ルールを読み込めませんでした"
 msgid "Could not load artifacts."
 msgstr "アーティファクトを読み込めませんでした。"
 
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Could not load billing"
-msgstr "請求情報を読み込めませんでした"
-
 #: src/pages/IntegrationSetup.tsx
 msgid "Could not load bots. Reload to try again."
 msgstr "ボットを読み込めませんでした。再読み込みしてもう一度お試しください。"
@@ -2018,13 +1921,6 @@ msgstr "音声設定を読み込めませんでした"
 #: src/lib/sign-out.ts
 msgid "Could not log out. Try again."
 msgstr "ログアウトできませんでした。もう一度お試しください。"
-
-#: src/components/ModelCredits.tsx
-#: src/pages/BillingSettingsPanel.tsx
-#: src/pages/Onboarding.tsx
-#: src/pages/Paywall.tsx
-msgid "Could not open billing"
-msgstr "請求ページを開けませんでした"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not play a test clip"
@@ -2217,10 +2113,6 @@ msgstr "更新できませんでした"
 msgid "Could not update agent access"
 msgstr "エージェントのアクセス権を更新できませんでした"
 
-#: src/components/ModelCredits.tsx
-msgid "Could not update billing"
-msgstr "請求情報を更新できませんでした"
-
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Could not update computer"
 msgstr "コンピューターを更新できませんでした"
@@ -2245,10 +2137,6 @@ msgstr "コンピューターのセットアップを確認できませんでし
 msgid "Couldn't load messaging settings"
 msgstr "メッセージ設定を読み込めませんでした"
 
-#: src/pages/PaymentWalletSettingsPanel.tsx
-msgid "Couldn't load your wallet"
-msgstr ""
-
 #: src/pages/Auth.tsx
 msgid "Couldn't reach the server. Try again."
 msgstr ""
@@ -2260,10 +2148,6 @@ msgstr "メッセージ設定を更新できませんでした"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update your timezone"
 msgstr "タイムゾーンを更新できませんでした"
-
-#: src/pages/PaymentWalletSettingsPanel.tsx
-msgid "Couldn't update your wallet"
-msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/shell/agent-import.tsx
@@ -2318,10 +2202,6 @@ msgstr "認証情報は暗号化され、モデルに送信されることはあ
 msgid "Credentials: {names}"
 msgstr "認証情報: {names}"
 
-#: src/components/ModelCredits.tsx
-msgid "Credit amount"
-msgstr "クレジット額"
-
 #: src/lib/cron.ts
 msgid "Cron"
 msgstr "Cron"
@@ -2367,7 +2247,6 @@ msgstr "ダーク"
 msgid "Data"
 msgstr ""
 
-#: src/lib/billing.ts
 #: src/lib/cron.ts
 msgid "day"
 msgstr "日"
@@ -2538,7 +2417,6 @@ msgstr "録音を破棄"
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect"
 msgstr "切断"
@@ -2546,10 +2424,6 @@ msgstr "切断"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Disconnect {disconnectName}?"
 msgstr "{disconnectName}を切断しますか？"
-
-#: src/pages/PaymentWalletSettingsPanel.tsx
-msgid "Disconnect {name}?"
-msgstr ""
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect Self-hosted"
@@ -2597,6 +2471,10 @@ msgstr "Dockerは設定されていますが、コンピューターが応答し
 msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
 msgstr "Dockerはセキュリティ強化のため、コンピューターへのアクセスを制限します。{hostLabel}を使用すると、ボットがローカルのファイルやツールを扱えるようになります。"
 
+#: src/components/SidebarFooter.tsx
+msgid "Docs"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Document changed. Reopen to edit the latest version."
 msgstr "ドキュメントが変更されました。最新版を編集するには開き直してください。"
@@ -2608,10 +2486,6 @@ msgstr "ドキュメントが変更されました。最新版を編集するに
 #: src/pages/shell/import-setup-card.tsx
 msgid "Done"
 msgstr "完了"
-
-#: src/components/ModelCredits.tsx
-msgid "Downgrade at renewal"
-msgstr "更新時にダウングレード"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -2694,10 +2568,6 @@ msgstr "メールアドレスの確認が必要です"
 msgid "Enable {0}"
 msgstr "{0}を有効にする"
 
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Ends {day}"
-msgstr "{day}に終了"
-
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
 msgstr "対応する場合… 無視する場合…"
@@ -2738,7 +2608,7 @@ msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10
 msgstr ""
 
 #: src/pages/Auth.tsx
-msgid "Enter your email to get a 6-digit sign-in code. If you don't have an account yet, VNBot will create one for you."
+msgid "Enter your email to get a 6-digit sign-in code."
 msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
@@ -2955,14 +2825,9 @@ msgstr "完了しました。"
 msgid "Finishing MCP connection…"
 msgstr "MCP接続を完了しています…"
 
-#: src/components/ModelCredits.tsx
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
 msgstr "無料"
-
-#: src/pages/shell/shell-sidebar.tsx
-msgid "Free plan ends {day}"
-msgstr "無料プランは{day}に終了します"
 
 #: src/lib/cron.ts
 msgid "Friday"
@@ -3045,6 +2910,10 @@ msgstr "先に通話を終了してから、画面に表示されたコードを
 #: src/lib/call-session.ts
 msgid "Hang up, then enter the code on screen."
 msgstr "通話を終了してから、画面に表示されたコードを入力してください。"
+
+#: src/pages/memory-providers/HonchoSettingsForm.tsx
+msgid "hch-…"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "header"
@@ -3201,10 +3070,6 @@ msgstr "レビュー中"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "In this bot"
 msgstr ""
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Inactive"
-msgstr "無効"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
@@ -3494,9 +3359,7 @@ msgstr "ローカルアクセスでは、ボットが確認なしでコマンド
 msgid "Local computer access requires the latest desktop app."
 msgstr "ローカルコンピューターへのアクセスには最新のデスクトップアプリが必要です。"
 
-#: src/components/ModelCredits.tsx
 #: src/components/SidebarFooter.tsx
-#: src/pages/Paywall.tsx
 msgid "Log out"
 msgstr "ログアウト"
 
@@ -3523,7 +3386,6 @@ msgstr "小文字、数字、ハイフン、アンダースコアのみ使用で
 msgid "Main model"
 msgstr "メインモデル"
 
-#: src/pages/BillingSettingsPanel.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Manage"
 msgstr "管理"
@@ -3534,11 +3396,6 @@ msgstr "管理"
 #: src/pages/SettingsOverlay.tsx
 msgid "Manage {0}"
 msgstr "{0} を管理"
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Paywall.tsx
-msgid "Manage billing"
-msgstr "請求を管理"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Manage MCP servers"
@@ -3787,10 +3644,6 @@ msgstr "モデルのオプション"
 msgid "Models"
 msgstr "モデル"
 
-#: src/components/ModelCredits.tsx
-msgid "Models at provider cost"
-msgstr "プロバイダー原価でのモデル利用"
-
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Models from server"
@@ -3804,21 +3657,9 @@ msgstr "モデル一覧は正常です。{modelCount, plural, one {#個のモデ
 msgid "Monday"
 msgstr "月曜日"
 
-#: src/lib/billing.ts
-msgid "month"
-msgstr "月"
-
 #: src/lib/cron.ts
 msgid "Monthly"
 msgstr "毎月"
-
-#: src/components/ModelCredits.tsx
-msgid "Monthly credits"
-msgstr "月間クレジット"
-
-#: src/components/ModelCredits.tsx
-msgid "Monthly credits expire at renewal. Top-ups do not expire."
-msgstr "月間クレジットは更新時に失効します。追加購入分は失効しません。"
 
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/message-hover-actions.tsx
@@ -4203,12 +4044,7 @@ msgstr "1日 {0}"
 msgid "One-time"
 msgstr "1回のみ"
 
-#: src/components/ModelCredits.tsx
-msgid "One-time purchase. Credits do not expire."
-msgstr "1回限りの購入です。クレジットは失効しません。"
-
 #: src/components/markdown-link-prompt.tsx
-#: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/shell/computer-panel.tsx
 #: src/pages/shell/import-setup-card.tsx
 #: src/pages/shell/message-view.tsx
@@ -4348,10 +4184,6 @@ msgstr "パスワードを更新しました"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Passwords do not match"
 msgstr "パスワードが一致しません"
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Past due"
-msgstr "支払い期限超過"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -4531,10 +4363,6 @@ msgstr "プルリクエスト"
 msgid "Queued"
 msgstr "待機中"
 
-#: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "rakazo-shared and IDs starting with bot- are reserved for VNBot."
-msgstr "rakazo-sharedおよびbot-で始まるIDはVNBot用に予約されています。"
-
 #: src/pages/shell/message-hover-actions.tsx
 msgid "React"
 msgstr "リアクション"
@@ -4652,13 +4480,8 @@ msgstr "リダイレクトURI"
 
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
-#: src/components/ModelCredits.tsx
 msgid "Refresh"
 msgstr "更新"
-
-#: src/components/ModelCredits.tsx
-msgid "Refresh credits"
-msgstr "クレジットを更新"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
@@ -4780,10 +4603,6 @@ msgstr "名前を変更"
 #: src/pages/shell/sidebar-roster.tsx
 msgid "Rename section"
 msgstr "セクション名を変更"
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Renews {day}"
-msgstr "{day}に更新"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
@@ -4950,10 +4769,6 @@ msgstr "ルーティン"
 msgid "Routines"
 msgstr "ルーティン"
 
-#: src/pages/Paywall.tsx
-msgid "Routines that run while you're away"
-msgstr "不在中に実行されるルーティン"
-
 #: src/components/markdown-copy.tsx
 msgid "Row"
 msgstr "行"
@@ -5073,10 +4888,6 @@ msgstr "保存中…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "「はい」か「いいえ」、または文章で答えてください。"
-
-#: src/components/ModelCredits.tsx
-msgid "Scheduled routines"
-msgstr "スケジュール済みのルーティン"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Scopes (optional)"
@@ -5498,11 +5309,6 @@ msgstr "SSOは一時的に利用できません。もう一度お試しくださ
 msgid "Start"
 msgstr ""
 
-#: src/components/ModelCredits.tsx
-#: src/pages/Paywall.tsx
-msgid "Start {trialDays}-day free trial"
-msgstr "{trialDays}日間の無料トライアルを開始"
-
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
 msgstr "録画を開始"
@@ -5571,28 +5377,6 @@ msgstr "サブエージェント"
 #: src/pages/Onboarding.tsx
 msgid "Submit"
 msgstr "送信"
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Paywall.tsx
-msgid "Subscribe"
-msgstr "申し込む"
-
-#. placeholder {0}: status.byokPriceCents / 100
-#: src/components/ModelCredits.tsx
-msgid "Subscribe for ${0} / month"
-msgstr "月額 ${0} で登録"
-
-#: src/components/ModelCredits.tsx
-msgid "Subscribe to VNBot credits"
-msgstr "VNBot クレジットに申し込む"
-
-#: src/components/ModelCredits.tsx
-msgid "Subscribe with your own AI"
-msgstr "自分の AI で申し込む"
-
-#: src/pages/Paywall.tsx
-msgid "Subscription required"
-msgstr "サブスクリプションが必要です"
 
 #: src/lib/cron.ts
 msgid "Sunday"
@@ -5993,14 +5777,6 @@ msgstr "人と同じように扱う"
 msgid "Treg token"
 msgstr "Tregトークン"
 
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Trial"
-msgstr "トライアル"
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Trial ends {day}"
-msgstr "トライアル終了: {day}"
-
 #: src/components/TrustedLinkSitesSettings.tsx
 msgid "Trusted sites"
 msgstr "信頼済みサイト"
@@ -6072,10 +5848,6 @@ msgstr "サポートされていないファイル形式です: {0}"
 msgid "Up to date"
 msgstr "最新です"
 
-#: src/components/ModelCredits.tsx
-msgid "Update"
-msgstr "更新"
-
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Update computer"
 msgstr "コンピューターを更新"
@@ -6120,14 +5892,6 @@ msgstr "チームのコンピューターを更新中"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Updating…"
 msgstr "更新中…"
-
-#: src/pages/shell/shell-sidebar.tsx
-msgid "Upgrade"
-msgstr "アップグレード"
-
-#: src/components/ModelCredits.tsx
-msgid "Upgrade now"
-msgstr "今すぐアップグレード"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -6185,10 +5949,6 @@ msgstr "{label}でデフォルトを使用"
 msgid "Use in this bot"
 msgstr ""
 
-#: src/components/ModelCredits.tsx
-msgid "Use my subscription or API key"
-msgstr "自分のサブスクリプションまたはAPIキーを使用"
-
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
 msgstr "パスワードには保護された入力を使用してください。"
@@ -6200,10 +5960,6 @@ msgstr "スペースのデフォルトを使用"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Use up to 512 letters, digits, _ or -."
 msgstr "英数字、_、-のみで512文字以内で入力してください。"
-
-#: src/components/ModelCredits.tsx
-msgid "Use VNBot credits"
-msgstr "VNBotクレジットを使用"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "User peer"
@@ -6225,14 +5981,6 @@ msgstr "お使いのコンピューター上のパスを使用しています"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "このサーバー自身の{hostCredentialSource}認証情報を使用して{selectedProviderName}にアクセスします。"
-
-#: src/components/ModelCredits.tsx
-msgid "Using your API key"
-msgstr "APIキーを使用中"
-
-#: src/components/ModelCredits.tsx
-msgid "Using your API key. Free plan ends {freeUntil}."
-msgstr "自分の API キーを使用中。無料プランは{freeUntil}に終了します。"
 
 #: src/components/LoginFields.tsx
 #: src/components/VaultSettings.tsx
@@ -6270,14 +6018,17 @@ msgstr ""
 msgid "VNBot"
 msgstr "VNBot"
 
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "VNBot credits"
-msgstr "VNBotクレジット"
-
 #: src/lib/user-error.ts
 #: src/pages/Auth.tsx
 msgid "VNBot is in limited preview"
+msgstr ""
+
+#: src/pages/memory-providers/HonchoSettingsForm.tsx
+msgid "vnbot-<space>"
+msgstr ""
+
+#: src/pages/memory-providers/HonchoSettingsForm.tsx
+msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
@@ -6299,21 +6050,9 @@ msgstr "順番待ち…"
 msgid "Waiting…"
 msgstr "待機中…"
 
-#: src/pages/SettingsOverlay.tsx
-msgid "Wallet"
-msgstr ""
-
 #: src/pages/Auth.tsx
 msgid "Want early access? <0>Get in touch</0>"
 msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Web, desktop and mobile"
-msgstr "Web、デスクトップ、モバイル"
-
-#: src/pages/Paywall.tsx
-msgid "Web, desktop and mobile apps"
-msgstr "Web、デスクトップ、モバイルアプリ"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
@@ -6330,10 +6069,6 @@ msgstr ""
 #: src/lib/cron.ts
 msgid "Wednesday"
 msgstr "水曜日"
-
-#: src/lib/billing.ts
-msgid "week"
-msgstr "週"
 
 #: src/lib/cron.ts
 #: src/pages/RoutineEditor.tsx
@@ -6435,17 +6170,9 @@ msgstr "作業の指示"
 msgid "Working…"
 msgstr "処理中…"
 
-#: src/components/ModelCredits.tsx
-msgid "Works with your ChatGPT or Claude plan."
-msgstr "ChatGPT または Claude のプランで使えます。"
-
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Workspace"
 msgstr "ワークスペース"
-
-#: src/lib/billing.ts
-msgid "year"
-msgstr "年"
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/sidebar-roster.tsx
@@ -6515,10 +6242,6 @@ msgstr "お使いのOpenRouter"
 #: src/components/integrations/skills-dialog.tsx
 msgid "Your skills"
 msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Your subscription or API key"
-msgstr "自分のサブスクリプションまたはAPIキー"
 
 #: src/pages/Welcome.tsx
 msgid "Your team of always-on bots<0/>that you can give real work to."

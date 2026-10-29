@@ -54,3 +54,11 @@ it("recognizes image compatibility errors from old clients and new servers", () 
   expect(errorText(new Error(MODEL_IMAGE_INPUT_ERROR))).toBe(MODEL_IMAGE_INPUT_ERROR);
   expect(errorText(`  ${MODEL_IMAGE_INPUT_ERROR}  `)).toBe(MODEL_IMAGE_INPUT_ERROR);
 });
+
+it.each([
+  "Connect your own API key in Models or choose Rakazo credits in Billing.",
+  "Subscribe in Billing to keep running bots.",
+  '402: {"message":"Insufficient credits"}',
+])("uses model connection advice for funding errors on sends: %s", (message) => {
+  expect(errorText(new Error(message))).toBe("Connect your own API key in Models.");
+});

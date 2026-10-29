@@ -3,9 +3,11 @@ import { ACCOUNT_NOT_LINKED, isVoiceAccountErrorCode } from "@rakazo/contracts";
 import type { CredentialField } from "@rakazo/core";
 import {
   authErrorMessage,
+  HOSTED_MODEL_CREDITS_REQUIRED_ERROR,
   MAX_PASSWORD_LENGTH,
   MODEL_IMAGE_INPUT_ERROR,
   MODEL_IMAGE_INPUT_UNKNOWN,
+  normalizeRunError,
   userErrorMessage,
 } from "@rakazo/core";
 
@@ -17,6 +19,15 @@ export function errorText(error: unknown, fallback = t`Something went wrong. Try
       : error && typeof error === "object" && "message" in error
         ? error.message
         : undefined;
+  if (typeof message === "string") {
+    const normalized = normalizeRunError(message);
+    if (
+      normalized.kind === "credit" ||
+      normalized.summary === HOSTED_MODEL_CREDITS_REQUIRED_ERROR
+    ) {
+      return t`Connect your own API key in Models.`;
+    }
+  }
   if (typeof message === "string" && message.trim() === MODEL_IMAGE_INPUT_ERROR)
     return t`This model cannot read images. Choose a model that supports images.`;
   if (typeof message === "string" && message.trim() === MODEL_IMAGE_INPUT_UNKNOWN)

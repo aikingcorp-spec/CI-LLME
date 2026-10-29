@@ -7,7 +7,6 @@ import {
   ChevronRight,
   CloudDownload,
   Cpu,
-  CreditCard,
   Gauge,
   KeyRound,
   MessageCircle,
@@ -15,7 +14,6 @@ import {
   Settings,
   ShieldCheck,
   Volume2,
-  Wallet,
   XIcon,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -32,11 +30,9 @@ import {
   UpdatesSettingsPanel,
   UsageSettingsPanel,
 } from "./AccountSettingsOverlay";
-import { BillingSettingsPanel } from "./BillingSettingsPanel";
 import { MemorySettingsOverlay } from "./MemorySettingsOverlay";
 import { MessagingSettingsPanel } from "./MessagingSettingsPanel";
 import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
-import { PaymentWalletSettingsPanel } from "./PaymentWalletSettingsPanel";
 import { SpaceSettingsPanel } from "./SpaceSettingsPanel";
 import type { SettingsSpace } from "./shell/dialogs";
 import type { SettingsSection } from "./shell-overlay";
@@ -63,11 +59,9 @@ export function SettingsOverlay({
   onNameSaved,
   timezone,
   onTimezoneChange,
-  billingEnabled = false,
   sandboxProvider,
   onSandboxProviderChange,
   messagingEnabled = false,
-  paymentWalletProvider = null,
   memoryConfig,
   onMemoryConfigChange,
   onClose,
@@ -88,12 +82,9 @@ export function SettingsOverlay({
   onNameSaved?: () => Promise<void>;
   timezone: string | null;
   onTimezoneChange: (timezone: string) => Promise<void>;
-  billingEnabled?: boolean;
   sandboxProvider?: string | null;
   onSandboxProviderChange?: (sandboxProvider: string) => void;
   messagingEnabled?: boolean;
-  /** The wallet this deployment lets bots spend from; none hides Wallet. */
-  paymentWalletProvider?: { id: string; name: string } | null;
   memoryConfig: SpaceMemoryConfig | null | undefined;
   onMemoryConfigChange: (config: SpaceMemoryConfig | null) => void;
   onClose: () => void;
@@ -110,12 +101,10 @@ export function SettingsOverlay({
   const recoveryHoldTimer = useRef<number | undefined>(undefined);
   const showComputer = keepComputerRecovery || computersAreUnavailable(sandboxProvider);
   const showUpdates = Boolean(desktopBridge()?.update);
-  // A section that isn't available yet (billing before its flag loads) shows General until it is.
+  // Unavailable sections show General.
   const section =
     (requestedSection === "computer" && !showComputer) ||
-    (requestedSection === "billing" && !billingEnabled) ||
     (requestedSection === "messaging" && !messagingEnabled) ||
-    (requestedSection === "wallet" && !paymentWalletProvider) ||
     (requestedSection === "updates" && !showUpdates)
       ? "general"
       : requestedSection;
@@ -158,11 +147,9 @@ export function SettingsOverlay({
     ...(messagingEnabled
       ? [{ id: "messaging" as const, label: t`Messaging`, icon: MessageCircle }]
       : []),
-    ...(paymentWalletProvider ? [{ id: "wallet" as const, label: t`Wallet`, icon: Wallet }] : []),
     { id: "memory", label: t`Memory`, icon: Brain },
     { id: "usage", label: t`Usage`, icon: Gauge },
     ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
-    ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
     ...(showUpdates ? [{ id: "updates" as const, label: t`Updates`, icon: CloudDownload }] : []),
   ];
 
@@ -194,15 +181,7 @@ export function SettingsOverlay({
       nav.removeEventListener("scroll", measure);
       observer?.disconnect();
     };
-  }, [
-    section,
-    showComputer,
-    billingEnabled,
-    messagingEnabled,
-    paymentWalletProvider,
-    showUpdates,
-    i18n.locale,
-  ]);
+  }, [section, showComputer, messagingEnabled, showUpdates, i18n.locale]);
 
   function scrollSections(direction: number) {
     const nav = navRef.current;
@@ -413,9 +392,6 @@ export function SettingsOverlay({
                   {section === "confirmations" ? <ApprovalRulesSettings scope="account" /> : null}
                   {section === "vault" ? <VaultSettings scope="account" /> : null}
                   {section === "messaging" && messagingEnabled ? <MessagingSettingsPanel /> : null}
-                  {section === "wallet" && paymentWalletProvider ? (
-                    <PaymentWalletSettingsPanel provider={paymentWalletProvider} />
-                  ) : null}
                   {section === "usage" ? (
                     <UsageSettingsPanel usage={usage} panelRef={usageRef} />
                   ) : null}
@@ -429,7 +405,6 @@ export function SettingsOverlay({
                       onRecoveryDismissed={releaseComputerRecovery}
                     />
                   ) : null}
-                  {section === "billing" && billingEnabled ? <BillingSettingsPanel /> : null}
                   {section === "updates" && showUpdates ? <UpdatesSettingsPanel /> : null}
                   {section === "models" ? (
                     <ModelSettingsOverlay embedded scope="account" onClose={requestClose} />

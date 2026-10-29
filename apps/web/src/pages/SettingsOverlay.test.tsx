@@ -54,8 +54,6 @@ vi.mock("../lib/rpc", () => ({
     memory: { providerConfig: () => providerConfig(spaceId) },
   }),
 }));
-vi.mock("./BillingSettingsPanel", () => ({ BillingSettingsPanel: () => null }));
-vi.mock("./PaymentWalletSettingsPanel", () => ({ PaymentWalletSettingsPanel: () => null }));
 vi.mock("./MemorySettingsOverlay", () => ({
   MemorySettingsOverlay: ({
     config,
@@ -218,17 +216,11 @@ it("reports a section picked in the nav so the shell can keep it in the URL", as
   }
 });
 
-it("opens a linked billing section once billing turns out to be on", async () => {
-  const { container, rerender, cleanup } = await render({
-    section: "billing",
-    billingEnabled: false,
-  });
-  const shown = () =>
-    container.querySelector("[data-settings-section]")?.getAttribute("data-settings-section");
+it("has no billing or wallet settings", async () => {
+  const { container, cleanup } = await render({ section: "general" });
   try {
-    expect(shown()).toBe("general");
-    await rerender({ section: "billing", billingEnabled: true });
-    expect(shown()).toBe("billing");
+    expect(container.querySelector('[data-testid="settings-nav-billing"]')).toBeNull();
+    expect(container.querySelector('[data-testid="settings-nav-wallet"]')).toBeNull();
   } finally {
     await cleanup();
   }
@@ -299,21 +291,6 @@ it("shows Updates in the desktop app", async () => {
   const { container, cleanup } = await render({});
   try {
     expect(updatesNav(container)).not.toBeNull();
-  } finally {
-    await cleanup();
-  }
-});
-
-it("offers Wallet only when the deployment has a wallet provider", async () => {
-  const { container, rerender, cleanup } = await render({ section: "wallet" });
-  const shown = () =>
-    container.querySelector("[data-settings-section]")?.getAttribute("data-settings-section");
-  try {
-    expect(container.querySelector('[data-testid="settings-nav-wallet"]')).toBeNull();
-    expect(shown()).toBe("general");
-    await rerender({ section: "wallet", paymentWalletProvider: { id: "link", name: "Link" } });
-    expect(container.querySelector('[data-testid="settings-nav-wallet"]')).not.toBeNull();
-    expect(shown()).toBe("wallet");
   } finally {
     await cleanup();
   }

@@ -11,10 +11,10 @@ import { ChevronDown, Globe } from "lucide-react";
 import { useRef, useState } from "react";
 import { getActiveUiLocale, setUiLocale } from "../lib/i18n";
 import type { UiLocale } from "../lib/ui-locale";
-import { UI_LOCALE_LABELS } from "../lib/ui-locale";
+import { PICKER_LOCALES, UI_LOCALE_LABELS } from "../lib/ui-locale";
 
-/** VNBot offers only these two on Welcome and sign-in. Settings keeps the full list. */
-export const LANGUAGE_SWITCH_LOCALES = ["vi", "en"] as const satisfies readonly UiLocale[];
+/** Share the same choices across web language pickers. */
+export const LANGUAGE_SWITCH_LOCALES = PICKER_LOCALES;
 type SwitchLocale = (typeof LANGUAGE_SWITCH_LOCALES)[number];
 
 function isSwitchLocale(value: unknown): value is SwitchLocale {

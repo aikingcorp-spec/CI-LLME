@@ -72,6 +72,7 @@ import {
   reachesOtherSpaces,
   useOwnSpaces,
 } from "../components/integrations/space-availability";
+import { catalogDescription } from "../lib/catalog-text";
 import { connectedAppMarks } from "../lib/connected-apps";
 import { optionalCatalogFeedProbe } from "../lib/optional-catalog-feed";
 import { useSpaceQueries } from "../lib/query";
@@ -860,7 +861,7 @@ export function PluginsOverlay({
                   key={tool.name}
                   variant="secondary"
                   className="h-6 px-2.5 text-[12px] font-normal"
-                  title={tool.description || undefined}
+                  title={catalogDescription(tool.description ?? "") || undefined}
                 >
                   {toolLabel(tool.name, item)}
                 </Badge>
@@ -1283,7 +1284,9 @@ export function PluginsOverlay({
               </div>
               <div className="text-xs text-muted-foreground">{result.domain}</div>
               {result.description ? (
-                <p className="mt-2 text-sm leading-5 text-muted-foreground">{result.description}</p>
+                <p className="mt-2 text-sm leading-5 text-muted-foreground">
+                  {catalogDescription(result.description ?? "")}
+                </p>
               ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {result.surfaces.map((surface) => {

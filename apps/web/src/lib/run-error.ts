@@ -1,5 +1,6 @@
 import { i18n } from "@lingui/core";
 import type { RunErrorTranslator } from "@rakazo/core";
+import { HOSTED_MODEL_CREDITS_REQUIRED_ERROR, normalizeRunError } from "@rakazo/core";
 
 /** Static descriptors keep shared run-error messages in Lingui extraction. */
 export const translateRunError: RunErrorTranslator = (message, values) => {
@@ -36,11 +37,13 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         message: "Connect a model in Settings before running bots.",
         values,
       });
+    case "Connect your own API key in Models.":
+    case "Subscribe in Billing to keep running bots.":
     case "Connect your own API key in Models or choose Rakazo credits in Billing.":
     case "Connect your own API key in Models or choose VNBot credits in Billing.":
       return i18n._({
-        id: "Connect your own API key in Models or choose VNBot credits in Billing.",
-        message: "Connect your own API key in Models or choose VNBot credits in Billing.",
+        id: "Connect your own API key in Models.",
+        message: "Connect your own API key in Models.",
         values,
       });
     case "The model provider returned an error.":
@@ -147,27 +150,12 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         values,
       });
     case "{provider} reached its credit limit.":
-      return i18n._({
-        id: "{provider} reached its credit limit.",
-        message: "{provider} reached its credit limit.",
-        values,
-      });
     case "{provider} reached its daily credit limit.":
-      return i18n._({
-        id: "{provider} reached its daily credit limit.",
-        message: "{provider} reached its daily credit limit.",
-        values,
-      });
     case "{provider} reached its weekly credit limit.":
-      return i18n._({
-        id: "{provider} reached its weekly credit limit.",
-        message: "{provider} reached its weekly credit limit.",
-        values,
-      });
     case "{provider} reached its monthly credit limit.":
       return i18n._({
-        id: "{provider} reached its monthly credit limit.",
-        message: "{provider} reached its monthly credit limit.",
+        id: "Connect your own API key in Models.",
+        message: "Connect your own API key in Models.",
         values,
       });
     case "{provider} reached its spending limit.":
@@ -216,3 +204,12 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
       return message;
   }
 };
+
+/** Funding diagnostics from older nodes must never reintroduce the removed billing UI. */
+export function normalizeWebRunError(details: string, locale = i18n.locale || "en") {
+  const result = normalizeRunError(details, translateRunError, locale);
+  const advice = translateRunError(HOSTED_MODEL_CREDITS_REQUIRED_ERROR);
+  return result.kind === "credit" || result.summary === advice
+    ? { ...result, summary: advice, details: advice, recovery: "connection" as const }
+    : result;
+}

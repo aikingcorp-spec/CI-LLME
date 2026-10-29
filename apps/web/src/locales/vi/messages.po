@@ -13,6 +13,16 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. js-lingui-explicit-id
+#: src/App.tsx
+msgid "Page not found"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/App.tsx
+msgid "Go home"
+msgstr ""
+
 #: src/pages/shell/sidebar-roster.tsx
 msgid " (unread)"
 msgstr " (chưa đọc)"
@@ -20,319 +30,279 @@ msgstr " (chưa đọc)"
 #. placeholder {0}: pinned.length
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "{0, plural, one {# bot has its own model:} other {# bots have their own model:}}"
-msgstr ""
+msgstr "{0, plural, one {# bot có mô hình riêng:} other {# bot có mô hình riêng:}}"
 
 #. placeholder {0}: servers.length
 #: src/pages/PluginsOverlay.tsx
 msgid "{0, plural, one {# connector} other {# connectors}}"
-msgstr ""
+msgstr "{0, plural, one {# kết nối} other {# kết nối}}"
 
 #. placeholder {0}: skill.files.length
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "{0, plural, one {# file} other {# files}}"
-msgstr ""
+msgstr "{0, plural, one {# tệp} other {# tệp}}"
 
 #. placeholder {0}: skills.length - shownSkills.length
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "{0, plural, one {# more} other {# more}}"
-msgstr ""
+msgstr "{0, plural, one {thêm #} other {thêm #}}"
 
 #. placeholder {0}: skillCount(install)
 #: src/components/integrations/skills-dialog.tsx
 msgid "{0, plural, one {# skill} other {# skills}}"
-msgstr ""
+msgstr "{0, plural, one {# kỹ năng} other {# kỹ năng}}"
 
 #. placeholder {0}: availability.spaceIds.length
 #. placeholder {0}: chosen.length
 #: src/components/integrations/space-availability.tsx
 msgid "{0, plural, one {# space} other {# spaces}}"
-msgstr ""
+msgstr "{0, plural, one {# không gian} other {# không gian}}"
 
 #. placeholder {0}: pinned.length
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "{0, plural, one {Switch # bot to the space default?} other {Switch # bots to the space default?}}"
-msgstr ""
+msgstr "{0, plural, one {Chuyển # bot sang mô hình mặc định của không gian?} other {Chuyển # bot sang mô hình mặc định của không gian?}}"
 
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "{0, plural, one {Waiting for sign-in — the code expires in about # minute.} other {Waiting for sign-in — the code expires in about # minutes.}}"
-msgstr ""
+msgstr "{0, plural, one {Đang chờ đăng nhập — mã hết hạn sau khoảng # phút.} other {Đang chờ đăng nhập — mã hết hạn sau khoảng # phút.}}"
 
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "{0, plural, one {Waiting for sign-in — the link expires in about # minute.} other {Waiting for sign-in — the link expires in about # minutes.}}"
-msgstr ""
+msgstr "{0, plural, one {Đang chờ đăng nhập — liên kết hết hạn sau khoảng # phút.} other {Đang chờ đăng nhập — liên kết hết hạn sau khoảng # phút.}}"
 
 #. placeholder {0}: file.name
 #: src/pages/shell/use-composer-actions.ts
 msgid "{0} (max {ATTACHMENT_MAX_COUNT} attachments)"
-msgstr ""
+msgstr "{0} (tối đa {ATTACHMENT_MAX_COUNT} tệp đính kèm)"
 
 #. placeholder {0}: file.name
 #. placeholder {1}: attachmentSizeLabel(attachmentMaxBytes(bootstrapMe))
 #: src/pages/shell/use-composer-actions.ts
 msgid "{0} (over {1})"
-msgstr ""
+msgstr "{0} (vượt {1})"
 
 #. placeholder {0}: preset.n
 #: src/lib/cron.ts
 msgid "{0} {unitLabel}"
-msgstr ""
+msgstr "{0} {unitLabel}"
 
 #. placeholder {0}: block.name
 #: src/pages/shell/message-cards.tsx
 msgid "{0} connection"
-msgstr ""
+msgstr "Kết nối {0}"
 
 #. placeholder {0}: bot.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} default"
-msgstr ""
+msgstr "Mặc định của {0}"
 
 #. placeholder {0}: parts.amount
 #: src/components/ArtifactFileCard.tsx
 msgid "{0} GB"
-msgstr ""
+msgstr "{0} GB"
 
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} handling"
-msgstr ""
+msgstr "{0} đang xử lý"
 
 #. placeholder {0}: bot.name
 #: src/components/call/IncomingCall.tsx
 msgid "{0} is calling you"
-msgstr ""
+msgstr "{0} đang gọi bạn"
 
 #. placeholder {0}: updated.name
 #: src/pages/McpServersOverlay.tsx
 msgid "{0} is not working"
-msgstr ""
+msgstr "{0} đang không hoạt động"
 
 #. placeholder {0}: updated.name
 #: src/pages/McpServersOverlay.tsx
 msgid "{0} is running"
-msgstr ""
+msgstr "{0} đang chạy"
 
 #. placeholder {0}: parts.amount
 #: src/components/ArtifactFileCard.tsx
 msgid "{0} KB"
-msgstr ""
+msgstr "{0} KB"
 
 #. placeholder {0}: parts.amount
 #: src/components/ArtifactFileCard.tsx
 msgid "{0} MB"
-msgstr ""
+msgstr "{0} MB"
 
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
-msgstr ""
+msgstr "{0} giờ tổng hợp"
 
 #. placeholder {0}: parts.amount
 #: src/components/ArtifactFileCard.tsx
 msgid "{0} TB"
-msgstr ""
+msgstr "{0} TB"
 
 #. placeholder {0}: bot.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} will still respond to direct mentions."
-msgstr ""
+msgstr "{0} vẫn sẽ trả lời khi được nhắc tên trực tiếp."
 
 #. placeholder {0}: bot.name
 #: src/pages/shell/computer-panel.tsx
 msgid "{0}'s screen"
-msgstr ""
-
-#: src/lib/billing.ts
-msgid "{amount} / {period}"
-msgstr ""
+msgstr "Màn hình của {0}"
 
 #: src/pages/shell/dialogs.tsx
 msgid "{botCount, plural, one {Delete {name} and its # bot?} other {Delete {name} and its # bots?}}"
-msgstr ""
+msgstr "{botCount, plural, one {Xóa {name} cùng # bot trong đó?} other {Xóa {name} cùng # bot trong đó?}}"
 
 #: src/pages/shell/computer-view.tsx
 msgid "{botName}’s computer"
-msgstr ""
+msgstr "Máy tính của {botName}"
 
 #: src/components/VaultSettings.tsx
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
-msgstr ""
+msgstr "{commandVariable} là tên dành riêng, không thể dùng làm biến lệnh. Bạn hãy chọn tên khác."
 
 #: src/pages/PluginsOverlay.tsx
 msgid "{connectedCount, plural, one {# connected} other {# connected}}"
-msgstr ""
+msgstr "{connectedCount, plural, one {# đã kết nối} other {# đã kết nối}}"
 
 #: src/components/markdown-copy.tsx
 msgid "{count, plural, one {# row} other {# rows}}"
-msgstr ""
-
-#: src/lib/billing.ts
-msgid "{count} days"
-msgstr ""
-
-#: src/lib/billing.ts
-msgid "{count} months"
-msgstr ""
-
-#: src/lib/billing.ts
-msgid "{count} weeks"
-msgstr ""
-
-#: src/lib/billing.ts
-msgid "{count} years"
-msgstr ""
+msgstr "{count, plural, one {# dòng} other {# dòng}}"
 
 #: src/lib/relative-time.ts
 msgid "{days}d ago"
-msgstr ""
+msgstr "{days} ngày trước"
 
 #: src/components/markdown-copy.tsx
 msgid "{from}–{to} of {total} rows"
-msgstr ""
+msgstr "{from}–{to} trong {total} dòng"
 
 #: src/lib/cron.ts
 msgid "{fromName} to {toName}"
-msgstr ""
+msgstr "{fromName} đến {toName}"
 
 #: src/components/markdown-copy.tsx
 msgid "{header}, column {index}"
-msgstr ""
+msgstr "{header}, cột {index}"
 
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
-msgstr ""
+msgstr "{hidden, plural, one {+# bước trước} other {+# bước trước}}"
 
 #: src/lib/relative-time.ts
 msgid "{hours}h ago"
-msgstr ""
+msgstr "{hours} giờ trước"
 
 #: src/components/markdown-copy.tsx
 msgid "{label}, empty"
-msgstr ""
+msgstr "{label}, trống"
 
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
-msgstr ""
+msgstr "{minutes} phút trước"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "{moved, plural, one {# bot now uses the space default.} other {# bots now use the space default.}}"
-msgstr ""
+msgstr "{moved, plural, one {# bot đã dùng mô hình mặc định của không gian.} other {# bot đã dùng mô hình mặc định của không gian.}}"
 
 #: src/lib/activity-list-filters.ts
 msgid "{name} asked"
-msgstr ""
+msgstr "{name} đã hỏi"
 
 #: src/lib/activity-list-filters.ts
 msgid "{name} asked: {text}"
-msgstr ""
+msgstr "{name} đã hỏi: {text}"
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
-msgstr ""
+msgstr "{name} gặp lỗi"
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} finished"
-msgstr ""
+msgstr "{name} đã xong"
 
 #: src/pages/ModelRoleSettings.tsx
 msgid "{name} options"
-msgstr ""
+msgstr "Tùy chọn cho {name}"
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} stopped"
-msgstr ""
+msgstr "{name} đã dừng"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} can't run this model."
-msgstr ""
+msgstr "{provider} không thể chạy mô hình này."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} couldn't be reached. Check that it's running."
-msgstr ""
+msgstr "Không thể kết nối tới {provider}. Bạn hãy kiểm tra xem dịch vụ có đang chạy không."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} denied access to this model."
-msgstr ""
+msgstr "{provider} từ chối quyền truy cập mô hình này."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} is overloaded right now. Try again in a moment."
-msgstr ""
+msgstr "{provider} đang quá tải. Bạn hãy thử lại sau một lát."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} is rate limiting requests. Try again shortly."
-msgstr ""
+msgstr "{provider} đang giới hạn số yêu cầu. Bạn hãy thử lại sau một lát."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} key hit its daily limit."
-msgstr ""
+msgstr "Khóa {provider} đã đạt giới hạn hằng ngày."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} key hit its limit."
-msgstr ""
+msgstr "Khóa {provider} đã đạt giới hạn."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} key hit its monthly limit."
-msgstr ""
+msgstr "Khóa {provider} đã đạt giới hạn hằng tháng."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} key hit its weekly limit."
-msgstr ""
-
-#. js-lingui-explicit-id
-#: src/lib/run-error.ts
-msgid "{provider} reached its credit limit."
-msgstr ""
-
-#. js-lingui-explicit-id
-#: src/lib/run-error.ts
-msgid "{provider} reached its daily credit limit."
-msgstr ""
+msgstr "Khóa {provider} đã đạt giới hạn hằng tuần."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} reached its daily spending limit."
-msgstr ""
-
-#. js-lingui-explicit-id
-#: src/lib/run-error.ts
-msgid "{provider} reached its monthly credit limit."
-msgstr ""
+msgstr "{provider} đã đạt giới hạn chi tiêu hằng ngày."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} reached its monthly spending limit."
-msgstr ""
+msgstr "{provider} đã đạt giới hạn chi tiêu hằng tháng."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} reached its spending limit."
-msgstr ""
-
-#. js-lingui-explicit-id
-#: src/lib/run-error.ts
-msgid "{provider} reached its weekly credit limit."
-msgstr ""
+msgstr "{provider} đã đạt giới hạn chi tiêu."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} reached its weekly spending limit."
-msgstr ""
+msgstr "{provider} đã đạt giới hạn chi tiêu hằng tuần."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -342,47 +312,43 @@ msgstr "{provider} từ chối khóa API. Hãy kiểm tra cài đặt kết nố
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{provider} took too long to respond. Try again."
-msgstr ""
+msgstr "{provider} phản hồi quá lâu. Bạn hãy thử lại."
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left"
-msgstr ""
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "{seats, plural, one {# seat} other {# seats}}"
-msgstr ""
+msgstr "Còn {remaining}"
 
 #: src/components/ArtifactFileCard.tsx
 msgid "{size} B"
-msgstr ""
+msgstr "{size} B"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "{skillCount, plural, one {# skill} other {# skills}}"
-msgstr ""
+msgstr "{skillCount, plural, one {# kỹ năng} other {# kỹ năng}}"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{summary} Backup models failed or were unavailable for this request."
-msgstr ""
+msgstr "{summary} Các mô hình dự phòng gặp lỗi hoặc không khả dụng cho yêu cầu này."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{summary} No backup model was usable for this request."
-msgstr ""
+msgstr "{summary} Không có mô hình dự phòng nào dùng được cho yêu cầu này."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{summary} Resets {date}."
-msgstr ""
+msgstr "{summary} Đặt lại vào {date}."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "{summary} Your backup models also failed."
-msgstr ""
+msgstr "{summary} Các mô hình dự phòng của bạn cũng gặp lỗi."
 
 #: src/pages/ActivityList.tsx
 msgid "{title}, {label}"
-msgstr ""
+msgstr "{title}, {label}"
 
 #: src/pages/shell/agent-import.tsx
 msgid "{title}, saved as {savedAs}"
@@ -392,22 +358,16 @@ msgstr "{title}, lưu với tên {savedAs}"
 #: src/components/ToolActivityDisclosure.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "{toolCount, plural, one {# tool} other {# tools}}"
-msgstr ""
+msgstr "{toolCount, plural, one {# công cụ} other {# công cụ}}"
 
 #. placeholder {0}: mention.name
 #: src/pages/shell/composer.tsx
 msgid "@{0}"
-msgstr ""
-
-#. placeholder {0}: amount / 100
-#. placeholder {0}: status.byokPriceCents / 100
-#: src/components/ModelCredits.tsx
-msgid "${0} / month"
-msgstr ""
+msgstr "@{0}"
 
 #: src/components/integrations/space-availability.tsx
 msgid "1 space"
-msgstr ""
+msgstr "1 không gian"
 
 #: src/pages/Auth.tsx
 msgid "6-digit sign-in code"
@@ -415,46 +375,46 @@ msgstr "Mã đăng nhập 6 số"
 
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
-msgstr ""
+msgstr "Mỗi thứ một chút"
 
 #: src/pages/RoutineEditor.tsx
 msgid "A command's output"
-msgstr ""
+msgstr "Đầu ra của lệnh"
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
-msgstr ""
+msgstr "Tab đăng nhập đã mở tại <0>{0}</0>. Bạn hãy nhập mã này ở đó — cửa sổ này vẫn đang chờ:"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "A subscription credential is stored securely."
-msgstr ""
+msgstr "Thông tin xác thực gói đăng ký đã được lưu an toàn."
 
 #: src/components/InfoTooltip.tsx
 msgid "About {label}"
-msgstr ""
+msgstr "Về {label}"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Access token (optional)"
-msgstr ""
+msgstr "Token truy cập (tùy chọn)"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Account"
-msgstr ""
+msgstr "Tài khoản"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Account default"
-msgstr ""
+msgstr "Mặc định của tài khoản"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Account ID"
-msgstr ""
+msgstr "ID tài khoản"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Account label"
-msgstr ""
+msgstr "Nhãn tài khoản"
 
 #: src/components/SidebarFooter.tsx
 msgid "Account menu for {name}"
@@ -472,10 +432,9 @@ msgstr "Thao tác cho {0}"
 msgid "Actions for space"
 msgstr "Thao tác cho không gian"
 
-#: src/pages/BillingSettingsPanel.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Active"
-msgstr ""
+msgstr "Đang hoạt động"
 
 #: src/pages/shell/sidebar-header.tsx
 msgid "Activity"
@@ -487,20 +446,20 @@ msgstr "Hoạt động"
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Add"
-msgstr ""
+msgstr "Thêm"
 
 #. placeholder {0}: bot.name
 #: src/pages/GroupPanel.tsx
 msgid "Add {0} to the group"
-msgstr ""
+msgstr "Thêm {0} vào nhóm"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Add a command to run"
-msgstr ""
+msgstr "Thêm lệnh cần chạy"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Add a file or folder to watch"
-msgstr ""
+msgstr "Thêm tệp hoặc thư mục cần theo dõi"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Add a label"
@@ -508,68 +467,64 @@ msgstr "Thêm nhãn"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Add a model in Settings to use this."
-msgstr ""
+msgstr "Bạn hãy thêm mô hình trong Cài đặt để dùng tính năng này."
 
 #: src/components/PasskeyOffer.tsx
 msgid "Add a passkey for faster sign-in?"
-msgstr ""
+msgstr "Thêm khóa truy cập để đăng nhập nhanh hơn?"
 
 #: src/pages/shell/use-routine-editor.ts
 msgid "Add a run time for this one-shot."
-msgstr ""
+msgstr "Thêm giờ chạy cho lần chạy duy nhất này."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Add a server name."
-msgstr ""
+msgstr "Thêm tên máy chủ."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Add a stdio command."
-msgstr ""
+msgstr "Thêm lệnh stdio."
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/use-routine-editor.ts
 msgid "Add a trigger to run this routine."
-msgstr ""
+msgstr "Thêm điều kiện kích hoạt để chạy quy trình này."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Add an HTTPS server URL."
-msgstr ""
+msgstr "Thêm URL máy chủ HTTPS."
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Add another"
-msgstr ""
+msgstr "Thêm mục khác"
 
 #: src/components/VaultSettings.tsx
 msgid "Add credential"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Add credits"
-msgstr ""
+msgstr "Thêm thông tin xác thực"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Add custom"
-msgstr ""
+msgstr "Thêm tùy chỉnh"
 
 #: src/pages/ModelRoleSettings.tsx
 msgid "Add fallback"
-msgstr ""
+msgstr "Thêm mô hình dự phòng"
 
 #: src/components/LoginFields.tsx
 msgid "Add field"
-msgstr ""
+msgstr "Thêm trường"
 
 #: src/components/ModelHeadersEditor.tsx
 msgid "Add header"
-msgstr ""
+msgstr "Thêm tiêu đề HTTP"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Add item"
-msgstr ""
+msgstr "Thêm mục"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add MCP server"
-msgstr ""
+msgstr "Thêm máy chủ MCP"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Add open work"
@@ -578,23 +533,23 @@ msgstr "Thêm việc đang mở"
 #: src/components/PasskeyOffer.tsx
 #: src/components/PasskeySettings.tsx
 msgid "Add passkey"
-msgstr ""
+msgstr "Thêm khóa truy cập"
 
 #: src/pages/model-settings/providers-section.tsx
 msgid "Add provider"
-msgstr ""
+msgstr "Thêm nhà cung cấp"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
-msgstr ""
+msgstr "Thêm máy chủ"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
-msgstr ""
+msgstr "Thêm URL máy chủ"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Add skills"
-msgstr ""
+msgstr "Thêm kỹ năng"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Add to an existing bot"
@@ -602,26 +557,26 @@ msgstr "Thêm vào một bot đã có"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
-msgstr ""
+msgstr "Thêm vào quy trình"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Add trigger"
-msgstr ""
+msgstr "Thêm điều kiện kích hoạt"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Add workspace"
-msgstr ""
+msgstr "Thêm vùng làm việc"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Added"
-msgstr ""
+msgstr "Đã thêm"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Adding…"
-msgstr ""
+msgstr "Đang thêm…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/McpServersOverlay.tsx
@@ -636,7 +591,7 @@ msgstr "Nâng cao"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
-msgstr ""
+msgstr "Nâng cao..."
 
 #: src/pages/shell/chat-header.tsx
 msgid "Agent computer"
@@ -644,66 +599,61 @@ msgstr "Máy tính của bot"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Agents:"
-msgstr ""
+msgstr "Bot:"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "All"
-msgstr ""
-
-#. placeholder {0}: amount / 100
-#: src/components/ModelCredits.tsx
-msgid "All ${0} goes to model usage."
-msgstr ""
+msgstr "Tất cả"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "All bots"
-msgstr ""
+msgstr "Tất cả bot"
 
 #: src/components/integrations/space-availability.tsx
 msgid "All spaces"
-msgstr ""
+msgstr "Tất cả không gian"
 
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
-msgstr ""
+msgstr "Tất cả trạng thái"
 
 #: src/pages/Artifacts.tsx
 msgid "All time"
-msgstr ""
+msgstr "Từ trước đến nay"
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow"
-msgstr ""
+msgstr "Cho phép"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Allow cross-space bot communication"
-msgstr ""
+msgstr "Cho phép bot giao tiếp giữa các không gian"
 
 #: src/components/AskCard.tsx
 msgid "Allow for this chat"
-msgstr ""
+msgstr "Cho phép trong cuộc trò chuyện này"
 
 #: src/components/AskCard.tsx
 msgid "Allow once"
-msgstr ""
+msgstr "Cho phép một lần"
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Allow rule"
-msgstr ""
+msgstr "Quy tắc cho phép"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Allow writing"
-msgstr ""
+msgstr "Cho phép ghi"
 
 #: src/components/AskCard.tsx
 msgid "Allowed for this chat"
-msgstr ""
+msgstr "Đã cho phép trong cuộc trò chuyện này"
 
 #: src/components/AskCard.tsx
 msgid "Allowed once"
-msgstr ""
+msgstr "Đã cho phép một lần"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Already connected"
@@ -715,31 +665,31 @@ msgstr "Đã có passkey?"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
-msgstr ""
+msgstr "Luôn hành động"
 
 #: src/components/AskCard.tsx
 msgid "Always allow {site}"
-msgstr ""
+msgstr "Luôn cho phép {site}"
 
 #: src/components/AskCard.tsx
 msgid "Always allow this tool"
-msgstr ""
+msgstr "Luôn cho phép công cụ này"
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
-msgstr ""
+msgstr "Luôn được phép"
 
 #: src/components/markdown-link-prompt.tsx
 msgid "Always open {site}"
-msgstr ""
+msgstr "Luôn mở {site}"
 
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
-msgstr ""
+msgstr "Nhà cung cấp này đã lưu khóa API, không phải thông tin đăng nhập gói đăng ký."
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "An existing Honcho peer to read from. VNBot never writes to it."
-msgstr ""
+msgstr "Một peer Honcho có sẵn để đọc dữ liệu. VNBot không bao giờ ghi vào đó."
 
 #: src/lib/agent-import-errors.ts
 msgid "An imported API key could not be checked. Try again."
@@ -751,40 +701,36 @@ msgstr "Không dùng được khóa API vừa nhập. Hãy bỏ chọn và thử
 
 #: src/pages/RoutineEditor.tsx
 msgid "An integration tool"
-msgstr ""
+msgstr "Một công cụ tích hợp"
 
 #: src/lib/activity-list-filters.ts
 msgid "Another agent"
-msgstr ""
+msgstr "Bot khác"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Another assistant"
-msgstr "Trợ lý khác"
+msgstr "Bot khác"
 
 #: src/components/AskCard.tsx
 msgid "Answer"
-msgstr ""
+msgstr "Trả lời"
 
 #: src/components/call/IncomingCall.tsx
 msgctxt "incoming call"
 msgid "Answer"
-msgstr ""
+msgstr "Câu trả lời"
 
 #: src/components/AskCard.tsx
 msgid "Answered"
-msgstr ""
+msgstr "Đã trả lời"
 
 #: src/components/AskCard.tsx
 msgid "Answered: {answer}"
-msgstr ""
+msgstr "Đã trả lời: {answer}"
 
 #: src/pages/Onboarding.tsx
 msgid "Anthropic API"
-msgstr ""
-
-#: src/pages/Paywall.tsx
-msgid "Any model, with your own key"
-msgstr ""
+msgstr "Anthropic API"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Áo dài"
@@ -798,7 +744,7 @@ msgstr "Áo dài"
 #: src/pages/Onboarding.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "API key"
-msgstr ""
+msgstr "Khóa API"
 
 #: src/pages/shell/import-status.ts
 msgid "API key for {provider}"
@@ -806,7 +752,7 @@ msgstr "Khóa API của {provider}"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "API key header"
-msgstr ""
+msgstr "Tiêu đề HTTP khóa API"
 
 #: src/pages/shell/agent-import.tsx
 msgid "API keys"
@@ -818,54 +764,54 @@ msgstr "Khóa API vẫn được kết nối."
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Appearance"
-msgstr ""
+msgstr "Giao diện"
 
 #: src/components/AskCard.tsx
 msgid "Apply"
-msgstr ""
+msgstr "Áp dụng"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Approval boundaries"
-msgstr ""
+msgstr "Phạm vi cần phê duyệt"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Approval model"
-msgstr ""
+msgstr "Mô hình phê duyệt"
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Approvals"
-msgstr ""
+msgstr "Phê duyệt"
 
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Approve"
-msgstr ""
+msgstr "Phê duyệt"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your agent use its tools."
-msgstr ""
+msgstr "Phê duyệt máy chủ này để bot của bạn dùng các công cụ của nó."
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Apps"
-msgstr ""
+msgstr "Ứng dụng"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Archive"
-msgstr ""
+msgstr "Lưu trữ"
 
 #: src/pages/shell/message-view.tsx
 msgid "archived"
-msgstr ""
+msgstr "đã lưu trữ"
 
 #: src/pages/shell/archived-chats.tsx
 msgid "Archived"
-msgstr ""
+msgstr "Đã lưu trữ"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Arguments"
-msgstr ""
+msgstr "Đối số"
 
 #: src/components/SidebarFooter.tsx
 #: src/pages/Artifacts.tsx
@@ -874,20 +820,20 @@ msgstr "Tệp đã tạo"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask"
-msgstr ""
+msgstr "Hỏi"
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Ask rule"
-msgstr ""
+msgstr "Quy tắc hỏi"
 
 #. placeholder {0}: preset.time
 #: src/lib/cron.ts
 msgid "at {0}"
-msgstr ""
+msgstr "lúc {0}"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
-msgstr ""
+msgstr "lúc {timeSelect}"
 
 #: src/pages/shell/composer.tsx
 msgid "Attach"
@@ -895,73 +841,69 @@ msgstr "Đính kèm"
 
 #: src/pages/shell/composer.tsx
 msgid "Attach file"
-msgstr ""
+msgstr "Đính kèm tệp"
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/chat-shared.ts
 msgid "Attachment"
-msgstr ""
+msgstr "Tệp đính kèm"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Authentication"
-msgstr ""
+msgstr "Xác thực"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
-msgstr ""
+msgstr "Xác thực không thành công."
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Authorization code"
-msgstr ""
+msgstr "Mã ủy quyền"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Authorization parameters (optional)"
-msgstr ""
+msgstr "Tham số ủy quyền (tùy chọn)"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Authorization server"
-msgstr ""
+msgstr "Máy chủ ủy quyền"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Authorization timed out. Please try again."
-msgstr ""
+msgstr "Ủy quyền đã hết thời gian chờ. Bạn hãy thử lại."
 
 #: src/pages/shell/message-cards.tsx
 msgid "Authorize"
-msgstr ""
+msgstr "Ủy quyền"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Authorize this server so agents can use its tools. A popup opens."
-msgstr ""
+msgstr "Ủy quyền cho máy chủ này để các bot dùng công cụ của nó. Một cửa sổ bật lên sẽ mở."
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Auto"
-msgstr ""
+msgstr "Tự động"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
-msgstr ""
+msgstr "Người gửi tự động"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders will appear after they post here."
-msgstr ""
+msgstr "Người gửi tự động sẽ xuất hiện sau khi đăng bài tại đây."
 
 #: src/pages/RoutineEditor.tsx
 msgid "Available after the routine is saved"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Available credits"
-msgstr ""
+msgstr "Khả dụng sau khi lưu quy trình"
 
 #: src/components/integrations/space-availability.tsx
 msgid "Available in"
-msgstr ""
+msgstr "Khả dụng trong"
 
 #: src/components/VaultSettings.tsx
 msgid "Available to shell commands as {commandVariable}"
-msgstr ""
+msgstr "Lệnh shell có thể dùng qua {commandVariable}"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Avatar Studio"
@@ -976,7 +918,7 @@ msgstr "Tùy chỉnh ảnh đại diện"
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Back"
-msgstr ""
+msgstr "Quay lại"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bánh chưng"
@@ -984,25 +926,21 @@ msgstr "Bánh chưng"
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Base URL"
-msgstr ""
+msgstr "URL gốc"
 
 #: src/components/VaultSettings.tsx
 msgid "Basic auth"
-msgstr ""
+msgstr "Xác thực cơ bản"
 
 #: src/components/VaultSettings.tsx
 msgid "Basic auth ({username})"
-msgstr ""
+msgstr "Xác thực cơ bản ({username})"
 
 #: src/components/VaultSettings.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Bearer token"
-msgstr ""
-
-#: src/pages/SettingsOverlay.tsx
-msgid "Billing"
-msgstr ""
+msgstr "Token Bearer"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "blob"
@@ -1011,15 +949,15 @@ msgstr "Khối mềm"
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Block"
-msgstr ""
+msgstr "Chặn"
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Block rule"
-msgstr ""
+msgstr "Quy tắc chặn"
 
 #: src/lib/ticket-status.ts
 msgid "Blocked"
-msgstr ""
+msgstr "Đã chặn"
 
 #: src/components/SidebarFooter.tsx
 #: src/pages/Board.tsx
@@ -1029,11 +967,11 @@ msgstr "Bảng việc"
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
 msgid "Booting live desktop…"
-msgstr ""
+msgstr "Đang khởi động màn hình trực tiếp…"
 
 #: src/pages/shell/message-view.tsx
 msgid "bot"
-msgstr ""
+msgstr "bot"
 
 #: src/lib/identity-display.ts
 #: src/pages/IntegrationSetup.tsx
@@ -1048,64 +986,52 @@ msgstr "Bot"
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "Bot"
-msgstr ""
+msgstr "Bot"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Bot is watching, not acting"
-msgstr ""
+msgstr "Bot đang quan sát, chưa hành động"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Bot models"
-msgstr ""
+msgstr "Mô hình của bot"
 
 #: src/pages/shell/computer-overlay.tsx
 msgid "Bot screen"
-msgstr ""
+msgstr "Màn hình bot"
 
 #: src/pages/shell/computer-panel.tsx
 msgid "Bot screen preview"
-msgstr ""
+msgstr "Xem trước màn hình bot"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Bot's model"
-msgstr ""
+msgstr "Mô hình của bot"
 
 #: src/components/SignupSurvey.tsx
 msgid "Both"
-msgstr ""
+msgstr "Cả hai"
 
 #: src/pages/Artifacts.tsx
 msgid "Bots"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Bots and browser automation"
-msgstr ""
-
-#: src/pages/Paywall.tsx
-msgid "Bots with their own computer and browser"
-msgstr ""
+msgstr "Các bot"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Brain label"
-msgstr ""
+msgstr "Nhãn bộ não"
 
 #: src/components/integrations/skills-dialog.tsx
 msgid "Browse"
-msgstr ""
+msgstr "Duyệt"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Browse MCP servers"
-msgstr ""
+msgstr "Duyệt máy chủ MCP"
 
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Built-in"
-msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "By continuing, you agree to VNBot's <0>Terms of Use</0> and <1>Privacy Policy</1>."
-msgstr "Khi tiếp tục, bạn đồng ý với <0>Điều khoản sử dụng</0> và <1>Chính sách quyền riêng tư</1> của VNBot."
+msgstr "Tích hợp sẵn"
 
 #: src/pages/shell/chat-header.tsx
 msgid "Call"
@@ -1113,24 +1039,24 @@ msgstr "Gọi"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Call back"
-msgstr ""
+msgstr "Gọi lại"
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Call with {0}"
-msgstr ""
+msgstr "Cuộc gọi với {0}"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Calling you…"
-msgstr ""
+msgstr "Đang gọi bạn…"
 
 #: src/components/call/CallCard.tsx
 msgid "Calling…"
-msgstr ""
+msgstr "Đang gọi…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Calls"
-msgstr ""
+msgstr "Cuộc gọi"
 
 #: src/App.tsx
 msgid "Can't reach the server."
@@ -1140,7 +1066,7 @@ msgstr "Không kết nối được máy chủ."
 #: src/pages/model-settings/model-picker.tsx
 #: src/pages/shell/chat-model-picker.tsx
 msgid "Can't read images"
-msgstr ""
+msgstr "Không đọc được ảnh"
 
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
@@ -1157,7 +1083,6 @@ msgstr ""
 #: src/pages/model-settings/space-bots-model.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/shell/agent-import-undo.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1171,102 +1096,98 @@ msgstr "Hủy bot mới"
 
 #: src/pages/GroupPanel.tsx
 msgid "Cancel new group"
-msgstr ""
+msgstr "Hủy tạo nhóm"
 
 #: src/pages/shell/chat-context.tsx
 msgid "Cancel reply"
-msgstr ""
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Canceled"
-msgstr ""
+msgstr "Hủy trả lời"
 
 #: src/components/CloudAgentCard.tsx
 msgid "cancelled"
-msgstr ""
+msgstr "đã hủy"
 
 #: src/components/AskCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "Cancelled"
-msgstr ""
+msgstr "Đã hủy"
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Candidate rule"
-msgstr ""
+msgstr "Quy tắc đề xuất"
 
 #: src/pages/Artifacts.tsx
 msgid "Card view"
-msgstr ""
+msgstr "Dạng thẻ"
 
 #: src/pages/ModelRoleSettings.tsx
 msgid "Change {name}"
-msgstr ""
+msgstr "Đổi {name}"
 
 #: src/pages/ModelRoleSettings.tsx
 msgid "Change {title}"
-msgstr ""
+msgstr "Đổi {title}"
 
 #: src/pages/shell/composer-error.tsx
 msgid "Change model"
-msgstr ""
+msgstr "Đổi mô hình"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Change password"
-msgstr ""
+msgstr "Đổi mật khẩu"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Changing…"
-msgstr ""
+msgstr "Đang đổi…"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Chart failed to render: {error}"
-msgstr ""
+msgstr "Không thể hiển thị biểu đồ: {error}"
 
 #: src/pages/shell/composer-mentions.tsx
 msgid "Chat Settings"
-msgstr ""
+msgstr "Cài đặt trò chuyện"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Chat with your bot from Slack."
-msgstr ""
+msgstr "Trò chuyện với bot của bạn từ Slack."
 
 #: src/lib/localized-provider-hint.ts
 msgid "ChatGPT subscription"
-msgstr ""
+msgstr "Gói đăng ký ChatGPT"
 
 #: src/lib/identity-display.ts
 msgid "Chats"
-msgstr ""
+msgstr "Trò chuyện"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
-msgstr ""
+msgstr "Kiểm tra lại"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Check every"
-msgstr ""
+msgstr "Kiểm tra mỗi"
 
 #. placeholder {0}: state.detail ?? ""
 #: src/pages/RoutineEditor.tsx
 msgid "Check failed: {0}"
-msgstr ""
+msgstr "Kiểm tra không thành công: {0}"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Check for updates"
-msgstr ""
+msgstr "Kiểm tra bản cập nhật"
 
 #: src/pages/shell/use-routine-editor.ts
 msgid "Check in."
-msgstr ""
+msgstr "Hỏi thăm."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Check the API key or sign-in, then test again."
-msgstr ""
+msgstr "Bạn hãy kiểm tra khóa API hoặc thông tin đăng nhập rồi thử lại."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Check the server URL and network, then test again."
-msgstr ""
+msgstr "Bạn hãy kiểm tra URL máy chủ và mạng rồi thử lại."
 
 #: src/pages/shell/import-setup-card.tsx
 msgid "Check this yourself"
@@ -1278,21 +1199,21 @@ msgstr "Kiểm tra email của bạn"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Checked {checked}"
-msgstr ""
+msgstr "Đã kiểm tra {checked}"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
-msgstr ""
+msgstr "Đang kiểm tra thiết lập máy tính…"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Checking connection…"
-msgstr ""
+msgstr "Đang kiểm tra kết nối…"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
-msgstr ""
+msgstr "Đang kiểm tra…"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Choose a bot"
@@ -1305,11 +1226,11 @@ msgstr "Chọn hình dáng, màu sắc hoặc tải ảnh lên cho bot"
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Choose a model"
-msgstr ""
+msgstr "Chọn mô hình"
 
 #: src/pages/Onboarding.tsx
 msgid "Choose a provider"
-msgstr ""
+msgstr "Chọn nhà cung cấp"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Choose backup"
@@ -1324,41 +1245,36 @@ msgstr "Chọn tệp"
 msgid "Choose folder"
 msgstr "Chọn thư mục"
 
-#: src/components/ModelCredits.tsx
-#: src/components/SubscriptionGate.tsx
-msgid "Choose how to use VNBot"
-msgstr "Chọn cách dùng VNBot"
-
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Classic"
 msgstr "Cổ điển"
 
 #: src/lib/localized-provider-hint.ts
 msgid "Claude subscription"
-msgstr ""
+msgstr "Gói đăng ký Claude"
 
 #: src/components/AskCard.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
-msgstr ""
+msgstr "Xóa"
 
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
 msgid "Clear {0}’s conversation?"
-msgstr ""
+msgstr "Xóa cuộc trò chuyện của {0}?"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Clear conversation"
-msgstr ""
+msgstr "Xóa cuộc trò chuyện"
 
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
-msgstr ""
+msgstr "Xóa bộ lọc {label}"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
-msgstr ""
+msgstr "Đang xóa…"
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -1373,33 +1289,33 @@ msgstr "Đóng"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Close chart"
-msgstr ""
+msgstr "Đóng biểu đồ"
 
 #: src/pages/shell/computer-overlay.tsx
 msgid "Close computer"
-msgstr ""
+msgstr "Đóng máy tính"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Close image preview"
-msgstr ""
+msgstr "Đóng ảnh xem trước"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Close integrations"
-msgstr ""
+msgstr "Đóng mục tích hợp"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Close MCP servers"
-msgstr ""
+msgstr "Đóng mục máy chủ MCP"
 
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Close memory settings"
-msgstr ""
+msgstr "Đóng cài đặt trí nhớ"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Close model settings"
-msgstr ""
+msgstr "Đóng cài đặt mô hình"
 
 #: src/pages/shell/shell-sidebar.tsx
 msgid "Close navigation"
@@ -1408,28 +1324,28 @@ msgstr "Đóng thanh điều hướng"
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/side-panel.tsx
 msgid "Close panel"
-msgstr ""
+msgstr "Đóng bảng điều khiển"
 
 #: src/components/ArtifactFileCard.tsx
 msgid "Close preview"
-msgstr ""
+msgstr "Đóng bản xem trước"
 
 #: src/components/integrations/skills-dialog.tsx
 msgid "Close skills"
-msgstr ""
+msgstr "Đóng mục kỹ năng"
 
 #: src/components/markdown-copy.tsx
 msgid "Close table"
-msgstr ""
+msgstr "Đóng bảng"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Close user settings"
-msgstr ""
+msgstr "Đóng cài đặt người dùng"
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Close voice settings"
-msgstr ""
+msgstr "Đóng cài đặt giọng nói"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "cloud"
@@ -1437,12 +1353,12 @@ msgstr "Đám mây"
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Cloud"
-msgstr ""
+msgstr "Đám mây"
 
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Code"
-msgstr ""
+msgstr "Mã"
 
 #. placeholder {0}: headerName(group)
 #: src/pages/shell/sidebar-roster.tsx
@@ -1463,111 +1379,111 @@ msgstr "Màu {color}"
 
 #: src/components/markdown-copy.tsx
 msgid "column {index}"
-msgstr ""
+msgstr "cột {index}"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Comfortable"
-msgstr ""
+msgstr "Thoáng"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Coming soon"
-msgstr ""
+msgstr "Sắp có"
 
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Command"
-msgstr ""
+msgstr "Lệnh"
 
 #: src/components/AskCard.tsx
 #: src/components/VaultSettings.tsx
 msgid "Command variable"
-msgstr ""
+msgstr "Biến lệnh"
 
 #: src/pages/Board.tsx
 msgid "Comment"
-msgstr ""
+msgstr "Bình luận"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Communication"
-msgstr ""
+msgstr "Giao tiếp"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Compact"
-msgstr ""
+msgstr "Gọn"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Complete"
-msgstr ""
+msgstr "Hoàn tất"
 
 #: src/components/SubagentCard.tsx
 msgid "Completed"
-msgstr ""
+msgstr "Đã hoàn tất"
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/message-view.tsx
 msgid "Computer"
-msgstr ""
+msgstr "Máy tính"
 
 #: src/pages/shell/computer-view.tsx
 #: src/pages/shell/use-computer.tsx
 msgid "Computer failed to boot"
-msgstr ""
+msgstr "Máy tính không khởi động được"
 
 #: src/pages/shell/computer-overlay.tsx
 msgid "Computer is asleep"
-msgstr ""
+msgstr "Máy tính đang ngủ"
 
 #: src/pages/shell/computer-view.tsx
 msgid "Computer is asleep. Open it to wake."
-msgstr ""
+msgstr "Máy tính đang ngủ. Mở để đánh thức."
 
 #: src/pages/shell/computer-overlay.tsx
 #: src/pages/shell/computer-view.tsx
 msgid "Computer is stopped"
-msgstr ""
+msgstr "Máy tính đã dừng"
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Computers"
-msgstr ""
+msgstr "Máy tính"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are available. Reload or open a bot to continue."
-msgstr ""
+msgstr "Máy tính đã sẵn sàng. Bạn hãy tải lại hoặc mở một bot để tiếp tục."
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, novita, daytona, or boat with its API key. Recreate the stack after changing .env."
-msgstr ""
+msgstr "Máy tính đang tắt. Đặt SANDBOX_PROVIDER=docker cùng SANDBOX_SUPERVISOR_TOKEN, hoặc đặt SANDBOX_PROVIDER thành e2b, novita, daytona hay boat cùng khóa API tương ứng. Tạo lại hệ thống sau khi đổi .env."
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Configure a plugin catalog on the server to connect apps."
-msgstr ""
+msgstr "Cấu hình danh mục tiện ích mở rộng trên máy chủ để kết nối ứng dụng."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Configured servers"
-msgstr ""
+msgstr "Máy chủ đã cấu hình"
 
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "Confirm delete"
-msgstr ""
+msgstr "Xác nhận xóa"
 
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Confirm it's you"
-msgstr ""
+msgstr "Xác nhận danh tính của bạn"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Confirm password"
-msgstr ""
+msgstr "Xác nhận mật khẩu"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Confirm removal"
-msgstr ""
+msgstr "Xác nhận gỡ bỏ"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Confirm the URL is reachable from this browser session, then test again."
-msgstr ""
+msgstr "Bạn hãy xác nhận URL truy cập được từ phiên trình duyệt này rồi thử lại."
 
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/plugin-marketplace.tsx
@@ -1576,32 +1492,31 @@ msgstr ""
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/model-settings/role-model-picker.tsx
-#: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
-msgstr ""
+msgstr "Kết nối"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Connect {selectedProviderName}"
-msgstr ""
+msgstr "Kết nối {selectedProviderName}"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Connect a chat app"
-msgstr ""
+msgstr "Kết nối ứng dụng trò chuyện"
 
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Connect a model"
-msgstr ""
+msgstr "Kết nối mô hình"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Connect a model in Settings before running bots."
-msgstr ""
+msgstr "Bạn hãy kết nối mô hình trong Cài đặt trước khi chạy bot."
 
 #: src/pages/model-settings/connection-controls.tsx
 msgid "Connect API key"
-msgstr ""
+msgstr "Kết nối bằng khóa API"
 
 #: src/components/SidebarFooter.tsx
 msgid "Connect apps"
@@ -1609,19 +1524,15 @@ msgstr "Kết nối ứng dụng"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
-msgstr ""
+msgstr "Kết nối máy chủ MCP “{name}”"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Connect memory provider"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Connect my own"
-msgstr ""
+msgstr "Kết nối nhà cung cấp trí nhớ"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Connect OAuth"
-msgstr ""
+msgstr "Kết nối OAuth"
 
 #: src/lib/agent-import-errors.ts
 msgid "Connect this model's provider first."
@@ -1629,8 +1540,12 @@ msgstr "Hãy kết nối nhà cung cấp của mô hình này trước."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "Connect your own API key in Models or choose VNBot credits in Billing."
-msgstr "Hãy kết nối khóa API của bạn trong Mô hình, hoặc chọn tín dụng VNBot trong Thanh toán."
+msgid "Connect your own API key in Models."
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "Connect your own API key in Models."
+msgstr ""
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1641,12 +1556,12 @@ msgstr "Hãy kết nối khóa API của bạn trong Mô hình, hoặc chọn t�
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connected"
-msgstr ""
+msgstr "Đã kết nối"
 
 #. placeholder {0}: selected.name
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connected {0}."
-msgstr ""
+msgstr "Đã kết nối {0}."
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpServersOverlay.tsx
@@ -1656,24 +1571,24 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connecting…"
-msgstr ""
+msgstr "Đang kết nối…"
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Connection"
-msgstr ""
+msgstr "Kết nối"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
-msgstr ""
+msgstr "Kiểm tra kết nối không thành công."
 
 #. placeholder {0}: item.name
 #: src/pages/PluginsOverlay.tsx
 msgid "Connection to {0} is still pending. You can close this and check again."
-msgstr ""
+msgstr "Kết nối tới {0} vẫn đang chờ. Bạn có thể đóng cửa sổ này và kiểm tra lại."
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Connector"
-msgstr ""
+msgstr "Bộ kết nối"
 
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
@@ -1683,7 +1598,7 @@ msgstr "Có mã để chạy"
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Context limit"
-msgstr ""
+msgstr "Giới hạn ngữ cảnh"
 
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1697,11 +1612,7 @@ msgstr "Tiếp tục"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Continue in Background"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Continue to checkout"
-msgstr ""
+msgstr "Tiếp tục chạy nền"
 
 #. placeholder {0}: reset.sso.name
 #: src/pages/Auth.tsx
@@ -1710,7 +1621,7 @@ msgstr "Tiếp tục với {0}"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Conversations"
-msgstr ""
+msgstr "Cuộc trò chuyện"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/markdown-copy.tsx
@@ -1719,26 +1630,26 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Copied"
-msgstr ""
+msgstr "Đã sao chép"
 
 #: src/components/VaultSettings.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/message-hover-actions.tsx
 msgid "Copy"
-msgstr ""
+msgstr "Sao chép"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Copy .env example"
-msgstr ""
+msgstr "Sao chép mẫu .env"
 
 #: src/components/markdown-copy.tsx
 msgid "Copy code"
-msgstr ""
+msgstr "Sao chép mã"
 
 #: src/components/markdown-copy.tsx
 msgid "Copy diagram source"
-msgstr ""
+msgstr "Sao chép mã nguồn sơ đồ"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Copy prompt"
@@ -1746,89 +1657,85 @@ msgstr "Sao chép lời nhắc"
 
 #: src/components/markdown-copy.tsx
 msgid "Copy rows"
-msgstr ""
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Cost"
-msgstr ""
+msgstr "Sao chép dòng"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not add"
-msgstr ""
+msgstr "Không thể thêm"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not add MCP server"
-msgstr ""
+msgstr "Không thể thêm máy chủ MCP"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not add skills"
-msgstr ""
+msgstr "Không thể thêm kỹ năng"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not approve this server"
-msgstr ""
+msgstr "Không thể phê duyệt máy chủ này"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not authorize this app"
-msgstr ""
+msgstr "Không thể ủy quyền cho ứng dụng này"
 
 #: src/components/ComputerDeviceSettings.tsx
 msgid "Could not change"
-msgstr ""
+msgstr "Không thể thay đổi"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Could not change password"
-msgstr ""
+msgstr "Không thể đổi mật khẩu"
 
 #: src/components/integrations/space-availability.tsx
 msgid "Could not change where this is available"
-msgstr ""
+msgstr "Không thể thay đổi nơi khả dụng"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Could not check stored credentials."
-msgstr ""
+msgstr "Không thể kiểm tra thông tin xác thực đã lưu."
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Could not check teaching status. Refresh the view to continue."
-msgstr ""
+msgstr "Không thể kiểm tra trạng thái dạy bot. Bạn hãy làm mới để tiếp tục."
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not clear conversation"
-msgstr ""
+msgstr "Không thể xóa cuộc trò chuyện"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Could not complete action"
-msgstr ""
+msgstr "Không thể hoàn tất thao tác"
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "Could not complete OAuth"
-msgstr ""
+msgstr "Không thể hoàn tất OAuth"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Could not complete the update. Try again."
-msgstr ""
+msgstr "Không thể hoàn tất cập nhật. Bạn hãy thử lại."
 
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not connect"
-msgstr ""
+msgstr "Không thể kết nối"
 
 #. placeholder {0}: registration.name
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not connect {0}"
-msgstr ""
+msgstr "Không thể kết nối {0}"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Could not connect this provider"
-msgstr ""
+msgstr "Không thể kết nối nhà cung cấp này"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not connect this voice provider"
-msgstr ""
+msgstr "Không thể kết nối nhà cung cấp giọng nói này"
 
 #: src/pages/shell/use-computer.tsx
 msgid "Could not connect to the computer screen"
-msgstr ""
+msgstr "Không thể kết nối tới màn hình máy tính"
 
 #: src/components/AccountAccess.tsx
 #: src/components/ConfirmIdentityDialog.tsx
@@ -1850,144 +1757,140 @@ msgstr "Không thể tạo bot"
 
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
-msgstr ""
+msgstr "Không thể tạo nhóm"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create section"
-msgstr ""
+msgstr "Không thể tạo mục"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create space"
-msgstr ""
+msgstr "Không thể tạo không gian"
 
 #: src/pages/Onboarding.tsx
 msgid "Could not create your bot"
-msgstr ""
+msgstr "Không thể tạo bot của bạn"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete bot"
-msgstr ""
+msgstr "Không thể xóa bot"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete group"
-msgstr ""
+msgstr "Không thể xóa nhóm"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not delete MCP server"
-msgstr ""
+msgstr "Không thể xóa máy chủ MCP"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete routine"
-msgstr ""
+msgstr "Không thể xóa quy trình"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete section"
-msgstr ""
+msgstr "Không thể xóa mục"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not delete skill"
-msgstr ""
+msgstr "Không thể xóa kỹ năng"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete space"
-msgstr ""
+msgstr "Không thể xóa không gian"
 
 #: src/pages/Artifacts.tsx
 msgid "Could not delete this artifact."
-msgstr ""
+msgstr "Không thể xóa sản phẩm này."
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not disconnect memory provider"
-msgstr ""
+msgstr "Không thể ngắt kết nối nhà cung cấp trí nhớ"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not disconnect OAuth"
-msgstr ""
+msgstr "Không thể ngắt kết nối OAuth"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Could not disconnect this provider"
-msgstr ""
+msgstr "Không thể ngắt kết nối nhà cung cấp này"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not disconnect this voice provider"
-msgstr ""
+msgstr "Không thể ngắt kết nối nhà cung cấp giọng nói này"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not dismiss"
-msgstr ""
+msgstr "Không thể bỏ qua"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not dismiss this server"
-msgstr ""
+msgstr "Không thể bỏ qua máy chủ này"
 
 #. placeholder {0}: props.name
 #: src/components/ArtifactFileCard.tsx
 msgid "Could not download {0}. Try again."
-msgstr ""
+msgstr "Không thể tải {0}. Bạn hãy thử lại."
 
 #: src/components/ArtifactFileCard.tsx
 msgid "Could not download {name}. Try again."
-msgstr ""
+msgstr "Không thể tải {name}. Bạn hãy thử lại."
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
-msgstr ""
+msgstr "Không thể bật công cụ"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not install connector"
-msgstr ""
+msgstr "Không thể cài bộ kết nối"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not install plugin"
-msgstr ""
+msgstr "Không thể cài tiện ích mở rộng"
 
 #: src/components/ErrorBoundary.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/user-devices.ts
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not load"
-msgstr ""
+msgstr "Không thể tải"
 
 #: src/pages/ActivityList.tsx
 msgid "Could not load activity"
-msgstr ""
+msgstr "Không thể tải hoạt động"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Could not load approval rules"
-msgstr ""
+msgstr "Không thể tải quy tắc phê duyệt"
 
 #: src/pages/Artifacts.tsx
 msgid "Could not load artifacts."
-msgstr ""
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Could not load billing"
-msgstr ""
+msgstr "Không thể tải các sản phẩm."
 
 #: src/pages/IntegrationSetup.tsx
 msgid "Could not load bots. Reload to try again."
-msgstr ""
+msgstr "Không thể tải bot. Bạn hãy tải lại để thử lại."
 
 #: src/components/VaultSettings.tsx
 msgid "Could not load credentials."
-msgstr ""
+msgstr "Không thể tải thông tin xác thực."
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not load integrations"
-msgstr ""
+msgstr "Không thể tải các tích hợp"
 
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not load MCP servers"
-msgstr ""
+msgstr "Không thể tải máy chủ MCP"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Could not load model settings"
-msgstr ""
+msgstr "Không thể tải cài đặt mô hình"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
-msgstr ""
+msgstr "Không thể tải lịch sử chạy"
 
 #: src/lib/account-security.ts
 #: src/pages/Auth.tsx
@@ -1997,50 +1900,43 @@ msgstr "Không tải được các cách đăng nhập"
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not load skill"
-msgstr ""
+msgstr "Không thể tải kỹ năng"
 
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
-msgstr ""
+msgstr "Không thể tải sản phẩm này."
 
 #: src/pages/PeerMessagesOverlay.tsx
 msgid "Could not load this chat."
-msgstr ""
+msgstr "Không thể tải cuộc trò chuyện này."
 
 #: src/components/ArtifactFileCard.tsx
 msgid "Could not load this file."
-msgstr ""
+msgstr "Không thể tải tệp này."
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not load voice settings"
-msgstr ""
+msgstr "Không thể tải cài đặt giọng nói"
 
 #: src/lib/sign-out.ts
 msgid "Could not log out. Try again."
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-#: src/pages/BillingSettingsPanel.tsx
-#: src/pages/Onboarding.tsx
-#: src/pages/Paywall.tsx
-msgid "Could not open billing"
-msgstr ""
+msgstr "Không thể đăng xuất. Bạn hãy thử lại."
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not play a test clip"
-msgstr ""
+msgstr "Không thể phát đoạn âm thanh thử"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not preview plugin"
-msgstr ""
+msgstr "Không thể xem trước tiện ích mở rộng"
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Could not preview rule"
-msgstr ""
+msgstr "Không thể xem trước quy tắc"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Could not reach the model server."
-msgstr ""
+msgstr "Không thể kết nối tới máy chủ mô hình."
 
 #: src/components/PasskeyOffer.tsx
 #: src/components/PasskeySettings.tsx
@@ -2059,52 +1955,52 @@ msgstr "Không đọc được các tệp này"
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
-msgstr ""
+msgstr "Không thể gỡ bỏ"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not remove connector"
-msgstr ""
+msgstr "Không thể gỡ bộ kết nối"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not remove plugin"
-msgstr ""
+msgstr "Không thể gỡ tiện ích mở rộng"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Could not remove rule"
-msgstr ""
+msgstr "Không thể gỡ quy tắc"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not remove skills"
-msgstr ""
+msgstr "Không thể gỡ kỹ năng"
 
 #: src/components/VaultSettings.tsx
 msgid "Could not remove the credential"
-msgstr ""
+msgstr "Không thể gỡ thông tin xác thực"
 
 #: src/pages/model-settings/providers-section.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not rename connection"
-msgstr ""
+msgstr "Không thể đổi tên kết nối"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not rename section"
-msgstr ""
+msgstr "Không thể đổi tên mục"
 
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Could not rename space"
-msgstr ""
+msgstr "Không thể đổi tên không gian"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not render chart"
-msgstr ""
+msgstr "Không thể hiển thị biểu đồ"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not revoke connection"
-msgstr ""
+msgstr "Không thể thu hồi kết nối"
 
 #: src/pages/shell/use-routine-editor.ts
 msgid "Could not run routine"
-msgstr ""
+msgstr "Không thể chạy quy trình"
 
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -2113,97 +2009,97 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 #: src/pages/shell/use-space-roster.ts
 msgid "Could not save"
-msgstr ""
+msgstr "Không thể lưu"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Could not save Auto Review"
-msgstr ""
+msgstr "Không thể lưu Tự động xét duyệt"
 
 #: src/pages/GroupPanel.tsx
 msgid "Could not save group"
-msgstr ""
+msgstr "Không thể lưu nhóm"
 
 #: src/pages/Onboarding.tsx
 msgid "Could not save model"
-msgstr ""
+msgstr "Không thể lưu mô hình"
 
 #: src/pages/shell/use-routine-editor.ts
 msgid "Could not save routine"
-msgstr ""
+msgstr "Không thể lưu quy trình"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Could not save rule"
-msgstr ""
+msgstr "Không thể lưu quy tắc"
 
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not save skill"
-msgstr ""
+msgstr "Không thể lưu kỹ năng"
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Could not save that choice"
-msgstr ""
+msgstr "Không thể lưu lựa chọn đó"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not save that speech model"
-msgstr ""
+msgstr "Không thể lưu mô hình giọng nói đó"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not save that voice"
-msgstr ""
+msgstr "Không thể lưu giọng đó"
 
 #: src/components/VaultSettings.tsx
 msgid "Could not save the credential"
-msgstr ""
+msgstr "Không thể lưu thông tin xác thực"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
-msgstr ""
+msgstr "Không thể lưu lựa chọn này"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not search catalog"
-msgstr ""
+msgstr "Không thể tìm trong danh mục"
 
 #: src/components/call/IncomingCall.tsx
 #: src/lib/call-session.ts
 msgid "Could not send that"
-msgstr ""
+msgstr "Không thể gửi"
 
 #: src/components/VaultSettings.tsx
 msgid "Could not show the credential"
-msgstr ""
+msgstr "Không thể hiển thị thông tin xác thực"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not sign in"
-msgstr ""
+msgstr "Không thể đăng nhập"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not start OAuth"
-msgstr ""
+msgstr "Không thể bắt đầu OAuth"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Could not start teaching"
-msgstr ""
+msgstr "Không thể bắt đầu dạy bot"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Could not stop computer"
-msgstr ""
+msgstr "Không thể dừng máy tính"
 
 #: src/components/AskCard.tsx
 msgid "Could not submit this answer"
-msgstr ""
+msgstr "Không thể gửi câu trả lời này"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Could not switch {failedNames}. Try again."
-msgstr ""
+msgstr "Không thể chuyển {failedNames}. Bạn hãy thử lại."
 
 #: src/pages/shell/use-computer.tsx
 msgid "Could not take control"
-msgstr ""
+msgstr "Không thể tiếp quản"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not test MCP server"
-msgstr ""
+msgstr "Không thể kiểm tra máy chủ MCP"
 
 #: src/pages/shell/agent-import-undo.tsx
 msgid "Could not undo the import"
@@ -2211,43 +2107,35 @@ msgstr "Không hoàn tác được lần nhập"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not update"
-msgstr ""
+msgstr "Không thể cập nhật"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not update agent access"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Could not update billing"
-msgstr ""
+msgstr "Không thể cập nhật quyền truy cập của bot"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Could not update computer"
-msgstr ""
+msgstr "Không thể cập nhật máy tính"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Could not update name"
-msgstr ""
+msgstr "Không thể cập nhật tên"
 
 #: src/pages/shell/use-composer-actions.ts
 msgid "Could not update reaction"
-msgstr ""
+msgstr "Không thể cập nhật biểu cảm"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
-msgstr ""
+msgstr "Không thể cập nhật phạm vi trí nhớ mặc định"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
-msgstr ""
+msgstr "Không thể xác minh thiết lập máy tính ({failureMessage}). Bạn hãy sửa kết nối rồi kiểm tra lại."
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Couldn't load messaging settings"
-msgstr ""
-
-#: src/pages/PaymentWalletSettingsPanel.tsx
-msgid "Couldn't load your wallet"
-msgstr ""
+msgstr "Không thể tải cài đặt nhắn tin"
 
 #: src/pages/Auth.tsx
 msgid "Couldn't reach the server. Try again."
@@ -2255,15 +2143,11 @@ msgstr "Không kết nối được máy chủ. Hãy thử lại."
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Couldn't update messaging settings"
-msgstr ""
+msgstr "Không thể cập nhật cài đặt nhắn tin"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update your timezone"
-msgstr ""
-
-#: src/pages/PaymentWalletSettingsPanel.tsx
-msgid "Couldn't update your wallet"
-msgstr ""
+msgstr "Không thể cập nhật múi giờ của bạn"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/agent-import.tsx
@@ -2276,84 +2160,80 @@ msgstr "Tạo"
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
 msgid "Create a section and move {0} into it."
-msgstr ""
+msgstr "Tạo mục và chuyển {0} vào đó."
 
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
-msgstr ""
+msgstr "Tạo nhóm"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Create Routine"
-msgstr ""
+msgstr "Tạo quy trình"
 
 #: src/components/AskCard.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Create space"
-msgstr ""
+msgstr "Tạo không gian"
 
 #: src/components/AskCard.tsx
 msgid "Created"
-msgstr ""
+msgstr "Đã tạo"
 
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
-msgstr ""
+msgstr "Đang tạo…"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Credential"
-msgstr ""
+msgstr "Thông tin xác thực"
 
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Credential saved"
-msgstr ""
+msgstr "Đã lưu thông tin xác thực"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Credentials are encrypted and never sent to the model."
-msgstr ""
+msgstr "Thông tin xác thực được mã hóa và không bao giờ gửi tới mô hình."
 
 #: src/pages/shell/import-status.ts
 msgid "Credentials: {names}"
 msgstr "Thông tin đăng nhập: {names}"
 
-#: src/components/ModelCredits.tsx
-msgid "Credit amount"
-msgstr ""
-
 #: src/lib/cron.ts
 msgid "Cron"
-msgstr ""
+msgstr "Cron"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
-msgstr ""
+msgstr "Biểu thức cron"
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Current"
-msgstr ""
+msgstr "Hiện tại"
 
 #: src/components/AccountAccess.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Current password"
-msgstr ""
+msgstr "Mật khẩu hiện tại"
 
 #: src/components/VaultSettings.tsx
 msgid "Custom header"
-msgstr ""
+msgstr "Tiêu đề HTTP tùy chỉnh"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Customer support"
-msgstr ""
+msgstr "Hỗ trợ khách hàng"
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Customize"
-msgstr ""
+msgstr "Tùy chỉnh"
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Customize {label}"
-msgstr ""
+msgstr "Tùy chỉnh {label}"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Customize bot avatar"
@@ -2361,29 +2241,28 @@ msgstr "Tùy chỉnh ảnh đại diện bot"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Dark"
-msgstr ""
+msgstr "Tối"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Data"
-msgstr ""
+msgstr "Dữ liệu"
 
-#: src/lib/billing.ts
 #: src/lib/cron.ts
 msgid "day"
-msgstr ""
+msgstr "ngày"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
-msgstr ""
+msgstr "Công việc hằng ngày"
 
 #: src/lib/cron.ts
 msgid "days"
-msgstr ""
+msgstr "ngày"
 
 #: src/components/call/IncomingCall.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Decline"
-msgstr ""
+msgstr "Từ chối"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/model-settings/role-model-picker.tsx
@@ -2397,7 +2276,7 @@ msgstr "Mặc định"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Default ({0})"
-msgstr ""
+msgstr "Mặc định ({0})"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Default from Hermes"
@@ -2409,7 +2288,7 @@ msgstr "Mặc định từ OpenClaw"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Default scope"
-msgstr ""
+msgstr "Phạm vi mặc định"
 
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
@@ -2421,14 +2300,14 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Delete"
-msgstr ""
+msgstr "Xóa"
 
 #. placeholder {0}: passkeyLabel(deleting, t`Passkey`)
 #. placeholder {0}: pendingDelete.name
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
 msgid "Delete \"{0}\"?"
-msgstr ""
+msgstr "Xóa \"{0}\"?"
 
 #. placeholder {0}: artifact.name
 #. placeholder {0}: bot.name
@@ -2436,25 +2315,25 @@ msgstr ""
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/archived-chats.tsx
 msgid "Delete {0}"
-msgstr ""
+msgstr "Xóa {0}"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
-msgstr ""
+msgstr "Xóa {0}?"
 
 #: src/components/AccountAccess.tsx
 msgid "Delete account"
-msgstr ""
+msgstr "Xóa tài khoản"
 
 #: src/pages/GroupPanel.tsx
 msgid "Delete group"
-msgstr ""
+msgstr "Xóa nhóm"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Delete memories too"
-msgstr ""
+msgstr "Xóa cả trí nhớ"
 
 #: src/pages/shell/sidebar-roster.tsx
 msgid "Delete section"
@@ -2467,56 +2346,56 @@ msgstr "Xoá không gian"
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Delete this Space's credentials?"
-msgstr ""
+msgstr "Xóa thông tin xác thực của không gian này?"
 
 #: src/pages/shell/message-view.tsx
 msgid "deleted"
-msgstr ""
+msgstr "đã xóa"
 
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Deleting…"
-msgstr ""
+msgstr "Đang xóa…"
 
 #: src/components/AccountAccess.tsx
 msgid "Deletion code"
-msgstr ""
+msgstr "Mã xác nhận xóa"
 
 #: src/components/AskCard.tsx
 msgid "Denied"
-msgstr ""
+msgstr "Đã từ chối"
 
 #: src/components/AskCard.tsx
 msgid "Deny"
-msgstr ""
+msgstr "Từ chối"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Description"
-msgstr ""
+msgstr "Mô tả"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Design"
-msgstr ""
+msgstr "Thiết kế"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop app"
-msgstr ""
+msgstr "Ứng dụng máy tính"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop update"
-msgstr ""
+msgstr "Cập nhật ứng dụng máy tính"
 
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Details"
-msgstr ""
+msgstr "Chi tiết"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Developer"
-msgstr ""
+msgstr "Nhà phát triển"
 
 #: src/pages/Auth.tsx
 msgid "Didn't get it? Resend in {resendLabel}"
@@ -2528,42 +2407,37 @@ msgstr "Tắt một công cụ"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Disabled"
-msgstr ""
+msgstr "Đã tắt"
 
 #: src/components/composer/HoldToTalk.tsx
 msgid "Discard recording"
-msgstr ""
+msgstr "Bỏ bản ghi âm"
 
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect"
-msgstr ""
+msgstr "Ngắt kết nối"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Disconnect {disconnectName}?"
-msgstr ""
-
-#: src/pages/PaymentWalletSettingsPanel.tsx
-msgid "Disconnect {name}?"
-msgstr ""
+msgstr "Ngắt kết nối {disconnectName}?"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect Self-hosted"
-msgstr ""
+msgstr "Ngắt kết nối dịch vụ tự lưu trữ"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Disconnected {disconnectName}."
-msgstr ""
+msgstr "Đã ngắt kết nối {disconnectName}."
 
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnecting…"
-msgstr ""
+msgstr "Đang ngắt kết nối…"
 
 #: src/components/AskCard.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -2571,35 +2445,39 @@ msgstr ""
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
-msgstr ""
+msgstr "Bỏ qua"
 
 #: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
-msgstr ""
+msgstr "Ẩn lỗi"
 
 #: src/components/AskCard.tsx
 msgid "Dismissed"
-msgstr ""
+msgstr "Đã bỏ qua"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Dismissed. Reconnect anytime from MCP settings."
-msgstr ""
+msgstr "Đã bỏ qua. Bạn có thể kết nối lại bất cứ lúc nào trong cài đặt MCP."
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Docker"
-msgstr ""
+msgstr "Docker"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
-msgstr ""
+msgstr "Docker đã được cấu hình nhưng máy tính không phản hồi. Bạn hãy kiểm tra trình giám sát sandbox đang chạy, rồi tạo lại hệ thống sau khi đổi .env."
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
+msgstr "Docker giới hạn quyền truy cập máy tính của bạn để tăng bảo mật. Dùng {hostLabel} cho phép bot làm việc với tệp và công cụ trên máy bạn."
+
+#: src/components/SidebarFooter.tsx
+msgid "Docs"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Document changed. Reopen to edit the latest version."
-msgstr ""
+msgstr "Tài liệu đã thay đổi. Bạn hãy mở lại để sửa bản mới nhất."
 
 #: src/components/ToolActivityDisclosure.tsx
 #: src/lib/ticket-status.ts
@@ -2609,35 +2487,31 @@ msgstr ""
 msgid "Done"
 msgstr "Xong"
 
-#: src/components/ModelCredits.tsx
-msgid "Downgrade at renewal"
-msgstr ""
-
 #: src/pages/Artifacts.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Download"
-msgstr ""
+msgstr "Tải xuống"
 
 #. placeholder {0}: props.name
 #: src/components/ArtifactFileCard.tsx
 msgid "Download {0}"
-msgstr ""
+msgstr "Tải xuống {0}"
 
 #: src/components/ArtifactFileCard.tsx
 msgid "Download {name}"
-msgstr ""
+msgstr "Tải xuống {name}"
 
 #: src/components/markdown-copy.tsx
 msgid "Download CSV"
-msgstr ""
+msgstr "Tải CSV"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
-msgstr ""
+msgstr "Đang tải xuống…"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
-msgstr ""
+msgstr "Bản nháp kỹ năng"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Drag, drop, or paste an image"
@@ -2645,21 +2519,21 @@ msgstr "Kéo thả hoặc dán ảnh"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
-msgstr ""
+msgstr "Nhân bản"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Each name can be used once."
-msgstr ""
+msgstr "Mỗi tên chỉ được dùng một lần."
 
 #: src/components/AskCard.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "Edit"
-msgstr ""
+msgstr "Chỉnh sửa"
 
 #: src/components/AskCard.tsx
 msgid "Edit first"
-msgstr ""
+msgstr "Chỉnh sửa trước"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Edit label"
@@ -2671,11 +2545,11 @@ msgstr "Sửa tên"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Edit Profile"
-msgstr ""
+msgstr "Chỉnh sửa hồ sơ"
 
 #: src/pages/Auth.tsx
 msgid "Email"
-msgstr "Email"
+msgstr "Thư điện tử"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2683,7 +2557,7 @@ msgstr "Email này không được phép đăng ký"
 
 #: src/components/ConfirmIdentityDialog.tsx
 msgid "Email me a code"
-msgstr ""
+msgstr "Gửi mã qua email"
 
 #: src/lib/user-error.ts
 msgid "Email verification required"
@@ -2694,13 +2568,9 @@ msgstr "Cần xác minh email"
 msgid "Enable {0}"
 msgstr "Bật {0}"
 
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Ends {day}"
-msgstr ""
-
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
-msgstr ""
+msgstr "Tham gia khi... Bỏ qua..."
 
 #: src/lib/user-error.ts
 msgid "Enter a password"
@@ -2717,33 +2587,33 @@ msgstr "Hãy nhập một địa chỉ email hợp lệ."
 #: src/pages/model-settings/use-model-settings.ts
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to {MAX_MODEL_CONTEXT_WINDOW} for the context limit."
-msgstr ""
+msgstr "Nhập số nguyên từ 1 đến {MAX_MODEL_CONTEXT_WINDOW} cho giới hạn ngữ cảnh."
 
 #: src/pages/model-settings/use-model-settings.ts
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to {MAX_MODEL_MAX_TOKENS} for maximum output tokens."
-msgstr ""
+msgstr "Nhập số nguyên từ 1 đến {MAX_MODEL_MAX_TOKENS} cho số token đầu ra tối đa."
 
 #: src/pages/model-settings/use-model-settings.ts
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to 1000 for the image limit."
-msgstr ""
+msgstr "Nhập số nguyên từ 1 đến 1000 cho giới hạn ảnh."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Enter an API key before testing."
-msgstr ""
+msgstr "Nhập khóa API trước khi kiểm tra."
 
 #: src/pages/Auth.tsx
 msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
 msgstr "Nhập mã 6 số vừa được gửi tới <0>{trimmedEmail}</0>. Mã có hiệu lực trong 10 phút."
 
 #: src/pages/Auth.tsx
-msgid "Enter your email to get a 6-digit sign-in code. If you don't have an account yet, VNBot will create one for you."
-msgstr "Nhập email để nhận mã đăng nhập 6 số. Nếu bạn chưa có tài khoản, VNBot sẽ tự tạo cho bạn."
+msgid "Enter your email to get a 6-digit sign-in code."
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Environment variables"
-msgstr ""
+msgstr "Biến môi trường"
 
 #: src/pages/shell/import-status.ts
 msgid "Environment variables: {names}"
@@ -2756,70 +2626,70 @@ msgstr "Lỗi"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Error details"
-msgstr ""
+msgstr "Chi tiết lỗi"
 
 #: src/lib/cron.ts
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Every"
-msgstr ""
+msgstr "Mỗi"
 
 #. placeholder {0}: names[0] ?? ""
 #: src/lib/cron.ts
 msgid "Every {0}"
-msgstr ""
+msgstr "Mỗi {0}"
 
 #. placeholder {0}: names.slice(0, -1).join(", ")
 #. placeholder {1}: names.at(-1) ?? ""
 #: src/lib/cron.ts
 msgid "Every {0} and {1}"
-msgstr ""
+msgstr "Mỗi {0} và {1}"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "every {intervalAmountSelect} {intervalUnitSelect}"
-msgstr ""
+msgstr "mỗi {intervalAmountSelect} {intervalUnitSelect}"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Every bot in this space reads these notes and keeps them up to date."
-msgstr ""
+msgstr "Mọi bot trong không gian này đều đọc và cập nhật các ghi chú này."
 
 #: src/lib/cron.ts
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every day"
-msgstr ""
+msgstr "Mỗi ngày"
 
 #: src/lib/cron.ts
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every hour"
-msgstr ""
+msgstr "Mỗi giờ"
 
 #. placeholder {0}: String(minute).padStart(2, "0")
 #: src/lib/cron.ts
 msgid "Every hour at :{0}"
-msgstr ""
+msgstr "Mỗi giờ vào phút :{0}"
 
 #: src/lib/cron.ts
 msgid "Every Monday"
-msgstr ""
+msgstr "Mỗi thứ Hai"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every month"
-msgstr ""
+msgstr "Mỗi tháng"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
-msgstr ""
+msgstr "Mỗi tuần"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
-msgstr ""
+msgstr "Token thực thi"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Expand"
-msgstr ""
+msgstr "Mở rộng"
 
 #. placeholder {0}: headerName(group)
 #: src/pages/shell/sidebar-roster.tsx
@@ -2832,88 +2702,88 @@ msgstr "Mở rộng {label}"
 
 #: src/components/markdown-copy.tsx
 msgid "Expand table"
-msgstr ""
+msgstr "Mở rộng bảng"
 
 #: src/components/CloudAgentCard.tsx
 msgid "expired"
-msgstr ""
+msgstr "đã hết hạn"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Export"
-msgstr ""
+msgstr "Xuất"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Export this week's list from the CRM and drop it in the shared folder"
-msgstr ""
+msgstr "Xuất danh sách tuần này từ CRM và đặt vào thư mục dùng chung"
 
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "External conversation"
-msgstr ""
+msgstr "Cuộc trò chuyện bên ngoài"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Extra high"
-msgstr ""
+msgstr "Rất cao"
 
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Extra high"
-msgstr ""
+msgstr "Rất cao"
 
 #: src/components/CloudAgentCard.tsx
 msgid "failed"
-msgstr ""
+msgstr "thất bại"
 
 #: src/components/SubagentCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
-msgstr ""
+msgstr "Thất bại"
 
 #: src/pages/shell/use-composer-actions.ts
 msgid "Failed to send message"
-msgstr ""
+msgstr "Không thể gửi tin nhắn"
 
 #: src/pages/shell/use-composer-actions.ts
 msgid "Failed to stop"
-msgstr ""
+msgstr "Không thể dừng"
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "Failed."
-msgstr ""
+msgstr "Thất bại."
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Failure handling"
-msgstr ""
+msgstr "Xử lý lỗi"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Fields that mark a change"
-msgstr ""
+msgstr "Trường dùng để nhận biết thay đổi"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Fields to compare, e.g. id, modifiedTime (optional)"
-msgstr ""
+msgstr "Trường cần so sánh, ví dụ: id, modifiedTime (tùy chọn)"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "File"
-msgstr ""
+msgstr "Tệp"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Files or folders on the computer"
-msgstr ""
+msgstr "Tệp hoặc thư mục trên máy tính"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Files or folders, one per line"
-msgstr ""
+msgstr "Tệp hoặc thư mục, mỗi dòng một mục"
 
 #: src/pages/GroupPanel.tsx
 msgid "Filter bots"
-msgstr ""
+msgstr "Lọc bot"
 
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
-msgstr ""
+msgstr "Lọc theo ngày"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/shell-sidebar.tsx
@@ -2922,17 +2792,17 @@ msgstr "Bộ lọc"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Finance"
-msgstr ""
+msgstr "Tài chính"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Find models"
-msgstr ""
+msgstr "Tìm mô hình"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Finding…"
-msgstr ""
+msgstr "Đang tìm…"
 
 #: src/pages/shell/import-setup-card.tsx
 msgid "Finish setting up"
@@ -2940,60 +2810,55 @@ msgstr "Hoàn tất thiết lập"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Finish subscription sign-in, then test again."
-msgstr ""
+msgstr "Bạn hãy hoàn tất đăng nhập gói đăng ký rồi kiểm tra lại."
 
 #: src/components/CloudAgentCard.tsx
 msgid "finished"
-msgstr ""
+msgstr "đã xong"
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "Finished."
-msgstr ""
+msgstr "Đã xong."
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "Finishing MCP connection…"
-msgstr ""
+msgstr "Đang hoàn tất kết nối MCP…"
 
-#: src/components/ModelCredits.tsx
 #: src/pages/model-settings/model-picker.tsx
 msgid "Free"
-msgstr ""
-
-#: src/pages/shell/shell-sidebar.tsx
-msgid "Free plan ends {day}"
-msgstr "Gói miễn phí hết hạn {day}"
+msgstr "Miễn phí"
 
 #: src/lib/cron.ts
 msgid "Friday"
-msgstr ""
+msgstr "Thứ Sáu"
 
 #: src/pages/ActivityList.tsx
 msgid "From"
-msgstr ""
+msgstr "Từ"
 
 #. placeholder {0}: filters.dateRange.from
 #: src/pages/ActivityList.tsx
 msgid "From {0}"
-msgstr ""
+msgstr "Từ {0}"
 
 #: src/components/integrations/skills-dialog.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "From GitHub"
-msgstr ""
+msgstr "Từ GitHub"
 
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
-msgstr ""
+msgstr "Toàn màn hình"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Gateway ID"
-msgstr ""
+msgstr "ID cổng kết nối"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "General"
-msgstr ""
+msgstr "Chung"
 
 #: src/pages/Auth.tsx
 msgid "Get in touch (opens in new tab)"
@@ -3013,11 +2878,11 @@ msgstr "Tải ứng dụng di động"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
-msgstr ""
+msgstr "Đang chuẩn bị"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Git event"
-msgstr ""
+msgstr "Sự kiện Git"
 
 #: src/lib/identity-display.ts
 #: src/pages/MessagingSettingsPanel.tsx
@@ -3028,51 +2893,55 @@ msgstr "Nhóm"
 
 #: src/pages/GroupPanel.tsx
 msgid "Group settings"
-msgstr ""
+msgstr "Cài đặt nhóm"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Group updates"
-msgstr ""
+msgstr "Cập nhật nhóm"
 
 #: src/components/call/CallCard.tsx
 msgid "Hang up"
-msgstr ""
+msgstr "Kết thúc cuộc gọi"
 
 #: src/lib/call-session.ts
 msgid "Hang up first, then enter the code on screen."
-msgstr ""
+msgstr "Bạn hãy kết thúc cuộc gọi trước rồi nhập mã trên màn hình."
 
 #: src/lib/call-session.ts
 msgid "Hang up, then enter the code on screen."
+msgstr "Bạn hãy kết thúc cuộc gọi rồi nhập mã trên màn hình."
+
+#: src/pages/memory-providers/HonchoSettingsForm.tsx
+msgid "hch-…"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "header"
-msgstr ""
+msgstr "tiêu đề HTTP"
 
 #: src/components/VaultSettings.tsx
 msgid "Header \"{header}\""
-msgstr ""
+msgstr "Tiêu đề HTTP \"{header}\""
 
 #: src/components/ModelHeadersEditor.tsx
 #: src/components/VaultSettings.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Header name"
-msgstr ""
+msgstr "Tên tiêu đề HTTP"
 
 #: src/components/ModelHeadersEditor.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "Header value"
-msgstr ""
+msgstr "Giá trị tiêu đề HTTP"
 
 #: src/components/ModelHeadersEditor.tsx
 msgid "Headers"
-msgstr ""
+msgstr "Các tiêu đề HTTP"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hear a sample"
-msgstr ""
+msgstr "Nghe thử"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "hex"
@@ -3080,67 +2949,67 @@ msgstr "Lục giác"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hi, this is how I'll sound when I read replies out loud."
-msgstr ""
+msgstr "Chào bạn, đây là giọng của mình khi đọc câu trả lời."
 
 #: src/components/LoginFields.tsx
 msgid "Hidden"
-msgstr ""
+msgstr "Đã ẩn"
 
 #: src/components/VaultSettings.tsx
 msgid "Hide"
-msgstr ""
+msgstr "Ẩn"
 
 #: src/components/I18nBootstrap.tsx
 msgid "Hide password"
-msgstr ""
+msgstr "Ẩn mật khẩu"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
-msgstr ""
+msgstr "Ẩn bản chép lời"
 
 #: src/lib/ticket-priority.ts
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "High"
-msgstr ""
+msgstr "Cao"
 
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "High"
-msgstr ""
+msgstr "Cao"
 
 #: src/components/composer/HoldToTalk.tsx
 msgid "Hold to talk"
-msgstr ""
+msgstr "Giữ để nói"
 
 #: src/components/composer/HoldToTalk.tsx
 msgid "Hold to talk, release to send"
-msgstr ""
+msgstr "Giữ để nói, thả để gửi"
 
 #: src/lib/cron.ts
 msgid "hour"
-msgstr ""
+msgstr "giờ"
 
 #: src/lib/cron.ts
 #: src/pages/ExternalConversationSettings.tsx
 msgid "hours"
-msgstr ""
+msgstr "giờ"
 
 #: src/components/SignupSurvey.tsx
 msgid "How big is your team?"
-msgstr ""
+msgstr "Nhóm của bạn có bao nhiêu người?"
 
 #: src/components/SignupSurvey.tsx
 msgid "How did you hear about us?"
-msgstr ""
+msgstr "Bạn biết đến VNBot qua đâu?"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "How often"
-msgstr ""
+msgstr "Tần suất"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "How to check"
-msgstr ""
+msgstr "Cách kiểm tra"
 
 #: src/components/SignupSurvey.tsx
 msgid "How will you use VNBot?"
@@ -3148,7 +3017,7 @@ msgstr "Bạn sẽ dùng VNBot thế nào?"
 
 #: src/pages/shell/computer-release-actions.tsx
 msgid "I’m done"
-msgstr ""
+msgstr "Xong rồi"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Icon set"
@@ -3156,16 +3025,16 @@ msgstr "Bộ biểu tượng"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "If you heard that, voice is ready."
-msgstr ""
+msgstr "Nếu bạn nghe được, giọng nói đã sẵn sàng."
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Ignore"
-msgstr ""
+msgstr "Bỏ qua"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Image input is not configured for this model."
-msgstr ""
+msgstr "Mô hình này chưa được cấu hình để nhận ảnh."
 
 #: src/lib/user-error.ts
 msgid "Image input is not configured for this model."
@@ -3184,31 +3053,27 @@ msgstr "Nhập"
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Import an agent"
-msgstr "Nhập một trợ lý"
+msgstr "Nhập một bot"
 
 #: src/pages/shell/composer.tsx
 msgid "Import this agent as a bot?"
-msgstr "Nhập trợ lý này thành một bot?"
+msgstr "Nhập bot này vào VNBot?"
 
 #: src/lib/ticket-status.ts
 msgid "In progress"
-msgstr ""
+msgstr "Đang thực hiện"
 
 #: src/lib/ticket-status.ts
 msgid "In review"
-msgstr ""
+msgstr "Đang xét duyệt"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "In this bot"
-msgstr ""
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Inactive"
-msgstr ""
+msgstr "Trong bot này"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
-msgstr ""
+msgstr "Hộp thư & email"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Include API keys"
@@ -3216,19 +3081,19 @@ msgstr "Gồm cả khóa API"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Incoming call"
-msgstr ""
+msgstr "Cuộc gọi đến"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Inherit default"
-msgstr ""
+msgstr "Dùng mặc định"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Input"
-msgstr ""
+msgstr "Đầu vào"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Inputs"
-msgstr ""
+msgstr "Dữ liệu đầu vào"
 
 #: src/components/SidebarFooter.tsx
 msgid "Install update"
@@ -3236,25 +3101,25 @@ msgstr "Cài bản cập nhật"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Installing…"
-msgstr ""
+msgstr "Đang cài…"
 
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Instance API key"
-msgstr ""
+msgstr "Khóa API của phiên bản triển khai"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Instruction"
-msgstr ""
+msgstr "Chỉ dẫn"
 
 #: src/components/InstructionSettings.tsx
 msgid "Instruction history"
-msgstr ""
+msgstr "Lịch sử chỉ dẫn"
 
 #: src/components/AskCard.tsx
 #: src/components/InstructionSettings.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Instructions"
-msgstr ""
+msgstr "Chỉ dẫn"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Instructions {position}"
@@ -3267,37 +3132,37 @@ msgstr "Hướng dẫn quá dài. Hãy bỏ chọn bớt tệp."
 
 #: src/components/AskCard.tsx
 msgid "Instructions updated"
-msgstr ""
+msgstr "Đã cập nhật chỉ dẫn"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Integration domain"
-msgstr ""
+msgstr "Tên miền tích hợp"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Integrations"
-msgstr ""
+msgstr "Tích hợp"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval"
-msgstr ""
+msgstr "Khoảng thời gian"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval amount"
-msgstr ""
+msgstr "Độ dài khoảng thời gian"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval unit"
-msgstr ""
+msgstr "Đơn vị thời gian"
 
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
-msgstr ""
+msgstr "Cách ly"
 
 #: src/pages/Artifacts.tsx
 msgid "Isolated preview — no access to your account"
-msgstr ""
+msgstr "Bản xem trước cách ly — không truy cập tài khoản của bạn"
 
 #: src/pages/shell/shell-dialogs.tsx
 msgid "Its bots and groups are kept and leave the section."
@@ -3305,7 +3170,7 @@ msgstr "Các bot và nhóm trong mục vẫn được giữ lại, chỉ đượ
 
 #: src/pages/shell/dialogs.tsx
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
-msgstr ""
+msgstr "Cuộc trò chuyện, tệp và quy trình của bot sẽ bị xóa vĩnh viễn. Các bot do bot này tạo vẫn ở trong danh sách của bạn."
 
 #: src/pages/shell/agent-import-undo.tsx
 msgid "Its instructions changed since the import, so they stay."
@@ -3329,15 +3194,15 @@ msgstr "Mô hình trở về như trước lần nhập."
 
 #: src/pages/shell/transcript.tsx
 msgid "Jump to latest"
-msgstr ""
+msgstr "Đến tin mới nhất"
 
 #: src/pages/shell/chat-context.tsx
 msgid "Jump to replied message: {excerpt}"
-msgstr ""
+msgstr "Đến tin nhắn được trả lời: {excerpt}"
 
 #: src/lib/relative-time.ts
 msgid "just now"
-msgstr ""
+msgstr "vừa xong"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Keep its instructions"
@@ -3345,7 +3210,7 @@ msgstr "Giữ hướng dẫn của nó"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
-msgstr ""
+msgstr "Giữ trí nhớ"
 
 #: src/pages/shell/agent-import-undo.tsx
 msgid "Kept"
@@ -3353,7 +3218,7 @@ msgstr "Đã giữ"
 
 #: src/pages/RoutineEditor.tsx
 msgid "key"
-msgstr ""
+msgstr "khóa"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Khăn rằn"
@@ -3361,11 +3226,11 @@ msgstr "Khăn rằn"
 
 #: src/components/LoginFields.tsx
 msgid "Label"
-msgstr ""
+msgstr "Nhãn"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
-msgstr ""
+msgstr "Ngôn ngữ"
 
 #: src/components/LanguageSwitch.tsx
 msgid "Language: {label}"
@@ -3374,106 +3239,106 @@ msgstr "Ngôn ngữ: {label}"
 #. placeholder {0}: new Date(state.checkedAt).toLocaleString()
 #: src/pages/RoutineEditor.tsx
 msgid "Last check {0}: changed"
-msgstr ""
+msgstr "Kiểm tra lần cuối {0}: có thay đổi"
 
 #. placeholder {0}: new Date(state.checkedAt).toLocaleString()
 #: src/pages/RoutineEditor.tsx
 msgid "Last check {0}: no changes"
-msgstr ""
+msgstr "Kiểm tra lần cuối {0}: không có thay đổi"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Later"
-msgstr ""
+msgstr "Để sau"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Leave"
-msgstr ""
+msgstr "Rời khỏi"
 
 #: src/components/ComputerDeviceSettings.tsx
 msgid "Let bots use this computer"
-msgstr ""
+msgstr "Cho phép bot dùng máy tính này"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Lets bots save and recall facts by meaning, alongside MEMORY.md."
-msgstr ""
+msgstr "Cho phép bot lưu và nhớ lại thông tin theo ý nghĩa, bên cạnh MEMORY.md."
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
-msgstr ""
+msgstr "Sáng"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Linear issue"
-msgstr ""
+msgstr "Vấn đề trên Linear"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Link DMs"
-msgstr ""
+msgstr "Liên kết tin nhắn riêng"
 
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
-msgstr ""
+msgstr "Liên kết SSO"
 
 #: src/pages/Artifacts.tsx
 msgid "List view"
-msgstr ""
+msgstr "Dạng danh sách"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Listen"
-msgstr ""
+msgstr "Nghe"
 
 #: src/components/call/CallCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Listening"
-msgstr ""
+msgstr "Đang nghe"
 
 #: src/components/composer/HoldToTalk.tsx
 msgid "Listening…"
-msgstr ""
+msgstr "Đang nghe…"
 
 #: src/pages/shell/transcript.tsx
 msgid "Load earlier messages"
-msgstr ""
+msgstr "Tải tin nhắn trước"
 
 #: src/pages/Artifacts.tsx
 msgid "Load more"
-msgstr ""
+msgstr "Tải thêm"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "Load older runs"
-msgstr ""
+msgstr "Tải các lần chạy cũ hơn"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Load web images automatically"
-msgstr ""
+msgstr "Tự động tải ảnh trên web"
 
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
-msgstr ""
+msgstr "Đang tải hoạt động…"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Loading integrations…"
-msgstr ""
+msgstr "Đang tải tích hợp…"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
-msgstr ""
+msgstr "Đang tải cài đặt trí nhớ…"
 
 #: src/pages/ModelRoleSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Loading model catalog…"
-msgstr ""
+msgstr "Đang tải danh mục mô hình…"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Loading plugins…"
-msgstr ""
+msgstr "Đang tải tiện ích mở rộng…"
 
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
-msgstr ""
+msgstr "Đang tải bản xem trước…"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Loading voice providers…"
-msgstr ""
+msgstr "Đang tải nhà cung cấp giọng nói…"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/components/integrations/skills-dialog.tsx
@@ -3484,19 +3349,17 @@ msgstr ""
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Loading…"
-msgstr ""
+msgstr "Đang tải…"
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Local access lets bots run commands without asking. Avoid it on shared or public servers."
-msgstr ""
+msgstr "Quyền truy cập máy cho phép bot chạy lệnh mà không cần hỏi. Bạn nên tránh dùng trên máy chủ dùng chung hoặc công cộng."
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Local computer access requires the latest desktop app."
-msgstr ""
+msgstr "Quyền truy cập máy tính cục bộ cần ứng dụng máy tính mới nhất."
 
-#: src/components/ModelCredits.tsx
 #: src/components/SidebarFooter.tsx
-#: src/pages/Paywall.tsx
 msgid "Log out"
 msgstr "Đăng xuất"
 
@@ -3508,137 +3371,131 @@ msgstr "Có vẻ chứa một khóa"
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Low"
-msgstr ""
+msgstr "Thấp"
 
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Low"
-msgstr ""
+msgstr "Thấp"
 
 #: src/components/VaultSettings.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
-msgstr ""
+msgstr "Chữ thường, số, dấu gạch ngang và gạch dưới, bắt đầu bằng chữ cái."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Main model"
-msgstr ""
+msgstr "Mô hình chính"
 
-#: src/pages/BillingSettingsPanel.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Manage"
-msgstr ""
+msgstr "Quản lý"
 
 #. placeholder {0}: option.name
 #. placeholder {0}: providerName(choice)
 #: src/pages/ModelRoleSettings.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Manage {0}"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Paywall.tsx
-msgid "Manage billing"
-msgstr ""
+msgstr "Quản lý {0}"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Manage MCP servers"
-msgstr ""
+msgstr "Quản lý máy chủ MCP"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Manage the bots it creates"
-msgstr ""
+msgstr "Quản lý các bot do bot này tạo"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Manual"
-msgstr ""
+msgstr "Thủ công"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Manual setup required"
-msgstr ""
+msgstr "Cần thiết lập thủ công"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Mark as Read"
-msgstr ""
+msgstr "Đánh dấu đã đọc"
 
 #: src/pages/shell/message-hover-actions.tsx
 msgid "Mark as unread"
-msgstr ""
+msgstr "Đánh dấu chưa đọc"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Mark as Unread"
-msgstr ""
+msgstr "Đánh dấu chưa đọc"
 
 #: src/components/markdown-copy.tsx
 msgid "Markdown table"
-msgstr ""
+msgstr "Bảng Markdown"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Marketing"
-msgstr ""
+msgstr "Tiếp thị"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
-msgstr ""
+msgstr "Tối đa"
 
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Max"
-msgstr ""
+msgstr "Tối đa"
 
 #: src/pages/Artifacts.tsx
 msgid "Maximize"
-msgstr ""
+msgstr "Phóng to"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Maximum images per request"
-msgstr ""
+msgstr "Số ảnh tối đa mỗi yêu cầu"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Maximum output tokens"
-msgstr ""
+msgstr "Số token đầu ra tối đa"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "MCP endpoint"
-msgstr ""
+msgstr "Điểm cuối MCP"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "MCP server"
-msgstr ""
+msgstr "Máy chủ MCP"
 
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "MCP servers"
-msgstr ""
+msgstr "Máy chủ MCP"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Medium"
-msgstr ""
+msgstr "Trung bình"
 
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Medium"
-msgstr ""
+msgstr "Trung bình"
 
 #: src/lib/identity-display.ts
 msgid "Member"
-msgstr ""
+msgstr "Thành viên"
 
 #. placeholder {0}: selected.length
 #: src/pages/GroupPanel.tsx
 msgid "Members ({0})"
-msgstr ""
+msgstr "Thành viên ({0})"
 
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Memory"
-msgstr ""
+msgstr "Trí nhớ"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Memory {position}"
@@ -3650,15 +3507,15 @@ msgstr "Bộ nhớ cho {title}"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Memory scope"
-msgstr ""
+msgstr "Phạm vi trí nhớ"
 
 #: src/pages/shell/composer.tsx
 msgid "Mentions"
-msgstr ""
+msgstr "Lượt nhắc tên"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Mentions only"
-msgstr ""
+msgstr "Chỉ khi được nhắc tên"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Mentions OpenClaw features"
@@ -3671,62 +3528,62 @@ msgstr "Nhắc đến: {mentions}"
 #: src/pages/shell/chat-shared.ts
 #: src/pages/shell/composer.tsx
 msgid "Message"
-msgstr ""
+msgstr "Tin nhắn"
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "Message"
-msgstr ""
+msgstr "Nhắn tin"
 
 #: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
-msgstr ""
+msgstr "Nhắn cho {activeName}"
 
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
-msgstr ""
+msgstr "Ô soạn tin nhắn"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Message event"
-msgstr ""
+msgstr "Sự kiện tin nhắn"
 
 #: src/pages/shell/message-view.tsx
 msgid "Message from {peer}"
-msgstr ""
+msgstr "Tin nhắn từ {peer}"
 
 #: src/lib/activity-list-filters.ts
 msgid "Message from another agent"
-msgstr ""
+msgstr "Tin nhắn từ bot khác"
 
 #: src/pages/shell/composer.tsx
 msgid "Message…"
-msgstr ""
+msgstr "Nhắn tin…"
 
 #: src/pages/shell/message-view.tsx
 msgid "Messaged {peer}"
-msgstr ""
+msgstr "Đã nhắn cho {peer}"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Messaging"
-msgstr ""
+msgstr "Nhắn tin"
 
 #: src/lib/call-session.ts
 msgid "Microphone failed"
-msgstr ""
+msgstr "Mic gặp lỗi"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Minimal"
-msgstr ""
+msgstr "Tối thiểu"
 
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Minimal"
-msgstr ""
+msgstr "Tối thiểu"
 
 #: src/pages/WindowChrome.tsx
 msgid "Minimize"
-msgstr ""
+msgstr "Thu nhỏ"
 
 #: src/pages/shell/sidebar-header.tsx
 msgid "Minimize bots"
@@ -3734,24 +3591,24 @@ msgstr "Thu nhỏ danh sách bot"
 
 #: src/components/call/CallCard.tsx
 msgid "Minimize call"
-msgstr ""
+msgstr "Thu nhỏ cuộc gọi"
 
 #: src/lib/cron.ts
 msgid "minute"
-msgstr ""
+msgstr "phút"
 
 #: src/lib/cron.ts
 #: src/pages/RoutineEditor.tsx
 msgid "minutes"
-msgstr ""
+msgstr "phút"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Missed call"
-msgstr ""
+msgstr "Cuộc gọi nhỡ"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Mode"
-msgstr ""
+msgstr "Chế độ"
 
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/model-settings/compatible-model-fields.tsx
@@ -3765,7 +3622,7 @@ msgstr "Mô hình"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Model \"{modelId}\" was not listed."
-msgstr ""
+msgstr "Mô hình \"{modelId}\" không có trong danh sách."
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Model connections"
@@ -3774,88 +3631,72 @@ msgstr "Kết nối mô hình"
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Model id"
-msgstr ""
+msgstr "ID mô hình"
 
 #: src/pages/model-settings/model-picker.tsx
 #: src/pages/model-settings/role-model-picker.tsx
 msgid "Model options"
-msgstr ""
+msgstr "Tùy chọn mô hình"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Models"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Models at provider cost"
-msgstr ""
+msgstr "Mô hình"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Models from server"
-msgstr ""
+msgstr "Mô hình từ máy chủ"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
-msgstr ""
+msgstr "Danh sách mô hình hợp lệ. Có {modelCount, plural, one {# mô hình} other {# mô hình}}. Chưa kiểm tra trò chuyện."
 
 #: src/lib/cron.ts
 msgid "Monday"
-msgstr ""
-
-#: src/lib/billing.ts
-msgid "month"
-msgstr ""
+msgstr "Thứ Hai"
 
 #: src/lib/cron.ts
 msgid "Monthly"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Monthly credits"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Monthly credits expire at renewal. Top-ups do not expire."
-msgstr ""
+msgstr "Hằng tháng"
 
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/message-hover-actions.tsx
 msgid "More"
-msgstr ""
+msgstr "Thêm"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "More apps"
-msgstr ""
+msgstr "Ứng dụng khác"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
-msgstr ""
+msgstr "Thao tác máy tính khác"
 
 #: src/pages/ModelRoleSettings.tsx
 msgid "Move down"
-msgstr ""
+msgstr "Chuyển xuống"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Move them to your shared memory."
-msgstr ""
+msgstr "Chuyển vào trí nhớ dùng chung của bạn."
 
 #: src/pages/BotContextMenu.tsx
 msgid "Move to"
-msgstr ""
+msgstr "Chuyển đến"
 
 #: src/pages/ModelRoleSettings.tsx
 msgid "Move up"
-msgstr ""
+msgstr "Chuyển lên"
 
 #: src/components/call/CallCard.tsx
 msgid "Mute"
-msgstr ""
+msgstr "Tắt tiếng"
 
 #: src/components/call/CallCard.tsx
 msgid "Muted"
-msgstr ""
+msgstr "Đã tắt tiếng"
 
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/VaultSettings.tsx
@@ -3880,11 +3721,11 @@ msgstr "Đặt tên bot này"
 
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
-msgstr ""
+msgstr "Đặt tên nhóm này"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Name this routine"
-msgstr ""
+msgstr "Đặt tên quy trình này"
 
 #: src/pages/shell/create-bot-dialog.tsx
 msgid "Name your Bot"
@@ -3892,20 +3733,20 @@ msgstr "Đặt tên cho bot"
 
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
-msgstr ""
+msgstr "Cần câu trả lời"
 
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
-msgstr ""
+msgstr "Cần thông tin"
 
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
-msgstr ""
+msgstr "Cần tiếp quản"
 
 #: src/lib/roster-status.ts
 #: src/pages/shell/computer-overlay.tsx
 msgid "Needs you"
-msgstr ""
+msgstr "Cần bạn"
 
 #: src/pages/shell/import-status.ts
 msgid "Needs: {names}"
@@ -3913,11 +3754,11 @@ msgstr "Cần: {names}"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Never ask"
-msgstr ""
+msgstr "Không bao giờ hỏi"
 
 #: src/pages/shell/chat-context.tsx
 msgid "New"
-msgstr ""
+msgstr "Mới"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/agent-import.tsx
@@ -3932,157 +3773,157 @@ msgstr "Đã gửi mã mới. Mã cũ không còn dùng được."
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
-msgstr ""
+msgstr "Nhóm mới"
 
 #: src/pages/shell/bot-picker.tsx
 msgid "New group chat"
-msgstr ""
+msgstr "Cuộc trò chuyện nhóm mới"
 
 #: src/pages/shell/chat-context.tsx
 msgid "New messages"
-msgstr ""
+msgstr "Tin nhắn mới"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "New open-work item"
-msgstr ""
+msgstr "Mục công việc đang mở mới"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "New password"
-msgstr ""
+msgstr "Mật khẩu mới"
 
 #: src/pages/shell/bot-picker.tsx
 msgid "New private space"
-msgstr ""
+msgstr "Không gian riêng mới"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "New section"
-msgstr ""
+msgstr "Mục mới"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "New skill"
-msgstr ""
+msgstr "Kỹ năng mới"
 
 #: src/pages/shell/dialogs.tsx
 msgid "New space"
-msgstr ""
+msgstr "Không gian mới"
 
 #: src/pages/Board.tsx
 msgid "New ticket"
-msgstr ""
+msgstr "Yêu cầu hỗ trợ mới"
 
 #: src/components/markdown-copy.tsx
 msgid "Next page"
-msgstr ""
+msgstr "Trang sau"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Next settings sections"
-msgstr ""
+msgstr "Các mục cài đặt sau"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No apps match your search."
-msgstr ""
+msgstr "Không có ứng dụng phù hợp với tìm kiếm của bạn."
 
 #: src/pages/Artifacts.tsx
 msgid "No artifacts found."
-msgstr ""
+msgstr "Không tìm thấy sản phẩm nào."
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No auth"
-msgstr ""
+msgstr "Không xác thực"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No authentication"
-msgstr ""
+msgstr "Không xác thực"
 
 #: src/pages/shell/command-palette.tsx
 msgid "No bots"
-msgstr ""
+msgstr "Không có bot"
 
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/bot-picker.tsx
 msgid "No bots match"
-msgstr ""
+msgstr "Không có bot phù hợp"
 
 #: src/components/AskCard.tsx
 msgid "No longer active"
-msgstr ""
+msgstr "Không còn hoạt động"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No managed app catalog is configured on this deployment."
-msgstr ""
+msgstr "Bản triển khai này chưa cấu hình danh mục ứng dụng được quản lý."
 
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
-msgstr ""
+msgstr "Không có sản phẩm phù hợp trên trang này."
 
 #: src/pages/model-settings/model-picker.tsx
 #: src/pages/model-settings/role-model-picker.tsx
 #: src/pages/shell/chat-model-picker.tsx
 msgid "No matching models"
-msgstr ""
+msgstr "Không có mô hình phù hợp"
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "No matching rule"
-msgstr ""
+msgstr "Không có quy tắc phù hợp"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "No MCP servers yet."
-msgstr ""
+msgstr "Chưa có máy chủ MCP."
 
 #: src/pages/GroupPanel.tsx
 msgid "No members yet"
-msgstr ""
+msgstr "Chưa có thành viên"
 
 #: src/pages/PeerMessagesOverlay.tsx
 msgid "No messages with {peerBotName} yet."
-msgstr ""
+msgstr "Chưa có tin nhắn với {peerBotName}."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No model catalog is available."
-msgstr ""
+msgstr "Không có danh mục mô hình."
 
 #: src/lib/model-connection-preflight.ts
 msgid "No models listed."
-msgstr ""
+msgstr "Chưa có mô hình trong danh sách."
 
 #: src/pages/shell/agent-import.tsx
 msgid "No OpenClaw, Hermes or agent document found."
-msgstr "Không thấy tài liệu OpenClaw, Hermes hoặc trợ lý."
+msgstr "Không thấy tài liệu OpenClaw, Hermes hoặc bot."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
-msgstr ""
+msgstr "Không tìm thấy máy chủ MCP từ xa"
 
 #: src/pages/model-settings/providers-section.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "No results"
-msgstr ""
+msgstr "Không có kết quả"
 
 #: src/components/markdown-copy.tsx
 msgid "No rows"
-msgstr ""
+msgstr "Không có dòng nào"
 
 #: src/pages/ActivityList.tsx
 msgid "No runs match these filters."
-msgstr ""
+msgstr "Không có lần chạy phù hợp với các bộ lọc này."
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "No runs yet"
-msgstr ""
+msgstr "Chưa có lần chạy nào"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No skills yet"
-msgstr ""
+msgstr "Chưa có kỹ năng"
 
 #: src/pages/Board.tsx
 msgid "No tickets yet"
-msgstr ""
+msgstr "Chưa có yêu cầu hỗ trợ"
 
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
-msgstr ""
+msgstr "Không có điều kiện kích hoạt"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Nón"
@@ -4090,7 +3931,7 @@ msgstr "Nón"
 
 #: src/lib/ticket-priority.ts
 msgid "Normal"
-msgstr ""
+msgstr "Bình thường"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Not a valid skill"
@@ -4099,11 +3940,11 @@ msgstr "Không phải kỹ năng hợp lệ"
 #. placeholder {0}: notAdded.map((entry) => entry.name).join(", ")
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Not added: {0}"
-msgstr ""
+msgstr "Chưa thêm: {0}"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Not checked yet"
-msgstr ""
+msgstr "Chưa kiểm tra"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Not imported"
@@ -4111,7 +3952,7 @@ msgstr "Không được nhập"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Not in the plugin catalog"
-msgstr ""
+msgstr "Không có trong danh mục tiện ích mở rộng"
 
 #: src/pages/shell/import-status.ts
 msgid "Not in VNBot's catalog"
@@ -4119,7 +3960,7 @@ msgstr "Không có trong danh mục của VNBot"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
-msgstr ""
+msgstr "Để sau"
 
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
@@ -4132,11 +3973,11 @@ msgstr "VNBot không dùng"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Not working"
-msgstr ""
+msgstr "Không hoạt động"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
-msgstr ""
+msgstr "Chưa nhớ gì"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
@@ -4144,76 +3985,71 @@ msgstr "Thông báo"
 
 #: src/pages/ActivityList.tsx
 msgid "Now"
-msgstr ""
+msgstr "Bây giờ"
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth authorization was cancelled."
-msgstr ""
+msgstr "Đã hủy ủy quyền OAuth."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "OAuth client ID (optional)"
-msgstr ""
+msgstr "ID ứng dụng OAuth (tùy chọn)"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "OAuth client secret (optional)"
-msgstr ""
+msgstr "Mã bí mật ứng dụng OAuth (tùy chọn)"
 
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth connected"
-msgstr ""
+msgstr "Đã kết nối OAuth"
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
-msgstr ""
+msgstr "Kết nối OAuth không thành công"
 
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
-msgstr ""
+msgstr "OAuth đã hết hạn"
 
 #: src/components/ComputerDeviceSettings.tsx
 msgid "Offline"
-msgstr ""
+msgstr "Ngoại tuyến"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Ollama API key"
-msgstr ""
+msgstr "Khóa API Ollama"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Ollama Cloud"
-msgstr ""
+msgstr "Ollama Cloud"
 
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
-msgstr ""
+msgstr "Theo lịch"
 
 #: src/lib/cron.ts
 msgid "on day {day} at {time}"
-msgstr ""
+msgstr "vào ngày {day} lúc {time}"
 
 #. placeholder {0}: preset.time
 #: src/lib/cron.ts
 msgid "on the 1st at {0}"
-msgstr ""
+msgstr "vào ngày 1 lúc {0}"
 
 #: src/lib/cron.ts
 msgid "One-time"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "One-time purchase. Credits do not expire."
-msgstr ""
+msgstr "Một lần"
 
 #: src/components/markdown-link-prompt.tsx
-#: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/shell/computer-panel.tsx
 #: src/pages/shell/import-setup-card.tsx
 #: src/pages/shell/message-view.tsx
 msgid "Open"
-msgstr ""
+msgstr "Mở"
 
 #. placeholder {0}: headerName(group)
 #: src/pages/shell/sidebar-roster.tsx
@@ -4228,7 +4064,7 @@ msgstr "Mở {name}"
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Open <0>{0}</0> and enter this code:"
-msgstr ""
+msgstr "Mở <0>{0}</0> và nhập mã này:"
 
 #: src/pages/shell/chat-header.tsx
 msgid "Open call"
@@ -4237,19 +4073,19 @@ msgstr "Mở cuộc gọi"
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Open chat with {0}"
-msgstr ""
+msgstr "Mở trò chuyện với {0}"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
-msgstr ""
+msgstr "Mở cài đặt máy tính"
 
 #: src/components/markdown-link-prompt.tsx
 msgid "Open external link?"
-msgstr ""
+msgstr "Mở liên kết ngoài?"
 
 #: src/pages/shell/computer-panel.tsx
 msgid "Open in full window"
-msgstr ""
+msgstr "Mở trong toàn bộ cửa sổ"
 
 #: src/pages/shell/chat-header.tsx
 msgid "Open navigation"
@@ -4257,16 +4093,16 @@ msgstr "Mở thanh điều hướng"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
-msgstr ""
+msgstr "Công việc đang mở"
 
 #: src/pages/Onboarding.tsx
 msgid "OpenAI API"
-msgstr ""
+msgstr "OpenAI API"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "OpenAI-compatible server URL"
-msgstr ""
+msgstr "URL máy chủ tương thích OpenAI"
 
 #: src/pages/shell/agent-import.tsx
 msgid "OpenClaw or Hermes"
@@ -4277,61 +4113,61 @@ msgstr "OpenClaw hoặc Hermes"
 #: src/pages/Onboarding.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Optional"
-msgstr ""
+msgstr "Tùy chọn"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Optional header value"
-msgstr ""
+msgstr "Giá trị tiêu đề HTTP tùy chọn"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Or paste an API key"
-msgstr ""
+msgstr "Hoặc dán khóa API"
 
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Organization API key"
-msgstr ""
+msgstr "Khóa API tổ chức"
 
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
-msgstr ""
+msgstr "Tin nhắn gốc không còn khả dụng"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Other model…"
-msgstr ""
+msgstr "Mô hình khác…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Output"
-msgstr ""
+msgstr "Đầu ra"
 
 #: src/lib/identity-display.ts
 #: src/pages/Board.tsx
 msgid "Owner"
-msgstr ""
+msgstr "Chủ sở hữu"
 
 #: src/components/markdown-copy.tsx
 msgid "Page {page} of {count}"
-msgstr ""
+msgstr "Trang {page} / {count}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
-msgstr ""
+msgstr "Sự cố PagerDuty"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
-msgstr ""
+msgstr "Khóa truy cập"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkeys"
-msgstr ""
+msgstr "Khóa truy cập"
 
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/VaultSettings.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Password"
-msgstr ""
+msgstr "Mật khẩu"
 
 #: src/lib/user-error.ts
 msgid "Password must be {MAX_PASSWORD_LENGTH} characters or fewer"
@@ -4343,24 +4179,20 @@ msgstr "Máy chủ này đã tắt đăng nhập bằng mật khẩu"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Password updated"
-msgstr ""
+msgstr "Đã cập nhật mật khẩu"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Passwords do not match"
-msgstr ""
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Past due"
-msgstr ""
+msgstr "Mật khẩu không khớp"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste a replacement key"
-msgstr ""
+msgstr "Dán khóa thay thế"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 msgid "Paste the OpenAI-compatible address from your server. VNBot adds /v1 if needed."
-msgstr ""
+msgstr "Dán địa chỉ tương thích OpenAI từ máy chủ của bạn. VNBot sẽ thêm /v1 nếu cần."
 
 #: src/pages/shell/agent-import.tsx
 msgid "Paste the reply"
@@ -4368,16 +4200,16 @@ msgstr "Dán câu trả lời"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste your API key"
-msgstr ""
+msgstr "Dán khóa API của bạn"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Paste your API key, then test again."
-msgstr ""
+msgstr "Bạn hãy dán khóa API rồi kiểm tra lại."
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/import-status.ts
 msgid "Paused"
-msgstr ""
+msgstr "Đã tạm dừng"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "pebble"
@@ -4385,7 +4217,7 @@ msgstr "Viên sỏi"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Pending"
-msgstr ""
+msgstr "Đang chờ"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
@@ -4397,36 +4229,36 @@ msgstr "Nhân cách"
 
 #: src/components/SignupSurvey.tsx
 msgid "Personal"
-msgstr ""
+msgstr "Cá nhân"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Phone call"
-msgstr ""
+msgstr "Cuộc gọi điện thoại"
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/chat-shared.ts
 msgid "Photo"
-msgstr ""
+msgstr "Ảnh"
 
 #: src/pages/GroupPanel.tsx
 msgid "Pick {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX}"
-msgstr ""
+msgstr "Chọn {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX}"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Pick a model from the catalog."
-msgstr ""
+msgstr "Chọn mô hình từ danh mục."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Pick a model from the list or enter a model id served by this endpoint."
-msgstr ""
+msgstr "Chọn mô hình trong danh sách hoặc nhập ID mô hình mà điểm cuối này cung cấp."
 
 #: src/pages/RoutineEditor.tsx
 msgid "Pick a tool to check"
-msgstr ""
+msgstr "Chọn công cụ cần kiểm tra"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
-msgstr ""
+msgstr "Ghim"
 
 #: src/pages/Shell.tsx
 msgid "Pinned"
@@ -4434,76 +4266,76 @@ msgstr "Đã ghim"
 
 #: src/components/ArtifactFileCard.tsx
 msgid "Play {name}"
-msgstr ""
+msgstr "Phát {name}"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
-msgstr ""
+msgstr "Đang phát…"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Plugin"
-msgstr ""
+msgstr "Tiện ích mở rộng"
 
 #: src/components/integrations/skills-dialog.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Plugin GitHub URL"
-msgstr ""
+msgstr "URL GitHub của tiện ích mở rộng"
 
 #: src/components/integrations/skills-dialog.tsx
 msgid "Plugins"
-msgstr ""
+msgstr "Các tiện ích mở rộng"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Post \"No changes\" in chat"
-msgstr ""
+msgstr "Đăng \"Không có thay đổi\" trong trò chuyện"
 
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
-msgstr ""
+msgstr "Gửi POST tới"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Preferences"
-msgstr ""
+msgstr "Tùy chọn"
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/integrations/skills-dialog.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Preview"
-msgstr ""
+msgstr "Xem trước"
 
 #. placeholder {0}: props.name
 #: src/components/ArtifactFileCard.tsx
 msgid "Preview {0}"
-msgstr ""
+msgstr "Xem trước {0}"
 
 #: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
-msgstr ""
+msgstr "Loại tệp này không hỗ trợ xem trước — bạn hãy tải xuống để xem."
 
 #: src/components/markdown-copy.tsx
 msgid "Previous page"
-msgstr ""
+msgstr "Trang trước"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Previous settings sections"
-msgstr ""
+msgstr "Các mục cài đặt trước"
 
 #: src/pages/Board.tsx
 msgid "Priority"
-msgstr ""
+msgstr "Độ ưu tiên"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
-msgstr ""
+msgstr "Riêng tư"
 
 #: src/pages/shell/bot-picker.tsx
 msgid "Private workspace with its own bots and groups."
-msgstr ""
+msgstr "Vùng làm việc riêng với các bot và nhóm riêng."
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Productivity"
-msgstr ""
+msgstr "Năng suất"
 
 #: src/pages/shell/import-status.ts
 msgid "Program: {name}"
@@ -4511,41 +4343,37 @@ msgstr "Chương trình: {name}"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
-msgstr ""
+msgstr "Nhập liệu được bảo vệ"
 
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Provider"
-msgstr ""
+msgstr "Nhà cung cấp"
 
 #: src/pages/model-settings/providers-section.tsx
 msgid "Providers"
-msgstr ""
+msgstr "Nhà cung cấp"
 
 #: src/components/CloudAgentCard.tsx
 msgid "Pull request"
-msgstr ""
+msgstr "Yêu cầu hợp nhất"
 
 #: src/pages/ActivityList.tsx
 msgid "Queued"
-msgstr ""
-
-#: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "rakazo-shared and IDs starting with bot- are reserved for VNBot."
-msgstr ""
+msgstr "Đang xếp hàng"
 
 #: src/pages/shell/message-hover-actions.tsx
 msgid "React"
-msgstr ""
+msgstr "Thả biểu cảm"
 
 #: src/pages/shell/message-hover-actions.tsx
 msgid "Reactions"
-msgstr ""
+msgstr "Biểu cảm"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
-msgstr ""
+msgstr "Đọc câu trả lời thành tiếng"
 
 #: src/pages/shell/import-status.ts
 msgid "Ready"
@@ -4554,32 +4382,32 @@ msgstr "Sẵn sàng"
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Reasoning effort"
-msgstr ""
+msgstr "Mức suy luận"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall and write"
-msgstr ""
+msgstr "Nhớ lại và ghi"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
-msgstr ""
+msgstr "Chỉ nhớ lại"
 
 #: src/pages/ActivityList.tsx
 msgid "Recent"
-msgstr ""
+msgstr "Gần đây"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Recommended"
-msgstr ""
+msgstr "Đề xuất"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Reconnect"
-msgstr ""
+msgstr "Kết nối lại"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Reconnect OAuth"
-msgstr ""
+msgstr "Kết nối lại OAuth"
 
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -4588,85 +4416,80 @@ msgstr "Đang kết nối lại"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
-msgstr ""
+msgstr "Có thể đã bắt đầu ghi nhưng không thể làm mới màn hình"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording started. Refresh the view to continue."
-msgstr ""
+msgstr "Đã bắt đầu ghi. Bạn hãy làm mới để tiếp tục."
 
 #. placeholder {0}: recording.goal
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Recording: {0}"
-msgstr ""
+msgstr "Đang ghi: {0}"
 
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Recover computer"
-msgstr ""
+msgstr "Khôi phục máy tính"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Recover computer?"
-msgstr ""
+msgstr "Khôi phục máy tính?"
 
 #. placeholder {0}: update.name
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Recovering {0}’s Computer"
-msgstr ""
+msgstr "Đang khôi phục máy tính của {0}"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Recovering Team Computer"
-msgstr ""
+msgstr "Đang khôi phục máy tính nhóm"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Recovering…"
-msgstr ""
+msgstr "Đang khôi phục…"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Recovery failed"
-msgstr ""
+msgstr "Khôi phục không thành công"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Recovery is unavailable until the previous operation has stopped."
-msgstr ""
+msgstr "Chỉ có thể khôi phục sau khi thao tác trước đã dừng."
 
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Recovery restores the last saved workspace. Unsaved work may be lost."
-msgstr ""
+msgstr "Khôi phục sẽ lấy lại vùng làm việc đã lưu gần nhất. Công việc chưa lưu có thể bị mất."
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Recreate a computer that is not working."
-msgstr ""
+msgstr "Tạo lại máy tính không hoạt động."
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Recreating the computer"
-msgstr ""
+msgstr "Đang tạo lại máy tính"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Recruiting & HR"
-msgstr ""
+msgstr "Tuyển dụng & nhân sự"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Redirect URI"
-msgstr ""
+msgstr "URI chuyển hướng"
 
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
-#: src/components/ModelCredits.tsx
 msgid "Refresh"
 msgstr "Tải lại"
 
-#: src/components/ModelCredits.tsx
-msgid "Refresh credits"
-msgstr ""
-
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
-msgstr ""
+msgstr "Làm mới màn hình"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refreshing…"
-msgstr ""
+msgstr "Đang làm mới…"
 
 #: src/lib/user-error.ts
 msgid "Registration is closed"
@@ -4674,11 +4497,11 @@ msgstr "Hiện chưa mở đăng ký"
 
 #: src/pages/shell/computer-release-actions.tsx
 msgid "Release control"
-msgstr ""
+msgstr "Trả quyền điều khiển"
 
 #: src/components/InstructionSettings.tsx
 msgid "Reload"
-msgstr ""
+msgstr "Tải lại"
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -4691,72 +4514,72 @@ msgstr ""
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Remove"
-msgstr ""
+msgstr "Gỡ bỏ"
 
 #. placeholder {0}: attachment.file.name
 #. placeholder {0}: device.name
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/shell/composer.tsx
 msgid "Remove {0}"
-msgstr ""
+msgstr "Gỡ {0}"
 
 #. placeholder {0}: bot.name
 #: src/pages/GroupPanel.tsx
 msgid "Remove {0} from the group"
-msgstr ""
+msgstr "Gỡ {0} khỏi nhóm"
 
 #: src/components/VaultSettings.tsx
 msgid "Remove {secretName}? Bots will no longer be able to use it."
-msgstr ""
+msgstr "Gỡ {secretName}? Các bot sẽ không dùng được nữa."
 
 #: src/components/TrustedLinkSitesSettings.tsx
 msgid "Remove {site}"
-msgstr ""
+msgstr "Gỡ {site}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove change trigger"
-msgstr ""
+msgstr "Gỡ điều kiện kích hoạt khi có thay đổi"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Remove from every space?"
-msgstr ""
+msgstr "Gỡ khỏi mọi không gian?"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
-msgstr ""
+msgstr "Gỡ sự kiện Git"
 
 #: src/components/ModelHeadersEditor.tsx
 msgid "Remove header"
-msgstr ""
+msgstr "Gỡ tiêu đề HTTP"
 
 #. placeholder {0}: mention.name
 #: src/pages/shell/composer.tsx
 msgid "Remove mention {0}"
-msgstr ""
+msgstr "Bỏ nhắc tên {0}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove message trigger"
-msgstr ""
+msgstr "Gỡ điều kiện kích hoạt bằng tin nhắn"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove schedule"
-msgstr ""
+msgstr "Gỡ lịch"
 
 #. placeholder {0}: selectedSkill.name
 #: src/pages/shell/composer.tsx
 msgid "Remove skill {0}"
-msgstr ""
+msgstr "Gỡ kỹ năng {0}"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Remove skills"
-msgstr ""
+msgstr "Gỡ kỹ năng"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
-msgstr ""
+msgstr "Gỡ webhook"
 
 #: src/pages/shell/agent-import-undo.tsx
 msgid "Removed"
@@ -4764,16 +4587,16 @@ msgstr "Đã gỡ"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Removed, but list refresh failed"
-msgstr ""
+msgstr "Đã gỡ nhưng không thể làm mới danh sách"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Removing…"
-msgstr ""
+msgstr "Đang gỡ…"
 
 #: src/components/PasskeySettings.tsx
 msgid "Rename"
-msgstr ""
+msgstr "Đổi tên"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/dialogs.tsx
@@ -4781,17 +4604,13 @@ msgstr ""
 msgid "Rename section"
 msgstr "Đổi tên mục"
 
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Renews {day}"
-msgstr ""
-
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
-msgstr ""
+msgstr "Mở lại"
 
 #: src/pages/model-settings/connection-controls.tsx
 msgid "Replace API key"
-msgstr ""
+msgstr "Thay khóa API"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Replace its instructions"
@@ -4800,33 +4619,33 @@ msgstr "Thay hướng dẫn của nó"
 #: src/pages/shell/composer-error.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
-msgstr ""
+msgstr "Thay khóa"
 
 #: src/components/VaultSettings.tsx
 msgid "Replace value"
-msgstr ""
+msgstr "Thay giá trị"
 
 #: src/pages/shell/message-hover-actions.tsx
 #: src/pages/shell/quote-selection-button.tsx
 msgid "Reply"
-msgstr ""
+msgstr "Trả lời"
 
 #: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
-msgstr ""
+msgstr "Đã hủy trả lời"
 
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
-msgstr ""
+msgstr "Đang trả lời {0}"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Requests"
-msgstr ""
+msgstr "Yêu cầu"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Research & writing"
-msgstr ""
+msgstr "Nghiên cứu & viết"
 
 #: src/pages/Auth.tsx
 msgid "Resend code"
@@ -4839,19 +4658,19 @@ msgstr "Đặt lại"
 
 #: src/pages/ActivityList.tsx
 msgid "Reset all"
-msgstr ""
+msgstr "Đặt lại tất cả"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Reset computer"
-msgstr ""
+msgstr "Đặt lại máy tính"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Reset computer?"
-msgstr ""
+msgstr "Đặt lại máy tính?"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Resetting…"
-msgstr ""
+msgstr "Đang đặt lại…"
 
 #: src/pages/shell/sidebar-layout.tsx
 msgid "Resize bots sidebar"
@@ -4859,32 +4678,32 @@ msgstr "Đổi kích thước thanh bot"
 
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
-msgstr ""
+msgstr "Đổi kích thước bảng điều khiển"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
-msgstr ""
+msgstr "Khởi động lại để cập nhật"
 
 #: src/components/InstructionSettings.tsx
 #: src/pages/shell/archived-chats.tsx
 msgid "Restore"
-msgstr ""
+msgstr "Khôi phục"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Restore the last saved workspace."
-msgstr ""
+msgstr "Khôi phục vùng làm việc đã lưu gần nhất."
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
-msgstr ""
+msgstr "Khôi phục vùng làm việc đã lưu gần nhất. Công việc chưa lưu trên máy tính sẽ bị mất."
 
 #: src/components/AskCard.tsx
 msgid "Restored"
-msgstr ""
+msgstr "Đã khôi phục"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Restoring your workspace"
-msgstr ""
+msgstr "Đang khôi phục vùng làm việc của bạn"
 
 #: src/components/AccountAccess.tsx
 #: src/components/integrations/plugin-marketplace.tsx
@@ -4904,12 +4723,12 @@ msgstr "Thử lại ngay"
 
 #: src/pages/shell/use-computer.tsx
 msgid "Retry screen"
-msgstr ""
+msgstr "Thử kết nối lại màn hình"
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Return to call with {0}"
-msgstr ""
+msgstr "Quay lại cuộc gọi với {0}"
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to VNBot"
@@ -4917,11 +4736,11 @@ msgstr "Quay lại VNBot"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
-msgstr ""
+msgstr "Bạn hãy xem lại cài đặt nhà cung cấp rồi kiểm tra lại."
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
-msgstr ""
+msgstr "Thu hồi"
 
 #: src/pages/Auth.tsx
 msgid "Right now, only invited emails can sign in."
@@ -4933,73 +4752,69 @@ msgstr "Hiện tại, chỉ những email được mời mới đăng nhập đ�
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Room guidance"
-msgstr ""
+msgstr "Chỉ dẫn cho phòng"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Rotate key"
-msgstr ""
+msgstr "Tạo khóa mới"
 
 #: src/lib/identity-display.ts
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/use-routine-editor.ts
 msgid "Routine"
-msgstr ""
+msgstr "Quy trình"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/agent-import.tsx
 msgid "Routines"
-msgstr ""
-
-#: src/pages/Paywall.tsx
-msgid "Routines that run while you're away"
-msgstr ""
+msgstr "Quy trình"
 
 #: src/components/markdown-copy.tsx
 msgid "Row"
-msgstr ""
+msgstr "Dòng"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Run at"
-msgstr ""
+msgstr "Chạy lúc"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "Run history"
-msgstr ""
+msgstr "Lịch sử chạy"
 
 #: src/pages/shell/use-routine-editor.ts
 msgid "Run time must be in the future."
-msgstr ""
+msgstr "Thời gian chạy phải ở tương lai."
 
 #: src/components/CloudAgentCard.tsx
 msgid "running"
-msgstr ""
+msgstr "đang chạy"
 
 #: src/components/McpServerHealthLine.tsx
 #: src/components/SubagentCard.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Running"
-msgstr ""
+msgstr "Đang chạy"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Running…"
-msgstr ""
+msgstr "Đang chạy…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Runs"
-msgstr ""
+msgstr "Lần chạy"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Runs when this bot receives a verified message from this provider."
-msgstr ""
+msgstr "Chạy khi bot này nhận tin nhắn đã xác minh từ nhà cung cấp này."
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Sales & CRM"
-msgstr ""
+msgstr "Bán hàng & CRM"
 
 #: src/lib/cron.ts
 msgid "Saturday"
-msgstr ""
+msgstr "Thứ Bảy"
 
 #: src/components/AskCard.tsx
 #: src/components/PasskeySettings.tsx
@@ -5017,45 +4832,45 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
-msgstr ""
+msgstr "Lưu"
 
 #: src/components/VaultSettings.tsx
 msgid "Save credential"
-msgstr ""
+msgstr "Lưu thông tin xác thực"
 
 #: src/components/VaultSettings.tsx
 msgid "Save new value"
-msgstr ""
+msgstr "Lưu giá trị mới"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
-msgstr ""
+msgstr "Lưu vùng làm việc và cài phần mềm hiện hành."
 
 #: src/components/AskCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Saved"
-msgstr ""
+msgstr "Đã lưu"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Saved, but list refresh failed"
-msgstr ""
+msgstr "Đã lưu nhưng không thể làm mới danh sách"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Saved."
-msgstr ""
+msgstr "Đã lưu."
 
 #: src/pages/RoutineEditor.tsx
 msgid "Saved. Rotate to reveal."
-msgstr ""
+msgstr "Đã lưu. Tạo khóa mới để xem."
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
-msgstr ""
+msgstr "Đang lưu vùng làm việc của bạn"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Saving..."
-msgstr ""
+msgstr "Đang lưu..."
 
 #: src/components/AskCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
@@ -5068,23 +4883,19 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Saving…"
-msgstr ""
+msgstr "Đang lưu…"
 
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Scheduled routines"
-msgstr ""
+msgstr "Bạn hãy nói có hoặc không, hoặc trả lời bằng một câu."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Scopes (optional)"
-msgstr ""
+msgstr "Phạm vi quyền (tùy chọn)"
 
 #: src/pages/shell/use-computer.tsx
 msgid "Screen not connected"
-msgstr ""
+msgstr "Màn hình chưa kết nối"
 
 #: src/pages/model-settings/model-picker.tsx
 #: src/pages/model-settings/providers-section.tsx
@@ -5101,29 +4912,29 @@ msgstr "Tìm kiếm"
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Search apps"
-msgstr ""
+msgstr "Tìm ứng dụng"
 
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
-msgstr ""
+msgstr "Tìm sản phẩm…"
 
 #: src/pages/shell/command-palette.tsx
 msgid "Search bots and switch conversations"
-msgstr ""
+msgstr "Tìm bot và chuyển cuộc trò chuyện"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Search by domain"
-msgstr ""
+msgstr "Tìm theo tên miền"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
-msgstr ""
+msgstr "Tìm trên integrations.sh"
 
 #: src/pages/model-settings/model-picker.tsx
 #: src/pages/model-settings/role-model-picker.tsx
 #: src/pages/shell/chat-model-picker.tsx
 msgid "Search models"
-msgstr ""
+msgstr "Tìm mô hình"
 
 #: src/pages/shell/shell-sidebar.tsx
 msgid "Search runs"
@@ -5131,25 +4942,25 @@ msgstr "Tìm lượt chạy"
 
 #: src/components/integrations/skills-dialog.tsx
 msgid "Search skills"
-msgstr ""
+msgstr "Tìm kỹ năng"
 
 #. placeholder {0}: filters.query.trim()
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
-msgstr ""
+msgstr "Tìm kiếm: {0}"
 
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
-msgstr ""
+msgstr "Đang tìm…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Security"
-msgstr ""
+msgstr "Bảo mật"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Security & Ops"
-msgstr ""
+msgstr "Bảo mật & vận hành"
 
 #: src/pages/shell/chat-header.tsx
 msgid "Select a bot"
@@ -5157,7 +4968,7 @@ msgstr "Chọn một bot"
 
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Self-hosted"
-msgstr ""
+msgstr "Tự lưu trữ"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Sen"
@@ -5165,15 +4976,15 @@ msgstr "Sen"
 
 #: src/pages/shell/composer.tsx
 msgid "Send"
-msgstr ""
+msgstr "Gửi"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Send <0>{linkCode}</0> from {linkApp} within 10 minutes."
-msgstr ""
+msgstr "Gửi <0>{linkCode}</0> từ {linkApp} trong vòng 10 phút."
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Send <0>{linkCode}</0> to <1>{linkAddress}</1> from {linkApp} within 10 minutes."
-msgstr ""
+msgstr "Gửi <0>{linkCode}</0> tới <1>{linkAddress}</1> từ {linkApp} trong vòng 10 phút."
 
 #: src/pages/Auth.tsx
 msgid "Send a new code"
@@ -5181,11 +4992,11 @@ msgstr "Gửi mã mới"
 
 #: src/components/AskCard.tsx
 msgid "Send answer"
-msgstr ""
+msgstr "Gửi câu trả lời"
 
 #: src/pages/shell/composer-error.tsx
 msgid "Send as file"
-msgstr ""
+msgstr "Gửi dưới dạng tệp"
 
 #: src/pages/Auth.tsx
 msgid "Send code"
@@ -5193,19 +5004,19 @@ msgstr "Gửi mã"
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
-msgstr ""
+msgstr "Gửi mã xác nhận xóa"
 
 #: src/components/AskCard.tsx
 msgid "Send it"
-msgstr ""
+msgstr "Gửi đi"
 
 #: src/components/composer/HoldToTalk.tsx
 msgid "Send recording"
-msgstr ""
+msgstr "Gửi bản ghi âm"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Send with Enter"
-msgstr ""
+msgstr "Gửi bằng Enter"
 
 #: src/pages/Auth.tsx
 msgid "Sending code…"
@@ -5213,23 +5024,23 @@ msgstr "Đang gửi mã…"
 
 #: src/components/AskCard.tsx
 msgid "Sending…"
-msgstr ""
+msgstr "Đang gửi…"
 
 #: src/components/AskCard.tsx
 msgid "Sent"
-msgstr ""
+msgstr "Đã gửi"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Sentry alert"
-msgstr ""
+msgstr "Cảnh báo Sentry"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Serenity endpoint is required."
-msgstr ""
+msgstr "Cần có điểm cuối Serenity."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Server name"
-msgstr ""
+msgstr "Tên máy chủ"
 
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/McpServersOverlay.tsx
@@ -5237,7 +5048,7 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Server URL"
-msgstr ""
+msgstr "URL máy chủ"
 
 #: src/components/call/CallCard.tsx
 #: src/components/SidebarFooter.tsx
@@ -5249,11 +5060,11 @@ msgstr "Cài đặt"
 
 #: src/pages/shell/composer-mentions.tsx
 msgid "Settings: General"
-msgstr ""
+msgstr "Cài đặt: Chung"
 
 #: src/pages/shell/composer-mentions.tsx
 msgid "Settings: Usage"
-msgstr ""
+msgstr "Cài đặt: Mức sử dụng"
 
 #: src/pages/shell/import-setup-card.tsx
 msgid "Setup complete"
@@ -5261,7 +5072,7 @@ msgstr "Đã thiết lập xong"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 msgid "Setup help"
-msgstr ""
+msgstr "Hướng dẫn thiết lập"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Shape"
@@ -5275,19 +5086,19 @@ msgstr "Hình {0}"
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
-msgstr ""
+msgstr "Dùng chung"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared memory"
-msgstr ""
+msgstr "Trí nhớ dùng chung"
 
 #: src/components/VaultSettings.tsx
 msgid "Show"
-msgstr ""
+msgstr "Hiện"
 
 #: src/pages/GroupPanel.tsx
 msgid "Show all"
-msgstr ""
+msgstr "Hiện tất cả"
 
 #: src/pages/shell/sidebar-header.tsx
 msgid "Show bots"
@@ -5295,41 +5106,41 @@ msgstr "Hiện danh sách bot"
 
 #: src/pages/shell/side-panel.tsx
 msgid "Show computer"
-msgstr ""
+msgstr "Hiện máy tính"
 
 #: src/pages/Artifacts.tsx
 msgid "Show list"
-msgstr ""
+msgstr "Hiện danh sách"
 
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Show more"
-msgstr ""
+msgstr "Hiện thêm"
 
 #: src/components/I18nBootstrap.tsx
 msgid "Show password"
-msgstr ""
+msgstr "Hiện mật khẩu"
 
 #: src/pages/GroupPanel.tsx
 msgid "Show selected"
-msgstr ""
+msgstr "Hiện mục đã chọn"
 
 #: src/pages/shell/side-panel.tsx
 msgid "Show settings"
-msgstr ""
+msgstr "Hiện cài đặt"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Show tool activity"
-msgstr ""
+msgstr "Hiện hoạt động công cụ"
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Show transcript"
-msgstr ""
+msgstr "Hiện bản chép lời"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Sidebar density"
-msgstr ""
+msgstr "Độ gọn thanh bên"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/lib/localized-provider-hint.ts
@@ -5352,7 +5163,7 @@ msgstr "Đăng nhập lại"
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Sign in at <0>{0}</0>, then paste the code here."
-msgstr ""
+msgstr "Bạn hãy đăng nhập tại <0>{0}</0> rồi dán mã vào đây."
 
 #: src/components/PasskeySignIn.tsx
 msgid "Sign in with a passkey"
@@ -5360,20 +5171,20 @@ msgstr "Đăng nhập bằng passkey"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
-msgstr ""
+msgstr "Đăng nhập bằng gói đăng ký hoặc kiểm tra bằng khóa API."
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Sign-in cancelled. Try again."
-msgstr ""
+msgstr "Đã hủy đăng nhập. Bạn hãy thử lại."
 
 #: src/components/VaultSettings.tsx
 msgid "Site"
-msgstr ""
+msgstr "Trang web"
 
 #. placeholder {0}: skill.name
 #: src/pages/shell/composer.tsx
 msgid "Skill {0}"
-msgstr ""
+msgstr "Kỹ năng {0}"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Skill {position}"
@@ -5392,33 +5203,33 @@ msgstr "Kỹ năng vào thư viện mà mọi bot của bạn dùng chung."
 
 #: src/pages/shell/computer-release-actions.tsx
 msgid "Skip"
-msgstr ""
+msgstr "Bỏ qua"
 
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
-msgstr ""
+msgstr "Bỏ qua hoặc dùng khóa triển khai"
 
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/shell/use-composer-actions.ts
 msgid "Skipped {0}"
-msgstr ""
+msgstr "Đã bỏ qua {0}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
-msgstr ""
+msgstr "Tin nhắn Slack"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack not enabled"
-msgstr ""
+msgstr "Slack chưa được bật"
 
 #: src/components/composer/HoldToTalk.tsx
 msgid "Slide up to lock"
-msgstr ""
+msgstr "Vuốt lên để khóa"
 
 #: src/components/integrations/skills-dialog.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Some plugins could not be loaded."
-msgstr ""
+msgstr "Không thể tải một số tiện ích mở rộng."
 
 #: src/pages/shell/agent-import.tsx
 msgid "Some settings are not imported"
@@ -5439,52 +5250,52 @@ msgstr "Mục bạn chọn không dùng được ở đây. Hãy bỏ chọn và
 
 #: src/components/markdown-copy.tsx
 msgid "Sort by {column}"
-msgstr ""
+msgstr "Sắp xếp theo {column}"
 
 #: src/components/markdown-copy.tsx
 msgid "Sort cleared"
-msgstr ""
+msgstr "Đã bỏ sắp xếp"
 
 #: src/components/markdown-copy.tsx
 msgid "Sorted by {column}, ascending"
-msgstr ""
+msgstr "Đã sắp xếp theo {column}, tăng dần"
 
 #: src/components/markdown-copy.tsx
 msgid "Sorted by {column}, descending"
-msgstr ""
+msgstr "Đã sắp xếp theo {column}, giảm dần"
 
 #: src/lib/identity-display.ts
 #: src/pages/SettingsOverlay.tsx
 msgid "Space"
-msgstr ""
+msgstr "Không gian"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Space default"
-msgstr ""
+msgstr "Mặc định của không gian"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Spaces"
-msgstr ""
+msgstr "Không gian"
 
 #: src/pages/shell/message-view.tsx
 msgid "Speak"
-msgstr ""
+msgstr "Nói"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Speak only"
-msgstr ""
+msgstr "Chỉ nói"
 
 #: src/pages/shell/message-view.tsx
 msgid "Speak this reply"
-msgstr ""
+msgstr "Đọc câu trả lời này"
 
 #: src/components/call/CallCard.tsx
 msgid "Speaking"
-msgstr ""
+msgstr "Đang nói"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Speech model"
-msgstr ""
+msgstr "Mô hình giọng nói"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "squircle"
@@ -5496,137 +5307,110 @@ msgstr "SSO tạm thời không khả dụng. Hãy thử lại."
 
 #: src/pages/shell/computer-overlay.tsx
 msgid "Start"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Paywall.tsx
-msgid "Start {trialDays}-day free trial"
-msgstr ""
+msgstr "Bắt đầu"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
-msgstr ""
+msgstr "Bắt đầu ghi"
 
 #: src/pages/ActivityList.tsx
 msgid "Starting"
-msgstr ""
+msgstr "Đang bắt đầu"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Starting…"
-msgstr ""
+msgstr "Đang bắt đầu…"
 
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
 msgid "Status"
-msgstr ""
+msgstr "Trạng thái"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Steps"
-msgstr ""
+msgstr "Các bước"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/computer-overlay.tsx
 #: src/pages/shell/message-view.tsx
 msgid "Stop"
-msgstr ""
+msgstr "Dừng"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Stop computer"
-msgstr ""
+msgstr "Dừng máy tính"
 
 #: src/pages/shell/message-view.tsx
 msgid "Stop speaking"
-msgstr ""
+msgstr "Dừng nói"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Stop teaching"
-msgstr ""
+msgstr "Dừng dạy bot"
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "Stopped."
-msgstr ""
+msgstr "Đã dừng."
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Stopping…"
-msgstr ""
+msgstr "Đang dừng…"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Stored encrypted"
-msgstr ""
+msgstr "Được lưu mã hóa"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Stream replies"
-msgstr ""
+msgstr "Hiện câu trả lời dần khi tạo"
 
 #: src/lib/identity-display.ts
 msgid "subagent"
-msgstr ""
+msgstr "bot con"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Paywall.tsx
-msgid "Subscribe"
-msgstr ""
-
-#. placeholder {0}: status.byokPriceCents / 100
-#: src/components/ModelCredits.tsx
-msgid "Subscribe for ${0} / month"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Subscribe to VNBot credits"
-msgstr "Đăng ký tín dụng VNBot"
-
-#: src/components/ModelCredits.tsx
-msgid "Subscribe with your own AI"
-msgstr ""
-
-#: src/pages/Paywall.tsx
-msgid "Subscription required"
-msgstr ""
+msgstr "Gửi"
 
 #: src/lib/cron.ts
 msgid "Sunday"
-msgstr ""
+msgstr "Chủ Nhật"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Supports images"
-msgstr ""
+msgstr "Hỗ trợ ảnh"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Supports thinking"
-msgstr ""
+msgstr "Hỗ trợ suy nghĩ"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Switch"
-msgstr ""
+msgstr "Chuyển"
 
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
-msgstr ""
+msgstr "Chuyển bot"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Switching…"
-msgstr ""
+msgstr "Đang chuyển…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
-msgstr ""
+msgstr "Hệ thống"
 
 #: src/components/markdown-copy.tsx
 msgid "Table"
-msgstr ""
+msgstr "Bảng"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "tablet"
@@ -5634,11 +5418,11 @@ msgstr "Viên nén"
 
 #: src/pages/shell/computer-overlay.tsx
 msgid "Take control"
-msgstr ""
+msgstr "Tiếp quản"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
-msgstr ""
+msgstr "Dạy một việc"
 
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
@@ -5646,19 +5430,19 @@ msgstr "Đang trong phiên hướng dẫn. Hãy dừng hướng dẫn trước k
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Team"
-msgstr ""
+msgstr "Nhóm"
 
 #: src/pages/shell/computer-view.tsx
 msgid "Team Computer"
-msgstr ""
+msgstr "Máy tính nhóm"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
-msgstr ""
+msgstr "Tin nhắn Teams"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Teams not enabled"
-msgstr ""
+msgstr "Teams chưa được bật"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
@@ -5666,29 +5450,29 @@ msgstr "Giọt nước"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Test"
-msgstr ""
+msgstr "Kiểm tra"
 
 #: src/components/ModelConnectionPreflightNotice.tsx
 msgid "Test API key"
-msgstr ""
+msgstr "Kiểm tra khóa API"
 
 #: src/components/ModelConnectionPreflightNotice.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "Test connection"
-msgstr ""
+msgstr "Kiểm tra kết nối"
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Test rule"
-msgstr ""
+msgstr "Kiểm tra quy tắc"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Test run"
-msgstr ""
+msgstr "Chạy thử"
 
 #: src/components/ModelConnectionPreflightNotice.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "Testing…"
-msgstr ""
+msgstr "Đang kiểm tra…"
 
 #: src/lib/user-error.ts
 msgid "That code isn't right. Check your email and try again."
@@ -5700,50 +5484,50 @@ msgstr "Bot và những gì lần nhập thêm vào sẽ bị gỡ."
 
 #: src/pages/shell/composer-error.tsx
 msgid "The bot can use the file but won't see the picture."
-msgstr ""
+msgstr "Bot dùng được tệp nhưng không xem được ảnh."
 
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
-msgstr ""
+msgstr "Kết nối đã hết thời gian chờ."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "The model hit its output limit before finishing its reply."
-msgstr ""
+msgstr "Mô hình đã đạt giới hạn đầu ra trước khi trả lời xong."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "The model provider returned an error."
-msgstr ""
+msgstr "Nhà cung cấp mô hình trả về lỗi."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "The model returned an unusable response. Try again."
-msgstr ""
+msgstr "Mô hình trả về phản hồi không dùng được. Bạn hãy thử lại."
 
 #: src/lib/model-connection-preflight.ts
 msgid "The provider is rate-limiting requests."
-msgstr ""
+msgstr "Nhà cung cấp đang giới hạn số yêu cầu."
 
 #: src/lib/computer-screen.ts
 msgid "The screen connection closed."
-msgstr ""
+msgstr "Kết nối màn hình đã đóng."
 
 #: src/lib/computer-screen.ts
 msgid "The screen did not respond."
-msgstr ""
+msgstr "Màn hình không phản hồi."
 
 #: src/lib/computer-screen.ts
 msgid "The screen link expired."
-msgstr ""
+msgstr "Liên kết màn hình đã hết hạn."
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "The selected memory provider is not available in this build."
-msgstr ""
+msgstr "Nhà cung cấp trí nhớ đã chọn không có trong bản dựng này."
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Their own model is cleared. You can pick one again in each bot."
-msgstr ""
+msgstr "Đã bỏ mô hình riêng của các bot. Bạn có thể chọn lại trong từng bot."
 
 #: src/pages/shell/agent-import.tsx
 msgid "These files are too large to import."
@@ -5755,19 +5539,19 @@ msgstr "Tệp hoặc lựa chọn không còn khớp. Hãy chọn lại tệp."
 
 #: src/components/VaultSettings.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
-msgstr ""
+msgstr "Không thể đọc cài đặt đã lưu này. Bạn hãy gỡ và thêm lại."
 
 #: src/components/call/CallCard.tsx
 #: src/pages/ModelRoleSettings.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Thinking"
-msgstr ""
+msgstr "Đang suy nghĩ"
 
 #. placeholder {0}: thinkingLevelLabel(choice.thinkingLevel)
 #: src/pages/ModelRoleSettings.tsx
 msgid "Thinking: {0}"
-msgstr ""
+msgstr "Đang suy nghĩ: {0}"
 
 #: src/pages/shell/agent-import.tsx
 msgid "This backup could not be read."
@@ -5779,7 +5563,7 @@ msgstr "Bot này"
 
 #: src/pages/shell/computer-view.tsx
 msgid "This bot runs on this computer, not a Linux desktop. Shell and files use your home folder."
-msgstr ""
+msgstr "Bot này chạy trên máy tính này, không phải máy tính Linux. Shell và tệp dùng thư mục cá nhân của bạn."
 
 #: src/lib/agent-import-errors.ts
 msgid "This bot was not imported."
@@ -5787,21 +5571,21 @@ msgstr "Bot này không được nhập."
 
 #: src/components/call/IncomingCall.tsx
 msgid "This call is no longer ringing."
-msgstr ""
+msgstr "Cuộc gọi này đã ngừng đổ chuông."
 
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "This can't be undone."
-msgstr ""
+msgstr "Không thể hoàn tác."
 
 #: src/pages/shell/dialogs.tsx
 msgid "This cannot be undone."
-msgstr ""
+msgstr "Không thể hoàn tác."
 
 #: src/pages/PeerMessagesOverlay.tsx
 msgid "This chat is view-only"
-msgstr ""
+msgstr "Cuộc trò chuyện này chỉ cho phép xem"
 
 #: src/lib/user-error.ts
 msgid "This code has expired. Send a new one to continue."
@@ -5809,22 +5593,22 @@ msgstr "Mã đã hết hạn. Hãy gửi mã mới để tiếp tục."
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "this computer"
-msgstr ""
+msgstr "máy tính này"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This connection's request limit is too small. Choose another model."
-msgstr ""
+msgstr "Giới hạn yêu cầu của kết nối này quá nhỏ. Bạn hãy chọn mô hình khác."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This conversation is too long for the model. Retrying won't help. Start a new chat or shorten your message."
-msgstr ""
+msgstr "Cuộc trò chuyện quá dài đối với mô hình. Thử lại cũng không giải quyết được. Bạn hãy bắt đầu cuộc trò chuyện mới hoặc rút ngắn tin nhắn."
 
 #. placeholder {0}: pendingDelete.versionCount
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
-msgstr ""
+msgstr "Thao tác này xóa cả {0} phiên bản của sản phẩm này. Không thể hoàn tác."
 
 #: src/lib/user-error.ts
 msgid "This email already has an account. Sign in with an email code, then link SSO in Settings."
@@ -5832,7 +5616,7 @@ msgstr "Email này đã có tài khoản. Hãy đăng nhập bằng mã email r�
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."
-msgstr ""
+msgstr "Tệp này không phải văn bản UTF-8 hợp lệ."
 
 #: src/lib/agent-import-errors.ts
 msgid "This import changed. Try again."
@@ -5844,12 +5628,12 @@ msgstr "Lần nhập này đã được dùng. Hãy chọn lại tệp."
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "this Mac"
-msgstr ""
+msgstr "máy Mac này"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This model cannot read images. Choose a model that supports images."
-msgstr ""
+msgstr "Mô hình này không đọc được ảnh. Bạn hãy chọn mô hình hỗ trợ ảnh."
 
 #: src/lib/user-error.ts
 msgid "This model cannot read images. Choose a model that supports images."
@@ -5858,63 +5642,63 @@ msgstr "Mô hình này không đọc được ảnh. Hãy chọn mô hình hỗ 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This model's context window is too small. Choose another model."
-msgstr ""
+msgstr "Cửa sổ ngữ cảnh của mô hình này quá nhỏ. Bạn hãy chọn mô hình khác."
 
 #: src/pages/Artifacts.tsx
 msgid "This month"
-msgstr ""
+msgstr "Tháng này"
 
 #: src/components/AccountAccess.tsx
 msgid "This permanently deletes your account and data."
-msgstr ""
+msgstr "Thao tác này xóa vĩnh viễn tài khoản và dữ liệu của bạn."
 
 #: src/pages/shell/dialogs.tsx
 msgid "This permanently removes every message and stops current work. The chat remains available."
-msgstr ""
+msgstr "Thao tác này xóa vĩnh viễn mọi tin nhắn và dừng công việc hiện tại. Bạn vẫn có thể dùng cuộc trò chuyện."
 
 #: src/lib/model-connection-preflight.ts
 msgid "This provider cannot be tested without saving."
-msgstr ""
+msgstr "Cần lưu trước khi kiểm tra nhà cung cấp này."
 
 #: src/lib/model-connection-preflight.ts
 msgid "This provider is not connected yet."
-msgstr ""
+msgstr "Nhà cung cấp này chưa được kết nối."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This removes the connection from every space."
-msgstr ""
+msgstr "Thao tác này gỡ kết nối khỏi mọi không gian."
 
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
-msgstr ""
+msgstr "Cần có bot để gán máy chủ này."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "This server did not request browser authorization."
-msgstr ""
+msgstr "Máy chủ này không yêu cầu ủy quyền qua trình duyệt."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "This server is already connected. Disconnect it first to authorize again."
-msgstr ""
+msgstr "Máy chủ này đã được kết nối. Bạn hãy ngắt kết nối trước để ủy quyền lại."
 
 #: src/pages/model-settings/connection-controls.tsx
 msgid "This subscription sign-in is not available in VNBot yet. Use a deployment credential or choose another provider."
-msgstr ""
+msgstr "VNBot chưa hỗ trợ đăng nhập gói đăng ký này. Bạn hãy dùng thông tin xác thực của bản triển khai hoặc chọn nhà cung cấp khác."
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
-msgstr ""
+msgstr "Tuần này"
 
 #: src/lib/cron.ts
 msgid "Thursday"
-msgstr ""
+msgstr "Thứ Năm"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "Time of day"
-msgstr ""
+msgstr "Giờ trong ngày"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Timezone"
-msgstr ""
+msgstr "Múi giờ"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Timing may differ"
@@ -5923,112 +5707,104 @@ msgstr "Thời điểm có thể khác"
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Title"
-msgstr ""
+msgstr "Tiêu đề"
 
 #: src/pages/ActivityList.tsx
 msgid "To"
-msgstr ""
+msgstr "Đến"
 
 #. placeholder {0}: filters.dateRange.to
 #: src/pages/ActivityList.tsx
 msgid "To {0}"
-msgstr ""
+msgstr "Đến {0}"
 
 #: src/lib/ticket-status.ts
 msgid "To do"
-msgstr ""
+msgstr "Cần làm"
 
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
-msgstr ""
+msgstr "Đến:"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Today"
-msgstr ""
+msgstr "Hôm nay"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Tokens"
-msgstr ""
+msgstr "Token"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Tool arguments (JSON)"
-msgstr ""
+msgstr "Đối số công cụ (JSON)"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Tool arguments must be a JSON object"
-msgstr ""
+msgstr "Đối số công cụ phải là đối tượng JSON"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Tool arguments must be JSON"
-msgstr ""
+msgstr "Đối số công cụ phải là JSON"
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Tool name"
-msgstr ""
+msgstr "Tên công cụ"
 
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Tools"
-msgstr ""
+msgstr "Công cụ"
 
 #: src/components/composer/HoldToTalk.tsx
 msgid "Transcribing…"
-msgstr ""
+msgstr "Đang chép lời…"
 
 #: src/components/call/CallCard.tsx
 msgid "Transcript"
-msgstr ""
+msgstr "Bản chép lời"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Transcription model"
-msgstr ""
+msgstr "Mô hình chép lời"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Treat like a person"
-msgstr ""
+msgstr "Đối xử như một người"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Treg token"
-msgstr ""
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Trial"
-msgstr ""
-
-#: src/pages/BillingSettingsPanel.tsx
-msgid "Trial ends {day}"
-msgstr ""
+msgstr "Token Treg"
 
 #: src/components/TrustedLinkSitesSettings.tsx
 msgid "Trusted sites"
-msgstr ""
+msgstr "Trang web tin cậy"
 
 #: src/pages/ActivityList.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"
-msgstr ""
+msgstr "Thử lại"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
-msgstr ""
+msgstr "Bạn hãy kiểm tra lại."
 
 #: src/lib/cron.ts
 msgid "Tuesday"
-msgstr ""
+msgstr "Thứ Ba"
 
 #: src/components/VaultSettings.tsx
 msgid "Type"
-msgstr ""
+msgstr "Loại"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Type without recording"
-msgstr ""
+msgstr "Gõ thay vì ghi âm"
 
 #: src/components/AskCard.tsx
 msgid "Type your answer"
-msgstr ""
+msgstr "Nhập câu trả lời của bạn"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
@@ -6037,7 +5813,7 @@ msgstr "Chưa phân loại"
 
 #: src/components/AskCard.tsx
 msgid "Undo"
-msgstr ""
+msgstr "Hoàn tác"
 
 #: src/pages/shell/agent-import-undo.tsx
 msgid "Undo import"
@@ -6049,85 +5825,73 @@ msgstr "Hoàn tác lần nhập?"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Uninstall"
-msgstr ""
+msgstr "Gỡ cài đặt"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Unlink"
-msgstr ""
+msgstr "Hủy liên kết"
 
 #: src/components/call/CallCard.tsx
 msgid "Unmute"
-msgstr ""
+msgstr "Bật tiếng"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Unpin"
-msgstr ""
+msgstr "Bỏ ghim"
 
 #. placeholder {0}: pending.file.name
 #: src/pages/shell/use-composer-actions.ts
 msgid "Unsupported file type: {0}"
-msgstr ""
+msgstr "Loại tệp không được hỗ trợ: {0}"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Up to date"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Update"
-msgstr ""
+msgstr "Đã là bản mới nhất"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Update computer"
-msgstr ""
+msgstr "Cập nhật máy tính"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Update failed"
-msgstr ""
+msgstr "Cập nhật không thành công"
 
 #: src/lib/activity-list-filters.ts
 msgid "Update from {name}"
-msgstr ""
+msgstr "Cập nhật từ {name}"
 
 #: src/lib/activity-list-filters.ts
 msgid "Update from {name}: {text}"
-msgstr ""
+msgstr "Cập nhật từ {name}: {text}"
 
 #: src/components/AskCard.tsx
 msgid "Update instructions?"
-msgstr ""
+msgstr "Cập nhật chỉ dẫn?"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Update progress"
-msgstr ""
+msgstr "Tiến độ cập nhật"
 
 #: src/components/VaultSettings.tsx
 msgid "Updated {updated}"
-msgstr ""
+msgstr "Đã cập nhật {updated}"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
-msgstr ""
+msgstr "Cập nhật"
 
 #. placeholder {0}: update.name
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Updating {0}’s Computer"
-msgstr ""
+msgstr "Đang cập nhật máy tính của {0}"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Updating Team Computer"
-msgstr ""
+msgstr "Đang cập nhật máy tính nhóm"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Updating…"
-msgstr ""
-
-#: src/pages/shell/shell-sidebar.tsx
-msgid "Upgrade"
-msgstr "Nâng cấp"
-
-#: src/components/ModelCredits.tsx
-msgid "Upgrade now"
-msgstr ""
+msgstr "Đang cập nhật…"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -6135,7 +5899,7 @@ msgstr "Tải lên"
 
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
-msgstr ""
+msgstr "Khẩn cấp"
 
 #: src/components/SidebarFooter.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -6146,15 +5910,15 @@ msgstr "Mức sử dụng"
 #. placeholder {0}: deviceTimezone.replaceAll("_", " ")
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Use {0}"
-msgstr ""
+msgstr "Dùng {0}"
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"
-msgstr ""
+msgstr "Dùng {hostLabel}"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Use {oauthEnvReference} for the access token."
-msgstr ""
+msgstr "Dùng {oauthEnvReference} cho token truy cập."
 
 #: src/pages/Auth.tsx
 msgid "Use a different email"
@@ -6163,56 +5927,48 @@ msgstr "Đổi email khác"
 #: src/pages/model-settings/compatible-model-fields.tsx
 #: src/pages/Onboarding.tsx
 msgid "Use a found model"
-msgstr ""
+msgstr "Dùng mô hình đã tìm thấy"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
-msgstr ""
+msgstr "Dùng Kết nối để xác minh khóa."
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
-msgstr ""
+msgstr "Dùng chỉ dẫn mặc định"
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Use defaults"
-msgstr ""
+msgstr "Dùng mặc định"
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Use defaults for {label}"
-msgstr ""
+msgstr "Dùng mặc định cho {label}"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Use in this bot"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Use my subscription or API key"
-msgstr ""
+msgstr "Dùng trong bot này"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
-msgstr ""
+msgstr "Dùng Nhập liệu được bảo vệ cho mật khẩu."
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Use space default"
-msgstr ""
+msgstr "Dùng mặc định của không gian"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Use up to 512 letters, digits, _ or -."
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Use VNBot credits"
-msgstr "Dùng tín dụng VNBot"
+msgstr "Dùng tối đa 512 chữ cái, chữ số, _ hoặc -."
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "User peer"
-msgstr ""
+msgstr "Peer người dùng"
 
 #: src/components/AskCard.tsx
 #: src/components/VaultSettings.tsx
 msgid "Username"
-msgstr ""
+msgstr "Tên đăng nhập"
 
 #: src/pages/shell/import-status.ts
 msgid "Uses files that are not imported"
@@ -6224,30 +5980,22 @@ msgstr "Dùng đường dẫn trên máy của bạn"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Using your API key"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Using your API key. Free plan ends {freeUntil}."
-msgstr ""
+msgstr "Dùng thông tin xác thực {hostCredentialSource} riêng của máy chủ này để truy cập {selectedProviderName}."
 
 #: src/components/LoginFields.tsx
 #: src/components/VaultSettings.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "Value"
-msgstr ""
+msgstr "Giá trị"
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Vault"
-msgstr ""
+msgstr "Kho bảo mật"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Verify and add"
-msgstr ""
+msgstr "Xác minh và thêm"
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx
@@ -6256,72 +6004,63 @@ msgstr "Đang xác minh…"
 
 #: src/pages/Artifacts.tsx
 msgid "Version"
-msgstr ""
+msgstr "Phiên bản"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "View all"
-msgstr ""
+msgstr "Xem tất cả"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "View source"
-msgstr ""
+msgstr "Xem mã nguồn"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "VNBot"
 msgstr "VNBot"
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "VNBot credits"
-msgstr "Tín dụng VNBot"
 
 #: src/lib/user-error.ts
 #: src/pages/Auth.tsx
 msgid "VNBot is in limited preview"
 msgstr "VNBot đang mở thử nghiệm giới hạn"
 
+#: src/pages/memory-providers/HonchoSettingsForm.tsx
+msgid "vnbot-<space>"
+msgstr ""
+
+#: src/pages/memory-providers/HonchoSettingsForm.tsx
+msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
+msgstr ""
+
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
-msgstr ""
+msgstr "Giọng nói"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
-msgstr ""
+msgstr "Bạn hãy đợi một lát rồi kiểm tra lại."
 
 #: src/lib/roster-status.ts
 msgid "Waiting in line…"
-msgstr ""
+msgstr "Đang chờ đến lượt…"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Waiting…"
-msgstr ""
-
-#: src/pages/SettingsOverlay.tsx
-msgid "Wallet"
-msgstr ""
+msgstr "Đang chờ…"
 
 #: src/pages/Auth.tsx
 msgid "Want early access? <0>Get in touch</0>"
 msgstr "Muốn dùng sớm? <0>Liên hệ</0>"
 
-#: src/components/ModelCredits.tsx
-msgid "Web, desktop and mobile"
-msgstr ""
-
-#: src/pages/Paywall.tsx
-msgid "Web, desktop and mobile apps"
-msgstr ""
-
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
-msgstr ""
+msgstr "Webhook"
 
 #: src/components/VaultSettings.tsx
 msgid "Website login"
-msgstr ""
+msgstr "Đăng nhập trang web"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "wedge"
@@ -6329,21 +6068,17 @@ msgstr "Hình nêm"
 
 #: src/lib/cron.ts
 msgid "Wednesday"
-msgstr ""
-
-#: src/lib/billing.ts
-msgid "week"
-msgstr ""
+msgstr "Thứ Tư"
 
 #: src/lib/cron.ts
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Weekdays"
-msgstr ""
+msgstr "Ngày trong tuần"
 
 #: src/lib/cron.ts
 msgid "Weekends"
-msgstr ""
+msgstr "Cuối tuần"
 
 #: src/components/SignupSurvey.tsx
 msgid "Welcome to VNBot"
@@ -6351,11 +6086,11 @@ msgstr "Chào mừng đến với VNBot"
 
 #: src/pages/shell/dialogs.tsx
 msgid "What about its memories?"
-msgstr ""
+msgstr "Còn trí nhớ của bot thì sao?"
 
 #: src/pages/shell/dialogs.tsx
 msgid "What can this space use?"
-msgstr ""
+msgstr "Không gian này có thể dùng gì?"
 
 #: src/components/SignupSurvey.tsx
 msgid "What do you most want VNBot to help with?"
@@ -6363,15 +6098,15 @@ msgstr "Bạn muốn VNBot giúp điều gì nhất?"
 
 #: src/pages/shell/message-cards.tsx
 msgid "What do you want me on first?"
-msgstr ""
+msgstr "Bạn muốn mình làm gì trước?"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "What result will you demonstrate?"
-msgstr ""
+msgstr "Bạn sẽ minh họa kết quả gì?"
 
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
-msgstr ""
+msgstr "Quy trình này cần làm gì mỗi lần chạy?"
 
 #: src/pages/shell/agent-import-undo.tsx
 msgid "What the import added will be removed. The bot stays."
@@ -6379,19 +6114,19 @@ msgstr "Những gì lần nhập thêm vào sẽ bị gỡ. Bot vẫn còn."
 
 #: src/pages/shell/bot-panel.tsx
 msgid "What this bot is for"
-msgstr ""
+msgstr "Mục đích của bot này"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
-msgstr ""
+msgstr "Kết quả cần trả về"
 
 #: src/pages/RoutineEditor.tsx
 msgid "What to watch"
-msgstr ""
+msgstr "Nội dung cần theo dõi"
 
 #: src/pages/RoutineEditor.tsx
 msgid "When a webhook fires"
-msgstr ""
+msgstr "Khi webhook được kích hoạt"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "When it finishes or needs input"
@@ -6399,19 +6134,19 @@ msgstr "Khi hoàn tất hoặc cần bạn nhập"
 
 #: src/pages/RoutineEditor.tsx
 msgid "When something changes"
-msgstr ""
+msgstr "Khi có thay đổi"
 
 #: src/pages/RoutineEditor.tsx
 msgid "When to run"
-msgstr ""
+msgstr "Khi nào chạy"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "When to use"
-msgstr ""
+msgstr "Khi nào dùng"
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Where should bots run?"
-msgstr ""
+msgstr "Bot nên chạy ở đâu?"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Where to import"
@@ -6419,11 +6154,11 @@ msgstr "Nhập vào đâu"
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"
-msgstr ""
+msgstr "Không làm"
 
 #: src/components/SignupSurvey.tsx
 msgid "Work"
-msgstr ""
+msgstr "Công việc"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Working instructions"
@@ -6433,19 +6168,11 @@ msgstr "Hướng dẫn đang dùng"
 #: src/lib/roster-status.ts
 #: src/pages/shell/transcript.tsx
 msgid "Working…"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Works with your ChatGPT or Claude plan."
-msgstr ""
+msgstr "Đang làm…"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "Workspace"
-msgstr ""
-
-#: src/lib/billing.ts
-msgid "year"
-msgstr ""
+msgstr "Vùng làm việc"
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/sidebar-roster.tsx
@@ -6461,29 +6188,29 @@ msgstr "Bạn"
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this tab if it does not redirect automatically."
-msgstr ""
+msgstr "Bạn có thể đóng tab này nếu không tự chuyển hướng."
 
 #: src/pages/IntegrationCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
-msgstr ""
+msgstr "Bạn có thể đóng cửa sổ này."
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "You declined"
-msgstr ""
+msgstr "Bạn đã từ chối"
 
 #: src/pages/shell/computer-overlay.tsx
 msgid "You have control"
-msgstr ""
+msgstr "Bạn đang điều khiển"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Your Anthropic"
-msgstr ""
+msgstr "Anthropic của bạn"
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Your defaults"
-msgstr ""
+msgstr "Thiết lập mặc định của bạn"
 
 #: src/pages/Auth.tsx
 msgid "Your email address"
@@ -6491,7 +6218,7 @@ msgstr "Địa chỉ email của bạn"
 
 #: src/pages/Onboarding.tsx
 msgid "Your first bot already existed, so the agent was not imported."
-msgstr "Bot đầu tiên của bạn đã có, nên trợ lý không được nhập."
+msgstr "Bot đầu tiên của bạn đã có, nên bot không được nhập."
 
 #: src/lib/agent-import-errors.ts
 msgid "Your first bot already exists."
@@ -6500,29 +6227,25 @@ msgstr "Bot đầu tiên của bạn đã có."
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Your model provider"
-msgstr ""
+msgstr "Nhà cung cấp mô hình của bạn"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Your OpenAI"
-msgstr ""
+msgstr "OpenAI của bạn"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Your OpenRouter"
-msgstr ""
+msgstr "OpenRouter của bạn"
 
 #: src/components/integrations/skills-dialog.tsx
 msgid "Your skills"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-msgid "Your subscription or API key"
-msgstr ""
+msgstr "Kỹ năng của bạn"
 
 #: src/pages/Welcome.tsx
 msgid "Your team of always-on bots<0/>that you can give real work to."
-msgstr "Đội trợ lý luôn sẵn sàng,<0/>nhận việc thật từ bạn."
+msgstr "Đội bot luôn sẵn sàng,<0/>nhận việc thật từ bạn."
 
 #: src/lib/user-error.ts
 msgid "Your voice provider is out of credit."

@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@rakazo/ui-web";
 import {
+  BookOpen,
   Download,
   FolderOpen,
   Gauge,
@@ -23,6 +24,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { VNBOT_DOCS_URL } from "../lib/vnbot-links";
 import { useSidebarUpdate } from "./DesktopUpdates";
 import { IconTooltip } from "./IconTooltip";
 
@@ -174,6 +176,15 @@ export function SidebarFooter({
             >
               <Smartphone className="text-muted-foreground" strokeWidth={1.75} />
               <Trans>Get the mobile app</Trans>
+            </a>
+            <a
+              className={`${buttonVariants({ variant: "ghost" })} h-9 w-full justify-start gap-2.5 font-normal`}
+              href={VNBOT_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <BookOpen className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Docs</Trans>
             </a>
             {onBoard ? (
               <Button

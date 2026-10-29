@@ -121,7 +121,7 @@ it("shows a readable run error with raw details, while preserving send errors", 
 });
 
 it.each([
-  ['402: {"message":"You have no credits remaining."}', "Choose a model", "models"],
+  ['402: {"message":"You have no credits remaining."}', "Connect a model", "connections"],
   [
     '403: {"type":"FreeTierError","message":"This free tier can only be used from within its own app."}',
     "Choose a model",

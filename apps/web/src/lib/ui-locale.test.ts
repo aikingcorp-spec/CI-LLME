@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   normalizeUiLocale,
+  PICKER_LOCALES,
   persistUiLocale,
   resolveUiLocale,
   UI_LOCALE_STORAGE_KEY,
@@ -180,4 +181,9 @@ describe("Traditional Chinese preferences", () => {
     expect(resolveUiLocale({ stored: "zh-CN", envDefault: "zh-TW" })).toBe("zh-CN");
     expect(resolveUiLocale({ stored: null, envDefault: "zh-TW" })).toBe("zh-TW");
   });
+});
+
+it("offers only Vietnamese and English while keeping saved catalog choices", () => {
+  expect(PICKER_LOCALES).toEqual(["vi", "en"]);
+  expect(resolveUiLocale({ stored: "de" })).toBe("de");
 });

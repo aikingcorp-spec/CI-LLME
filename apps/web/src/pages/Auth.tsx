@@ -261,10 +261,7 @@ export function AuthPage() {
         minutes.
       </Trans>
     ) : (
-      <Trans>
-        Enter your email to get a 6-digit sign-in code. If you don't have an account yet, VNBot will
-        create one for you.
-      </Trans>
+      <Trans>Enter your email to get a 6-digit sign-in code.</Trans>
     );
 
   return (
@@ -411,21 +408,6 @@ export function AuthPage() {
                 </Trans>
               </p>
             </div>
-          ) : null}
-          {step === "email" ? (
-            <p className="mt-3.5 text-center text-body2 text-pretty text-muted-foreground">
-              <Trans>
-                By continuing, you agree to VNBot's{" "}
-                <a href="/terms" target="_blank" rel="noreferrer" className={linkClass}>
-                  Terms of Use
-                </a>{" "}
-                and{" "}
-                <a href="/privacy" target="_blank" rel="noreferrer" className={linkClass}>
-                  Privacy Policy
-                </a>
-                .
-              </Trans>
-            </p>
           ) : null}
           {step === "code" ? (
             <div className="mt-3 text-center text-body2 text-muted-foreground">

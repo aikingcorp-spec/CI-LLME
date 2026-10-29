@@ -512,7 +512,7 @@ export default defineConfig(({ command, mode }) => {
     crisp: parseCrispWebsiteId(process.env.CRISP_WEBSITE_ID ?? rootEnv.CRISP_WEBSITE_ID) !== null,
   });
   return {
-    build: { sourcemap: true },
+    build: { sourcemap: false },
     define: { "import.meta.env.RAKAZO_BUILD": JSON.stringify(buildId) },
     plugins: [
       {

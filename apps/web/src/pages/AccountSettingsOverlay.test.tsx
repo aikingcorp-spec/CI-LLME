@@ -68,9 +68,13 @@ vi.mock("@rakazo/ui-web", async (importOriginal) => ({
   ToggleGroupItem: ({ children }: { children?: ReactNode }) => (
     <button type="button">{children}</button>
   ),
-  OptionSelect: ({ "data-testid": testId }: { "data-testid"?: string }) => (
-    <div data-testid={testId} />
-  ),
+  OptionSelect: ({
+    "data-testid": testId,
+    options,
+  }: {
+    "data-testid"?: string;
+    options: { value: string; label: string }[];
+  }) => <div data-testid={testId} data-options={JSON.stringify(options)} />,
   cn: (...values: unknown[]) => values.filter(Boolean).join(" "),
 }));
 
@@ -143,6 +147,14 @@ it("flips the stored tool activity preference from the settings toggle", async (
       '[data-testid="tool-activity-toggle"]',
     );
     if (!toggle) throw new Error("Missing tool activity toggle");
+    expect(
+      JSON.parse(
+        container.querySelector('[data-testid="ui-locale-select"]')!.getAttribute("data-options")!,
+      ),
+    ).toEqual([
+      { value: "vi", label: "Tiếng Việt" },
+      { value: "en", label: "English" },
+    ]);
     expect(toggle.getAttribute("aria-checked")).toBe("false");
 
     await act(async () => {
@@ -323,18 +335,18 @@ it("shows usage totals and a per-model breakdown", async () => {
         />,
       ),
     );
+    expect(container.textContent).not.toContain("Cost");
     expect([...container.querySelectorAll("dd")].map((node) => node.textContent)).toEqual([
       "2",
       "1,234",
-      "$0.50",
     ]);
     expect(
       [...container.querySelectorAll("tbody tr")].map((row) =>
         [...row.querySelectorAll("td")].map((cell) => cell.textContent),
       ),
     ).toEqual([
-      ["model-aopenai", "2", "1,000", "30", "$0.50"],
-      ["model-blocal", "1", "200", "4", "—"],
+      ["model-aopenai", "2", "1,000", "30"],
+      ["model-blocal", "1", "200", "4"],
     ]);
   } finally {
     await act(async () => root.unmount());

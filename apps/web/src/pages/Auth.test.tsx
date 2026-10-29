@@ -390,3 +390,12 @@ it("shows the link-SSO-from-Settings copy for ?error=ACCOUNT_NOT_LINKED (SSO cal
   );
   expect(host.querySelector('input[name="email"]')).not.toBeNull();
 });
+
+it("keeps passkey sign-in without account creation promises or unavailable legal links", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  await render();
+  expect(host.textContent).toContain("Enter your email to get a 6-digit sign-in code.");
+  expect(host.textContent).not.toContain("create one for you");
+  expect(host.textContent).toContain("Sign in with a passkey");
+  expect(host.querySelector('a[href="/terms"], a[href="/privacy"]')).toBeNull();
+});

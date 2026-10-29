@@ -25,11 +25,10 @@ export const MODEL_REQUEST_LIMIT_ERROR =
 export const MISSING_MODEL_RUN_ERROR = "Connect a model in Settings before running bots.";
 
 /** A deployment model run while the organization has not chosen Rakazo credits. */
-export const HOSTED_MODEL_CREDITS_REQUIRED_ERROR =
-  "Connect your own API key in Models or choose VNBot credits in Billing.";
+export const HOSTED_MODEL_CREDITS_REQUIRED_ERROR = "Connect your own API key in Models.";
 
 /** A run in a billing organization without a paid plan, credits, or free period. */
-export const MODEL_ACCESS_REQUIRED_RUN_ERROR = "Subscribe in Billing to keep running bots.";
+export const MODEL_ACCESS_REQUIRED_RUN_ERROR = "Connect your own API key in Models.";
 
 /** The API rejects a send with this message until the user can reach a model. */
 export const MODEL_REQUIRED_SEND_ERROR = "Connect a model to start a run.";
@@ -249,6 +248,20 @@ export function normalizeRunError(
         fallback.primaryError,
         ...fallback.backups.map((item) => `${item.provider} ${item.modelId}: ${item.reason}`),
       ].join("\n"),
+    };
+  }
+  // Older nodes and persisted runs can still return the former funding advice.
+  if (
+    [
+      "Connect your own API key in Models or choose Rakazo credits in Billing.",
+      "Connect your own API key in Models or choose VNBot credits in Billing.",
+      "Subscribe in Billing to keep running bots.",
+    ].includes(trimmed)
+  ) {
+    return {
+      summary: translate(HOSTED_MODEL_CREDITS_REQUIRED_ERROR),
+      details,
+      recovery: "connection",
     };
   }
   // Preserve only known recovery advice: provider diagnostics can also be plain text.

@@ -152,13 +152,11 @@ export function SettingsOverlays({
           onUsageOpen={refreshUsage}
           section={overlay.section}
           onSectionChange={(section) => setOverlay({ ...overlay, section })}
-          billingEnabled={bootstrapMe?.billingEnabled === true}
           sandboxProvider={bootstrapMe?.sandboxProvider}
           onSandboxProviderChange={(sandboxProvider) =>
             setBootstrapMe((prev) => (prev ? { ...prev, sandboxProvider } : prev))
           }
           messagingEnabled={messagingEnabled}
-          paymentWalletProvider={bootstrapMe?.paymentWalletProvider ?? null}
           timezone={bootstrapMe?.timezone ?? null}
           onTimezoneChange={async (timezone) => {
             const nextMe = await rpc.preferences.update({ timezone });

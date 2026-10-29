@@ -92,3 +92,13 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Files / modules: documentation only. `docs/architecture/vnbot/adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md` (status Proposed) names the gateway, the node agent, and a `ClientTransport` seam in front of today's `/rpc` and `/api/auth` calls. No module moved.
 - Invariants affected: none. The node's thread ownership, run lease, RLS, and approval gate are unchanged. The gateway must not become a second store for those rows.
 - Links: [ADR 0001](adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md), pull request https://github.com/aikingcorp-spec/vnbot/pull/1
+
+## 2026-10-29 — Web without subscription UI and production source maps
+
+- Date: 2026-10-29
+- Pull request: pending (local changes; no pull request created)
+- What changed versus the baseline: the web client removes subscription gates, credits, billing and wallet panels, and usage prices. Legacy monetization links open General. Protected and unknown routes have explicit session-aware handling. Sign-in keeps the existing passkey client and drops automatic-account and unavailable legal-page promises. Web language choices are Vietnamese and English; other saved catalogs still load. Catalog descriptions remove foreign product names and open-source claims at display time. Production builds disable source maps.
+- Why: the web experience uses users' own model connections without a paywall and presents VNBot navigation and copy consistently.
+- Modules and files: `apps/web/src/App.tsx`, settings, onboarding, sidebar, auth, integration catalog rendering, locale helpers and unit tests; `apps/web/index.html`; `apps/web/vite.config.ts`; `packages/core/src/run-error.ts`.
+- Invariants affected: no API endpoints, shared API types, auth policy, server defaults, data storage, or migrations change. Passkeys reuse the existing auth endpoints. Production assets omit source maps. Locale catalogs are maintained separately.
+- ADR: none

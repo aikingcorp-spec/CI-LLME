@@ -56,7 +56,8 @@ vi.mock("@rakazo/ui-web", () => {
   };
 });
 
-import { PluginDetail } from "./plugin-marketplace";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PluginDetail, PluginRow } from "./plugin-marketplace";
 
 const source = "https://github.com/example/notes";
 const preview = {
@@ -282,4 +283,20 @@ describe("plugin detail", () => {
     expect(container.querySelector('[aria-label="Connected"]')).not.toBeNull();
     expect(() => button("Sign in")).toThrow();
   });
+});
+
+it("filters catalog descriptions only when rendering a plugin row", () => {
+  const description = "An open-source Cursor tool";
+  const html = renderToStaticMarkup(
+    <PluginRow
+      name="Example"
+      description={description}
+      installed={false}
+      onOpen={() => undefined}
+    />,
+  );
+  expect(html).toContain("A tool");
+  expect(html).not.toContain("Cursor");
+  expect(html).not.toContain("open-source");
+  expect(description).toBe("An open-source Cursor tool");
 });

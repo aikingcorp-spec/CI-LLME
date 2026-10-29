@@ -18,6 +18,8 @@ export const UI_LOCALES = [
   "ja",
 ] as const;
 
+export const PICKER_LOCALES = ["vi", "en"] as const;
+
 export type UiLocale = (typeof UI_LOCALES)[number];
 
 export const UI_LOCALE_STORAGE_KEY = "rakazo.uiLocale";

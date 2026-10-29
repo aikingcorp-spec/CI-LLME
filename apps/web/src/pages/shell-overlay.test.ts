@@ -74,7 +74,7 @@ describe("withShellOverlay", () => {
   });
 
   it("round-trips through readShellOverlay", () => {
-    const overlay = { kind: "settings", section: "billing", spaceId: "sp_2" } as const;
+    const overlay = { kind: "settings", section: "models", spaceId: "sp_2" } as const;
     expect(readShellOverlay(withShellOverlay(new URLSearchParams(), overlay))).toEqual(overlay);
   });
 });
@@ -87,3 +87,11 @@ describe("shellOverlaySearch", () => {
     expect(shellOverlaySearch(new URLSearchParams("?routine=r_1"))).toBe("");
   });
 });
+
+it.each(["?settings=billing", "?settings=wallet", "?plans"])(
+  "opens General for removed monetization link %s",
+  (search) => {
+    expect(read(search)).toEqual({ kind: "settings", section: "general", spaceId: null });
+    expect(shellOverlaySearch(new URLSearchParams(search))).toBe("?settings=general");
+  },
+);

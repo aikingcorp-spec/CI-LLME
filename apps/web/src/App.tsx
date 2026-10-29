@@ -1,3 +1,4 @@
+import { Trans as LocalizedText } from "@lingui/react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { LinkFavicons } from "@rakazo/chat-ui/web";
 import { LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web";
@@ -11,12 +12,19 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MarkdownLinkPrompt } from "./components/markdown-link-prompt";
 import { PageLoading } from "./components/PageLoading";
-import { SubscriptionGate } from "./components/SubscriptionGate";
 import { authClient } from "./lib/auth";
 import { getTicketBoardEnabled, subscribeTicketBoardEnabled } from "./lib/bootstrap";
 import { desktopBridge } from "./lib/desktop";
@@ -105,7 +113,7 @@ function SessionApp() {
   const next = searchParams.get("next") ?? "";
   // A connector sign-in started on another device lands here signed out; finish it after sign-in.
   const signInDestination =
-    next === "/integrations/setup" || next.startsWith(`${MCP_OAUTH_CALLBACK_PATH}?`)
+    next.startsWith("/") && !next.startsWith("//") && !/^\/sign-(?:in|up)(?:[/?#]|$)/.test(next)
       ? next
       : "/app";
   const ticketBoardEnabled = useSyncExternalStore(
@@ -205,11 +213,12 @@ function SessionApp() {
               <Route
                 element={
                   user ? (
-                    <SubscriptionGate fallback={<PageLoading />}>
-                      <Outlet />
-                    </SubscriptionGate>
+                    <Outlet />
                   ) : (
-                    <Navigate to="/sign-in" replace />
+                    <Navigate
+                      to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
+                      replace
+                    />
                   )
                 }
               >
@@ -222,6 +231,19 @@ function SessionApp() {
                 <Route path="/app/x/:linkId" element={<NavLinkPage />} />
                 <Route path="/app/:botId" element={<ShellPage />} />
               </Route>
+              <Route
+                path="*"
+                element={
+                  user ? (
+                    <NotFoundPage />
+                  ) : (
+                    <Navigate
+                      to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
+                      replace
+                    />
+                  )
+                }
+              />
             </Routes>
           </Suspense>
         </div>
@@ -300,5 +322,23 @@ function AppFailed() {
         </div>
       </div>
     </div>
+  );
+}
+
+function NotFoundPage() {
+  const { i18n } = useLingui();
+  const vietnamese = i18n.locale === "vi";
+  return (
+    <main className="grid h-full place-content-center gap-3 text-center">
+      <h1>
+        <LocalizedText
+          id="Page not found"
+          message={vietnamese ? "Không tìm thấy trang" : "Page not found"}
+        />
+      </h1>
+      <Link to="/app" className="text-link underline">
+        <LocalizedText id="Go home" message={vietnamese ? "Về trang chủ" : "Go home"} />
+      </Link>
+    </main>
   );
 }

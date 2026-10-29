@@ -20,3 +20,5 @@ export const VNBOT_CONTACT_URL = httpsUrl(
   import.meta.env.VITE_VNBOT_CONTACT_URL,
   DEFAULT_CONTACT_URL,
 );
+
+export const VNBOT_DOCS_URL = "https://vnbot.run";

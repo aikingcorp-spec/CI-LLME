@@ -818,3 +818,15 @@ describe("the one action that fixes a failed run", () => {
     },
   );
 });
+
+it.each([
+  "Connect your own API key in Models or choose Rakazo credits in Billing.",
+  "Connect your own API key in Models or choose VNBot credits in Billing.",
+  "Subscribe in Billing to keep running bots.",
+  HOSTED_MODEL_CREDITS_REQUIRED_ERROR,
+])("replaces funding advice with API key setup: %s", (details) => {
+  expect(normalizeRunError(details)).toMatchObject({
+    summary: "Connect your own API key in Models.",
+    recovery: "connection",
+  });
+});

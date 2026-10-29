@@ -139,11 +139,13 @@ it("opens integrations and keeps the existing account actions and links", async 
   )!;
   await act(async () => connect.click());
   expect(onIntegrations).toHaveBeenCalledOnce();
+  expect(document.querySelector('a[href="https://vnbot.run"]')?.textContent).toBe("Docs");
   const menu = document.querySelector('[data-slot="popover-content"]')!;
   expect([...menu.querySelectorAll("button, a")].map((row) => row.textContent)).toEqual([
     "Skills",
     "Usage",
     "Get the mobile app",
+    "Docs",
     "Board",
     "Artifacts",
     "Settings",
