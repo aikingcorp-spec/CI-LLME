@@ -37,6 +37,8 @@ export interface DataPeer {
   localCandidates: string[];
   selectedPair(): { local: string; remote: string } | null;
   close(): void;
+  /** True once the underlying PeerConnection has been closed (TURN allocations released). */
+  isClosed(): boolean;
   closeGracefully(): Promise<void>;
 }
 
@@ -95,6 +97,8 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     if (state === "closed" || state === "failed") {
       rejectOpen(new Error(`peer ${state}`));
       queue.end();
+      // A failed PeerConnection still holds its TURN allocations until close() is called.
+      if (state === "failed") queueMicrotask(() => close(false));
     }
   });
   pc.onIceStateChange((state) => debug(`onIceStateChange ${state}`));
@@ -116,7 +120,10 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     rejectOpen = reject;
   });
   void open.catch(() => {});
-  ws?.on("error", (error: Error) => rejectOpen(error));
+  ws?.on("error", (error: Error) => {
+    rejectOpen(error);
+    if (!opened) queueMicrotask(() => close(false));
+  });
 
   const attach = (dc: DataChannel): void => {
     channel = dc;
@@ -160,7 +167,12 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     debug("websocket open");
     for (const payload of outbox.splice(0)) sendSignal(payload);
   });
-  ws?.on("close", () => debug("websocket close"));
+  ws?.on("close", () => {
+    debug("websocket close");
+    // Signaling lost before the channel opened: this attempt can never complete, so release the
+    // PeerConnection (and its TURN allocations) now instead of waiting for a caller timeout.
+    if (!opened) close(false);
+  });
   const signal = (payload: SignalPayload): void => {
     if (o.signaling) o.signaling.send(payload);
     else if (ws?.readyState === WebSocket.OPEN) sendSignal(payload);
@@ -272,6 +284,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
       channel.sendMessage(text);
     },
     close,
+    isClosed: () => closed,
     closeGracefully,
   };
 }

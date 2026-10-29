@@ -26,6 +26,7 @@ describe("attempt cancel", () => {
   it("cancels its attempt on the remote when closed before the channel opens", async () => {
     const s = fakeSignaling();
     const peer = await connectPeer({
+      signalUrl: "",
       signaling: s.signaling,
       selfId: "a",
       remoteId: "b",
@@ -41,6 +42,7 @@ describe("attempt cancel", () => {
   it("does not echo a cancel back to the remote that cancelled", async () => {
     const s = fakeSignaling();
     const peer = await connectPeer({
+      signalUrl: "",
       signaling: s.signaling,
       selfId: "a",
       remoteId: "b",

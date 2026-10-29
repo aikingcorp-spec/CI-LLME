@@ -104,6 +104,7 @@ function trackHandshake(session: number) {
 
 let stopping = false;
 let current: DataPeer | undefined;
+const live = new Set<DataPeer>();
 let attempt = 0;
 
 async function runSession(
@@ -180,11 +181,18 @@ async function serve(
   const handshake = trackHandshake(attemptNumber);
   log(self === "node" ? "listening" : "connecting", { session: attemptNumber });
   const peer = await connect(handshake.hook);
+  live.add(peer);
   current = peer;
+  if (stopping) {
+    peer.close();
+    live.delete(peer);
+    return;
+  }
   try {
     await (openTimeoutMs === undefined ? peer.open : within(peer.open, openTimeoutMs));
   } catch (error) {
     peer.close();
+    live.delete(peer);
     current = undefined;
     throw error;
   }
@@ -193,7 +201,10 @@ async function serve(
     localCandidates: peer.localCandidates,
     pair: peer.selectedPair(),
   });
-  const reason = await runSession(peer, attemptNumber, handshake.seen);
+  const reason = await runSession(peer, attemptNumber, handshake.seen).finally(() => {
+    peer.close();
+    live.delete(peer);
+  });
   current = undefined;
   log("session_end", { session: attemptNumber, reason });
 }
@@ -219,13 +230,25 @@ async function shutdown(): Promise<void> {
   stopping = true;
   log("shutdown");
   await current?.closeGracefully();
+  // Every PeerConnection, not only the current one, so no TURN allocation outlives the process.
+  for (const peer of live) peer.close();
+  live.clear();
   await sleep(50);
   cleanup();
   log("exit");
   process.exit(0);
 }
 
+function crash(error: unknown): void {
+  log("fatal", { error: error instanceof Error ? error.message : "error" });
+  for (const peer of live) peer.close();
+  cleanup();
+  process.exit(1);
+}
+
 process.on("SIGTERM", () => void shutdown());
+process.on("uncaughtException", crash);
+process.on("unhandledRejection", crash);
 process.on("SIGINT", () => void shutdown());
 
 log("started", { nodeId, addresses: addresses() });

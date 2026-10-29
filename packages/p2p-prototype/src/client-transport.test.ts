@@ -40,6 +40,7 @@ it.each(["before open", "after open"])(
       },
       send: vi.fn(),
       close: vi.fn(),
+      isClosed: () => false,
       closeGracefully: vi.fn(async () => {}),
       localCandidates: [],
       selectedPair: () => null,

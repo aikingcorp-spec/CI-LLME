@@ -73,4 +73,6 @@ const agent = startNodeAgent({
 });
 console.log(`node agent ${nodeId} dialing ${gatewayUrl}`);
 
-process.on("SIGINT", () => void agent.close().then(() => process.exit(0)));
+const stop = (): void => void agent.close().then(() => process.exit(0));
+process.on("SIGINT", stop);
+process.on("SIGTERM", stop);
