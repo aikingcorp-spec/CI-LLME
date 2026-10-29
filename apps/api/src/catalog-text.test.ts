@@ -246,9 +246,9 @@ async function skillsClient(source = "plugin") {
 }
 
 describe("catalog text keeps ordinary prose and markdown", () => {
-  it("keeps the lowercase word cursor and strips only the brand", () => {
+  it("does not turn banned catalog text into a renamed field", () => {
     expect(sanitizeCatalogText("Paginate with the cursor field. Works in Cursor.")).toBe(
-      "Paginate with the cursor field. Works.",
+      "",
     );
   });
 
@@ -321,6 +321,8 @@ describe("catalog description locale", () => {
 describe("catalog exclusion policy", () => {
   it.each([
     "xAI",
+    "cursor-sdk",
+    "Cursor tools",
     "GROK Voice",
     "https://cursor.com/account",
     "vnbot SDK",
@@ -431,4 +433,20 @@ it("returns a friendly catalog search error without the upstream cause", async (
     code: "BAD_GATEWAY",
     message: "Chưa thể tìm ứng dụng lúc này. Vui lòng thử lại sau.",
   });
+});
+
+it("drops a cursor-sdk tile before any field can be blanked", () => {
+  const catalog = {
+    entries: [
+      {
+        name: "cursor-sdk",
+        displayName: "cursor-sdk",
+        description: "Build applications",
+        registry: "Other",
+      },
+    ],
+    unavailableRegistries: [],
+    skippedEntries: 0,
+  } as unknown as Parameters<typeof sanitizePluginCatalog>[0];
+  expect(sanitizePluginCatalog(catalog).entries).toEqual([]);
 });

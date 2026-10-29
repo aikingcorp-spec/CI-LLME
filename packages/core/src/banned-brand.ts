@@ -59,7 +59,7 @@ export function findBannedBrandTerms(
 // Whole words only (so e.g. "Taxaid" or "grokking" survive), and hosts matched as hosts
 // (x.ai / *.x.ai, cursor.com / *.cursor.com), not as substrings like "max.ai".
 export const EXCLUDED_CATALOG_CONTENT =
-  /\b(?:xai|grok)\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|syncs\s+and\s+stores)\b/iu;
+  /\bcursor\b(?!\.[a-z])|\b(?:xai|grok|elie222)\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|syncs\s+and\s+stores)\b/iu;
 
 /**
  * Same rule for a URL (install source, homepage, endpoint) except "grok": a repository slug such
