@@ -24,6 +24,7 @@ import { conversationSessionId, reliableModelStream } from "./pi-runtime-stream.
 import type { ToolHost } from "./pi-runtime-tools.js";
 import { toAgentTools, toolCallBudgetExceededMessage } from "./pi-runtime-tools.js";
 import { observedPiStream } from "./pi-usage.js";
+import { BOT_IDENTITY } from "./product-identity.js";
 import { createRuntimeContextPolicy } from "./runtime-context.js";
 import { deliverFinishedShells } from "./shell-command-stream.js";
 
@@ -234,11 +235,12 @@ export async function executeSubagent(
         : selectedModel.apiKey,
     initialState: {
       systemPrompt: [
-        `You are a Rakazo subagent named "${name}".`,
+        BOT_IDENTITY,
+        `You are a VNBot subagent named "${name}".`,
         "You run inside the parent bot's turn — you are not a separate bot chat.",
         "Complete the task and return a concise result. Do not spawn bots or further subagents.",
         "Your task comes from the parent bot, not from the human user, and you cannot talk to the user: report your result back to the parent bot.",
-        "Messages marked as automated come from Rakazo, not from the user.",
+        "Messages marked as automated come from VNBot, not from the user.",
         extra,
       ]
         .filter(Boolean)
