@@ -11,8 +11,8 @@ const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as
 const base = readFileSync(path.join(root, pkg.build.mac.entitlements), "utf8");
 
 describe("associatedPasskeyRpIds", () => {
-  const resourcesPath = "/Applications/Rakazo.app/Contents/Resources";
-  const profile = "/Applications/Rakazo.app/Contents/embedded.provisionprofile";
+  const resourcesPath = "/Applications/VNBot.app/Contents/Resources";
+  const profile = "/Applications/VNBot.app/Contents/embedded.provisionprofile";
 
   it("is the hosted server's domain", () => {
     expect(PASSKEY_RP_ID).toBe(new URL(RAKAZO_CLOUD_URL).hostname);
@@ -45,7 +45,7 @@ describe("passkeyEntitlements", () => {
     const plist = passkeyEntitlements(base, "ABCDE12345", pkg.build.appId);
     expect(plist.startsWith(base.slice(0, base.lastIndexOf("</dict>")).trimEnd())).toBe(true);
     expect(plist).toContain(
-      "<key>com.apple.application-identifier</key>\n    <string>ABCDE12345.dev.rakazo.desktop</string>",
+      "<key>com.apple.application-identifier</key>\n    <string>ABCDE12345.run.vnbot.desktop</string>",
     );
     expect(plist).toContain(
       `<key>com.apple.developer.associated-domains</key>\n    <array>\n      <string>webcredentials:${PASSKEY_RP_ID}</string>\n    </array>\n  </dict>\n</plist>`,
@@ -62,7 +62,7 @@ describe("passkeyEntitlements", () => {
     expect(() => passkeyEntitlements(base, "", pkg.build.appId)).toThrow();
     expect(() => passkeyEntitlements(base, "abcde12345", pkg.build.appId)).toThrow();
     expect(() => passkeyEntitlements(base, "ABCDE12345</string>", pkg.build.appId)).toThrow();
-    expect(() => passkeyEntitlements(base, "ABCDE12345", "dev rakazo")).toThrow();
+    expect(() => passkeyEntitlements(base, "ABCDE12345", "run vnbot")).toThrow();
     const derived = passkeyEntitlements(base, "ABCDE12345", pkg.build.appId);
     expect(() => passkeyEntitlements(derived, "ABCDE12345", pkg.build.appId)).toThrow();
   });

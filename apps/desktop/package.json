@@ -36,19 +36,24 @@
     "vitest": "4.1.12"
   },
   "build": {
-    "appId": "dev.rakazo.desktop",
+    "appId": "run.vnbot.desktop",
     "directories": {
       "output": "out",
       "buildResources": "assets"
     },
     "files": [
       "dist/**/*",
+      "!**/*.map",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "../web/dist",
-        "to": "web"
+        "to": "web",
+        "filter": [
+          "**/*",
+          "!**/*.map"
+        ]
       },
       {
         "from": "../../infra/compose/docker-compose.images.yml",
@@ -60,11 +65,11 @@
       }
     ],
     "extraMetadata": {
-      "name": "rakazo",
+      "name": "vnbot",
       "main": "dist/main.js"
     },
     "mac": {
-      "icon": "../../packages/ui-tokens/assets/Rakazo.icon",
+      "icon": "assets/icon.icns",
       "category": "public.app-category.productivity",
       "x64ArchFiles": "{**/node_modules/@koromix/koffi-darwin-*/darwin_*/koffi.node,**/node_modules/@oxc-parser/binding-darwin-*/parser.darwin-*.node}",
       "entitlements": "assets/entitlements.mac.plist",
@@ -107,11 +112,17 @@
       "verifyUpdateCodeSignature": true
     },
     "linux": {
-      "executableName": "rakazo",
+      "executableName": "vnbot",
       "icon": "assets/icon.png",
       "target": [
         "AppImage"
-      ]
+      ],
+      "desktop": {
+        "entry": {
+          "Name": "VNBot",
+          "StartupWMClass": "VNBot"
+        }
+      }
     },
     "publish": [
       {
@@ -119,6 +130,12 @@
         "owner": "aikingcorp-spec",
         "repo": "vnbot"
       }
-    ]
+    ],
+    "artifactName": "VNBot-${version}-${os}-${arch}.${ext}",
+    "nsis": {
+      "artifactName": "VNBot-Setup-${version}-${arch}.${ext}",
+      "shortcutName": "VNBot",
+      "uninstallDisplayName": "VNBot"
+    }
   }
 }
