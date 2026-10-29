@@ -1084,18 +1084,41 @@ describe("sign-in code send limit per address", () => {
       const blocked = await sendFrom(f, "Lan@gmail.com", "198.51.100.9");
       expect(blocked.status).toBe(429);
       expect(f.messages).toHaveLength(5);
-      // Uninvited addresses count the same way, so the limit does not reveal membership.
-      for (let index = 0; index < 5; index += 1) {
-        expect((await sendFrom(f, "probe@x.test", `192.0.2.${index + 1}`)).status).toBe(403);
-      }
-      expect((await sendFrom(f, "probe@x.test", "192.0.2.99")).status).toBe(429);
-      // Another address is unaffected, and the window resets after 15 minutes.
-      expect((await sendFrom(f, "other@x.test", "192.0.2.50")).status).toBe(403);
+      // The window resets after 15 minutes.
       vi.setSystemTime(Date.now() + 15 * 60_000 + 1);
       expect((await sendFrom(f, "lan@gmail.com", "203.0.113.200")).status).toBe(200);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("keeps answering 403 for uninvited sends and never consumes a bucket for them", async () => {
+    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
+    for (let index = 0; index < 8; index += 1) {
+      const refused = await sendFrom(f, "probe@x.test", `192.0.2.${index + 1}`);
+      expect(refused.status, `probe ${index + 1}`).toBe(403);
+      expect(await refused.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
+    }
+    expect(f.messages).toHaveLength(0);
+    expect(f.data.rateLimit!.filter((row) => String(row.key).startsWith("email-code:"))).toEqual(
+      [],
+    );
+  });
+
+  it("leaves an invited address's budget untouched by sends for other addresses", async () => {
+    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com", "ann@gmail.com"] });
+    for (let index = 0; index < 8; index += 1) {
+      await sendFrom(f, "probe@x.test", `192.0.2.${index + 1}`);
+    }
+    for (let index = 0; index < 5; index += 1) {
+      expect((await sendFrom(f, "ann@gmail.com", `198.51.100.${index + 1}`)).status).toBe(200);
+    }
+    expect((await sendFrom(f, "ann@gmail.com", "198.51.100.99")).status).toBe(429);
+    for (let index = 0; index < 5; index += 1) {
+      const sent = await sendFrom(f, "lan@gmail.com", `203.0.113.${index + 1}`);
+      expect(sent.status, `send ${index + 1}`).toBe(200);
+    }
+    expect((await sendFrom(f, "lan@gmail.com", "203.0.113.99")).status).toBe(429);
   });
 });
 
