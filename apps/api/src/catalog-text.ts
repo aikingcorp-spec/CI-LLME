@@ -6,9 +6,10 @@ import type {
   PluginPreview,
 } from "@rakazo/contracts";
 import { PluginPreviewSchema } from "@rakazo/contracts";
+import { BANNED_CATALOG_TERMS } from "@rakazo/core/banned-brand";
 
-/** Names VNBot must never show in catalog text (PRODUCT.md: brand VNBot, no open source). */
-export const BANNED_CATALOG_TERMS = /grok|rakazo|cursor|open[\s-]?source|mã nguồn mở/i;
+/** Names VNBot must never show in catalog text; the term list lives in @rakazo/core/banned-brand. */
+export { BANNED_CATALOG_TERMS } from "@rakazo/core/banned-brand";
 
 const REWRITES: Array<[RegExp, string]> = [
   [/[ \t]*\b(?:for|in|with|inside)[ \t]+(?:the[ \t]+)?(?:Grok[ \t]+Build|Grok|Rakazo)\b/gi, ""],

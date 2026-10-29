@@ -63,6 +63,11 @@
       "types": "./src/query.ts",
       "development": "./src/query.ts",
       "default": "./src/query.ts"
+    },
+    "./banned-brand": {
+      "types": "./src/banned-brand.ts",
+      "development": "./src/banned-brand.ts",
+      "default": "./src/banned-brand.ts"
     }
   },
   "scripts": {
