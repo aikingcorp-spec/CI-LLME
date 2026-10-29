@@ -274,7 +274,6 @@ export function ModelRoleSettings({
             {ordered ? number(0) : null}
             <RoleModelPicker
               trigger={pickerTrigger(
-                // Before the role loads, "Choose a model" would claim no model is saved.
                 !settings && !state.error
                   ? t`Loading…`
                   : deployment

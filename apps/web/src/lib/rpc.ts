@@ -77,7 +77,6 @@ const link = new RPCLink<RpcClientContext>({
       options.context.spaceId === undefined ? selectedSpaceId() : options.context.spaceId;
     const correlation = clientCorrelationHeaders();
     const headers = withSpaceHeaders(request.headers, spaceId);
-    // The API localizes registry descriptions with this; it never changes access.
     if (i18n.locale) headers.set("x-vnbot-ui-locale", i18n.locale);
     if (CLIENT_BUILD) headers.set(CLIENT_BUILD_HEADER, formatClientBuild("web", CLIENT_BUILD));
     for (const [key, value] of Object.entries(correlation)) headers.set(key, value);
