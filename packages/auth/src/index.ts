@@ -64,6 +64,7 @@ export {
   isAllowlistEmail,
   normalizeEmail,
   parseEmailAllowlistArgs,
+  removeAllowlistEmail,
   runEmailAllowlist,
 } from "./email-allowlist.js";
 export type { OidcConfig } from "./oidc.js";

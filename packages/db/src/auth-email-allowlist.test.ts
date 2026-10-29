@@ -17,6 +17,8 @@ describe("auth email allowlist migration", () => {
       "CHECK (\"email\" = lower(regexp_replace(normalize(btrim(\"email\"), NFC), '[\\u200B\\u200C\\u200D\\u2060\\uFEFF]', '', 'g')) AND \"email\" LIKE '%_@_%')",
     );
     expect(sql).toContain("ENABLE ROW LEVEL SECURITY");
+    expect(sql).toContain('ALTER TABLE "auth_email_allowlist" FORCE ROW LEVEL SECURITY');
+    expect(sql).toContain("WITH CHECK (current_setting('app.rls_bypass', true) = 'on')");
     expect(sql).toContain("current_setting('app.rls_bypass', true) = 'on'");
     expect(ROW_SECURITY_MODELS.has("AuthEmailAllowlist")).toBe(true);
   });
