@@ -999,6 +999,18 @@ describe("email invite list", () => {
     expect(f.messages).toHaveLength(1);
   });
 
+  it("sends the code to the normalized address for spaced, cased or zero-width input", async () => {
+    const f = fixture({ emailAllowlist: true, invited: ["eve@example.com"] });
+    for (const raw of [" Eve@Example.com ", "eve\u200b@example.com"]) {
+      const sent = await f.sendCode(raw);
+      expect(sent.status).toBe(200);
+      expect(f.messages.at(-1)!.to).toBe("eve@example.com");
+    }
+    const signedIn = await f.codeSignIn(f.lastCode(), " EVE@example.com\u200d");
+    expect(signedIn.status).toBe(200);
+    expect(f.data.user).toEqual([expect.objectContaining({ email: "eve@example.com" })]);
+  });
+
   it("refuses to create an account that is not invited", async () => {
     const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
     const response = await f.signup("stranger@example.test");

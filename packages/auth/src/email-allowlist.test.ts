@@ -22,6 +22,18 @@ describe("invite addresses", () => {
     expect(isAllowlistEmail("lan@")).toBe(false);
   });
 
+  it("normalizes in the fixed order: trim, NFC, strip zero-width, lowercase", () => {
+    expect(normalizeEmail(" Eve@Example.com ")).toBe("eve@example.com");
+    expect(normalizeEmail("eve\u200b@example.com")).toBe("eve@example.com");
+    for (const mark of ["\u200b", "\u200c", "\u200d", "\u2060", "\ufeff"]) {
+      expect(normalizeEmail(`${mark}Eve@Exa${mark}mple.com${mark}`)).toBe("eve@example.com");
+    }
+    // NFD "e + combining acute" becomes the single NFC code point before lowercasing.
+    expect(normalizeEmail("Re\u0301my@example.com")).toBe("r\u00e9my@example.com");
+    expect(normalizeEmail("R\u00c9MY@example.com")).toBe("r\u00e9my@example.com");
+    expect(isAllowlistEmail("eve\u200b@example.com")).toBe(false);
+  });
+
   it("returns HTTP 403 EMAIL_NOT_INVITED", () => {
     const error = notInvited();
     expect(error.status).toBe("FORBIDDEN");

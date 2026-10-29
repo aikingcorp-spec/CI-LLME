@@ -36,7 +36,12 @@ import {
   signInCodeLocale,
   verificationEmail,
 } from "./email.js";
-import { isEmailInvited, notInvited, sessionNotInvited } from "./email-allowlist.js";
+import {
+  isEmailInvited,
+  normalizeEmail,
+  notInvited,
+  sessionNotInvited,
+} from "./email-allowlist.js";
 import { hasRecentIdentityConfirmation, identityConfirmation } from "./identity-confirmation.js";
 import type { OidcConfig } from "./oidc.js";
 import { isCurrentOidcAccount, oidcDiscovery } from "./oidc.js";
@@ -424,9 +429,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
           // A code for an unknown address creates an account, so it passes the
           // same registration policy as password signup. A refused address is
           // answered like any other so replies do not reveal which accounts exist.
-          const email = String(ctx.body?.email ?? "")
-            .trim()
-            .toLowerCase();
+          const email = normalizeEmail(ctx.body?.email);
           if (!(await ctx.context.internalAdapter.findUserByEmail(email))) {
             const admission = signupPolicyFromEnv(env);
             if (!admission.enabled || !emailAllowed(email, admission.allowlist)) {
@@ -463,11 +466,18 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         } else if (policy) {
           requireEmailVerification = policy.allowlist.length > 0;
         }
+        // Codes go to, and accounts are created for, the normalized address only.
+        const normalizedBody =
+          (ctx.path === SEND_SIGN_IN_CODE_PATH || ctx.path === CODE_SIGN_IN_PATH) &&
+          typeof ctx.body?.email === "string"
+            ? { body: { ...ctx.body, email: normalizeEmail(ctx.body.email) } }
+            : {};
         const findSession = ctx.context.internalAdapter.findSession;
         // Return a request-local override; mutating the shared auth options
         // would leak a concurrent request's policy into another signup.
         return {
           context: {
+            ...normalizedBody,
             context: {
               ...(policy
                 ? {
@@ -665,10 +675,12 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             if (env.emailAllowlist && !(await isEmailInvited(prisma, user.email))) {
               throw notInvited();
             }
+            const email = normalizeEmail(user.email);
             return {
               data: {
                 ...user,
-                name: initialAccountName(user.email, user.name),
+                email,
+                name: initialAccountName(email, user.name),
               },
             };
           },

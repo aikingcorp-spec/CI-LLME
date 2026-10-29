@@ -5,7 +5,7 @@ CREATE TABLE "auth_email_allowlist" (
     "addedBy" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "auth_email_allowlist_pkey" PRIMARY KEY ("email"),
-    CONSTRAINT "auth_email_allowlist_email_normalized" CHECK ("email" = lower(btrim("email")) AND "email" LIKE '%_@_%')
+    CONSTRAINT "auth_email_allowlist_email_normalized" CHECK ("email" = lower(regexp_replace(normalize(btrim("email"), NFC), '[\u200B\u200C\u200D\u2060\uFEFF]', '', 'g')) AND "email" LIKE '%_@_%')
 );
 -- System-only table: no tenant policy.
 ALTER TABLE "auth_email_allowlist" ENABLE ROW LEVEL SECURITY;

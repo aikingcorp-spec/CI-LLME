@@ -12,7 +12,10 @@ describe("auth email allowlist migration", () => {
       "utf8",
     );
     expect(sql).toContain('CREATE TABLE "auth_email_allowlist"');
-    expect(sql).toContain('CHECK ("email" = lower(btrim("email")) AND "email" LIKE \'%_@_%\')');
+    // Same order as normalizeEmail: trim, NFC, strip zero-width, lowercase.
+    expect(sql).toContain(
+      "CHECK (\"email\" = lower(regexp_replace(normalize(btrim(\"email\"), NFC), '[\\u200B\\u200C\\u200D\\u2060\\uFEFF]', '', 'g')) AND \"email\" LIKE '%_@_%')",
+    );
     expect(sql).toContain("ENABLE ROW LEVEL SECURITY");
     expect(sql).toContain("current_setting('app.rls_bypass', true) = 'on'");
     expect(ROW_SECURITY_MODELS.has("AuthEmailAllowlist")).toBe(true);
