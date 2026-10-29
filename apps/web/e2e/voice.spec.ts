@@ -105,7 +105,7 @@ test("voice settings connect a key, speak a reply, and open a call", async ({ pa
     }),
   );
   await speakReply.click();
-  await expect(page.getByText("Your voice provider is out of credit.")).toBeVisible();
+  await expect(page.getByText("Connect your own API key in Models.")).toBeVisible();
   await captureScreenshot(page, testInfo, "read-aloud-out-of-credit");
   await page.unroute("**/api/voice/speak");
 
@@ -131,8 +131,8 @@ test("voice settings connect a key, speak a reply, and open a call", async ({ pa
   await expect(page.getByTestId("call-view")).toHaveCount(0);
   await expect(page.getByTestId("call-return-bar")).toHaveCount(0);
 
-  // The out-of-credit toast sits over the mic; let it close so the press reaches the mic.
-  await expect(page.getByText("Your voice provider is out of credit.")).toHaveCount(0);
+  // The model-connection toast sits over the mic; let it close before pressing the mic.
+  await expect(page.getByText("Connect your own API key in Models.")).toHaveCount(0);
   const mic = page.getByRole("button", { name: "Hold to talk", exact: true });
   await mic.hover();
   const micBounds = await mic.boundingBox();
