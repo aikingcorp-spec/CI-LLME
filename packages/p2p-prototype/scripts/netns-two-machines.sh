@@ -6,8 +6,10 @@ GW_ROOT_A=10.77.1.1; GW_A=10.77.1.2; GW_ROOT_B=10.77.2.1; GW_B=10.77.2.2
 PUBLIC_IP=10.77.3.10; PUBLIC_A=10.77.3.11; PUBLIC_B=10.77.3.12
 run() { if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo -n "$@"; fi; }
 ns_exists() { run ip netns list | awk '{print $1}' | grep -qx "$1"; }
+NS_R=p2pR
+TOPOLOGY="${P2P_TOPOLOGY:-nat}"
 teardown() {
-  for ns in "$NS_A" "$NS_B" "$NS_RA" "$NS_RB" "$NS_PUBLIC"; do if ns_exists "$ns"; then run ip netns del "$ns"; fi; done
+  for ns in "$NS_A" "$NS_B" "$NS_RA" "$NS_RB" "$NS_PUBLIC" "$NS_R"; do if ns_exists "$ns"; then run ip netns del "$ns"; fi; done
   for link in p2pga p2pgb; do run ip link del "$link" 2>/dev/null || true; done
 }
 setup() {
@@ -36,5 +38,25 @@ setup() {
   run ip netns exec "$NS_RB" iptables -t nat -A POSTROUTING -o p2ppubb -j MASQUERADE; run ip netns exec "$NS_RB" iptables -t nat -A POSTROUTING -o p2pgb -j MASQUERADE
   run ip addr add "$GW_ROOT_A/24" dev p2pga; run ip addr add "$GW_ROOT_B/24" dev p2pgb; run ip link set p2pga up; run ip link set p2pgb up
 }
-status() { for ns in "$NS_A" "$NS_B" "$NS_RA" "$NS_RB" "$NS_PUBLIC"; do echo "== $ns"; run ip netns exec "$ns" ip -br -4 addr; run ip netns exec "$ns" ip route; done; }
-case "${1:-}" in setup) setup ;; teardown) teardown ;; status) status ;; *) echo "usage: $0 setup|teardown|status"; exit 2 ;; esac
+# Routed topology without NAT (no iptables needed): A and B sit on different subnets behind one
+# router namespace, so host candidates must cross an L3 hop. Each machine also has a direct link
+# to the root namespace, which runs the gateway and the optional TURN relay.
+setup_routed() {
+  teardown
+  for ns in "$NS_A" "$NS_B" "$NS_R"; do run ip netns add "$ns"; done
+  run ip link add p2prA netns "$NS_A" type veth peer name p2prA netns "$NS_R"
+  run ip link add p2prB netns "$NS_B" type veth peer name p2prB netns "$NS_R"
+  run ip link add p2pga type veth peer name p2pga netns "$NS_A"
+  run ip link add p2pgb type veth peer name p2pgb netns "$NS_B"
+  run ip -n "$NS_R" link set lo up
+  run ip -n "$NS_R" addr add 10.77.10.1/24 dev p2prA; run ip -n "$NS_R" link set p2prA up
+  run ip -n "$NS_R" addr add 10.77.20.1/24 dev p2prB; run ip -n "$NS_R" link set p2prB up
+  run ip netns exec "$NS_R" sh -c 'echo 1 > /proc/sys/net/ipv4/ip_forward'
+  run ip -n "$NS_A" link set lo up; run ip -n "$NS_A" addr add 10.77.10.11/24 dev p2prA; run ip -n "$NS_A" link set p2prA up
+  run ip -n "$NS_A" addr add "$GW_A/24" dev p2pga; run ip -n "$NS_A" link set p2pga up; run ip -n "$NS_A" route add default via 10.77.10.1
+  run ip -n "$NS_B" link set lo up; run ip -n "$NS_B" addr add 10.77.20.12/24 dev p2prB; run ip -n "$NS_B" link set p2prB up
+  run ip -n "$NS_B" addr add "$GW_B/24" dev p2pgb; run ip -n "$NS_B" link set p2pgb up; run ip -n "$NS_B" route add default via 10.77.20.1
+  run ip addr add "$GW_ROOT_A/24" dev p2pga; run ip addr add "$GW_ROOT_B/24" dev p2pgb; run ip link set p2pga up; run ip link set p2pgb up
+}
+status() { for ns in "$NS_A" "$NS_B" "$NS_RA" "$NS_RB" "$NS_PUBLIC" "$NS_R"; do ns_exists "$ns" || continue; echo "== $ns"; run ip netns exec "$ns" ip -br -4 addr; run ip netns exec "$ns" ip route; done; }
+case "${1:-}" in setup) if [ "$TOPOLOGY" = routed ]; then setup_routed; else setup; fi ;; teardown) teardown ;; status) status ;; *) echo "usage: $0 setup|teardown|status"; exit 2 ;; esac

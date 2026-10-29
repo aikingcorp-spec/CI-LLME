@@ -41,14 +41,23 @@ const PEER_SCRIPT = fileURLToPath(new URL("./bin/two-machine-peer.ts", import.me
 const TSX_LOADER = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 const NAMESPACE: Record<Machine, string> = { A: "p2pA", B: "p2pB" };
 const GATEWAY_HOST: Record<Machine, string> = { A: "10.77.1.1", B: "10.77.2.1" };
-const PEER_SUBNET = "10.77.0.";
+const ROUTED = process.env.P2P_TOPOLOGY === "routed";
+// NAT topology puts both peers on 10.77.0.x behind their own routers; the routed (no-NAT) topology
+// puts A on 10.77.10.x and B on 10.77.20.x with one router between them.
+const PEER_ADDRESS = ROUTED ? /10\.77\.(10|20)\./ : /10\.77\.0\./;
+// Optional TURN relay without NAT: P2P_NODE_TURN=<path to node-turn package>. The relay runs in the
+// root namespace and both peers are forced to iceTransportPolicy=relay.
+const NODE_TURN = process.env.P2P_NODE_TURN;
+const TURN_PORT = 3479;
+const TURN_USER = "p2p-test";
+const TURN_PASS = randomBytes(12).toString("hex");
 const SESSION_TOKEN = "token";
 const EXPECT_CANDIDATE_TYPE = process.env.P2P_EXPECT_CANDIDATE_TYPE;
 
 function netnsAvailable(): boolean {
   try {
     execFileSync("sudo", ["-n", "ip", "netns", "list"], { stdio: "ignore" });
-    execFileSync("sudo", ["-n", "iptables", "-V"], { stdio: "ignore" });
+    if (!ROUTED) execFileSync("sudo", ["-n", "iptables", "-V"], { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -59,6 +68,7 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
   `two machines over a data channel (${NETNS_MODE ? "network namespaces" : "loopback"})`,
   () => {
     let gateway: Gateway;
+    let turn: { stop(): void } | undefined;
     let gatewayPort: string;
     let workDir: string;
     let authServer: Awaited<ReturnType<typeof startFakeAuthServer>>;
@@ -68,6 +78,21 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
     beforeAll(async () => {
       vi.spyOn(console, "log").mockImplementation(() => {});
       if (NETNS_MODE) execFileSync(TOPOLOGY_SCRIPT, ["setup"]);
+      if (NODE_TURN) {
+        const Turn = createRequire(import.meta.url)(NODE_TURN) as new (
+          o: Record<string, unknown>,
+        ) => { start(): void; stop(): void };
+        const server = new Turn({
+          listeningPort: TURN_PORT,
+          listeningIps: NETNS_MODE ? Object.values(GATEWAY_HOST) : ["127.0.0.1"],
+          authMech: "long-term",
+          credentials: { [TURN_USER]: TURN_PASS },
+          realm: "p2p-test",
+          debugLevel: "OFF",
+        });
+        server.start();
+        turn = server;
+      }
       authServer = await startFakeAuthServer();
       gateway = await startGateway({
         port: 0,
@@ -88,6 +113,7 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
     });
 
     afterAll(async () => {
+      turn?.stop();
       await gateway.close();
       await authServer.close();
       rmSync(workDir, { recursive: true, force: true });
@@ -114,7 +140,13 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
         DEAD_AFTER_MS: "2000",
         RETRY_MS: "250",
         HOME: process.env.HOME ?? tmpdir(),
+        ...(process.env.P2P_DEBUG ? { P2P_DEBUG: process.env.P2P_DEBUG } : {}),
       };
+      if (NODE_TURN) {
+        const host = NETNS_MODE ? GATEWAY_HOST[machine] : "127.0.0.1";
+        vars.ICE_SERVERS = `turn:${TURN_USER}:${TURN_PASS}@${host}:${TURN_PORT}?transport=udp`;
+        vars.ICE_TRANSPORT_POLICY = "relay";
+      }
       const nodeArgs = ["--import", TSX_LOADER, PEER_SCRIPT, role];
       const child = NETNS_MODE
         ? spawn(
@@ -246,13 +278,15 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
     function expectPeerPath(proc: PeerProc): void {
       const pair = proc.last("selected_pair").pair;
       expect(pair).toBeTruthy();
-      if (!NETNS_MODE || !pair) return;
-      if (EXPECT_CANDIDATE_TYPE) {
-        expect(pair.local).toContain(`typ ${EXPECT_CANDIDATE_TYPE}`);
-        expect(pair.remote).toContain(`typ ${EXPECT_CANDIDATE_TYPE}`);
+      if (!pair) return;
+      if (!NETNS_MODE && !NODE_TURN) return;
+      const expectedType = EXPECT_CANDIDATE_TYPE ?? (NODE_TURN ? "relay" : undefined);
+      if (expectedType) {
+        expect(pair.local).toContain(`typ ${expectedType}`);
+        expect(pair.remote).toContain(`typ ${expectedType}`);
       } else {
-        expect(pair.local).toContain(PEER_SUBNET);
-        expect(pair.remote).toContain(PEER_SUBNET);
+        expect(pair.local).toMatch(PEER_ADDRESS);
+        expect(pair.remote).toMatch(PEER_ADDRESS);
       }
     }
 
