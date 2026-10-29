@@ -274,7 +274,12 @@ export function ModelRoleSettings({
             {ordered ? number(0) : null}
             <RoleModelPicker
               trigger={pickerTrigger(
-                deployment ? modelLabel(deployment) : defaultLabel,
+                // Before the role loads, "Choose a model" would claim no model is saved.
+                !settings && !state.error
+                  ? t`Loading…`
+                  : deployment
+                    ? modelLabel(deployment)
+                    : defaultLabel,
                 deployment ? providerName(deployment) : undefined,
               )}
               label={t`Change ${title}`}
