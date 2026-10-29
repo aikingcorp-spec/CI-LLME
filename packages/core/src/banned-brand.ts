@@ -59,7 +59,7 @@ export function findBannedBrandTerms(
 // Whole words only (so e.g. "Taxaid" or "grokking" survive), and hosts matched as hosts
 // (x.ai / *.x.ai, cursor.com / *.cursor.com), not as substrings like "max.ai".
 export const EXCLUDED_CATALOG_CONTENT =
-  /\bcursor\b(?!\.[a-z])|\b(?:xai|grok|elie222)\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|origin|syncs\s+and\s+stores)\b/iu;
+  /\bcursor\b(?!\.[a-z])|\b(?:xai|grok|rakazo|elie222|open[\s-]?source|mã nguồn mở)\b|(?<![a-z0-9-])(?:[a-z0-9-]+\.)*(?:x\.ai|cursor\.com)(?![a-z0-9-]|\.[a-z0-9])|\bvnbot\s+(?:voice|sdk|bot|origin|syncs\s+and\s+stores)\b/iu;
 
 /** URLs are judged by their host and repository owner, never by a repository slug. */
 export function isExcludedCatalogText(text: string): boolean {

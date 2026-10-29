@@ -83,7 +83,7 @@ describe("catalog text", () => {
       "",
     );
     expect(sanitizeCatalogText("Give Grok a real browser")).toBe("");
-    expect(sanitizeCatalogText("An open-source Rakazo tool")).toBe("An VNBot tool");
+    expect(sanitizeCatalogText("An open-source Rakazo tool")).toBe("");
   });
 
   it("plugin marketplace response carries no banned term in any visible text", async () => {
@@ -321,6 +321,8 @@ describe("catalog exclusion policy", () => {
     "xAI",
     "cursor-sdk",
     "Cursor tools",
+    "Rakazo",
+    "Open-source tools",
     "GROK Voice",
     "https://cursor.com/account",
     "vnbot SDK",

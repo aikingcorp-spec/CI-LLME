@@ -17,15 +17,6 @@ import { CATALOG_DESCRIPTIONS_VI } from "./catalog-descriptions-vi.js";
 /** Names VNBot must never show in catalog text; the term list lives in @rakazo/core/banned-brand. */
 export { BANNED_CATALOG_TERMS } from "@rakazo/core/banned-brand";
 
-const REWRITES: Array<[RegExp, string]> = [
-  [/[ \t]*\b(?:for|in|with|inside)[ \t]+(?:the[ \t]+)?(?:Rakazo)\b/gi, ""],
-  [/[ \t]*\b(?:[Ff]or|[Ii]n|[Ww]ith|[Ii]nside)[ \t]+(?:the[ \t]+)?(?:Cursor|CURSOR)\b/g, ""],
-  [/\b(?:Rakazo)\b/gi, "VNBot"],
-  [/\b(?:Cursor|CURSOR)\b/g, "VNBot"],
-  [/[ \t]*\bopen[ \t-]?source\b/gi, ""],
-  [/[ \t]*mã nguồn mở/gi, ""],
-];
-
 /** Third-party catalogs (integrations.sh, plugin registries) describe themselves for
  * other agent hosts. Exclude foreign product content before localizing responses. */
 const uiLocale = new AsyncLocalStorage<string | null>();
@@ -48,11 +39,7 @@ function sanitizeDescription(value: string): string {
 
 export function sanitizeCatalogText(value: string): string {
   if (EXCLUDED_CATALOG_CONTENT.test(value)) return "";
-  let text = value;
-  for (const [pattern, replacement] of REWRITES) text = text.replace(pattern, replacement);
-  text = text.replace(/\bVNBot([ \t]+VNBot)+\b/g, "VNBot").replace(/(\S)[ \t]{2,}(?=\S)/g, "$1 ");
-  if (EXCLUDED_CATALOG_CONTENT.test(text)) return "";
-  return text
+  return value
     .replace(/[ \t]+([.,:;!?])/g, "$1")
     .replace(/([,;:])(?:\s*[,;:])+/g, "$1")
     .replace(/^[\s,;:]+/, "")
