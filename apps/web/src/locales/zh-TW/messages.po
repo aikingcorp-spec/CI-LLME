@@ -5327,10 +5327,6 @@ msgstr "重新登入"
 msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "在 <0>{0}</0> 登入，然後將代碼貼到這裡。"
 
-#: src/lib/user-error.ts
-msgid "Sign in to your existing account to link SSO"
-msgstr "請登入現有帳號以關聯 SSO"
-
 #: src/components/PasskeySignIn.tsx
 msgid "Sign in with a passkey"
 msgstr ""
@@ -5790,6 +5786,10 @@ msgstr "此對話對模型來說太長了。重試無濟於事。請開始新的
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
 msgstr "這將刪除此成品的全部 {0} 個版本，且無法復原。"
+
+#: src/lib/user-error.ts
+msgid "This email already has an account. Sign in with an email code, then link SSO in Settings."
+msgstr ""
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."

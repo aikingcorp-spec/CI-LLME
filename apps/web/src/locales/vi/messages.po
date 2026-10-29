@@ -5326,10 +5326,6 @@ msgstr "Đăng nhập lại"
 msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr ""
 
-#: src/lib/user-error.ts
-msgid "Sign in to your existing account to link SSO"
-msgstr "Hãy đăng nhập tài khoản hiện có để liên kết SSO"
-
 #: src/components/PasskeySignIn.tsx
 msgid "Sign in with a passkey"
 msgstr "Đăng nhập bằng passkey"
@@ -5789,6 +5785,10 @@ msgstr ""
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
 msgstr ""
+
+#: src/lib/user-error.ts
+msgid "This email already has an account. Sign in with an email code, then link SSO in Settings."
+msgstr "Email này đã có tài khoản. Hãy đăng nhập bằng mã email rồi liên kết SSO trong Cài đặt."
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."

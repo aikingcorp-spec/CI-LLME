@@ -1,5 +1,5 @@
 import { t } from "@lingui/core/macro";
-import { isVoiceAccountErrorCode } from "@rakazo/contracts";
+import { ACCOUNT_NOT_LINKED, isVoiceAccountErrorCode } from "@rakazo/contracts";
 import type { CredentialField } from "@rakazo/core";
 import {
   authErrorMessage,
@@ -57,8 +57,8 @@ export function authErrorCode(error: unknown): string | undefined {
 export function authErrorText(error: unknown, fallback: string): string {
   const code = authErrorCode(error);
   if (code === "SSO_UNAVAILABLE") return t`SSO is temporarily unavailable. Try again.`;
-  if (code === "account_not_linked" || code === "ACCOUNT_NOT_LINKED")
-    return t`Sign in to your existing account to link SSO`;
+  if (code === "account_not_linked" || code === ACCOUNT_NOT_LINKED)
+    return t`This email already has an account. Sign in with an email code, then link SSO in Settings.`;
   if (code === "REGISTRATION_CLOSED") return t`Registration is closed`;
   if (code === "EMAIL_NOT_ALLOWED") return t`Email is not allowed to register`;
   if (code === "EMAIL_VERIFICATION_REQUIRED" || code === "unable_to_link_account")

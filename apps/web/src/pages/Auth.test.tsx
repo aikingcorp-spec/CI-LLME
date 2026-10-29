@@ -375,3 +375,18 @@ it("shows the not-invited state for ?error=EMAIL_NOT_INVITED (OIDC callback / re
   expect(sessionStorage.getItem("vnbot.signIn")).toBeNull();
   expect(host.querySelector(`a[href="${VNBOT_CONTACT_URL}"]`)).not.toBeNull();
 });
+
+it("shows the link-SSO-from-Settings copy for ?error=ACCOUNT_NOT_LINKED (SSO callback)", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/sign-in?error=ACCOUNT_NOT_LINKED"]}>
+        <AuthPage />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe(
+    "This email already has an account. Sign in with an email code, then link SSO in Settings.",
+  );
+  expect(host.querySelector('input[name="email"]')).not.toBeNull();
+});

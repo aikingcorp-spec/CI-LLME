@@ -5326,10 +5326,6 @@ msgstr "Opnieuw aanmelden"
 msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "Meld je aan op <0>{0}</0> en plak de code hier."
 
-#: src/lib/user-error.ts
-msgid "Sign in to your existing account to link SSO"
-msgstr "Meld je aan met je bestaande account om SSO te koppelen"
-
 #: src/components/PasskeySignIn.tsx
 msgid "Sign in with a passkey"
 msgstr ""
@@ -5789,6 +5785,10 @@ msgstr "Dit gesprek is te lang voor het model. Opnieuw proberen helpt niet. Begi
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
 msgstr "Hiermee worden alle {0} versies van dit artefact verwijderd. Dit kan niet ongedaan worden gemaakt."
+
+#: src/lib/user-error.ts
+msgid "This email already has an account. Sign in with an email code, then link SSO in Settings."
+msgstr ""
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."

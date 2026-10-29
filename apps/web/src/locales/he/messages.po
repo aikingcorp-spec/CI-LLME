@@ -5326,10 +5326,6 @@ msgstr "התחברות מחדש"
 msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "התחברו ב-<0>{0}</0> והדביקו כאן את הקוד."
 
-#: src/lib/user-error.ts
-msgid "Sign in to your existing account to link SSO"
-msgstr "יש להתחבר לחשבון הקיים כדי לקשר SSO"
-
 #: src/components/PasskeySignIn.tsx
 msgid "Sign in with a passkey"
 msgstr ""
@@ -5789,6 +5785,10 @@ msgstr "השיחה הזו ארוכה מדי בשביל המודל. ניסיון 
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
 msgstr "פעולה זו מוחקת את כל {0} הגרסאות של התוצר. לא ניתן לבטל אותה."
+
+#: src/lib/user-error.ts
+msgid "This email already has an account. Sign in with an email code, then link SSO in Settings."
+msgstr ""
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."

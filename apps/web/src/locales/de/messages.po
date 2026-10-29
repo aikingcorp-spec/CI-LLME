@@ -5326,10 +5326,6 @@ msgstr "Erneut anmelden"
 msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "Melde dich bei <0>{0}</0> an und füge dann den Code hier ein."
 
-#: src/lib/user-error.ts
-msgid "Sign in to your existing account to link SSO"
-msgstr "Melde dich bei deinem bestehenden Konto an, um SSO zu verknüpfen"
-
 #: src/components/PasskeySignIn.tsx
 msgid "Sign in with a passkey"
 msgstr ""
@@ -5788,6 +5784,10 @@ msgstr "Diese Unterhaltung ist zu lang für das Modell. Ein erneuter Versuch hil
 #. placeholder {0}: pendingDelete.versionCount
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "This email already has an account. Sign in with an email code, then link SSO in Settings."
 msgstr ""
 
 #: src/components/ArtifactFileCard.tsx

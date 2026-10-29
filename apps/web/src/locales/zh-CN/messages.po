@@ -5326,10 +5326,6 @@ msgstr "重新登录"
 msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "在 <0>{0}</0> 登录，然后将代码粘贴到这里。"
 
-#: src/lib/user-error.ts
-msgid "Sign in to your existing account to link SSO"
-msgstr "请登录现有账户以关联 SSO"
-
 #: src/components/PasskeySignIn.tsx
 msgid "Sign in with a passkey"
 msgstr ""
@@ -5788,6 +5784,10 @@ msgstr "此对话对模型来说太长了。重试无济于事。请开始新的
 #. placeholder {0}: pendingDelete.versionCount
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "This email already has an account. Sign in with an email code, then link SSO in Settings."
 msgstr ""
 
 #: src/components/ArtifactFileCard.tsx

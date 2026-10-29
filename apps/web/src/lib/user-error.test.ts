@@ -29,6 +29,14 @@ describe("authErrorText", () => {
     ).toBe("VNBot is in limited preview");
   });
 
+  it("maps ACCOUNT_NOT_LINKED and Better Auth's account_not_linked", () => {
+    for (const code of ["ACCOUNT_NOT_LINKED", "account_not_linked"]) {
+      expect(authErrorText({ code, message: "Server message" }, "Fallback")).toBe(
+        "This email already has an account. Sign in with an email code, then link SSO in Settings.",
+      );
+    }
+  });
+
   it("replaces Better Auth's raw too-long password message with the limit", () => {
     expect(
       authErrorText({ code: "PASSWORD_TOO_LONG", message: "Password too long" }, "Fallback"),
