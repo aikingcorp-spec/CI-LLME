@@ -4,6 +4,14 @@ Each entry is a change versus the frozen Rakazo baseline at commit `c4b24547` (`
 
 Proposed decisions are listed so reviewers can see them. They do not change the running system until a later entry says they landed in code.
 
+## 2026-10-29 — VN Bot wordmark swap
+
+- What changed versus baseline: the web wordmark SVGs and the sign-in email PNG are the new "VN Bot" artwork. The aspect ratio is narrower (SVG viewBox 445.5×87.4 to 383.4×100.1, powered 445.5×123.4 to 383.4×136.1; email PNG 446×87 to 240×63, `@2x` 480×125). The sign-in code email keeps its 32 px height, so the `<img>` width is 123 in the VI and EN templates (was 164). Web components size the wordmark by height only and are unchanged.
+- Why: the brand artwork changed. A fixed 164 px width on the new image would stretch it.
+- Files / modules: `packages/auth/src/sign-in-code-templates.ts`, `apps/web/public/brand/vnbot-wordmark-*.svg`, `apps/web/public/email/vnbot-wordmark-light*.png`.
+- Invariants affected: none. Sign-in code mail still shows the wordmark at 32 px height with alt text `VNBot`.
+- ADR: none.
+
 ## 2026-10-29 — SSO redirect origin, ACCOUNT_NOT_LINKED, send-limit order, compose defaults
 
 - What changed versus baseline: SSO callback redirects are built from the configured web origin instead of the Host header. An SSO email that already has an account gets a bare 302 to `/sign-in?error=ACCOUNT_NOT_LINKED` (no implicit linking; link from Settings while signed in), with VI/EN copy in `@rakazo/contracts`. The per-address send bucket is consumed only after the invite check passes; uninvited addresses get 403 and are limited per IP only. Compose defaults are `AUTH_EMAIL_ALLOWLIST=on` everywhere and `AUTH_EMAIL_CODE_ONLY=true` only in the production stack (code-only refuses to start without an email sender).
