@@ -1258,7 +1258,7 @@ msgstr "Elke"
 msgid "Check failed: {0}"
 msgstr "Controle mislukt: {0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Check for updates"
 msgstr "Controleren op updates"
 
@@ -1295,7 +1295,7 @@ msgid "Checking connection…"
 msgstr "Verbinding controleren…"
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "Bezig met controleren…"
@@ -1361,7 +1361,7 @@ msgstr "Filter {label} wissen"
 msgid "Clearing…"
 msgstr "Bezig met wissen…"
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1703,6 +1703,10 @@ msgstr "De verbinding met {0} is nog in afwachting. Je kunt dit venster sluiten 
 msgid "Connector"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
 msgid "Contains code to run"
@@ -1961,7 +1965,7 @@ msgstr "Connector installeren mislukt"
 msgid "Could not install plugin"
 msgstr ""
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/user-devices.ts
 #: src/pages/KnowledgeSection.tsx
@@ -2519,11 +2523,11 @@ msgstr "Beschrijving"
 msgid "Design"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop app"
 msgstr "Desktopapp"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop update"
 msgstr "Desktopupdate"
 
@@ -2644,7 +2648,7 @@ msgstr "{name} downloaden"
 msgid "Download CSV"
 msgstr "CSV downloaden"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Downloading…"
 msgstr "Bezig met downloaden…"
 
@@ -3430,16 +3434,12 @@ msgstr "Laatste controle {0}: gewijzigd"
 msgid "Last check {0}: no changes"
 msgstr "Laatste controle {0}: geen wijzigingen"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Later"
 msgstr "Later"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Launch app"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Launch cloud agent"
 msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
@@ -4074,10 +4074,6 @@ msgstr "Geen bots gevonden"
 msgid "No longer active"
 msgstr "Niet langer actief"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "No managed app catalog is configured on this deployment."
-msgstr "Er is geen beheerde appcatalogus geconfigureerd voor deze implementatie."
-
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
 msgstr "Geen overeenkomende artefacten op deze pagina."
@@ -4386,10 +4382,6 @@ msgstr "Pagina {page} van {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty-incident"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Paid request"
-msgstr ""
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4745,7 +4737,7 @@ msgid "Redirect URI"
 msgstr "Omleidings-URI"
 
 #: src/App.tsx
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 msgid "Refresh"
 msgstr "Vernieuwen"
 
@@ -4922,10 +4914,6 @@ msgid "Replying to {0}"
 msgstr "Antwoordt op {0}"
 
 #: src/lib/builtin-tool-labels.ts
-msgid "Request purchase"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
 msgid "Request secret"
 msgstr ""
 
@@ -4978,7 +4966,7 @@ msgstr "Paneel van grootte veranderen"
 msgid "Respond to agent connection"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Restart to update"
 msgstr "Herstarten om bij te werken"
 
@@ -6202,7 +6190,7 @@ msgstr "Vastzetten opheffen"
 msgid "Unsupported file type: {0}"
 msgstr "Niet-ondersteund bestandstype: {0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Up to date"
 msgstr "Actueel"
 
@@ -6648,7 +6636,3 @@ msgstr "Je spraakaanbieder heeft geen tegoed meer."
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "Je spraakaanbieder heeft de sleutel geweigerd."
-
-#: src/pages/Auth.tsx
-msgid "Contact"
-msgstr ""

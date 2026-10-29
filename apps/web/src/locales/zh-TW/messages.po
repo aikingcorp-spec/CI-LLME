@@ -1259,7 +1259,7 @@ msgstr "檢查間隔"
 msgid "Check failed: {0}"
 msgstr "檢查失敗：{0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Check for updates"
 msgstr "檢查更新"
 
@@ -1296,7 +1296,7 @@ msgid "Checking connection…"
 msgstr "正在檢查連線…"
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "正在檢查…"
@@ -1362,7 +1362,7 @@ msgstr "清除篩選條件 {label}"
 msgid "Clearing…"
 msgstr "正在清空…"
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1704,6 +1704,10 @@ msgstr "與 {0} 的連線仍在等待。可以關閉此視窗稍後再看。"
 msgid "Connector"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
 msgid "Contains code to run"
@@ -1962,7 +1966,7 @@ msgstr "無法安裝連接器"
 msgid "Could not install plugin"
 msgstr ""
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/user-devices.ts
 #: src/pages/KnowledgeSection.tsx
@@ -2520,11 +2524,11 @@ msgstr "描述"
 msgid "Design"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop app"
 msgstr "桌面應用程式"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop update"
 msgstr "桌面版更新"
 
@@ -2645,7 +2649,7 @@ msgstr "下載 {name}"
 msgid "Download CSV"
 msgstr "下載 CSV"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Downloading…"
 msgstr "下載中…"
 
@@ -3431,16 +3435,12 @@ msgstr "上次檢查 {0}：有變化"
 msgid "Last check {0}: no changes"
 msgstr "上次檢查 {0}：無變化"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Later"
 msgstr "稍後"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Launch app"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Launch cloud agent"
 msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
@@ -4075,10 +4075,6 @@ msgstr "沒有符合的機器人"
 msgid "No longer active"
 msgstr "已停用"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "No managed app catalog is configured on this deployment."
-msgstr "此部署尚未設定受管理的應用程式目錄。"
-
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
 msgstr "此頁面沒有符合的成品。"
@@ -4387,10 +4383,6 @@ msgstr "第 {page} 頁，共 {count} 頁"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty 事件"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Paid request"
-msgstr ""
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4746,7 +4738,7 @@ msgid "Redirect URI"
 msgstr "重新導向 URI"
 
 #: src/App.tsx
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 msgid "Refresh"
 msgstr "重新整理"
 
@@ -4923,10 +4915,6 @@ msgid "Replying to {0}"
 msgstr "正在回覆 {0}"
 
 #: src/lib/builtin-tool-labels.ts
-msgid "Request purchase"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
 msgid "Request secret"
 msgstr ""
 
@@ -4979,7 +4967,7 @@ msgstr "調整面板大小"
 msgid "Respond to agent connection"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Restart to update"
 msgstr "重新啟動以更新"
 
@@ -6203,7 +6191,7 @@ msgstr "取消置頂"
 msgid "Unsupported file type: {0}"
 msgstr "不支援的檔案類型：{0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Up to date"
 msgstr "已是最新"
 
@@ -6649,7 +6637,3 @@ msgstr "你的語音供應商額度已用完。"
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "你的語音供應商拒絕了該金鑰。"
-
-#: src/pages/Auth.tsx
-msgid "Contact"
-msgstr ""

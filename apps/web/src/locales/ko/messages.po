@@ -1258,7 +1258,7 @@ msgstr "확인 주기"
 msgid "Check failed: {0}"
 msgstr "확인 실패: {0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Check for updates"
 msgstr "업데이트 확인"
 
@@ -1295,7 +1295,7 @@ msgid "Checking connection…"
 msgstr "연결 확인 중…"
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "확인 중…"
@@ -1361,7 +1361,7 @@ msgstr ""
 msgid "Clearing…"
 msgstr "비우는 중…"
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1703,6 +1703,10 @@ msgstr "{0} 연결이 아직 진행 중입니다. 이 창을 닫고 나중에 �
 msgid "Connector"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
 msgid "Contains code to run"
@@ -1961,7 +1965,7 @@ msgstr "도구 연결을 추가하지 못했습니다."
 msgid "Could not install plugin"
 msgstr ""
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/user-devices.ts
 #: src/pages/KnowledgeSection.tsx
@@ -2519,11 +2523,11 @@ msgstr "설명"
 msgid "Design"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop app"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop update"
 msgstr ""
 
@@ -2644,7 +2648,7 @@ msgstr "{name} 다운로드"
 msgid "Download CSV"
 msgstr "CSV 다운로드"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Downloading…"
 msgstr ""
 
@@ -3430,16 +3434,12 @@ msgstr "마지막 확인 {0}: 변경됨"
 msgid "Last check {0}: no changes"
 msgstr "마지막 확인 {0}: 변경 없음"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Later"
 msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Launch app"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Launch cloud agent"
 msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
@@ -4074,10 +4074,6 @@ msgstr ""
 msgid "No longer active"
 msgstr "이미 종료된 요청입니다"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "No managed app catalog is configured on this deployment."
-msgstr "이 서버에는 관리형 앱 목록이 설정되지 않았습니다."
-
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
 msgstr ""
@@ -4386,10 +4382,6 @@ msgstr "{page} / {count}페이지"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty 인시던트"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Paid request"
-msgstr ""
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4745,7 +4737,7 @@ msgid "Redirect URI"
 msgstr "리디렉션 URI"
 
 #: src/App.tsx
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 msgid "Refresh"
 msgstr "새로고침"
 
@@ -4922,10 +4914,6 @@ msgid "Replying to {0}"
 msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
-msgid "Request purchase"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
 msgid "Request secret"
 msgstr ""
 
@@ -4978,7 +4966,7 @@ msgstr "패널 크기 조절"
 msgid "Respond to agent connection"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Restart to update"
 msgstr ""
 
@@ -6202,7 +6190,7 @@ msgstr "고정 해제"
 msgid "Unsupported file type: {0}"
 msgstr "지원하지 않는 파일 형식: {0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Up to date"
 msgstr "최신 상태"
 
@@ -6648,7 +6636,3 @@ msgstr "음성 서비스 크레딧이 모두 소진되었습니다."
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "음성 서비스에서 키를 거부했습니다."
-
-#: src/pages/Auth.tsx
-msgid "Contact"
-msgstr ""

@@ -1258,7 +1258,7 @@ msgstr "Kiểm tra mỗi"
 msgid "Check failed: {0}"
 msgstr "Kiểm tra không thành công: {0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Check for updates"
 msgstr "Kiểm tra bản cập nhật"
 
@@ -1295,7 +1295,7 @@ msgid "Checking connection…"
 msgstr "Đang kiểm tra kết nối…"
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "Đang kiểm tra…"
@@ -1361,7 +1361,7 @@ msgstr "Xóa bộ lọc {label}"
 msgid "Clearing…"
 msgstr "Đang xóa…"
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1703,6 +1703,10 @@ msgstr "Kết nối tới {0} vẫn đang chờ. Bạn có thể đóng cửa s�
 msgid "Connector"
 msgstr "Bộ kết nối"
 
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr "Liên hệ"
+
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
 msgid "Contains code to run"
@@ -1961,7 +1965,7 @@ msgstr "Không thể cài bộ kết nối"
 msgid "Could not install plugin"
 msgstr "Không thể cài tiện ích mở rộng"
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/user-devices.ts
 #: src/pages/KnowledgeSection.tsx
@@ -2519,11 +2523,11 @@ msgstr "Mô tả"
 msgid "Design"
 msgstr "Thiết kế"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop app"
 msgstr "Ứng dụng máy tính"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop update"
 msgstr "Cập nhật ứng dụng máy tính"
 
@@ -2644,7 +2648,7 @@ msgstr "Tải xuống {name}"
 msgid "Download CSV"
 msgstr "Tải CSV"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Downloading…"
 msgstr "Đang tải xuống…"
 
@@ -3430,17 +3434,13 @@ msgstr "Kiểm tra lần cuối {0}: có thay đổi"
 msgid "Last check {0}: no changes"
 msgstr "Kiểm tra lần cuối {0}: không có thay đổi"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Later"
 msgstr "Để sau"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Launch app"
 msgstr "Mở ứng dụng"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Launch cloud agent"
-msgstr "Chạy tác nhân đám mây"
 
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Leave"
@@ -4074,10 +4074,6 @@ msgstr "Không có bot phù hợp"
 msgid "No longer active"
 msgstr "Không còn hoạt động"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "No managed app catalog is configured on this deployment."
-msgstr "Chưa có ứng dụng để hiển thị."
-
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
 msgstr "Không có sản phẩm phù hợp trên trang này."
@@ -4386,10 +4382,6 @@ msgstr "Trang {page} / {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "Sự cố PagerDuty"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Paid request"
-msgstr "Yêu cầu trả phí"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4745,7 +4737,7 @@ msgid "Redirect URI"
 msgstr "URI chuyển hướng"
 
 #: src/App.tsx
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 msgid "Refresh"
 msgstr "Tải lại"
 
@@ -4922,10 +4914,6 @@ msgid "Replying to {0}"
 msgstr "Đang trả lời {0}"
 
 #: src/lib/builtin-tool-labels.ts
-msgid "Request purchase"
-msgstr "Yêu cầu mua hàng"
-
-#: src/lib/builtin-tool-labels.ts
 msgid "Request secret"
 msgstr "Yêu cầu bí mật"
 
@@ -4978,7 +4966,7 @@ msgstr "Đổi kích thước bảng điều khiển"
 msgid "Respond to agent connection"
 msgstr "Phản hồi kết nối tác nhân"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Restart to update"
 msgstr "Khởi động lại để cập nhật"
 
@@ -6202,7 +6190,7 @@ msgstr "Bỏ ghim"
 msgid "Unsupported file type: {0}"
 msgstr "Loại tệp không được hỗ trợ: {0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Up to date"
 msgstr "Đã là bản mới nhất"
 
@@ -6648,7 +6636,3 @@ msgstr "Nhà cung cấp giọng nói của bạn đã hết tín dụng."
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "Khoá API của nhà cung cấp giọng nói bị từ chối."
-
-#: src/pages/Auth.tsx
-msgid "Contact"
-msgstr "Liên hệ"

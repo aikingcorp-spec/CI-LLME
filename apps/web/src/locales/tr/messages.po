@@ -1258,7 +1258,7 @@ msgstr "Kontrol aralığı"
 msgid "Check failed: {0}"
 msgstr "Kontrol başarısız: {0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Check for updates"
 msgstr ""
 
@@ -1295,7 +1295,7 @@ msgid "Checking connection…"
 msgstr "Bağlantı kontrol ediliyor…"
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr ""
@@ -1361,7 +1361,7 @@ msgstr ""
 msgid "Clearing…"
 msgstr "Temizleniyor…"
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1703,6 +1703,10 @@ msgstr "{0} bağlantısı hâlâ beklemede. Bunu kapatıp daha sonra tekrar kont
 msgid "Connector"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Contact"
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
 msgid "Contains code to run"
@@ -1961,7 +1965,7 @@ msgstr "Bağlayıcı kurulamadı"
 msgid "Could not install plugin"
 msgstr ""
 
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/user-devices.ts
 #: src/pages/KnowledgeSection.tsx
@@ -2519,11 +2523,11 @@ msgstr "Açıklama"
 msgid "Design"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop app"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Desktop update"
 msgstr ""
 
@@ -2644,7 +2648,7 @@ msgstr "{name} indir"
 msgid "Download CSV"
 msgstr "CSV indir"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Downloading…"
 msgstr ""
 
@@ -3430,16 +3434,12 @@ msgstr "Son kontrol {0}: değişiklik var"
 msgid "Last check {0}: no changes"
 msgstr "Son kontrol {0}: değişiklik yok"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Later"
 msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Launch app"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Launch cloud agent"
 msgstr ""
 
 #: src/pages/MessagingSettingsPanel.tsx
@@ -4074,10 +4074,6 @@ msgstr ""
 msgid "No longer active"
 msgstr "Artık etkin değil"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "No managed app catalog is configured on this deployment."
-msgstr ""
-
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
 msgstr ""
@@ -4385,10 +4381,6 @@ msgstr "Sayfa {page} / {count}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Paid request"
 msgstr ""
 
 #: src/components/PasskeySettings.tsx
@@ -4745,7 +4737,7 @@ msgid "Redirect URI"
 msgstr "Yönlendirme URI'si"
 
 #: src/App.tsx
-#: src/components/ErrorBoundary.tsx
+#: src/components/lazy-overlay.tsx
 msgid "Refresh"
 msgstr "Yenile"
 
@@ -4922,10 +4914,6 @@ msgid "Replying to {0}"
 msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
-msgid "Request purchase"
-msgstr ""
-
-#: src/lib/builtin-tool-labels.ts
 msgid "Request secret"
 msgstr ""
 
@@ -4978,7 +4966,7 @@ msgstr "Paneli yeniden boyutlandır"
 msgid "Respond to agent connection"
 msgstr ""
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Restart to update"
 msgstr ""
 
@@ -6202,7 +6190,7 @@ msgstr "Sabitlemeyi kaldır"
 msgid "Unsupported file type: {0}"
 msgstr "Desteklenmeyen dosya türü: {0}"
 
-#: src/components/DesktopUpdates.tsx
+#: src/components/DesktopUpdateViews.tsx
 msgid "Up to date"
 msgstr ""
 
@@ -6648,7 +6636,3 @@ msgstr "Ses sağlayıcınızın kredisi bitti."
 #: src/lib/user-error.ts
 msgid "Your voice provider key was rejected."
 msgstr "Ses sağlayıcınız anahtarı reddetti."
-
-#: src/pages/Auth.tsx
-msgid "Contact"
-msgstr ""

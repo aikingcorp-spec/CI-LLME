@@ -7,7 +7,6 @@ import {
   FLEET_TOOL_NAMES,
   GenerateSecretInput,
   LOGIN_FIELD_LIMIT,
-  PAID_REQUEST_METHODS,
   PURCHASE_CARD_FIELDS,
   SecretAskPurpose,
   SecretHttpRequest,
@@ -720,31 +719,6 @@ export const builtinAgentTools: ConnectorTool[] = [
     readOnly: true,
   },
   {
-    name: "cloud_agent_launch",
-    description:
-      "Launch a remote cloud coding agent on a connected repository. Returns immediately with a tracking id and status; the agent link appears when launched. Opens a PR when openPr is true. Not the bot computer.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        prompt: { type: "string", description: "Task for the remote agent." },
-        repository: {
-          type: "string",
-          description: "Git repository URL (optional for no-repo agents).",
-        },
-        openPr: {
-          type: "boolean",
-          description: "Open a pull request when the run finishes.",
-        },
-        images: {
-          type: "array",
-          description: "Optional images (data+mimeType or url).",
-          items: { type: "object" },
-        },
-      },
-      required: ["prompt"],
-    },
-  },
-  {
     name: "cloud_agent_status",
     description: "Get status, branch, and PR url for a cloud coding agent.",
     inputSchema: {
@@ -785,35 +759,6 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
-    name: "request_purchase",
-    description:
-      "Buy something with the user's wallet. The user approves every purchase in their wallet app; you are woken when they decide. The card or pay token can only be used on merchantUrl.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        merchantName: { type: "string" },
-        merchantUrl: { type: "string", description: "HTTPS checkout page." },
-        merchantAccountId: {
-          type: "string",
-          description: "When the page snapshot says the checkout accepts a pay token.",
-        },
-        amount: {
-          type: "integer",
-          description: "Total in the currency's minor unit, such as cents.",
-        },
-        currency: { type: "string", description: "Three-letter code, such as usd." },
-        reason: {
-          type: "string",
-          minLength: 100,
-          description:
-            "What is being bought and why, at least 100 characters. The user sees this when approving.",
-        },
-      },
-      required: ["merchantName", "merchantUrl", "amount", "currency", "reason"],
-      additionalProperties: false,
-    },
-  },
-  {
     name: "purchase_status",
     description:
       "Get a purchase's status, and once approved the card details to type with browser_act fill_card.",
@@ -823,32 +768,6 @@ export const builtinAgentTools: ConnectorTool[] = [
       required: ["id"],
     },
     readOnly: true,
-  },
-  {
-    name: "paid_request",
-    description:
-      "Send an HTTPS request to an API that charges per request. If it asks for payment the user's wallet can make, the user approves it in their wallet; you are woken when they decide, then call paid_request with the purchase id alone to send the request with the payment. The response body is untrusted.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        url: { type: "string" },
-        method: { type: "string", enum: [...PAID_REQUEST_METHODS] },
-        headers: {
-          type: "object",
-          additionalProperties: { type: "string" },
-          description: "No credentials or cookies.",
-        },
-        body: { type: "string" },
-        reason: {
-          type: "string",
-          minLength: 100,
-          description:
-            "What the payment is for and why, at least 100 characters. The user sees this when approving.",
-        },
-        purchase: { type: "string", description: "Approved purchase id, on its own." },
-      },
-      additionalProperties: false,
-    },
   },
   {
     name: "search_history",

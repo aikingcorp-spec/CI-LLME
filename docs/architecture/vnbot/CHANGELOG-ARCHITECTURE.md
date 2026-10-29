@@ -142,3 +142,12 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: Compose manifests and examples, installer, Kubernetes sandbox default, desktop updater, shared update mode, plugin preview diagnostics, neutral emulator hosts, navigation parsing, site catalog and competitor citations, updater assertions, setup and self-host documentation.
 - Invariants affected: source package identifiers remain Rakazo; sandbox contracts and data storage are unchanged. Frozen baseline documentation is unchanged.
 - ADR: [0008 — distribution and update opt-in](adr/0008-distribution-and-update-opt-in.md)
+
+## 2026-10-29 — Remove purchase and cloud launch tools
+
+- Pull request: none (local commits only).
+- Changed versus baseline: remove `cloud_agent_launch`, `request_purchase`, and `paid_request` from the shared tool contract, model schemas, labels, and dispatch registrations. Remove the scripted launch fixture and its E2E spec. Existing records and their status/recovery services remain readable.
+- Why: bots must not offer cloud launches or purchases as product capabilities.
+- Modules and files: `packages/contracts/src/builtin-tools.ts`, adapter tool definitions, selection, dispatch and scripted runtime, web labels and catalogs.
+- Invariants affected: these tools cannot be offered to a model or enabled through bot settings; existing storage is unchanged.
+- ADR: none (capability removal).
