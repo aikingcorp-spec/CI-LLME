@@ -66,12 +66,13 @@ describe("account email templates", () => {
       "welcome",
       () => welcomeEmail({ email: "user@example.test", name: "Test" }, "https://u.example.test"),
     ],
-  ] as const)("%s email is VNBot-branded only", async (name, create) => {
+  ] as const)("%s email is VNBot-branded only", async (_name, create) => {
     const message = await create();
     for (const part of [message.subject, message.html, message.text]) {
       expect(part).not.toMatch(/rakazo|open.?source|mã nguồn mở|github\.com|discord/i);
     }
     expect(message.subject).toMatch(/VNBot/);
-    if (!name.startsWith("sign-in code")) expect(message.text).toContain("Đội VNBot");
+    expect(message.text).toContain("Đội VNBot");
+    expect(message.html).toContain("Đội VNBot");
   });
 });
