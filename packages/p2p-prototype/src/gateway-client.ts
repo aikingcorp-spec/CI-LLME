@@ -30,16 +30,16 @@ async function json<T>(res: Response, what: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-const bearer = (userToken: string): Record<string, string> => ({
-  authorization: `Bearer ${userToken}`,
+const bearer = (sessionToken: string): Record<string, string> => ({
+  authorization: `Bearer ${sessionToken}`,
 });
 
 /** Signed-in user: asks the gateway for a one-time pairing code. */
 export async function startPairing(
   gatewayUrl: string,
-  userToken: string,
+  sessionToken: string,
 ): Promise<{ code: string; expiresAt: number }> {
-  const res = await postJson(`${gatewayUrl}/pair/start`, {}, bearer(userToken));
+  const res = await postJson(`${gatewayUrl}/pair/start`, {}, bearer(sessionToken));
   return json(res, "pair/start");
 }
 
@@ -66,22 +66,22 @@ export async function completePairing(
 /** Signed-in user: asks for a short-lived assertion to signal their node as `peerId`. */
 export async function openSession(
   gatewayUrl: string,
-  userToken: string,
+  sessionToken: string,
   nodeId: NodeId,
   peerId: string,
 ): Promise<Session> {
-  const res = await postJson(`${gatewayUrl}/sessions`, { nodeId, peerId }, bearer(userToken));
+  const res = await postJson(`${gatewayUrl}/sessions`, { nodeId, peerId }, bearer(sessionToken));
   return json(res, "sessions");
 }
 
 export async function unpairNode(
   gatewayUrl: string,
-  userToken: string,
+  sessionToken: string,
   nodeId: NodeId,
 ): Promise<void> {
   const res = await fetch(`${gatewayUrl}/nodes/${encodeURIComponent(nodeId)}`, {
     method: "DELETE",
-    headers: bearer(userToken),
+    headers: bearer(sessionToken),
   });
   if (!res.ok) throw new Error(`unpair failed: ${res.status}`);
 }

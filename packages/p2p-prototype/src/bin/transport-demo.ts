@@ -10,7 +10,7 @@ function required(name: string): string {
   return value;
 }
 const baseUrl = required("GATEWAY_URL");
-const userToken = required("USER_TOKEN");
+const sessionToken = required("SESSION_TOKEN");
 const nodeId = required("NODE_ID");
 const controller = new AbortController();
 const timeout = setTimeout(() => controller.abort(new Error("demo timed out")), 20_000);
@@ -32,9 +32,9 @@ async function run(name: string, transport: ClientTransport): Promise<void> {
   }
 }
 try {
-  await run("http", new HttpClientTransport({ baseUrl, userToken, nodeId }));
+  await run("http", new HttpClientTransport({ baseUrl, sessionToken, nodeId }));
   const peerId = randomUUID();
-  const { assertion } = await openSession(baseUrl, userToken, nodeId, peerId);
+  const { assertion } = await openSession(baseUrl, sessionToken, nodeId, peerId);
   channel = await DataChannelClientTransport.connect({
     signalUrl: `${baseUrl}/signal`,
     selfId: peerId,

@@ -9,13 +9,13 @@ Run `pnpm install` once, then work from this directory. All tokens below are fak
 Start the gateway in one terminal:
 
 ```sh
-USER_TOKENS=demo:change-me pnpm exec tsx src/bin/gateway.ts
+AUTH_BASE_URL=http://127.0.0.1:3100 pnpm exec tsx src/bin/gateway.ts
 ```
 
 In a second terminal, request a single-use pairing code (valid for 120 seconds):
 
 ```sh
-curl -X POST -H 'Authorization: Bearer change-me' http://127.0.0.1:8787/pair/start
+curl -X POST -H "Authorization: Bearer $SESSION_TOKEN" http://127.0.0.1:8787/pair/start
 ```
 
 Use the returned code to pair and start the node agent:
@@ -30,21 +30,44 @@ The node saves its Ed25519 key pair, pinned gateway public key, and allowed user
 The existing HTTP relay also requires the user bearer:
 
 ```sh
-curl -H 'Authorization: Bearer change-me' 'http://127.0.0.1:8787/nodes/demo/hello?x=1'
-curl -H 'Authorization: Bearer change-me' -d hi http://127.0.0.1:8787/nodes/demo/echo
+curl -H "Authorization: Bearer $SESSION_TOKEN" 'http://127.0.0.1:8787/nodes/demo/hello?x=1'
+curl -H "Authorization: Bearer $SESSION_TOKEN" -d hi http://127.0.0.1:8787/nodes/demo/echo
 ```
 
 Open a data channel between two processes:
 
 ```sh
-GATEWAY_URL=http://127.0.0.1:8787 USER_TOKEN=change-me pnpm exec tsx src/bin/webrtc-demo.ts
+GATEWAY_URL=http://127.0.0.1:8787 SESSION_TOKEN="$SESSION_TOKEN" pnpm exec tsx src/bin/webrtc-demo.ts
 ```
 
 This pairs a temporary node, obtains a client assertion, runs both peers, then unpairs the node. It exits 0 once both messages arrive.
 
-## Authentication
+## Sign-in
 
-`USER_TOKENS` is a comma-separated `user:token` map standing in for gateway login. `POST /sessions` with the user's bearer and `{ "nodeId": "demo", "peerId": "peer-a" }` returns a gateway-signed assertion lasting 60 seconds. Clients use `Authorization: Assertion <token>` for `/signal?peer=peer-a` and `/turn-credentials?peer=peer-a`; the peer id must match. Nodes authenticate signaling and TURN requests with a timestamped Ed25519 proof of their registered identity. Agent WebSockets require a signed hello within 30 seconds of the gateway clock.
+Sign in to vnbot.run through the existing app. Set `SESSION_TOKEN` to the **signed Better Auth session token returned by sign-in**, not a raw database session token. All client demos send it as `Authorization: Bearer <signed session token>`. For cookie clients, send the complete sign-in Cookie header instead, for example:
+
+```sh
+curl -X POST -H "Cookie: $SESSION_COOKIE" http://127.0.0.1:8787/pair/start
+```
+
+The gateway requires `AUTH_BASE_URL`, an explicit http(s) URL for the running app API. It calls `GET /api/auth/get-session`, forwarding only the incoming Cookie header verbatim and Bearer Authorization. User identity and node ownership use the verified app user ID; the registry also keeps email for display. No app auth code or database is duplicated here.
+
+Missing or expired sessions return `401 {"code":"NO_SESSION"}`. A session whose email is no longer invited returns `401 {"code":"EMAIL_NOT_INVITED"}`. Auth service failures and timeouts return `502 {"code":"AUTH_UNAVAILABLE"}`. The app separately rejects OTP sign-in for non-invited email with 403; the gateway does not handle OTP sign-in.
+
+Verification caches at most 1,000 SHA-256 credential keys. Positive results last at most 30 seconds and never past session expiry; negative results last five seconds. Invite removal or sign-out can therefore take up to 30 seconds to affect a cached session. Failures are never cached. Auth requests time out after five seconds and reject redirects. Credentials are never logged or forwarded through the HTTP relay.
+
+Run the live smoke test against a running app API and a gateway configured for that same API:
+
+```sh
+AUTH_BASE_URL=http://127.0.0.1:3100 GATEWAY_URL=http://127.0.0.1:8787 \
+  SESSION_TOKEN="$SESSION_TOKEN" pnpm exec tsx src/bin/login-e2e.ts
+```
+
+Optionally set `EXPIRED_SESSION_TOKEN` and `NOT_INVITED_SESSION_TOKEN` to exercise those cases with real signed sessions; unset cases print a skip. The script prints statuses/codes, pairs a temporary node in-process, calls echo over HTTP and a data channel through ClientTransport, then unpairs. It never prints credentials. Offline tests use a local fake auth HTTP server and require no sign-in or hosted service.
+
+## Node authentication
+
+`POST /sessions` with the user's bearer and `{ "nodeId": "demo", "peerId": "peer-a" }` returns a gateway-signed assertion lasting 60 seconds. Clients use `Authorization: Assertion <token>` for `/signal?peer=peer-a` and `/turn-credentials?peer=peer-a`; the peer id must match. Nodes authenticate signaling and TURN requests with a timestamped Ed25519 proof of their registered identity. Agent WebSockets require a signed hello within 30 seconds of the gateway clock.
 
 `node-auth.ts` verifies assertions against the pinned gateway key and allowed users, then mints local bearers with the same expiry. Its revocation callback lets a channel owner close a live channel on bearer/user revocation or expiry. This is a prototype session store, separate from the product's Better Auth sessions.
 
@@ -58,15 +81,15 @@ With coturn's `use-auth-secret` scheme, configure the gateway:
 
 ```sh
 TURN_URLS='turn:203.0.113.10:3478?transport=udp' TURN_SECRET_FILE=/path/to/turn-secret TURN_TTL_SECONDS=600 \
-  USER_TOKENS=demo:change-me pnpm exec tsx src/bin/gateway.ts
+  AUTH_BASE_URL=http://127.0.0.1:3100 pnpm exec tsx src/bin/gateway.ts
 ```
 
-Pair a node as above. Run the responder with that node's key file, and the client with its user token (separate machines for a real NAT test). `--relay` forces relay candidates:
+Pair a node as above. Run the responder with that node's key file, and the client with its signed session token (separate machines for a real NAT test). `--relay` forces relay candidates:
 
 ```sh
 GATEWAY_URL=http://127.0.0.1:8787 NODE_KEY_FILE=/tmp/p2p-demo-node.json \
   pnpm exec tsx src/bin/turn-demo.ts --self demo --remote peer-a --relay
-GATEWAY_URL=http://127.0.0.1:8787 USER_TOKEN=change-me \
+GATEWAY_URL=http://127.0.0.1:8787 SESSION_TOKEN="$SESSION_TOKEN" \
   pnpm exec tsx src/bin/turn-demo.ts --self peer-a --remote demo --initiator --relay
 ```
 
@@ -87,20 +110,20 @@ The probe handles the 401 realm/nonce challenge and long-term MESSAGE-INTEGRITY.
 
 `pnpm check` and `pnpm test` run the type check and offline tests, including published STUN integrity vectors. No live TURN server is required for the suite.
 
-Without TURN, `iceServers` defaults to `[]`: host candidates work on the same machine or LAN. The transports implement the ADR seam inside this prototype; the production apps and Better Auth are not integrated. HTTP relay subscriptions are buffered. The gateway stores no chat and logs method, path, and status only. Pairing assumes a trusted gateway connection (loopback here; HTTPS/WSS for remote use).
+Without TURN, `iceServers` defaults to `[]`: host candidates work on the same machine or LAN. The transports implement the ADR seam inside this prototype; the production app transports are not integrated. The gateway verifies sign-in against the existing Better Auth API. HTTP relay subscriptions are buffered. The gateway stores no chat and logs method, path, and status only. Pairing assumes a trusted gateway connection (loopback here; HTTPS/WSS for remote use).
 
 ## ClientTransport
 
 Start the gateway and paired node agent using the commands above, then run:
 
 ```sh
-GATEWAY_URL=http://127.0.0.1:8787 USER_TOKEN=change-me NODE_ID=demo \
+GATEWAY_URL=http://127.0.0.1:8787 SESSION_TOKEN="$SESSION_TOKEN" NODE_ID=demo \
   pnpm exec tsx src/bin/transport-demo.ts
 ```
 
 The demo calls `echo` and subscribes to `ticks` through both `HttpClientTransport` and `DataChannelClientTransport`. It prints response status/body, chunk timestamps, and the selected ICE candidate pair. The default node handler emits three `data: tick i\n\n` event-stream chunks. Both paths share the node's handler. `NODE_TARGET` forwards RPC to a local API instead; the demo procedures require the default demo handler.
 
-`HttpClientTransport({ baseUrl, nodeId, userToken, fetch? })` POSTs to the authenticated gateway HTTP relay. This v0 relay buffers the entire response: `subscribe` yields one combined chunk after completion, so timestamps do not show individual tick arrival. Abort stops the consumer and sends relay cancellation to the node. True HTTP streaming is a v0 limitation.
+`HttpClientTransport({ baseUrl, nodeId, sessionToken, fetch? })` POSTs to the authenticated gateway HTTP relay. This v0 relay buffers the entire response: `subscribe` yields one combined chunk after completion, so timestamps do not show individual tick arrival. Abort stops the consumer and sends relay cancellation to the node. True HTTP streaming is a v0 limitation.
 
 `DataChannelClientTransport.connect({ signalUrl, selfId, remoteId, initiator: true, authorization: "Assertion …", assertion, signal? })` uses `connectPeer`. Send only the short-lived gateway assertion through signaling. The data channel exchanges `hello`/`welcome`, then sends the node-issued bearer on every request, chunk, response, and cancellation. The node validates each inbound bearer; local revocation or assertion expiry closes the channel and cancels subscriptions. `close()` releases the peer. `signal` on connection setup cancels connection establishment; each `ClientCall.signal` cancels its request independently.
 

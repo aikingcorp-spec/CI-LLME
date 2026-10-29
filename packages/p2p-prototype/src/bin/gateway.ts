@@ -3,24 +3,12 @@ import { startGateway } from "../gateway.js";
 import { readKeyFile, writeKeyFile } from "../key-file.js";
 import type { KeyPair } from "../pairing.js";
 import { generateKeyPair } from "../pairing.js";
+import { createHttpSessionVerifier } from "../session-verifier.js";
 import type { TurnConfig } from "../turn-credentials.js";
 
-const tokens = process.env.USER_TOKENS;
-if (!tokens) {
-  console.error("USER_TOKENS is required, e.g. USER_TOKENS=alice:change-me");
-  process.exit(1);
-}
-
-const userTokens = new Map<string, string>();
-for (const pair of tokens.split(",")) {
-  const [user, ...rest] = pair.split(":");
-  const token = rest.join(":");
-  if (!user || !token) {
-    console.error("USER_TOKENS entries must look like user:token");
-    process.exit(1);
-  }
-  userTokens.set(user, token);
-}
+const authBaseUrl = process.env.AUTH_BASE_URL;
+if (!authBaseUrl) throw new Error("AUTH_BASE_URL is required");
+const userVerifier = createHttpSessionVerifier({ authBaseUrl });
 
 function readGatewayKey(): KeyPair | undefined {
   const path = process.env.GATEWAY_KEY_FILE;
@@ -58,7 +46,7 @@ function readTurnConfig(): TurnConfig | undefined {
 const gateway = await startGateway({
   port: Number(process.env.PORT ?? 8787),
   host: process.env.HOST,
-  userTokens,
+  userVerifier,
   gatewayKey: readGatewayKey(),
   turn: readTurnConfig(),
 });

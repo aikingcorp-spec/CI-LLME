@@ -23,7 +23,7 @@ const { values } = parseArgs({
 });
 if (!gatewayUrl || !values.self || !values.remote) {
   console.error(
-    "usage: GATEWAY_URL=http://127.0.0.1:8787 USER_TOKEN=... turn-demo.ts --self <peer id> --remote <node id> --initiator [--relay]\n" +
+    "usage: GATEWAY_URL=http://127.0.0.1:8787 SESSION_TOKEN=... turn-demo.ts --self <peer id> --remote <node id> --initiator [--relay]\n" +
       "       GATEWAY_URL=http://127.0.0.1:8787 NODE_KEY_FILE=... turn-demo.ts --self <node id> --remote <peer id> [--relay]",
   );
   process.exit(1);
@@ -49,9 +49,9 @@ function summarize(candidates: string[]): string {
 // responder is the paired node and signs in with its own key.
 const authorize = async (): Promise<string> => {
   if (initiator) {
-    const userToken = process.env.USER_TOKEN;
-    if (!userToken) throw new Error("USER_TOKEN is required for the initiator");
-    return `Assertion ${(await openSession(gatewayUrl, userToken, remote, self)).assertion}`;
+    const sessionToken = process.env.SESSION_TOKEN;
+    if (!sessionToken) throw new Error("SESSION_TOKEN is required for the initiator");
+    return `Assertion ${(await openSession(gatewayUrl, sessionToken, remote, self)).assertion}`;
   }
   const keyFile = process.env.NODE_KEY_FILE;
   const identity = keyFile ? readKeyFile(keyFile) : undefined;

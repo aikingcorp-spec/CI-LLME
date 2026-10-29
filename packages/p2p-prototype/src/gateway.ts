@@ -1,4 +1,4 @@
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -19,19 +19,20 @@ import {
 } from "./pairing.js";
 import type { Hello, NodeFrame, NodeId, RelayRequest, RelayResponse } from "./protocol.js";
 import { decodeNodeFrame, encodeFrame } from "./protocol.js";
+import type { UserVerifier } from "./session-verifier.js";
 import type { TurnConfig } from "./turn-credentials.js";
 import { mintTurnCredentials } from "./turn-credentials.js";
 
 export interface NodeRecord {
   user: string;
+  email: string;
   publicKey: string;
   revoked: boolean;
 }
 export interface GatewayOptions {
   port: number;
   host?: string;
-  /** Stands in for vnbot.run sign-in: user -> static bearer token. */
-  userTokens: Map<string, string>;
+  userVerifier: UserVerifier;
   /** Generated at start when omitted, so assertions do not survive a restart. */
   gatewayKey?: KeyPair;
   /** Paired nodes. Pass the same map to a restarted gateway to keep pairings. */
@@ -62,6 +63,7 @@ const CLOSE_FORBIDDEN_TARGET = 1008;
 const CLOSE_UNAUTHORIZED = 4401;
 const DROPPED_REQUEST_HEADERS = new Set([
   "authorization",
+  "cookie",
   "host",
   "connection",
   "content-length",
@@ -90,14 +92,6 @@ interface PendingRequest {
   nodeId: NodeId;
   timer: NodeJS.Timeout;
   settle(status: number, response?: RelayResponse): void;
-}
-
-function digest(s: string): Buffer {
-  return createHash("sha256").update(s).digest();
-}
-
-function tokenMatches(expected: string | undefined, given: string): boolean {
-  return expected !== undefined && timingSafeEqual(digest(expected), digest(given));
 }
 
 /** The credential of an `Authorization: <scheme> <credential>` header, scheme matched case-insensitively. */
@@ -163,7 +157,7 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
   const clock = o.clock ?? Date.now;
   const gatewayKey = o.gatewayKey ?? generateKeyPair();
   const registry = o.registry ?? new Map<NodeId, NodeRecord>();
-  const pairing = createPairingCodes({ clock });
+  const pairing = createPairingCodes<{ id: string; email: string }>({ clock });
   const nodes = new Map<NodeId, WebSocket>();
   const peers = new Map<string, PeerEntry>();
   const queuedSignals = new Map<string, QueuedSignal[]>();
@@ -244,13 +238,16 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     );
   };
 
-  const userFor = (req: IncomingMessage): string | undefined => {
-    const given = credential(req, "Bearer");
-    let found: string | undefined;
-    if (given !== undefined) {
-      for (const [user, token] of o.userTokens) if (tokenMatches(token, given)) found = user;
+  const userFor = async (req: IncomingMessage, res: ServerResponse) => {
+    const result = await o.userVerifier.verify({
+      cookie: req.headers.cookie,
+      authorization: req.headers.authorization,
+    });
+    if (!result.ok) {
+      respondJson(res, result.status, { code: result.code });
+      return undefined;
     }
-    return found;
+    return result.user;
   };
 
   const ownedNode = (user: string, nodeId: NodeId): NodeRecord | undefined => {
@@ -354,9 +351,9 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     }
   };
 
-  const pairStart = (req: IncomingMessage, res: ServerResponse): number => {
-    const user = userFor(req);
-    if (user === undefined) return respond(res, 401, "unauthorized");
+  const pairStart = async (req: IncomingMessage, res: ServerResponse): Promise<number> => {
+    const user = await userFor(req, res);
+    if (user === undefined) return res.statusCode;
     return respondJson(res, 200, pairing.issue(user));
   };
 
@@ -379,13 +376,18 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
       : undefined;
     if (user === undefined) return respond(res, 401, "unauthorized");
     if (registry.has(nodeId)) return respond(res, 409, "node id taken");
-    registry.set(nodeId, { user, publicKey: nodePublicKey, revoked: false });
-    return respondJson(res, 200, { gatewayPublicKey: gatewayKey.publicKey, user });
+    registry.set(nodeId, {
+      user: user.id,
+      email: user.email,
+      publicKey: nodePublicKey,
+      revoked: false,
+    });
+    return respondJson(res, 200, { gatewayPublicKey: gatewayKey.publicKey, user: user.id });
   };
 
   const openSession = async (req: IncomingMessage, res: ServerResponse): Promise<number> => {
-    const user = userFor(req);
-    if (user === undefined) return respond(res, 401, "unauthorized");
+    const user = await userFor(req, res);
+    if (user === undefined) return res.statusCode;
     const body = await readJson(req);
     const { nodeId, peerId } = body ?? {};
     if (
@@ -397,17 +399,21 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     ) {
       return respond(res, 400, "bad request");
     }
-    if (ownedNode(user, nodeId) === undefined) return respond(res, 404, "unknown node");
+    if (ownedNode(user.id, nodeId) === undefined) return respond(res, 404, "unknown node");
     const exp = clock() + ASSERTION_TTL_MS;
-    const assertion = signAssertion(gatewayKey, { nodeId, user, peerId, exp });
+    const assertion = signAssertion(gatewayKey, { nodeId, user: user.id, peerId, exp });
     return respondJson(res, 200, { assertion, nodeId, peerId, exp });
   };
 
-  const unpair = (req: IncomingMessage, res: ServerResponse, nodeId: NodeId): number => {
-    const user = userFor(req);
-    if (user === undefined) return respond(res, 401, "unauthorized");
+  const unpair = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+    nodeId: NodeId,
+  ): Promise<number> => {
+    const user = await userFor(req, res);
+    if (user === undefined) return res.statusCode;
     const record = registry.get(nodeId);
-    if (record?.user !== user) return respond(res, 404, "unknown node");
+    if (record?.user !== user.id) return respond(res, 404, "unknown node");
     record.revoked = true;
     disconnectNode(nodeId);
     return respond(res, 204, "");
@@ -494,9 +500,9 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     if (route?.[1] !== undefined) {
       const nodeId = decodeURIComponent(route[1]);
       if (route[2] === undefined && method === "DELETE") return unpair(req, res, nodeId);
-      const user = userFor(req);
-      if (user === undefined) return respond(res, 401, "unauthorized");
-      if (ownedNode(user, nodeId) === undefined) return respond(res, 404, "unknown node");
+      const user = await userFor(req, res);
+      if (user === undefined) return res.statusCode;
+      if (ownedNode(user.id, nodeId) === undefined) return respond(res, 404, "unknown node");
       return relayHttp(req, res, nodeId, (route[2] ?? "/") + url.search);
     }
     return respond(res, 404, "not found");

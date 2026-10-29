@@ -50,24 +50,26 @@ function spawnPeer(side: string, authorization: string, nodeId: string): Promise
 
 // Pairs a throwaway node with the signed-in user, runs both sides, then unpairs it again.
 async function runDemo(url: string): Promise<number> {
-  const userToken = process.env.USER_TOKEN;
-  if (!userToken) {
-    console.error("USER_TOKEN is required, e.g. USER_TOKEN=change-me");
+  const sessionToken = process.env.SESSION_TOKEN;
+  if (!sessionToken) {
+    console.error(
+      "SESSION_TOKEN is required, use the signed Better Auth session token from sign-in",
+    );
     return 1;
   }
   const nodeId = `demo-${randomBytes(3).toString("hex")}`;
   const keyPair = generateKeyPair();
-  const { code } = await startPairing(url, userToken);
+  const { code } = await startPairing(url, sessionToken);
   await completePairing(url, code, nodeId, keyPair);
   try {
-    const { assertion } = await openSession(url, userToken, nodeId, CLIENT_PEER);
+    const { assertion } = await openSession(url, sessionToken, nodeId, CLIENT_PEER);
     const codes = await Promise.all([
       spawnPeer("a", `Assertion ${assertion}`, nodeId),
       spawnPeer("b", nodeAuthorization(keyPair, nodeId), nodeId),
     ]);
     return codes.every((c) => c === 0) ? 0 : 1;
   } finally {
-    await unpairNode(url, userToken, nodeId);
+    await unpairNode(url, sessionToken, nodeId);
   }
 }
 

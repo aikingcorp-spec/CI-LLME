@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
+import { startFakeAuthServer } from "./fake-auth-server.js";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
 import { openSession } from "./gateway-client.js";
@@ -14,9 +15,12 @@ const TOKEN = "test-token";
 const keyPair = generateKeyPair();
 const headers = { authorization: `Bearer ${TOKEN}` };
 const options = () => ({
-  userTokens: new Map([["user", TOKEN]]),
+  userVerifier: authServer.verifier,
   registry: new Map(
-    ["n1", "b"].map((id) => [id, { user: "user", publicKey: keyPair.publicKey, revoked: false }]),
+    ["n1", "b"].map((id) => [
+      id,
+      { user: "user", email: "user@example.test", publicKey: keyPair.publicKey, revoked: false },
+    ]),
   ),
 });
 async function assertionHeaders(gateway: Gateway, peerId = "peer-a", nodeId = "n1") {
@@ -256,4 +260,12 @@ describe("gateway pending signals", () => {
 
     expect(b.received).toEqual([]);
   });
+});
+
+let authServer: Awaited<ReturnType<typeof startFakeAuthServer>>;
+beforeAll(async () => {
+  authServer = await startFakeAuthServer();
+});
+afterAll(async () => {
+  await authServer.close();
 });

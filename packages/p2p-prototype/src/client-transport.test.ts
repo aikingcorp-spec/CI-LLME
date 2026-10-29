@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { cleanup } from "node-datachannel";
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { decodeChannelFrame } from "./channel-protocol.js";
 import type { ClientCall, ClientTransport } from "./client-transport.js";
 import { DataChannelClientTransport, HttpClientTransport } from "./client-transport.js";
+import { startFakeAuthServer } from "./fake-auth-server.js";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
-import { openSession } from "./gateway-client.js";
+import { completePairing, openSession, startPairing } from "./gateway-client.js";
 import type { NodeAgent } from "./node-agent.js";
 import { startNodeAgent } from "./node-agent.js";
 import { channelHttpHandler, demoHandler } from "./node-channel-server.js";
@@ -42,9 +43,10 @@ describe("ClientTransport over a real gateway and node agent", () => {
     gateway = await startGateway({
       port: 0,
       gatewayKey,
-      userTokens: new Map([["user", "token"]]),
-      registry: new Map([["node", { user: "user", publicKey: keyPair.publicKey, revoked: false }]]),
+      userVerifier: authServer.verifier,
     });
+    const { code } = await startPairing(gateway.url, "token");
+    await completePairing(gateway.url, code, "node", keyPair);
     const demo = demoHandler();
     const handler = {
       call: demo.call,
@@ -93,7 +95,11 @@ describe("ClientTransport over a real gateway and node agent", () => {
   }
   async function transport(kind: string): Promise<ClientTransport> {
     if (kind === "http")
-      return new HttpClientTransport({ baseUrl: gateway.url, nodeId: "node", userToken: "token" });
+      return new HttpClientTransport({
+        baseUrl: gateway.url,
+        nodeId: "node",
+        sessionToken: "token",
+      });
     const { peer, session } = await peerConnection();
     const client = new DataChannelClientTransport(peer, session.assertion);
     clients.push(client);
@@ -214,4 +220,12 @@ describe("ClientTransport over a real gateway and node agent", () => {
     ]);
     expect(results.map((res) => decode(res.body))).toEqual(["a", "b", "c"]);
   });
+});
+
+let authServer: Awaited<ReturnType<typeof startFakeAuthServer>>;
+beforeAll(async () => {
+  authServer = await startFakeAuthServer();
+});
+afterAll(async () => {
+  await authServer.close();
 });

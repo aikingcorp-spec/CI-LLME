@@ -20,10 +20,10 @@ export interface AssertionPayload {
   /** Expiry as epoch milliseconds. */
   exp: number;
 }
-export interface PairingCodes {
-  issue(user: string): { code: string; expiresAt: number };
+export interface PairingCodes<T = string> {
+  issue(user: T): { code: string; expiresAt: number };
   /** Consumes the code. Returns the user that issued it, or undefined for unknown, expired or used. */
-  redeem(code: string): string | undefined;
+  redeem(code: string): T | undefined;
 }
 export interface PairingCodeOptions {
   ttlMs?: number;
@@ -166,10 +166,10 @@ export function verifyAssertion(
 
 const hashCode = (code: string): string => createHash("sha256").update(code).digest("hex");
 
-export function createPairingCodes(o: PairingCodeOptions = {}): PairingCodes {
+export function createPairingCodes<T = string>(o: PairingCodeOptions = {}): PairingCodes<T> {
   const ttlMs = o.ttlMs ?? DEFAULT_PAIRING_TTL_MS;
   const clock = o.clock ?? Date.now;
-  const entries = new Map<string, { user: string; expiresAt: number }>();
+  const entries = new Map<string, { user: T; expiresAt: number }>();
 
   const purge = (): void => {
     const now = clock();

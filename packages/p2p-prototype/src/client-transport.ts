@@ -24,13 +24,13 @@ export class HttpClientTransport implements ClientTransport {
     private readonly options: {
       baseUrl: string;
       nodeId: string;
-      userToken: string;
+      sessionToken: string;
       fetch?: typeof fetch;
     },
   ) {}
   async call(req: ClientCall): Promise<ClientResponse> {
     const headers = new Headers(req.headers);
-    headers.set("authorization", `Bearer ${this.options.userToken}`);
+    headers.set("authorization", `Bearer ${this.options.sessionToken}`);
     const response = await (this.options.fetch ?? fetch)(
       `${this.options.baseUrl.replace(/\/$/, "")}/nodes/${encodeURIComponent(this.options.nodeId)}/rpc/${req.procedure.split("/").map(encodeURIComponent).join("/")}`,
       {

@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
+import { startFakeAuthServer } from "./fake-auth-server.js";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
 import { completePairing, openSession, startPairing, unpairNode } from "./gateway-client.js";
@@ -29,10 +30,7 @@ describe("gateway authentication", () => {
     key = generateKeyPair();
     gateway = await startGateway({
       port: 0,
-      userTokens: new Map([
-        ["user", TOKEN],
-        ["other", "other-token"],
-      ]),
+      userVerifier: authServer.verifier,
       clock: () => now,
       turn,
     });
@@ -234,4 +232,12 @@ describe("gateway authentication", () => {
     );
     expect(await closed).toBe(4401);
   });
+});
+
+let authServer: Awaited<ReturnType<typeof startFakeAuthServer>>;
+beforeAll(async () => {
+  authServer = await startFakeAuthServer();
+});
+afterAll(async () => {
+  await authServer.close();
 });

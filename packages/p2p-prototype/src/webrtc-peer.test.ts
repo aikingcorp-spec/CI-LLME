@@ -1,5 +1,6 @@
 import { cleanup } from "node-datachannel";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { startFakeAuthServer } from "./fake-auth-server.js";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
 import { openSession } from "./gateway-client.js";
@@ -14,8 +15,18 @@ describe("webrtc peer", () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     gateway = await startGateway({
       port: 0,
-      userTokens: new Map([["user", "token"]]),
-      registry: new Map([["b", { user: "user", publicKey: keyPair.publicKey, revoked: false }]]),
+      userVerifier: authServer.verifier,
+      registry: new Map([
+        [
+          "b",
+          {
+            user: "user",
+            email: "user@example.test",
+            publicKey: keyPair.publicKey,
+            revoked: false,
+          },
+        ],
+      ]),
     });
   });
 
@@ -56,4 +67,12 @@ describe("webrtc peer", () => {
     a.close();
     b.close();
   }, 20_000);
+});
+
+let authServer: Awaited<ReturnType<typeof startFakeAuthServer>>;
+beforeAll(async () => {
+  authServer = await startFakeAuthServer();
+});
+afterAll(async () => {
+  await authServer.close();
 });
