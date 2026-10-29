@@ -39,6 +39,7 @@ export const DEFAULT_RAKAZO_EMULATED_RELEASES: readonly EmulatedGithubRelease[] 
     name: "v0.4.2 — routine tools + connector emulators",
     body: "Routines can bind connector tools. Composio emulator covers GitHub releases offline.",
     publishedAt: "2026-08-28T12:00:00.000Z",
+    // brand-allow: offline eval fixture releases 2026-12-31 Kai (chờ Maya duyệt)
     htmlUrl: "https://github.com/elie222/rakazo/releases/tag/v0.4.2",
   },
   {
@@ -48,6 +49,7 @@ export const DEFAULT_RAKAZO_EMULATED_RELEASES: readonly EmulatedGithubRelease[] 
     name: "v0.4.1 — computer + plugin guidance",
     body: "Prefer connected plugins over browsing when reading app data.",
     publishedAt: "2026-08-20T12:00:00.000Z",
+    // brand-allow: offline eval fixture releases 2026-12-31 Kai (chờ Maya duyệt)
     htmlUrl: "https://github.com/elie222/rakazo/releases/tag/v0.4.1",
   },
 ];

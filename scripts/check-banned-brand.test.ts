@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { scanAllLiterals, scanLinguiSource, scanPo, scanRepo } from "./check-banned-brand.ts";
+import {
+  scanAllLiterals,
+  scanLinguiSource,
+  scanPo,
+  scanRepo,
+  scanUrls,
+} from "./check-banned-brand.ts";
 
 const terms = (findings: Array<{ term: string }>) => findings.map((f) => f.term);
 
@@ -53,5 +59,27 @@ describe("check-banned-brand", () => {
   it("honours a brand-allow comment on the line above", () => {
     const src = '// brand-allow: legal notice 2026-12 Maya\nconst s = "Rakazo";';
     expect(scanAllLiterals("p.ts", src)).toEqual([]);
+  });
+
+  it("flags banned terms in URLs in any case and any host form, but not in comments", () => {
+    const src = [
+      "// see https://github.com/elie222/rakazo",
+      'const ua = "Rakazo/0.1 (+https://GitHub.com/Elie222/Rakazo)";',
+      'const image = "ghcr.io/elie222/rakazo/app";',
+      'const store = "https://apps.apple.com/app/rakazo/id1";',
+      'const fine = "https://vnbot.run/#tai-ve";',
+    ].join("\n");
+    expect(terms(scanUrls("u.ts", src))).toEqual([
+      "GitHub.com/Elie222",
+      "Rakazo",
+      "elie222",
+      "rakazo",
+      "apps.apple.com/app/rakazo",
+    ]);
+  });
+
+  it("honours brand-allow on a URL", () => {
+    const src = '// brand-allow: emulator host 2026-12 Maya\nconst u = "https://rakazo.test";';
+    expect(scanUrls("u.ts", src)).toEqual([]);
   });
 });

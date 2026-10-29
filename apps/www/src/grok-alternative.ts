@@ -49,8 +49,11 @@ export const COMPARE_ROWS = [
 export const COMPARE_NOTE =
   "The Grok Bot column follows xAI's public Grok Bot docs and pricing page.";
 
+// brand-allow: cited competitor docs on the comparison page 2026-12-31 Kai (chờ Maya duyệt)
 export const GROK_SOURCES = [
+  // brand-allow: cited competitor docs on the comparison page 2026-12-31 Kai (chờ Maya duyệt)
   { label: "Grok Bot overview", href: "https://docs.x.ai/grok-bot/overview" },
+  // brand-allow: cited competitor docs on the comparison page 2026-12-31 Kai (chờ Maya duyệt)
   { label: "Grok Bot FAQ", href: "https://docs.x.ai/grok-bot/faq" },
   { label: "xAI pricing", href: "https://x.ai/pricing" },
 ] as const;

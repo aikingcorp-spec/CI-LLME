@@ -28,6 +28,7 @@ import { sandboxCommandArgv } from "./sandbox-command-environment.js";
 const DEFAULT_NAMESPACE = "rakazo-sandboxes";
 // Same default as the Compose stack. Pin a digest with KUBERNETES_SANDBOX_COMPUTER_IMAGE in
 // production so every pod runs the image the API was tested against.
+// brand-allow: only published computer image until VNBot publishes its own 2026-12-31 Kai (chờ Maya duyệt)
 const DEFAULT_COMPUTER_IMAGE = "ghcr.io/elie222/rakazo/computer:edge";
 const DEFAULT_READY_TIMEOUT_MS = 120_000;
 const WORKSPACE = "/home/rakazo";

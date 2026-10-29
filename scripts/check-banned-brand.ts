@@ -2,6 +2,8 @@
 // Term list: packages/core/src/banned-brand.ts (single source of truth).
 // Scans: msgstr of every web catalog; <Trans>, t``/msg`` literals in apps/web/src and
 // apps/mobile/src; every string literal in the email template and the bot prompt.
+// URLs: every http(s)/ghcr/github URL in any string literal of non-test source in apps/, packages/
+// and infra/, since a URL is shown to users or sent to third parties (User-Agent, store links).
 // Identifiers and import specifiers keep the Rakazo name (AGENTS.md) and are not scanned.
 // Exception: put `// brand-allow: <reason> <expiry> <approver>` on the line or the line above.
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -108,6 +110,17 @@ export function scanAllLiterals(file: string, source: string): Finding[] {
   return collect(file, source, spans);
 }
 
+const URL_TOKEN =
+  /(?:https?:\/\/|ghcr\.io\/|(?:github\.com|githubusercontent\.com)[/:])[^\s"'`()<>{}]*/giu;
+
+/** URLs inside string literals (any case). Comments are skipped; brand-allow applies. */
+export function scanUrls(file: string, source: string): Finding[] {
+  const spans: Array<[number, string]> = [];
+  for (const [index, text] of stringLiterals(source))
+    for (const m of text.matchAll(URL_TOKEN)) spans.push([index, m[0]]);
+  return collect(file, source, spans);
+}
+
 function walk(dir: string, accept: (path: string) => boolean): string[] {
   let entries: string[];
   try {
@@ -116,7 +129,8 @@ function walk(dir: string, accept: (path: string) => boolean): string[] {
     return [];
   }
   return entries.flatMap((name) => {
-    if (name === "node_modules" || name === "dist") return [];
+    if (["node_modules", "dist", "generated", "__fixtures__", ".astro", ".expo"].includes(name))
+      return [];
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return walk(path, accept);
     return accept(path) ? [path] : [];
@@ -132,9 +146,16 @@ export function scanRepo(root = ROOT): Finding[] {
     ...walk(join(root, "apps/web/src/locales"), (p) => p.endsWith(".po")).flatMap((p) =>
       scanPo(rel(p), read(p)),
     ),
-    ...["apps/web/src", "apps/mobile/src"]
+    // Mobile has no src/: its screens live in app/, components/ and lib/.
+    ...["apps/web/src", "apps/mobile/app", "apps/mobile/components", "apps/mobile/lib"]
       .flatMap((d) => walk(join(root, d), isSource))
       .flatMap((p) => scanLinguiSource(rel(p), read(p))),
+    ...["apps", "packages", "infra"]
+      .flatMap((d) =>
+        walk(join(root, d), (p) => (isSource(p) || p.endsWith(".astro")) && !p.includes("/e2e/")),
+      )
+      .filter((p) => !p.endsWith("packages/core/src/banned-brand.ts"))
+      .flatMap((p) => scanUrls(rel(p), read(p))),
     ...["packages/auth/src/email.tsx", "packages/adapters/src/pi-runtime.ts"].flatMap((p) =>
       scanAllLiterals(p, read(join(root, p))),
     ),

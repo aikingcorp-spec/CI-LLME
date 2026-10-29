@@ -5,6 +5,7 @@ export const SITE_DESCRIPTION =
 
 export const APP_URL = "https://vnbot.run";
 export const CATALOG_URL =
+  // brand-allow: existing public bucket name, not shown as text; rename needs a new bucket 2026-12-31 Kai (chờ Maya duyệt)
   "https://rakazo-public.fsn1.your-objectstorage.com/integrations/catalog.json";
 export const SUPPORT_EMAIL = "aiking.corp@gmail.com";
 export const DOWNLOAD_URL = "https://vnbot.run/#tai-ve";
@@ -13,4 +14,4 @@ export const IOS_APP_URL: string | null = null;
 export const ANDROID_APK_URL = DOWNLOAD_URL;
 export const OPENCLAW_ALTERNATIVE_PATH = "/openclaw-alternative/";
 export const INBOX_ZERO_URL =
-  "https://www.getinboxzero.com/?utm_source=rakazo&utm_medium=website&utm_campaign=footer";
+  "https://www.getinboxzero.com/?utm_source=vnbot&utm_medium=website&utm_campaign=footer";
