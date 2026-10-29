@@ -14,6 +14,16 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Invariants affected: install sources, ids and pins are unchanged; the guard still bans the same brand terms in text.
 - ADR: none.
 
+## 2026-10-29 — Server-side Wallet surface removed
+
+- Date: 2026-10-29.
+- Pull request: none (local change on `kai/wallet-server-removal`).
+- What changed versus baseline: the `paymentWallet.status/connect/disconnect` RPC methods, their API route module and router wiring are gone. `me` no longer returns `paymentWalletProvider`. The mobile Wallet settings screen, its link and its strings are removed (web already had no wallet settings). The wallet security-audit entries and the wallet-connected audit event are removed. `docs/self-host/payments.md` now says wallets cannot be connected.
+- Why: wallet connection is not part of VNBot; nothing in the product should let a user connect one.
+- Files / modules: `apps/api/src/router.ts`, `apps/api/src/app.ts`, `apps/api/src/security-audit.ts`, `apps/api/src/routes/shared.ts`, `packages/contracts/src/rpc.ts`, `packages/contracts/src/domain.ts`, mobile settings and locales, web e2e helper, testkit harness.
+- Invariants affected: the `payment_wallets` table, its migration, and all stored rows are untouched; no migration is added. Adapter-level purchase and wallet storage code stays, so `PAYMENT_WALLET_*` configuration still parses. Purchase tools are offered only to users with a connected wallet, so with no connect path they are never offered. No gateway data storage or mandatory hosted provider is introduced.
+- ADR: none; removal of an exposed surface within existing boundaries.
+
 ## 2026-10-29 — Catalog content exclusion and preview recovery
 
 - Date: 2026-10-29.
