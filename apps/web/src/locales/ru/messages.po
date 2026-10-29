@@ -4563,6 +4563,10 @@ msgstr ""
 msgid "Priority"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "Личный"
@@ -5539,6 +5543,10 @@ msgstr "Навыки попадают в библиотеку, общую для
 msgid "Skip"
 msgstr "Пропустить"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Пропустить или добавить ключ"
@@ -5784,6 +5792,10 @@ msgstr "Teams не настроен"
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Terms"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx

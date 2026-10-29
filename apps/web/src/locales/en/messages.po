@@ -4563,6 +4563,10 @@ msgstr "Previous settings sections"
 msgid "Priority"
 msgstr "Priority"
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr "Privacy"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "Private"
@@ -5539,6 +5543,10 @@ msgstr "Skills join the library all your bots share."
 msgid "Skip"
 msgstr "Skip"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr "Skip for now"
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Skip or deploy key"
@@ -5785,6 +5793,10 @@ msgstr "Teams not enabled"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
 msgstr "teardrop"
+
+#: src/pages/Auth.tsx
+msgid "Terms"
+msgstr "Terms"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Test"

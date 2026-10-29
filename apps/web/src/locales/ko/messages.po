@@ -4563,6 +4563,10 @@ msgstr ""
 msgid "Priority"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "Bot 전용"
@@ -5539,6 +5543,10 @@ msgstr "스킬은 모든 봇이 공유하는 라이브러리에 추가됩니다.
 msgid "Skip"
 msgstr "건너뛰기"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "건너뛰거나 배포 키"
@@ -5784,6 +5792,10 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Terms"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx

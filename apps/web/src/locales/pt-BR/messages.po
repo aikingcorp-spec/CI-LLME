@@ -4563,6 +4563,10 @@ msgstr ""
 msgid "Priority"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "Privado"
@@ -5539,6 +5543,10 @@ msgstr "As habilidades entram na biblioteca que todos os seus bots compartilham.
 msgid "Skip"
 msgstr "Pular"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Ignorar ou implantar chave"
@@ -5784,6 +5792,10 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Terms"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx

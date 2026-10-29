@@ -4563,6 +4563,10 @@ msgstr ""
 msgid "Priority"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Privacy"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "निजी"
@@ -5539,6 +5543,10 @@ msgstr "स्किल्स उस लाइब्रेरी में ज�
 msgid "Skip"
 msgstr "छोड़ें"
 
+#: src/pages/Onboarding.tsx
+msgid "Skip for now"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "छोड़ें या डिप्लॉय कुंजी दें"
@@ -5784,6 +5792,10 @@ msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "teardrop"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Terms"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
