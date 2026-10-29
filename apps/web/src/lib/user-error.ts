@@ -20,6 +20,8 @@ export function errorText(error: unknown, fallback = t`Something went wrong. Try
         ? error.message
         : undefined;
   if (typeof message === "string") {
+    if (message.includes("PLUGIN_SKILL_CONFLICT")) return t`This plugin has a skill with the same name as a built-in skill.`;
+    if (message.includes("CONNECTOR_TOOL_NAME_CONFLICT")) return t`This connector has a tool with the same name as a built-in tool.`;
     const normalized = normalizeRunError(message);
     if (
       normalized.kind === "credit" ||

@@ -1,6 +1,7 @@
 import { FLEET_TOOL_NAMES } from "@rakazo/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { builtinAgentTools } from "./builtin-tools.js";
+import { BOT_IDENTITY } from "./product-identity.js";
 
 type FakeTool = {
   name: string;
@@ -106,6 +107,9 @@ describe("helpers know who they are talking to", () => {
 
   it("tells the helper its task comes from the parent bot, not the user", () => {
     expect(seen.helperSystemPrompt).toContain('You are a VNBot subagent named "scout".');
+    expect(seen.helperSystemPrompt).toContain(BOT_IDENTITY);
+    expect(seen.helperSystemPrompt).not.toMatch(/You are a Rakazo|from Rakazo/);
+
     expect(seen.helperSystemPrompt).toContain(
       "Your task comes from the parent bot, not from the human user",
     );

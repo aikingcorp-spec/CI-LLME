@@ -83,7 +83,6 @@ import {
   resolveDeploymentModel,
   ScriptedAgentRuntime,
   SpaceMemoryProviderResolver,
-  StripeBillingProvider,
   sandboxProviderOptionsFromEnv,
   stripeBillingConfigFromEnv,
   toTeamChatInbound,
@@ -134,6 +133,7 @@ import { deleteAccountContent } from "./account-deletion.js";
 import { mountAppAssociation, nativePasskeys } from "./app-association.js";
 import { storeInboundAttachment } from "./artifacts.js";
 import { createBillingService } from "./billing.js";
+import { vnbotBillingProvider } from "./billing-off.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
 import { clientBuildMiddleware, readDeployedWebBuild } from "./client-build.js";
 import {
@@ -429,9 +429,11 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     throw new Error("EMAIL_EMULATOR requires API_HOST to be a loopback host");
   }
   const email: TransactionalEmailProvider | undefined = configuredEmail ?? localEmailEmulator;
-  const stripeBilling = stripeBillingConfigFromEnv(env);
-  const billingProvider: BillingProvider | undefined =
-    billingOverride ?? (stripeBilling ? new StripeBillingProvider(stripeBilling) : undefined);
+  const billingProvider = vnbotBillingProvider(
+    billingOverride,
+    Boolean(stripeBillingConfigFromEnv(env)),
+    (message) => logger.warn(message),
+  );
   const billing = billingProvider
     ? createBillingService({
         prisma,

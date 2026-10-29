@@ -38,9 +38,9 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         values,
       });
     case "Connect your own API key in Models.":
-    case "Subscribe in Billing to keep running bots.":
-    case "Connect your own API key in Models or choose Rakazo credits in Billing.":
     case "Connect your own API key in Models or choose VNBot credits in Billing.":
+    case "Connect your own API key in Models or choose Rakazo credits in Billing.":
+    case "Subscribe in Billing to keep running bots.":
       return i18n._({
         id: "Connect your own API key in Models.",
         message: "Connect your own API key in Models.",

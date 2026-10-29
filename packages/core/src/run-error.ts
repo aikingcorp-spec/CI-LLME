@@ -24,7 +24,7 @@ export const MODEL_REQUEST_LIMIT_ERROR =
 
 export const MISSING_MODEL_RUN_ERROR = "Connect a model in Settings before running bots.";
 
-/** A deployment model run while the organization has not chosen Rakazo credits. */
+/** A deployment model run while the organization has not configured an API key. */
 export const HOSTED_MODEL_CREDITS_REQUIRED_ERROR = "Connect your own API key in Models.";
 
 /** A run in a billing organization without a paid plan, credits, or free period. */
@@ -253,6 +253,7 @@ export function normalizeRunError(
   // Older nodes and persisted runs can still return the former funding advice.
   if (
     [
+      "Connect your own API key in Models.",
       "Connect your own API key in Models or choose Rakazo credits in Billing.",
       "Connect your own API key in Models or choose VNBot credits in Billing.",
       "Subscribe in Billing to keep running bots.",

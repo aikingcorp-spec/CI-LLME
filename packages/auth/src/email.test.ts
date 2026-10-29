@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   accountDeletionEmail,
+  identityCodeEmail,
   passwordResetEmail,
   signInCodeEmail,
   signInCodeLocale,
   verificationEmail,
 } from "./email.js";
+import { welcomeEmail } from "./welcome-email.js";
 
 describe("account email templates", () => {
   const url = "https://app.example.test/verify?token=fake-token&callbackURL=%2Fsign-in";
@@ -49,4 +51,28 @@ describe("account email templates", () => {
       expect(message.html).not.toContain("<a ");
     },
   );
+
+  it.each([
+    ["sign-in code vi", () => signInCodeEmail("user@example.test", "123456")],
+    ["sign-in code en", () => signInCodeEmail("user@example.test", "123456", { locale: "en" })],
+    ["verification", () => verificationEmail("user@example.test", url)],
+    [
+      "password reset",
+      () => passwordResetEmail({ id: "user-1", email: "user@example.test", name: "Test" }, url),
+    ],
+    ["account deletion", () => accountDeletionEmail("user@example.test", "123456")],
+    ["identity code", () => identityCodeEmail("user@example.test", "123456")],
+    [
+      "welcome",
+      () => welcomeEmail({ email: "user@example.test", name: "Test" }, "https://u.example.test"),
+    ],
+  ] as const)("%s email is VNBot-branded only", async (_name, create) => {
+    const message = await create();
+    for (const part of [message.subject, message.html, message.text]) {
+      expect(part).not.toMatch(/rakazo|open.?source|mã nguồn mở|github\.com|discord/i);
+    }
+    expect(message.subject).toMatch(/VNBot/);
+    expect(message.text).toContain("Đội VNBot");
+    expect(message.html).toContain("Đội VNBot");
+  });
 });

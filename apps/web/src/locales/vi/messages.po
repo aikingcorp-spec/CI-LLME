@@ -16,12 +16,12 @@ msgstr ""
 #. js-lingui-explicit-id
 #: src/App.tsx
 msgid "Page not found"
-msgstr ""
+msgstr "Không tìm thấy trang"
 
 #. js-lingui-explicit-id
 #: src/App.tsx
 msgid "Go home"
-msgstr ""
+msgstr "Về trang chủ"
 
 #: src/pages/shell/sidebar-roster.tsx
 msgid " (unread)"
@@ -1541,11 +1541,11 @@ msgstr "Hãy kết nối nhà cung cấp của mô hình này trước."
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "Connect your own API key in Models."
-msgstr ""
+msgstr "Hãy kết nối API key của bạn trong Mô hình."
 
 #: src/lib/user-error.ts
 msgid "Connect your own API key in Models."
-msgstr ""
+msgstr "Hãy kết nối API key của bạn trong Mô hình."
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2473,7 +2473,7 @@ msgstr "Docker giới hạn quyền truy cập máy tính của bạn để tăn
 
 #: src/components/SidebarFooter.tsx
 msgid "Docs"
-msgstr ""
+msgstr "Tài liệu"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Document changed. Reopen to edit the latest version."
@@ -2609,7 +2609,7 @@ msgstr "Nhập mã 6 số vừa được gửi tới <0>{trimmedEmail}</0>. Mã 
 
 #: src/pages/Auth.tsx
 msgid "Enter your email to get a 6-digit sign-in code."
-msgstr ""
+msgstr "Nhập email để nhận mã đăng nhập 6 số."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Environment variables"
@@ -2913,7 +2913,7 @@ msgstr "Bạn hãy kết thúc cuộc gọi rồi nhập mã trên màn hình."
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "hch-…"
-msgstr ""
+msgstr "mã hch-…"
 
 #: src/pages/RoutineEditor.tsx
 msgid "header"
@@ -6025,11 +6025,11 @@ msgstr "VNBot đang mở thử nghiệm giới hạn"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "vnbot-<space>"
-msgstr ""
+msgstr "vnbot-<space> (khoảng trống)"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
-msgstr ""
+msgstr "vnbot-shared và các ID bắt đầu bằng bot- được dành riêng cho VNBot."
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx

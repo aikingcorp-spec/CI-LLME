@@ -12,6 +12,15 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Files / modules: `apps/web/src/lib/ui-locale.ts`, `apps/web/src/lib/ui-locale.test.ts`.
 - Invariants affected: saved-choice normalization and storage key are unchanged. Playwright retains its English env override. Shared core and mobile locale behavior are unchanged.
 - ADR: [0004](adr/0004-vietnamese-default-locale.md) (update).
+## 2026-10-29 — Server-side audit fixes (APP-AUDIT-333cae3e)
+
+- Date: 2026-10-29
+- Pull request: branch `kai/audit-backend` (not yet opened), on top of `kai/vite-build-env`.
+- What changed versus the baseline: integration catalog search and the plugin marketplace responses pass through one sanitizer at the API boundary (`apps/api/src/catalog-text.ts`) that rewords Grok Build, Grok, Rakazo, Cursor and "open source" in names, descriptions, categories and auth notes; banned keywords are dropped. Identifiers (id, source, registry key, URLs) are unchanged. Account emails (verification, reset, deletion, identity code, welcome, sign-in code) are VNBot-branded Vietnamese and signed "Đội VNBot"; the welcome mail no longer links GitHub or Discord; Better Auth `appName` and passkey `rpName` are `VNBot`. Every bot and subagent system prompt opens with a fixed VNBot identity (`packages/adapters/src/product-identity.ts`) that forbids calling itself Rakazo. Plugin skill and connector tool name conflicts answer the codes `PLUGIN_SKILL_CONFLICT` (RPC 409) and `CONNECTOR_TOOL_NAME_CONFLICT` (tool result) from `packages/contracts/src/capability-errors.ts`. The API never builds the Stripe billing provider from `STRIPE_*` (`apps/api/src/billing-off.ts`), so paid plans and model credits are off on every deploy. `infra/compose/check-image.sh` fails on any `*.map` outside `node_modules`.
+- Why: Rex's audit of the 8088 node (rows 3, 11, 17, 19, 22, 23, 25, 28) and PRODUCT.md (brand VNBot, no paywall, no open-source mention).
+- Files / modules: `apps/api` (`catalog-text.ts`, `routes/mcp.ts`, `billing-off.ts`, `app.ts`, `routes/context.ts`, `plugin-installs.ts`, `marketing-email.ts`), `packages/auth` (`email.tsx`, `welcome-email.tsx`, `sign-in-code-templates.ts`, `index.ts`), `packages/adapters` (`product-identity.ts`, `pi-runtime.ts`, `pi-runtime-subagent.ts`, `run-tool-request.ts`, `stripe-billing.ts`, `payment-wallets.ts`), `packages/contracts` (`capability-errors.ts`), `infra/compose` (`check-image.sh` and its smoke).
+- Invariants affected: catalog install sources and ids are untouched, so installs and pins behave as before. Billing contracts and types are unchanged; `billing` in `/api/auth/capabilities` is always false unless a test injects a provider. The cached system-prompt prefix stays stable (the identity line is constant).
+- ADR: none (copy, error codes and a deploy gate; no module moved).
 
 ## 2026-10-29 — VN Bot wordmark swap
 

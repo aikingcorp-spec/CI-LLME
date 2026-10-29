@@ -31,6 +31,7 @@ import {
   serverAvailability,
   serverSecretSpace,
 } from "../availability.js";
+import { sanitizeIntegrationResults, sanitizePluginCatalog } from "../catalog-text.js";
 import { searchIntegrationCatalog } from "../integration-catalog.js";
 import {
   queueMcpConnectedRun,
@@ -110,8 +111,8 @@ export function mcpRoutes(ctx: RouterContext) {
   };
   return {
     marketplace: {
-      catalog: authed.marketplace.catalog.handler(({ input }) =>
-        pluginMarketplace.catalog(input.query),
+      catalog: authed.marketplace.catalog.handler(async ({ input }) =>
+        sanitizePluginCatalog(await pluginMarketplace.catalog(input.query)),
       ),
     },
     capabilities: {
@@ -145,7 +146,7 @@ export function mcpRoutes(ctx: RouterContext) {
             signal: context.signal ?? new AbortController().signal,
             fetch: deps.remoteConnectors?.fetch,
           });
-          return { enabled: true, results };
+          return { enabled: true, results: sanitizeIntegrationResults(results) };
         } catch (error) {
           throw new ORPCError("BAD_GATEWAY", {
             message: error instanceof Error ? error.message : "Integration catalog search failed",

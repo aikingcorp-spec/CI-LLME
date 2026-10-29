@@ -94,7 +94,7 @@ const link = new RPCLink<RpcClientContext>({
     }
     // Server exceptions are reported by the API; do not report every HTTP failure twice.
     recheckSessionOnUnauthorized(response.status);
-    if (response.status === 401) void signOutIfNotInvited(response.clone());
+    if (response.status === 401) { void signOutIfNotInvited(response.clone()); void redirectOnUnauthorized(response.clone()); }
     if (response.status === 401 && spaceId && spaceId === selectedSpaceId())
       void leaveUnavailableSpace(spaceId);
     for (const listener of responseListeners) listener(response);
@@ -112,6 +112,15 @@ export function recheckSessionOnUnauthorized(status: number): void {
 }
 
 let leavingNotInvited = false;
+let redirectingUnauthorized = false;
+export async function redirectOnUnauthorized(response: Response): Promise<boolean> {
+  if (response.status !== 401 || redirectingUnauthorized || (await errorBodyCode(response)) !== "UNAUTHORIZED") return false;
+  redirectingUnauthorized = true;
+  const next = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "/";
+  if (typeof window !== "undefined" && window.location.pathname !== "/sign-in") window.location.assign(`/sign-in?next=${encodeURIComponent(next)}`);
+  return true;
+}
+
 
 /** Reads `code` from a JSON error body, plain (`{ code }`) or oRPC-wrapped (`{ json: { code } }`). */
 export async function errorBodyCode(response: Response): Promise<string | null> {

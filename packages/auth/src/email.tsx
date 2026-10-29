@@ -18,7 +18,7 @@ export async function message(
   headers?: Record<string, string>,
 ): Promise<TransactionalEmail> {
   const html = await render(
-    <Html lang="en">
+    <Html lang="vi">
       <Head />
       <Body
         style={{
@@ -34,20 +34,26 @@ export async function message(
   return { to, subject, html, text: toPlainText(html), ...(headers ? { headers } : {}) };
 }
 
+/** Every product email signs off as the team, never as a person or another product. */
+export const EMAIL_SIGNATURE = "Đội VNBot";
+
 export const linkStyle = { color: lightTokens.primary, textDecoration: "underline" };
 
 export function verificationEmail(email: string, url: string): Promise<TransactionalEmail> {
   return message(
     email,
-    "Verify your VNBot email",
+    "Xác minh email VNBot của bạn",
+
     <>
       <Text>
         <Link href={url} style={linkStyle}>
-          Verify email
+          Xác minh email
         </Link>
       </Text>
-      <Text>Then return to VNBot to sign in.</Text>
-      <Text>This link expires in one hour. If you did not register, ignore this email.</Text>
+      <Text>Sau đó quay lại VNBot để đăng nhập.</Text>
+      <Text>Liên kết hết hạn sau một giờ. Nếu bạn không đăng ký, hãy bỏ qua email này.</Text>
+      <Text>{EMAIL_SIGNATURE}</Text>
+
     </>,
   );
 }
@@ -108,18 +114,18 @@ export function passwordResetEmail(
 ): Promise<TransactionalEmail> {
   return message(
     user.email,
-    "Reset your VNBot password",
+    "Đặt lại mật khẩu VNBot",
     <>
-      <Text>Hi {displayName(user.name, "there")},</Text>
-      <Text>Reset your VNBot password:</Text>
+      <Text>Chào {displayName(user.name, "bạn")},</Text>
+      <Text>Đặt lại mật khẩu VNBot của bạn:</Text>
+
       <Text>
         <Link href={resetUrl} style={linkStyle}>
-          Reset password
+          Đặt lại mật khẩu
         </Link>
       </Text>
-      <Text>
-        This link expires in one hour. If you did not request this, you can ignore this email.
-      </Text>
+      <Text>Liên kết hết hạn sau một giờ. Nếu bạn không yêu cầu, hãy bỏ qua email này.</Text>
+      <Text>{EMAIL_SIGNATURE}</Text>
     </>,
   );
 }
@@ -127,13 +133,13 @@ export function passwordResetEmail(
 export function accountDeletionEmail(email: string, code: string): Promise<TransactionalEmail> {
   return message(
     email,
-    "Confirm VNBot account deletion",
+    "Xác nhận xóa tài khoản VNBot",
     <>
-      <Text>Enter this code in VNBot to delete your account:</Text>
+      <Text>Nhập mã này trong VNBot để xóa tài khoản:</Text>
+
       <Text>{code}</Text>
-      <Text>
-        This code expires in ten minutes. If you did not request deletion, ignore this email.
-      </Text>
+      <Text>Mã hết hạn sau mười phút. Nếu bạn không yêu cầu xóa, hãy bỏ qua email này.</Text>
+      <Text>{EMAIL_SIGNATURE}</Text>
     </>,
   );
 }
@@ -141,13 +147,15 @@ export function accountDeletionEmail(email: string, code: string): Promise<Trans
 export function identityCodeEmail(email: string, code: string): Promise<TransactionalEmail> {
   return message(
     email,
-    "Your VNBot confirmation code",
+    "Mã xác nhận VNBot của bạn",
     <>
-      <Text>Enter this code in VNBot to confirm it's you:</Text>
+      <Text>Nhập mã này trong VNBot để xác nhận đó là bạn:</Text>
+
       <Text>
         <strong>{code}</strong>
       </Text>
-      <Text>This code expires in ten minutes. If you did not request it, ignore this email.</Text>
+      <Text>Mã hết hạn sau mười phút. Nếu bạn không yêu cầu, hãy bỏ qua email này.</Text>
+      <Text>{EMAIL_SIGNATURE}</Text>
     </>,
   );
 }
