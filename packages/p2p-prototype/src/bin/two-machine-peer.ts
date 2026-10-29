@@ -38,6 +38,11 @@ const heartbeatMs = Number(process.env.HEARTBEAT_MS ?? 500);
 const deadAfterMs = Number(process.env.DEAD_AFTER_MS ?? 3_000);
 const connectTimeoutMs = Number(process.env.CONNECT_TIMEOUT_MS ?? 10_000);
 const retryMs = Number(process.env.RETRY_MS ?? 500);
+const iceServers = (process.env.ICE_SERVERS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter((value) => value.length > 0);
+const iceTransportPolicy = process.env.ICE_TRANSPORT_POLICY as "all" | "relay" | undefined;
 
 const log = (event: string, fields: Record<string, unknown> = {}): void => {
   console.log(
@@ -224,6 +229,8 @@ if (self === "node") {
       remoteId: clientId,
       initiator: false,
       authorization: nodeAuthorization(identity, nodeId),
+      iceServers,
+      iceTransportPolicy,
       onCloseHandshake,
     }),
   );
@@ -237,6 +244,8 @@ if (self === "node") {
       remoteId: nodeId,
       initiator: true,
       authorization: `Assertion ${assertion}`,
+      iceServers,
+      iceTransportPolicy,
       onCloseHandshake,
     });
   }, connectTimeoutMs);

@@ -61,6 +61,8 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
 
   const receivers = new Map<string, (payload: SignalPayload) => void>();
   const peers = new Set<DataPeer>();
+  const attempts = new Map<string, { id: string; timer: NodeJS.Timeout; peer?: DataPeer }>();
+  const attemptTimeoutMs = 15_000;
   const auth = o.channel
     ? createNodeAuth({
         nodeId: o.nodeId,
@@ -77,19 +79,49 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
     for (const peer of peers) peer.close();
     peers.clear();
     receivers.clear();
+    for (const attempt of attempts.values()) clearTimeout(attempt.timer);
+    attempts.clear();
   };
   const signalPeer = (ws: WebSocket, from: string, payload: SignalPayload): void => {
+    if (payload.type === "cancel") {
+      const active = attempts.get(from);
+      if (active?.id === payload.attemptId) {
+        active.peer?.close();
+        clearTimeout(active.timer);
+        attempts.delete(from);
+        receivers.delete(from);
+      }
+      return;
+    }
+    const attemptId = payload.attemptId;
+    if (attemptId === undefined) return;
+    const active = attempts.get(from);
+    if (active !== undefined && active.id !== attemptId) {
+      active.peer?.close();
+      clearTimeout(active.timer);
+      attempts.delete(from);
+      receivers.delete(from);
+    }
     const receive = receivers.get(from);
     if (receive) {
       receive(payload);
       return;
     }
     if (!server) return;
+    const timer = setTimeout(() => {
+      const current = attempts.get(from);
+      if (current?.id !== attemptId) return;
+      current.peer?.close();
+      attempts.delete(from);
+      receivers.delete(from);
+    }, attemptTimeoutMs);
+    attempts.set(from, { id: attemptId, timer });
     void connectPeer({
       signalUrl: `${o.gatewayUrl}/signal`,
       selfId: o.nodeId,
       remoteId: from,
       initiator: false,
+      attemptId,
       signaling: {
         send: (answer) => {
           if (ws.readyState === WebSocket.OPEN)
@@ -105,7 +137,16 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
       },
     })
       .then(async (peer) => {
+        const current = attempts.get(from);
+        if (current?.id !== attemptId) {
+          clearTimeout(timer);
+          peer.close();
+          return;
+        }
+        current.peer = peer;
         if (stopped || ws.readyState !== WebSocket.OPEN) {
+          clearTimeout(timer);
+          attempts.delete(from);
           peer.close();
           return;
         }
@@ -114,9 +155,14 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
           await server.accept(peer);
         } finally {
           peers.delete(peer);
+          clearTimeout(timer);
+          if (attempts.get(from)?.id === attemptId) attempts.delete(from);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        clearTimeout(timer);
+        if (attempts.get(from)?.id === attemptId) attempts.delete(from);
+      });
   };
 
   const requests = new Map<string, AbortController>();

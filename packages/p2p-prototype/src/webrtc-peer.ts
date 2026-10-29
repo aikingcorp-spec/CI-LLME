@@ -1,4 +1,5 @@
 import { once } from "node:events";
+import { randomUUID } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import type { DataChannel, IceServer } from "node-datachannel";
 import { PeerConnection } from "node-datachannel";
@@ -27,6 +28,7 @@ export interface PeerOptions {
   /** Fallback for a remote that never acknowledges BYE. Default 5000 ms. */
   closeAckTimeoutMs?: number;
   onCloseHandshake?: (event: CloseHandshakeEvent) => void;
+  attemptId?: string;
 }
 export interface DataPeer {
   send(text: string): void;
@@ -76,6 +78,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   const debug = (message: string): void => {
     if (process.env.P2P_DEBUG === "1") console.error(`[debug ${o.selfId}] ${message}`);
   };
+  const attemptId = o.attemptId ?? randomUUID();
   const ws = o.signaling
     ? undefined
     : new WebSocket(`${toWsUrl(o.signalUrl)}?peer=${encodeURIComponent(o.selfId)}`, {
@@ -158,18 +161,23 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     else outbox.push(payload);
   };
   pc.onLocalDescription((sdp, type) =>
-    signal({ type: type === "offer" ? "offer" : "answer", sdp }),
+    signal({ type: type === "offer" ? "offer" : "answer", sdp, attemptId }),
   );
   const localCandidates: string[] = [];
   pc.onLocalCandidate((candidate, mid) => {
     localCandidates.push(candidate);
-    signal({ type: "candidate", candidate, mid });
+    signal({ type: "candidate", candidate, mid, attemptId });
   });
   pc.onDataChannel(attach);
 
   const pendingCandidates: Array<{ candidate: string; mid: string }> = [];
   let remoteDescriptionSet = false;
   const receive = (p: SignalPayload): void => {
+    if (p.type === "cancel") {
+      if (p.attemptId === attemptId) close();
+      return;
+    }
+    if (p.attemptId !== undefined && p.attemptId !== attemptId) return;
     if (p.type === "candidate") {
       if (remoteDescriptionSet) pc.addRemoteCandidate(p.candidate, p.mid);
       else pendingCandidates.push({ candidate: p.candidate, mid: p.mid });
@@ -212,7 +220,14 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     })();
     return gracefulClose;
   };
-  o.signal?.addEventListener("abort", close, { once: true });
+  o.signal?.addEventListener(
+    "abort",
+    () => {
+      signal({ type: "cancel", attemptId });
+      close();
+    },
+    { once: true },
+  );
   try {
     unlisten = o.signaling?.listen(receive);
   } catch (error) {

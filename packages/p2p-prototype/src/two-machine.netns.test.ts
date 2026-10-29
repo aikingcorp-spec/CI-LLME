@@ -43,10 +43,12 @@ const NAMESPACE: Record<Machine, string> = { A: "p2pA", B: "p2pB" };
 const GATEWAY_HOST: Record<Machine, string> = { A: "10.77.1.1", B: "10.77.2.1" };
 const PEER_SUBNET = "10.77.0.";
 const SESSION_TOKEN = "token";
+const EXPECT_CANDIDATE_TYPE = process.env.P2P_EXPECT_CANDIDATE_TYPE;
 
 function netnsAvailable(): boolean {
   try {
     execFileSync("sudo", ["-n", "ip", "netns", "list"], { stdio: "ignore" });
+    execFileSync("sudo", ["-n", "iptables", "-V"], { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -245,8 +247,13 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
       const pair = proc.last("selected_pair").pair;
       expect(pair).toBeTruthy();
       if (!NETNS_MODE || !pair) return;
-      expect(pair.local).toContain(PEER_SUBNET);
-      expect(pair.remote).toContain(PEER_SUBNET);
+      if (EXPECT_CANDIDATE_TYPE) {
+        expect(pair.local).toContain(`typ ${EXPECT_CANDIDATE_TYPE}`);
+        expect(pair.remote).toContain(`typ ${EXPECT_CANDIDATE_TYPE}`);
+      } else {
+        expect(pair.local).toContain(PEER_SUBNET);
+        expect(pair.remote).toContain(PEER_SUBNET);
+      }
     }
 
     it("exchanges requests both ways, reconnects after the node is killed, and closes with BYE/BYE_ACK", async () => {

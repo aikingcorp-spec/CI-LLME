@@ -17,8 +17,9 @@ export type RelayResponse = {
 export type Hello = { kind: "hello"; nodeId: NodeId; ts: number; sig: string };
 export type Welcome = { kind: "welcome"; nodeId: NodeId };
 export type SignalPayload =
-  | { type: "offer" | "answer"; sdp: string }
-  | { type: "candidate"; candidate: string; mid: string };
+  | { type: "offer" | "answer"; sdp: string; attemptId?: string }
+  | { type: "candidate"; candidate: string; mid: string; attemptId?: string }
+  | { type: "cancel"; attemptId: string };
 export type Signal = { kind: "signal"; from: string; to: string; payload: SignalPayload };
 export type NodeFrame = Hello | RelayResponse | Signal;
 export type RelayCancel = { kind: "cancel"; id: string };
@@ -64,10 +65,22 @@ function headers(o: Fields): Record<string, string> {
 function payload(o: Fields): SignalPayload {
   const p = o.payload;
   if (!isFields(p)) fail("payload must be an object");
-  if (p.type === "offer" || p.type === "answer") return { type: p.type, sdp: str(p, "sdp") };
-  if (p.type === "candidate") {
-    return { type: "candidate", candidate: str(p, "candidate"), mid: str(p, "mid") };
+  if (p.type === "offer" || p.type === "answer") {
+    return {
+      type: p.type,
+      sdp: str(p, "sdp"),
+      ...(typeof p.attemptId === "string" ? { attemptId: p.attemptId } : {}),
+    };
   }
+  if (p.type === "candidate") {
+    return {
+      type: "candidate",
+      candidate: str(p, "candidate"),
+      mid: str(p, "mid"),
+      ...(typeof p.attemptId === "string" ? { attemptId: p.attemptId } : {}),
+    };
+  }
+  if (p.type === "cancel") return { type: "cancel", attemptId: str(p, "attemptId") };
   return fail("unknown payload type");
 }
 
