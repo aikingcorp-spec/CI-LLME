@@ -44,9 +44,14 @@ test("create opens dialog, then empty chat; picker lists bots; sidebar collapses
   await expect(create).toBeDisabled();
 
   await name.fill("New Bot");
+  // The vnbot default is neither tab's set.
   await expect(createDialog.getByRole("tab", { name: "Rakazo", exact: true })).toHaveAttribute(
     "aria-selected",
-    "true",
+    "false",
+  );
+  await expect(createDialog.getByRole("tab", { name: "Original", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "false",
   );
   await createDialog.getByRole("tab", { name: "Original", exact: true }).click();
   const wedge = createDialog.getByRole("button", { name: "wedge", exact: true });
@@ -147,7 +152,10 @@ test("the default logo preview keeps its seeded identity and colour after creati
   const preview = dialog.locator(".rakazo-organic-avatar").first();
   const colour = (await preview.locator("path").first().getAttribute("fill"))!.toUpperCase();
   await dialog.getByPlaceholder("Name your Bot").fill("Seed preview");
-  await expect(preview).toHaveAttribute("data-color", colour);
+  await expect(preview.locator("path").first()).toHaveAttribute(
+    "fill",
+    new RegExp(`^${colour}$`, "i"),
+  );
   await captureScreenshot(page, testInfo, "create-bot-seeded-preview");
   await dialog.getByRole("button", { name: "Create", exact: true }).click();
   await expect(dialog).toBeHidden();
