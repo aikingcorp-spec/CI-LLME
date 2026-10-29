@@ -109,7 +109,7 @@ class AuditShipTests(unittest.TestCase):
             self.assertEqual(audit_ship.syslog_time("Dec  2 22:43:54", december), "2026-12-02T22:43:54+00:00")
             self.assertEqual(
                 audit_ship.syslog_time("Dec 31 23:59:59", datetime.datetime(2027, 1, 1)),
-                "2027-01-01T23:59:59+00:00",
+                "2026-12-31T23:59:59+00:00",
             )
         self.assertIsNone(audit_ship.parse_auth_line("not syslog", "h", {}))
 

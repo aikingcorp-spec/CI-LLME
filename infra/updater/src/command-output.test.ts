@@ -41,7 +41,11 @@ async function plan(route = "/plan", currentTag = "v1.0.0") {
   directories.push(dir);
   await writeFile(path.join(dir, ".env"), `RAKAZO_IMAGE_TAG=${currentTag}\n`);
   const app = createUpdaterApp({
-    ...resolveUpdaterConfig({ RAKAZO_DEPLOY_DIR: "/fixture", RAKAZO_UPDATER_TOKEN: token }),
+    ...resolveUpdaterConfig({
+      RAKAZO_DISABLE_AUTO_UPDATE: "0",
+      RAKAZO_DEPLOY_DIR: "/fixture",
+      RAKAZO_UPDATER_TOKEN: token,
+    }),
     deployDir: dir,
     envFile: path.join(dir, ".env"),
   });
