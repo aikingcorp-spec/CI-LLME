@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Fails when a built image carries a credential or checkout state: a .env file, a .git directory, a
-# private key file, or a PEM private key in the app tree. CI runs it on the app image before any tag
+# private key file, or a PEM private key in the app tree. It also fails on any source map (*.map):
+# maps publish the original source of the web bundle to every visitor. CI runs it on the app image before any tag
 # points at it. Third-party packages under node_modules are skipped; they are not ours to vet.
 #
 # Usage: check-image.sh ROOTFS_TAR
@@ -61,9 +62,16 @@ while IFS= read -r file; do
   fi
 done < <(grep -rlE -- '-----BEGIN ([A-Z0-9]+ )*PRIVATE KEY-----' "${work}/app" 2>/dev/null || true)
 
+maps="$(grep -E '\.map$' "${work}/files" || true)"
+if [[ -n "${maps}" ]]; then
+  echo "${source} contains source maps that must not ship (disable build sourcemaps):" >&2
+  sed "s/^/  /" <<<"${maps}" >&2
+  [[ -n "${found}" ]] || exit 1
+fi
+
 if [[ -n "${found}" ]]; then
   echo "${source} contains files that must not ship:" >&2
   sed "s/^/  /" <<<"${found}" >&2
   exit 1
 fi
-echo "${source} contains no credentials or checkout state."
+echo "${source} contains no credentials, checkout state or source maps."
