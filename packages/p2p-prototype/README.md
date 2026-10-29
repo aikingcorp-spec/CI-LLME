@@ -128,3 +128,16 @@ The demo calls `echo` and subscribes to `ticks` through both `HttpClientTranspor
 `DataChannelClientTransport.connect({ signalUrl, selfId, remoteId, initiator: true, authorization: "Assertion …", assertion, signal? })` uses `connectPeer`. Send only the short-lived gateway assertion through signaling. The data channel exchanges `hello`/`welcome`, then sends the node-issued bearer on every request, chunk, response, and cancellation. The node validates each inbound bearer; local revocation or assertion expiry closes the channel and cancels subscriptions. `close()` releases the peer. `signal` on connection setup cancels connection establishment; each `ClientCall.signal` cancels its request independently.
 
 The node agent receives authenticated signaling on its existing outbound gateway link and multiplexes peers by client id. The gateway carries signaling and the explicit v0 HTTP relay only; it never receives the data-channel bearer. Host ICE candidates suffice for the localhost integration tests; cross-NAT operation needs ICE/TURN configuration as in the TURN demo. No TURN server is required for tests.
+
+## Two simulated machines
+
+`src/bin/two-machine-peer.ts node|client` runs one side as a standalone process: it signals through the gateway, opens a data channel on host candidates, and exchanges `whoami` requests in both directions (client to node and node to client) plus a heartbeat. It logs JSON lines. The client re-dials after the channel is lost; `SIGTERM` closes with the `BYE`/`BYE_ACK` handshake. `src/stun.ts` is a message codec, not a server, so no STUN is used.
+
+`scripts/netns-two-machines.sh setup|teardown|status` builds two network namespaces on one host: `p2pA` at `10.77.0.11` and `p2pB` at `10.77.0.12`, joined by a direct veth pair with no route between them except that link. A second veth per namespace reaches the gateway in the root namespace (`10.77.1.1` and `10.77.2.1`). Setup is idempotent and needs passwordless `sudo`. No bridge is used, because a host bridge-netfilter setup can drop bridged IP frames.
+
+`src/two-machine.netns.test.ts` starts the fake auth server and gateway, launches the node in `p2pB` and the client in `p2pA`, and checks both-way requests, the selected ICE pair on `10.77.0.x`, a killed and restarted node, and a clean close started from either side. By default it runs both processes on `127.0.0.1`; set `P2P_NETNS=1` for the namespaces (skipped when `sudo -n ip netns` is unavailable). `P2P_LOG_DIR` saves each process log.
+
+```sh
+pnpm exec vitest run --root ../.. packages/p2p-prototype/src/two-machine.netns.test.ts
+P2P_NETNS=1 pnpm exec vitest run --root ../.. packages/p2p-prototype/src/two-machine.netns.test.ts
+```

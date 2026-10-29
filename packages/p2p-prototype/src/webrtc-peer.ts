@@ -7,6 +7,8 @@ import { WebSocket } from "ws";
 import type { SignalPayload } from "./protocol.js";
 import { decodeGatewayFrame, encodeFrame, toWsUrl } from "./protocol.js";
 
+export type CloseHandshakeEvent = "bye-sent" | "bye-received" | "bye-ack-sent" | "bye-ack-received";
+
 export interface PeerOptions {
   signalUrl: string;
   signal?: AbortSignal;
@@ -24,6 +26,7 @@ export interface PeerOptions {
   iceTransportPolicy?: "all" | "relay";
   /** Fallback for a remote that never acknowledges BYE. Default 5000 ms. */
   closeAckTimeoutMs?: number;
+  onCloseHandshake?: (event: CloseHandshakeEvent) => void;
 }
 export interface DataPeer {
   send(text: string): void;
@@ -114,12 +117,17 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
         if (control[0] === BYE) {
           // SCTP is ordered and reliable: every earlier message has already been delivered.
           byeReceived = true;
+          o.onCloseHandshake?.("bye-received");
           queue.end();
-          if (dc.isOpen()) dc.sendMessageBinary(controlFrame(BYE_ACK));
+          if (dc.isOpen()) {
+            dc.sendMessageBinary(controlFrame(BYE_ACK));
+            o.onCloseHandshake?.("bye-ack-sent");
+          }
           return;
         }
         if (control[0] === BYE_ACK) {
           byeAcked = true;
+          o.onCloseHandshake?.("bye-ack-received");
           return;
         }
       }
@@ -192,6 +200,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
         // received it. Ask the remote to acknowledge everything sent before BYE.
         if (!closed && channel?.isOpen() && !channelClosed) {
           channel.sendMessageBinary(controlFrame(BYE));
+          o.onCloseHandshake?.("bye-sent");
           const deadline = Date.now() + (o.closeAckTimeoutMs ?? 5000);
           while (!closed && !channelClosed && !byeAcked && Date.now() < deadline) {
             await setTimeout(10);
