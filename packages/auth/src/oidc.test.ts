@@ -853,6 +853,29 @@ describe("SSO and the invite list (EMAIL_NOT_INVITED contract)", () => {
     expect(rows("account")).toHaveLength(1);
   });
 
+  it("9. keeps a validated native error callback for an unlinked account", async () => {
+    setup();
+    await request("/sign-up/email", {
+      email: "sso@example.test",
+      password: "test-password-123",
+      name: "Local",
+    });
+    cookies = "";
+    const callback = await start(
+      { sub: "other", email: "sso@example.test", email_verified: true },
+      false,
+      "rakazo://sign-in",
+      false,
+      {},
+      "rakazo://sign-in",
+    );
+    const response = await request(callback);
+    const destination = new URL(response.headers.get("location")!);
+    expect(destination.protocol).toBe("rakazo:");
+    expect(destination.searchParams.get("error")).toBe("account_not_linked");
+    expect(rows("user")).toHaveLength(1);
+  });
+
   it.each([["Eve@Example.COM"], [" Eve@Example.com "], ["eve\u200b@example.com"]])(
     "6. normalizes the provider email %j before the invite check",
     async (email) => {

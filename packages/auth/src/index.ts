@@ -978,7 +978,11 @@ export async function ssoCallbackContract(
   const response = await handle();
   const location = response.headers.get("location");
   if (!location) return response;
-  const error = new URL(location, request.url).searchParams.get("error");
+  const target = new URL(location, request.url);
+  const error = target.searchParams.get("error");
+  // A native app callback (e.g. rakazo://) was already validated against the
+  // trusted origins; keep it so the app's auth session receives the error.
+  if (error === "account_not_linked" && !/^https?:$/.test(target.protocol)) return response;
   const code =
     error === EMAIL_NOT_INVITED
       ? EMAIL_NOT_INVITED
