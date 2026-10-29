@@ -88,7 +88,7 @@ describe("webrtc peer", () => {
       signaling: {
         send: (p) => {
           if (p.type === "candidate") raw.addRemoteCandidate(p.candidate, p.mid);
-          else raw.setRemoteDescription(p.sdp, p.type);
+          else if (p.type !== "cancel") raw.setRemoteDescription(p.sdp, p.type);
         },
         listen: (receive) => {
           toPeer = receive;

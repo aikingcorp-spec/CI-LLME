@@ -1,5 +1,5 @@
-import { once } from "node:events";
 import { randomUUID } from "node:crypto";
+import { once } from "node:events";
 import { setTimeout } from "node:timers/promises";
 import type { DataChannel, IceServer } from "node-datachannel";
 import { PeerConnection } from "node-datachannel";
@@ -78,7 +78,9 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   const debug = (message: string): void => {
     if (process.env.P2P_DEBUG === "1") console.error(`[debug ${o.selfId}] ${message}`);
   };
-  const attemptId = o.attemptId ?? randomUUID();
+  // The initiator mints the attempt id. A responder without an explicit id adopts the id of the
+  // first offer it sees, then ignores signals from any other attempt.
+  let attemptId: string | undefined = o.attemptId ?? (o.initiator ? randomUUID() : undefined);
   const ws = o.signaling
     ? undefined
     : new WebSocket(`${toWsUrl(o.signalUrl)}?peer=${encodeURIComponent(o.selfId)}`, {
@@ -177,6 +179,9 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
       if (p.attemptId === attemptId) close();
       return;
     }
+    if (attemptId === undefined && p.type === "offer" && p.attemptId !== undefined) {
+      attemptId = p.attemptId;
+    }
     if (p.attemptId !== undefined && p.attemptId !== attemptId) return;
     if (p.type === "candidate") {
       if (remoteDescriptionSet) pc.addRemoteCandidate(p.candidate, p.mid);
@@ -223,7 +228,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   o.signal?.addEventListener(
     "abort",
     () => {
-      signal({ type: "cancel", attemptId });
+      if (attemptId !== undefined) signal({ type: "cancel", attemptId });
       close();
     },
     { once: true },
