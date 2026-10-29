@@ -107,8 +107,12 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   let byeReceived = false;
   let markOpen = (): void => {};
   let rejectOpen = (_error: Error): void => {};
+  let opened = false;
   const open = new Promise<void>((resolve, reject) => {
-    markOpen = resolve;
+    markOpen = () => {
+      opened = true;
+      resolve();
+    };
     rejectOpen = reject;
   });
   void open.catch(() => {});
@@ -176,7 +180,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   let remoteDescriptionSet = false;
   const receive = (p: SignalPayload): void => {
     if (p.type === "cancel") {
-      if (p.attemptId === attemptId) close();
+      if (p.attemptId === attemptId) close(false);
       return;
     }
     if (attemptId === undefined && p.type === "offer" && p.attemptId !== undefined) {
@@ -194,10 +198,13 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   };
   let unlisten: (() => void) | undefined;
   let closed = false;
-  const close = (): void => {
+  // Closing an attempt that never opened tells the remote to drop it too. Without this a
+  // responder that adopted the attempt waits on it forever and ignores the caller's retries.
+  const close = (cancelRemote = true): void => {
     if (closed) return;
     closed = true;
-    o.signal?.removeEventListener("abort", close);
+    if (cancelRemote && !opened && attemptId !== undefined) signal({ type: "cancel", attemptId });
+    o.signal?.removeEventListener("abort", onAbort);
     rejectOpen(new Error("peer closed"));
     queue.end();
     channel?.close();
@@ -205,6 +212,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     unlisten?.();
     ws?.close();
   };
+  const onAbort = (): void => close();
   let gracefulClose: Promise<void> | undefined;
   const closeGracefully = (): Promise<void> => {
     gracefulClose ??= (async () => {
@@ -225,14 +233,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     })();
     return gracefulClose;
   };
-  o.signal?.addEventListener(
-    "abort",
-    () => {
-      if (attemptId !== undefined) signal({ type: "cancel", attemptId });
-      close();
-    },
-    { once: true },
-  );
+  o.signal?.addEventListener("abort", onAbort, { once: true });
   try {
     unlisten = o.signaling?.listen(receive);
   } catch (error) {
