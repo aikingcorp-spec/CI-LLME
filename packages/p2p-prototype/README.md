@@ -29,12 +29,7 @@ GATEWAY_URL=http://127.0.0.1:8787 NODE_ID=demo NODE_KEY_FILE=/tmp/p2p-demo-node.
 
 The node saves its Ed25519 key pair, pinned gateway public key, and allowed user in an owner-only (`0600`) file. Subsequent agent starts use `NODE_KEY_FILE` without `PAIR_CODE`. Set `NODE_TARGET=http://127.0.0.1:3100` to forward to a local Rakazo API instead of the demo handler.
 
-The existing HTTP relay also requires the user bearer:
-
-```sh
-curl -H "Authorization: Bearer $SESSION_TOKEN" 'http://127.0.0.1:8787/nodes/demo/hello?x=1'
-curl -H "Authorization: Bearer $SESSION_TOKEN" -d hi http://127.0.0.1:8787/nodes/demo/echo
-```
+The v0 HTTP relay (`/nodes/<id>/...`) forwards bodies through the gateway in plaintext. It is disabled: the gateway answers 404 without reading the body or contacting the node. Only tests turn it on, with the factory option `unsafeTestOnlyPlaintextHttpRelay`; no environment variable or entrypoint sets it.
 
 Open a data channel between two processes:
 
@@ -112,7 +107,7 @@ The probe handles the 401 realm/nonce challenge and long-term MESSAGE-INTEGRITY.
 
 `pnpm check` and `pnpm test` run the type check and offline tests, including published STUN integrity vectors. No live TURN server is required for the suite.
 
-Without TURN, `iceServers` defaults to `[]`: host candidates work on the same machine or LAN. The transports implement the ADR seam inside this prototype; the production app transports are not integrated. The gateway verifies sign-in against the existing Better Auth API. HTTP relay subscriptions are buffered. The gateway stores no chat and logs method, path, and status only. Pairing assumes a trusted gateway connection (loopback here; HTTPS/WSS for remote use).
+Without TURN, `iceServers` defaults to `[]`: host candidates work on the same machine or LAN. The transports implement the ADR seam inside this prototype; the production app transports are not integrated. The gateway verifies sign-in against the existing Better Auth API. HTTP relay subscriptions are buffered. The gateway stores no chat and logs method, status, and a fixed route name only (`/nodes/*` for any node path). Pairing assumes a trusted gateway connection (loopback here; HTTPS/WSS for remote use).
 
 ## ClientTransport
 
@@ -125,11 +120,11 @@ GATEWAY_URL=http://127.0.0.1:8787 SESSION_TOKEN="$SESSION_TOKEN" NODE_ID=demo \
 
 The demo calls `echo` and subscribes to `ticks` through both `HttpClientTransport` and `DataChannelClientTransport`. It prints response status/body, chunk timestamps, and the selected ICE candidate pair. The default node handler emits three `data: tick i\n\n` event-stream chunks. Both paths share the node's handler. `NODE_TARGET` forwards RPC to a local API instead; the demo procedures require the default demo handler.
 
-`HttpClientTransport({ baseUrl, nodeId, sessionToken, fetch? })` POSTs to the authenticated gateway HTTP relay. This v0 relay buffers the entire response: `subscribe` yields one combined chunk after completion, so timestamps do not show individual tick arrival. Abort stops the consumer and sends relay cancellation to the node. True HTTP streaming is a v0 limitation.
+`HttpClientTransport({ baseUrl, nodeId, sessionToken, fetch? })` POSTs to the gateway HTTP relay, which is plaintext and works only against a gateway started with `unsafeTestOnlyPlaintextHttpRelay` (tests). This v0 relay buffers the entire response: `subscribe` yields one combined chunk after completion, so timestamps do not show individual tick arrival. Abort stops the consumer and sends relay cancellation to the node. True HTTP streaming is a v0 limitation.
 
 `DataChannelClientTransport.connect({ signalUrl, selfId, remoteId, initiator: true, authorization: "Assertion …", assertion, signal? })` uses `connectPeer`. Send only the short-lived gateway assertion through signaling. The data channel exchanges `hello`/`welcome`, then sends the node-issued bearer on every request, chunk, response, and cancellation. The node validates each inbound bearer; local revocation or assertion expiry closes the channel and cancels subscriptions. `close()` releases the peer. `signal` on connection setup cancels connection establishment; each `ClientCall.signal` cancels its request independently.
 
-The node agent receives authenticated signaling on its existing outbound gateway link and multiplexes peers by client id. The gateway carries signaling and the explicit v0 HTTP relay only; it never receives the data-channel bearer. Host ICE candidates suffice for the localhost integration tests; cross-NAT operation needs ICE/TURN configuration as in the TURN demo. No TURN server is required for tests.
+The node agent receives authenticated signaling on its existing outbound gateway link and multiplexes peers by client id. The gateway carries signaling only (the plaintext v0 HTTP relay is off by default); it never receives the data-channel bearer. Host ICE candidates suffice for the localhost integration tests; cross-NAT operation needs ICE/TURN configuration as in the TURN demo. No TURN server is required for tests.
 
 ## Two simulated machines
 

@@ -20,7 +20,12 @@ describe("gateway Better Auth sessions", () => {
     auth.sessions.set("expired", "expired");
     auth.sessions.set("not-invited", "not-invited");
     auth.sessions.set("down", "down");
-    gateway = await startGateway({ port: 0, userVerifier: auth.verifier, registry });
+    gateway = await startGateway({
+      port: 0,
+      userVerifier: auth.verifier,
+      registry,
+      unsafeTestOnlyPlaintextHttpRelay: true,
+    });
   });
   afterEach(async () => {
     await agent?.close();

@@ -66,6 +66,7 @@ describe("ClientTransport over a real gateway and node agent", () => {
       port: 0,
       gatewayKey,
       userVerifier: authServer.verifier,
+      unsafeTestOnlyPlaintextHttpRelay: true,
     });
     const { code } = await startPairing(gateway.url, "token");
     await completePairing(gateway.url, code, "node", keyPair);
