@@ -5,6 +5,7 @@
   "author": {
     "name": "VNBot"
   },
+  "homepage": "https://vnbot.run",
   "license": "Apache-2.0",
   "type": "module",
   "main": "dist/main.js",
@@ -12,6 +13,8 @@
     "dev": "pnpm build && electron .",
     "build": "pnpm check && node scripts/build.mjs && node scripts/copy-static.mjs",
     "pack": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --mac --win --linux",
+    "pack:win": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --win --x64",
+    "pack:linux": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --linux --x64",
     "pack:dir": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --dir",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. apps/desktop/src",
@@ -107,15 +110,31 @@
     "win": {
       "icon": "assets/icon.ico",
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": "x64"
+        },
+        {
+          "target": "msi",
+          "arch": "x64"
+        }
       ],
       "verifyUpdateCodeSignature": true
     },
     "linux": {
       "executableName": "vnbot",
       "icon": "assets/icon.png",
+      "maintainer": "VNBot <hello@vnbot.run>",
+      "vendor": "VNBot",
       "target": [
-        "AppImage"
+        {
+          "target": "AppImage",
+          "arch": "x64"
+        },
+        {
+          "target": "deb",
+          "arch": "x64"
+        }
       ],
       "desktop": {
         "entry": {
@@ -126,6 +145,10 @@
     },
     "publish": null,
     "artifactName": "VNBot-${version}-${os}-${arch}.${ext}",
+    "msi": {
+      "oneClick": false,
+      "perMachine": false
+    },
     "nsis": {
       "artifactName": "VNBot-Setup-${version}-${arch}.${ext}",
       "shortcutName": "VNBot",
