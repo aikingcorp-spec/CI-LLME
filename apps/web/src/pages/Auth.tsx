@@ -109,6 +109,10 @@ export function AuthPage() {
     (step === "email" ? emailRef : codeRef).current?.focus();
   }, [reset, step]);
 
+  useEffect(() => {
+    if (codeInvalid && !pending) codeRef.current?.focus();
+  }, [codeInvalid, pending]);
+
   // A code step restored without its own entry (a new visit to /sign-in in this tab) still gets
   // one, so Back lands on the email step here too.
   useEffect(() => {

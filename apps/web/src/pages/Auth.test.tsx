@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -82,10 +84,14 @@ const emailCapabilities: AuthCapabilities = {
   emailCode: true,
 };
 
+i18n.load("en", {});
+i18n.activate("en");
+
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -96,14 +102,17 @@ afterEach(async () => {
   sessionStorage.clear();
   window.history.replaceState(null, "", "/");
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   delete window.rakazoDesktop;
 });
 async function render() {
   await act(async () =>
     root.render(
-      <MemoryRouter>
-        <AuthPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter>
+          <AuthPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
 }
@@ -239,6 +248,38 @@ it("shows the not-invited panel for EMAIL_NOT_INVITED and keeps the email", asyn
   expect(host.querySelector('[role="status"]')).toBeNull();
 });
 
+it("returns focus to the code input after a wrong code is rejected", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+    data: { success: true },
+    error: null,
+  } as never);
+  let rejectCode!: (result: never) => void;
+  vi.mocked(authClient.signIn.emailOtp).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        rejectCode = resolve;
+      }),
+  );
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "ada@example.com");
+  await submit();
+  const code = host.querySelector<HTMLInputElement>('input[aria-label="6-digit sign-in code"]')!;
+  await enter(code, "111111");
+  host.querySelector<HTMLButtonElement>('[data-testid="language-switch"]')!.focus();
+  expect(document.activeElement).not.toBe(code);
+  await act(async () =>
+    rejectCode({
+      data: null,
+      error: { code: "INVALID_OTP", message: "Invalid code", status: 400, statusText: "" },
+    } as never),
+  );
+  expect(code.disabled).toBe(false);
+  expect(code.value).toBe("");
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  expect(document.activeElement).toBe(code);
+});
+
 it("rejects a bad code without leaving the digits on the page, and offers a new code when it expires", async () => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
@@ -272,12 +313,14 @@ describe("focus across real browser navigation", () => {
     window.history.replaceState(null, "", "/");
     await act(async () =>
       root.render(
-        <BrowserRouter useTransitions={false}>
-          <Routes>
-            <Route path="/" element={<WelcomePage />} />
-            <Route path="/sign-in" element={<AuthPage key="in" />} />
-          </Routes>
-        </BrowserRouter>,
+        <I18nProvider i18n={i18n}>
+          <BrowserRouter useTransitions={false}>
+            <Routes>
+              <Route path="/" element={<WelcomePage />} />
+              <Route path="/sign-in" element={<AuthPage key="in" />} />
+            </Routes>
+          </BrowserRouter>
+        </I18nProvider>,
       ),
     );
   }
@@ -403,11 +446,13 @@ describe("focus across real browser navigation", () => {
     root = createRoot(host);
     await act(async () =>
       root.render(
-        <BrowserRouter useTransitions={false}>
-          <Routes>
-            <Route path="/sign-in" element={<AuthPage key="in" />} />
-          </Routes>
-        </BrowserRouter>,
+        <I18nProvider i18n={i18n}>
+          <BrowserRouter useTransitions={false}>
+            <Routes>
+              <Route path="/sign-in" element={<AuthPage key="in" />} />
+            </Routes>
+          </BrowserRouter>
+        </I18nProvider>,
       ),
     );
     expect(document.activeElement).toBe(codeInput());
@@ -529,9 +574,11 @@ it("shows the not-invited state for ?error=EMAIL_NOT_INVITED (OIDC callback / re
   );
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/sign-in?error=EMAIL_NOT_INVITED"]}>
-        <AuthPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/sign-in?error=EMAIL_NOT_INVITED"]}>
+          <AuthPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
   const status = host.querySelector('[role="status"]')!;
@@ -549,9 +596,11 @@ it("shows the link-SSO-from-Settings copy for ?error=ACCOUNT_NOT_LINKED (SSO cal
   vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/sign-in?error=ACCOUNT_NOT_LINKED"]}>
-        <AuthPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/sign-in?error=ACCOUNT_NOT_LINKED"]}>
+          <AuthPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
   expect(host.querySelector('[role="alert"]')!.textContent).toBe(
