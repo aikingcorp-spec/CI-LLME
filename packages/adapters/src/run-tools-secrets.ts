@@ -1,6 +1,6 @@
 import { runContinueJob } from "@rakazo/adapter-kit";
 import { BotSecretName, botSecretSubmissionSchema } from "@rakazo/contracts";
-import { createStreamingRedactor, displayName } from "@rakazo/core";
+import { createStreamingRedactor, displayName, notificationText } from "@rakazo/core";
 import { runSecretKind } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import {
@@ -277,7 +277,7 @@ export const secretTools: ToolHandlers = {
       blocks: [
         {
           kind: "ask",
-          text: String(args.label ?? "Code"),
+          text: String(args.label ?? notificationText.secretFallbackLabel),
           input: "secret",
           ...(destination ? { credential: destination } : {}),
           ...(loginFields?.labels ? { loginFields: loginFields.labels } : {}),
@@ -298,7 +298,7 @@ export const secretTools: ToolHandlers = {
       kind: "help",
       ...secretAskNotification(
         displayName(bot.name, "Bot"),
-        String(args.label ?? "Code"),
+        String(args.label ?? notificationText.secretFallbackLabel),
         ctx.secrets,
       ),
       botId: bot.id,

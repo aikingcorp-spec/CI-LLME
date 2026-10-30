@@ -173,8 +173,8 @@ async function prepareCreateGroup(
     ok: true,
     canonical: { name: parsed.data.name, botIds: parsed.data.botIds, members },
     summary: {
-      title: `Create group “${cardName(parsed.data.name)}”?`,
-      lines: [`Members: ${memberNames(members)}`],
+      title: `Tạo nhóm “${cardName(parsed.data.name)}”?`,
+      lines: [`Thành viên: ${memberNames(members)}`],
     },
   };
 }
@@ -228,9 +228,9 @@ async function prepareUpdateGroup(
   if (!parsed.success) return refuse(issueMessage(parsed.error));
 
   const lines: string[] = [];
-  if (parsed.data.name !== undefined) lines.push(`Rename to “${singleLine(parsed.data.name)}”`);
-  if (added.length) lines.push(`Add: ${memberNames(added)}`);
-  if (removed.length) lines.push(`Remove: ${memberNames(removed)}`);
+  if (parsed.data.name !== undefined) lines.push(`Đổi tên thành “${singleLine(parsed.data.name)}”`);
+  if (added.length) lines.push(`Thêm: ${memberNames(added)}`);
+  if (removed.length) lines.push(`Xóa: ${memberNames(removed)}`);
   return {
     ok: true,
     canonical: {
@@ -242,7 +242,7 @@ async function prepareUpdateGroup(
       added,
       removed,
     },
-    summary: { title: `Update group “${cardName(group.name)}”?`, lines },
+    summary: { title: `Cập nhật nhóm “${cardName(group.name)}”?`, lines },
   };
 }
 
@@ -292,12 +292,12 @@ async function prepareChildModel(
     return refuse("That bot already uses this model.");
   }
   const lines = [
-    `From: ${modelLabel(previous.provider, previous.model)}`,
-    `To: ${modelLabel(validated.provider, validated.model)}`,
+    `Từ: ${modelLabel(previous.provider, previous.model)}`,
+    `Sang: ${modelLabel(validated.provider, validated.model)}`,
   ];
-  if (thinkingLevel) lines.push(`Thinking: ${thinkingLevel}`);
+  if (thinkingLevel) lines.push(`Mức suy nghĩ: ${thinkingLevel}`);
   // The change resets a level the owner set; the card says so.
-  else if (child.thinkingLevel) lines.push("Thinking: Default");
+  else if (child.thinkingLevel) lines.push("Mức suy nghĩ: Mặc định");
   return {
     ok: true,
     canonical: {
@@ -308,7 +308,7 @@ async function prepareChildModel(
       model: validated.model,
       ...(thinkingLevel ? { thinkingLevel } : {}),
     },
-    summary: { title: `Change the model of ${cardName(child.name)}?`, lines },
+    summary: { title: `Đổi mô hình của ${cardName(child.name)}?`, lines },
   };
 }
 
@@ -374,12 +374,12 @@ async function prepareChildRoutine(
           },
     },
     summary: {
-      title: `Schedule “${cardName(name)}” for ${cardName(child.name)}?`,
+      title: `Lên lịch “${cardName(name)}” cho ${cardName(child.name)}?`,
       lines: [
         resolved.oneShot
-          ? `Runs at ${when}`
-          : `Repeats ${singleLine(resolved.cron)}, next at ${when}`,
-        `Prompt: ${prompt}`,
+          ? `Chạy lúc ${when}`
+          : `Lặp lại ${singleLine(resolved.cron)}, lần tới lúc ${when}`,
+        `Lời nhắc: ${prompt}`,
       ],
     },
   };
@@ -425,10 +425,10 @@ async function prepareChildInstructions(
       length: instructions.length,
     },
     summary: {
-      title: `Replace the instructions of ${cardName(child.name)}?`,
+      title: `Thay hướng dẫn của ${cardName(child.name)}?`,
       lines: [
-        `Old length: ${current.instructions.length} characters`,
-        `New length: ${instructions.length} characters`,
+        `Độ dài cũ: ${current.instructions.length} ký tự`,
+        `Độ dài mới: ${instructions.length} ký tự`,
         "",
         instructions,
       ],
@@ -1253,7 +1253,7 @@ function memberNames(members: Member[]): string {
 }
 
 function modelLabel(provider: string | null, model: string | null): string {
-  if (!provider || !model) return "Default model";
+  if (!provider || !model) return "Mô hình mặc định";
   const catalog = [...listPiCatalog(), scriptedCatalogEntry];
   const catalogProvider = canonicalPiProviderId(provider);
   const entry = catalog.find((item) => item.provider === catalogProvider && item.id === model);
@@ -1271,7 +1271,7 @@ function issueMessage(error: { issues: Array<{ path: PropertyKey[]; message: str
 }
 
 function formatTime(date: Date, timezone: string): string {
-  const local = new Intl.DateTimeFormat("en-GB", {
+  const local = new Intl.DateTimeFormat("vi-VN", {
     timeZone: timezone,
     dateStyle: "medium",
     timeStyle: "short",

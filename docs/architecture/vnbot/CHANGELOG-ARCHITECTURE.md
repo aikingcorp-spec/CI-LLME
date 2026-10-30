@@ -306,3 +306,23 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/desktop/src/setup-config.ts` (`probeFailureMessage`), `apps/desktop/src/local-stack.ts` (status and failure messages), `apps/desktop/src/strings.ts` (catalog and formatting), `apps/desktop/src/main.ts` (locale selection), setup shell and corresponding unit tests.
 - Invariants affected: server validation, connection probes, local Compose orchestration, secret storage and recovery behavior are unchanged. Raw Docker output and internal error details remain outside translated user messages. Auto-update still requires explicit opt-in; source identifiers remain Rakazo. No API, database or migration changes.
 - ADR: none (desktop localization).
+
+## 2026-10-30 — Vietnamese server push text and model control-text filter
+
+- Date: 2026-10-30
+- Pull request: kai/push-notif-vi (builds on #8).
+- What changed versus baseline: server push notification titles and bodies (approval, question, screen, finished, failed, stopped, stuck-work) come from a Vietnamese catalog in `packages/core/src/notification-text.ts`, with tool labels matching the web vi catalog. `run-turn.ts` wraps the runtime event stream in `filterModelControlText`, which drops leaked harmony/channel control tokens and English tool-call retry talk and emits one Vietnamese progress line instead.
+- Why: VNBot is Vietnamese-first; English push text and leaked model control tokens reached users.
+- Modules and files: `packages/core/src/notification-text.ts`, `model-control-text.ts`, `stuck-work.ts`; `packages/adapters/src/model-control-filter.ts`, `run-turn.ts`, `run-lifecycle.ts`, `run-tool-gate.ts`, `run-routines.ts`, `run-notifications.ts`, `run-tools-secrets.ts`, and unit tests.
+- Invariants affected: run state, persisted run errors (still English), approvals and tool execution are unchanged; the filter only removes text, never events other than leaked text, and rethrows runtime errors after releasing held text. No API, database or migration changes.
+- ADR: none (localization and output hygiene).
+
+## 2026-10-30 — Sanitize stored bot messages on read; Vietnamese fleet approval cards
+
+- Date: 2026-10-30
+- Pull request: #11 (fix round 1).
+- What changed versus baseline: thread message pages, reply previews and sidebar previews pass stored bot text blocks through `sanitizeStoredBlocks` (core), which applies the live filter's rules to old rows; fully leaked bot messages are omitted from pages. Fleet tool approval card titles and lines are Vietnamese.
+- Why: messages stored before the live filter still showed leaked control tokens and English retry talk.
+- Modules and files: `packages/core/src/model-control-text.ts`, `apps/api/src/thread-message-pages.ts`, `packages/db/src/preview-messages.ts`, `packages/adapters/src/fleet-tools.ts`, tests.
+- Invariants affected: read-only; no DB rows are rewritten, no migrations. User and system messages are returned as stored. Paging cursors use raw rows.
+- ADR: none.

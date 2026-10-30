@@ -1600,8 +1600,8 @@ describe("bot management approvals", () => {
       expect.objectContaining({
         blocks: [
           expect.objectContaining({
-            text: "Create group “Crew”?",
-            detail: "Members: Alpha, Beta",
+            text: "Tạo nhóm “Crew”?",
+            detail: "Thành viên: Alpha, Beta",
             actions: [
               { id: "allow", label: "Allow once" },
               { id: "deny", label: "Deny" },

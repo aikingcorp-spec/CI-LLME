@@ -1,3 +1,5 @@
+import { sanitizeStoredBlocks } from "@rakazo/core";
+
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
 import { contentEncryptionOf } from "./content-encryption.js";
@@ -46,7 +48,16 @@ export async function withNewestThreadMessages<T extends { thread: { id: string 
         `);
   const opened = (await contentEncryptionOf(prisma)?.openRows("Message", loaded)) ?? loaded;
   const byThread = new Map<string, SidebarPreviewMessage[]>();
-  for (const row of opened) {
+  for (const stored of opened) {
+    const row = {
+      ...stored,
+      blocks: Array.isArray(stored.blocks)
+        ? (sanitizeStoredBlocks(
+            stored.role,
+            stored.blocks as { kind: string }[],
+          ) as Prisma.JsonArray)
+        : stored.blocks,
+    };
     const list = byThread.get(row.threadId);
     if (list) list.push(row);
     else byThread.set(row.threadId, [row]);

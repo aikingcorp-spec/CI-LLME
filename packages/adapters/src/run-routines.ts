@@ -11,6 +11,7 @@ import {
   expandSkillReferencesInPrompt,
   isOneShotRoutineCrons,
   nextRoutineRunDateAcross,
+  notificationText,
 } from "@rakazo/core";
 import { getLogger } from "@rakazo/logging";
 import { sanitizedError } from "@rakazo/logging/monitoring";
@@ -103,7 +104,7 @@ async function notifyFailedRoutineRun(
     failed,
     {
       kind: "failure",
-      title: `${displayName(bot.name, "Bot")} failed`,
+      title: notificationText.failed(bot.name),
       body: failed.error ?? "",
       botId: failed.botId,
       threadId: failed.threadId,

@@ -16,6 +16,7 @@ import {
   displayName,
   humanizeToolName,
   newSiteOutcome,
+  notificationText,
   outboundSiteGate,
   planActionGate,
   redactSecrets,
@@ -619,8 +620,8 @@ async function showApprovalCard(
   }
   await notifyRun(deps, run, {
     kind: "help",
-    title: `${displayName(bot.name, "Bot")} needs approval`,
-    body: `Review before ${name}`,
+    title: notificationText.needsApproval(bot.name),
+    body: notificationText.reviewBefore(name),
     botId: bot.id,
     threadId: thread.id,
   });

@@ -140,7 +140,7 @@ describe("secretAskNotification", () => {
       `Sign in for fake-token-123 ${"word ".repeat(100)}`,
       ["fake-token-123"],
     );
-    expect(notification.title).toBe("Bot needs an answer");
+    expect(notification.title).toBe("Bot cần bạn trả lời");
     expect(notification.body).toHaveLength(180);
     expect(notification.body.startsWith("Sign in for [redacted] word")).toBe(true);
   });

@@ -93,8 +93,8 @@ describe("reconcileStuckWork", () => {
     expect(send).toHaveBeenCalledWith(
       {
         kind: "takeover",
-        title: "Ada still needs you",
-        body: "The screen has been waiting.",
+        title: "Ada vẫn cần bạn",
+        body: "Màn hình đang chờ bạn.",
         botId: "bot-1",
         threadId: "thread-1",
       },
@@ -344,7 +344,7 @@ describe("reconcileStuckWork", () => {
     await reconcileStuckWork({ prisma, jobs, notifications: provider, now, batchSize: 100 });
 
     expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "help", title: "Ada is still queued" }),
+      expect.objectContaining({ kind: "help", title: "Ada vẫn đang chờ bắt đầu" }),
       expect.anything(),
     );
   });
@@ -392,8 +392,8 @@ describe("reconcileStuckWork", () => {
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: "failure",
-        title: "Ada stopped",
-        body: stuckWorkStatusMessage("queued"),
+        title: "Ada đã dừng",
+        body: "Đã dừng. Việc này nằm chờ mà không bắt đầu.",
       }),
       expect.anything(),
     );

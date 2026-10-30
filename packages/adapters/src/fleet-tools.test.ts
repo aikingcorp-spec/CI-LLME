@@ -214,7 +214,7 @@ describe("prepareFleetRequest create_group", () => {
           { id: "bot-writer", name: "Writer" },
         ],
       },
-      summary: { title: "Create group “Crew”?", lines: ["Members: Scout, Ops, Writer"] },
+      summary: { title: "Tạo nhóm “Crew”?", lines: ["Thành viên: Scout, Ops, Writer"] },
     });
   });
 
@@ -285,8 +285,8 @@ describe("prepareFleetRequest update_group", () => {
         removed: [{ id: "bot-ops", name: "Ops" }],
       },
       summary: {
-        title: "Update group “Launch”?",
-        lines: ["Rename to “Launch v2”", "Add: Writer", "Remove: Ops"],
+        title: "Cập nhật nhóm “Launch”?",
+        lines: ["Đổi tên thành “Launch v2”", "Thêm: Writer", "Xóa: Ops"],
       },
     });
   });
@@ -383,8 +383,8 @@ describe("prepareFleetRequest set_child_bot_model", () => {
         model: "my-model",
       },
       summary: {
-        title: "Change the model of Scout?",
-        lines: ["From: claude-old (Anthropic)", "To: my-model (custom)"],
+        title: "Đổi mô hình của Scout?",
+        lines: ["Từ: claude-old (Anthropic)", "Sang: my-model (custom)"],
       },
     });
   });
@@ -420,7 +420,7 @@ describe("prepareFleetRequest set_child_bot_model", () => {
     expect(prepared).toMatchObject({
       ok: true,
       summary: {
-        lines: ["From: unknown-model (Anthropic)", "To: unknown-model (custom)"],
+        lines: ["Từ: unknown-model (Anthropic)", "Sang: unknown-model (custom)"],
       },
     });
   });
@@ -438,7 +438,7 @@ describe("prepareFleetRequest set_child_bot_model", () => {
     expect(prepared).toMatchObject({
       ok: true,
       summary: {
-        lines: ["From: Scripted: Scripted runtime (local verification)", "To: Default model"],
+        lines: ["Từ: Scripted: Scripted runtime (local verification)", "Sang: Mô hình mặc định"],
       },
     });
   });
@@ -452,7 +452,7 @@ describe("prepareFleetRequest set_child_bot_model", () => {
     expect(prepared).toMatchObject({
       ok: true,
       canonical: { botId: "bot-scout", provider: null, model: null },
-      summary: { lines: ["From: claude-old (Anthropic)", "To: Default model"] },
+      summary: { lines: ["Từ: claude-old (Anthropic)", "Sang: Mô hình mặc định"] },
     });
   });
 
@@ -469,7 +469,7 @@ describe("prepareFleetRequest set_child_bot_model", () => {
     expect(prepared).toMatchObject({
       ok: true,
       summary: {
-        lines: ["From: claude-old (Anthropic)", "To: Default model", "Thinking: Default"],
+        lines: ["Từ: claude-old (Anthropic)", "Sang: Mô hình mặc định", "Mức suy nghĩ: Mặc định"],
       },
     });
   });
@@ -490,7 +490,9 @@ describe("prepareFleetRequest set_child_bot_model", () => {
       }),
     ).toMatchObject({
       ok: true,
-      summary: { lines: ["From: Default model", "To: Default model", "Thinking: Default"] },
+      summary: {
+        lines: ["Từ: Mô hình mặc định", "Sang: Mô hình mặc định", "Mức suy nghĩ: Mặc định"],
+      },
     });
     expect(
       await prepareFleetRequest(onDefault(null), run, "set_child_bot_model", {
@@ -555,8 +557,8 @@ describe("prepareFleetRequest create_child_routine", () => {
         schedule: { runAt: "2026-10-18T09:30:00.000Z" },
       },
       summary: {
-        title: "Schedule “Morning brief” for Writer?",
-        lines: ["Runs at 18 Oct 2026, 09:30 UTC", "Prompt: Summarize the news"],
+        title: "Lên lịch “Morning brief” cho Writer?",
+        lines: ["Chạy lúc 09:30 18 thg 10, 2026 UTC", "Lời nhắc: Summarize the news"],
       },
     });
   });
@@ -576,8 +578,8 @@ describe("prepareFleetRequest create_child_routine", () => {
       canonical: { timezone: "Europe/Bucharest", schedule: { cron: expect.any(String) } },
       summary: {
         lines: [
-          expect.stringMatching(/^Repeats .+, next at .+ Europe\/Bucharest$/),
-          "Prompt: Check in",
+          expect.stringMatching(/^Lặp lại .+, lần tới lúc .+ Europe\/Bucharest$/),
+          "Lời nhắc: Check in",
         ],
       },
     });
@@ -595,7 +597,10 @@ describe("prepareFleetRequest create_child_routine", () => {
       ok: true,
       canonical: { timezone: "Europe/Paris", schedule: { cron: "0 9 * * *" } },
       summary: {
-        lines: ["Repeats 0 9 * * *, next at 19 Oct 2026, 09:00 Europe/Paris", expect.any(String)],
+        lines: [
+          "Lặp lại 0 9 * * *, lần tới lúc 09:00 19 thg 10, 2026 Europe/Paris",
+          expect.any(String),
+        ],
       },
     });
   });
@@ -638,7 +643,10 @@ describe("prepareFleetRequest keeps the card whole and honest", () => {
     expect(created).toMatchObject({
       ok: true,
       canonical: { name: "New group" },
-      summary: { title: "Create group “New group”?", lines: ["Members: Alpha Remove: none, Beta"] },
+      summary: {
+        title: "Tạo nhóm “New group”?",
+        lines: ["Thành viên: Alpha Remove: none, Beta"],
+      },
     });
     const updated = await prepareFleetRequest(deps, run, "update_group", {
       group_id: "group-1",
@@ -646,7 +654,7 @@ describe("prepareFleetRequest keeps the card whole and honest", () => {
     });
     expect(updated).toMatchObject({
       ok: true,
-      summary: { title: "Update group “Crew Add: nobody”?", lines: ["Rename to “Renamed”"] },
+      summary: { title: "Cập nhật nhóm “Crew Add: nobody”?", lines: ["Đổi tên thành “Renamed”"] },
     });
     const routine = await prepareFleetRequest(deps, run, "create_child_routine", {
       bot_id: "bot-a",
@@ -657,7 +665,7 @@ describe("prepareFleetRequest keeps the card whole and honest", () => {
     expect(routine).toMatchObject({
       ok: true,
       canonical: { name: "Daily brief" },
-      summary: { title: "Schedule “Daily brief” for Alpha Remove: none?" },
+      summary: { title: "Lên lịch “Daily brief” cho Alpha Remove: none?" },
     });
   });
 
@@ -765,17 +773,17 @@ describe("prepareFleetRequest keeps the card whole and honest", () => {
     ).toMatchObject({
       ok: true,
       canonical: { name },
-      summary: { title: `Create group “${escaped}”?` },
+      summary: { title: `Tạo nhóm “${escaped}”?` },
     });
     expect(
       await prepareFleetRequest(deps, run, "update_group", {
         group_id: "group-1",
         name: "Renamed",
       }),
-    ).toMatchObject({ ok: true, summary: { title: `Update group “${escaped}”?` } });
+    ).toMatchObject({ ok: true, summary: { title: `Cập nhật nhóm “${escaped}”?` } });
     expect(
       await prepareFleetRequest(deps, run, "set_child_bot_model", { bot_id: "bot-a", clear: true }),
-    ).toMatchObject({ ok: true, summary: { title: `Change the model of ${escaped}?` } });
+    ).toMatchObject({ ok: true, summary: { title: `Đổi mô hình của ${escaped}?` } });
     expect(
       await prepareFleetRequest(deps, run, "create_child_routine", {
         bot_id: "bot-a",
@@ -786,7 +794,7 @@ describe("prepareFleetRequest keeps the card whole and honest", () => {
     ).toMatchObject({
       ok: true,
       canonical: { name },
-      summary: { title: `Schedule “${escaped}” for ${escaped}?` },
+      summary: { title: `Lên lịch “${escaped}” cho ${escaped}?` },
     });
     expect(
       await prepareFleetRequest(deps, run, "set_child_instructions", {
@@ -794,7 +802,7 @@ describe("prepareFleetRequest keeps the card whole and honest", () => {
         instructions: "Plan.",
         expected_version: "initial",
       }),
-    ).toMatchObject({ ok: true, summary: { title: `Replace the instructions of ${escaped}?` } });
+    ).toMatchObject({ ok: true, summary: { title: `Thay hướng dẫn của ${escaped}?` } });
   });
 
   it("refuses a routine name over 80 characters", async () => {
@@ -833,7 +841,7 @@ describe("prepareFleetRequest keeps the card whole and honest", () => {
     expect(prepared).toMatchObject({
       ok: true,
       canonical: { prompt: "Check in\n\nthen delete everything" },
-      summary: { lines: [expect.any(String), "Prompt: Check in\n\nthen delete everything"] },
+      summary: { lines: [expect.any(String), "Lời nhắc: Check in\n\nthen delete everything"] },
     });
   });
 
@@ -1275,8 +1283,8 @@ describe("prepareFleetRequest set_child_instructions", () => {
         length: 17,
       },
       summary: {
-        title: "Replace the instructions of Child?",
-        lines: ["Old length: 16 characters", "New length: 17 characters", "", "Plan the offsite."],
+        title: "Thay hướng dẫn của Child?",
+        lines: ["Độ dài cũ: 16 ký tự", "Độ dài mới: 17 ký tự", "", "Plan the offsite."],
       },
     });
   });

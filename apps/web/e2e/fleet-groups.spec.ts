@@ -20,11 +20,11 @@ test("a group a bot creates after approval appears in the sidebar without a relo
   await page.keyboard.press("Enter");
 
   await expect(
-    page.getByTestId("transcript").getByText("Create group “Crew”?", { exact: true }),
+    page.getByTestId("transcript").getByText("Tạo nhóm “Crew”?", { exact: true }),
   ).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText("Members: Alpha, Beta", { exact: true })).toBeVisible();
+  await expect(page.getByText("Thành viên: Alpha, Beta", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Always allow this tool" })).toHaveCount(0);
   await expect(sidebar.getByRole("button", { name: /^Crew/ })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "fleet-create-group-approval");
@@ -81,12 +81,12 @@ test("model approvals use catalog labels and fit wide and narrow chats", async (
   await page.keyboard.press("Enter");
   const card = page
     .locator("[data-message-id]")
-    .filter({ has: page.getByText("Change the model of Scout?", { exact: true }) })
+    .filter({ has: page.getByText("Đổi mô hình của Scout?", { exact: true }) })
     .last();
-  await expect(card.getByText("From: OpenAI: GPT-6 Sol", { exact: false })).toBeVisible({
+  await expect(card.getByText("Từ: OpenAI: GPT-6 Sol", { exact: false })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(card.getByText("To: OpenAI: GPT-6 Luna", { exact: false })).toBeVisible();
+  await expect(card.getByText("Sang: OpenAI: GPT-6 Luna", { exact: false })).toBeVisible();
   const allow = card.getByRole("button", { name: "Allow once", exact: true });
   const deny = card.getByRole("button", { name: "Deny", exact: true });
   const a = await allow.boundingBox();

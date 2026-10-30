@@ -250,7 +250,7 @@ describe("routine failure notifications", () => {
     });
 
     expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "failure", title: "Assistant failed" }),
+      expect.objectContaining({ kind: "failure", title: "Assistant gặp lỗi" }),
       expect.anything(),
     );
   });
@@ -529,7 +529,7 @@ describe("running a routine retry", () => {
       expect(send).toHaveBeenCalledExactlyOnceWith(
         {
           kind: "failure",
-          title: "Assistant failed",
+          title: "Assistant gặp lỗi",
           body: overloaded().message,
           badge: 1,
           botId: "bot-1",
@@ -814,7 +814,7 @@ describe("exhausted routine retry notification", () => {
     expect(send).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         kind: "failure",
-        title: "Assistant failed",
+        title: "Assistant gặp lỗi",
         body: overloaded().message.slice(0, 180),
         botId: "bot-1",
         threadId: "thread-1",

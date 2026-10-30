@@ -1,5 +1,5 @@
 import { runContinueJob } from "@rakazo/adapter-kit";
-import { displayName } from "@rakazo/core";
+import { displayName, notificationText } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { returnBotMessageOutcome } from "./bot-messages.js";
@@ -99,7 +99,7 @@ export async function failRunBeforeTurn(
   if (!failed.continuationRunId) {
     await notifyRun(deps, run, {
       kind: "failure",
-      title: `${displayName(botName, "Bot")} failed`,
+      title: notificationText.failed(botName),
       body: message,
       botId: run.botId,
       threadId: run.threadId,

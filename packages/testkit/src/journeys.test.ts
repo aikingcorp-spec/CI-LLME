@@ -3314,8 +3314,8 @@ describeJourneys("required product journeys", () => {
         "create a group named Crew with Alpha, Beta",
       );
       const card = JSON.stringify(pending.waiting.messages);
-      expect(card).toContain("Create group “Crew”?");
-      expect(card).toContain("Members: Alpha, Beta");
+      expect(card).toContain("Tạo nhóm “Crew”?");
+      expect(card).toContain("Thành viên: Alpha, Beta");
       expect(card).not.toContain("Always allow this tool");
       expect(await activeGroups(me.userId, "Crew")).toEqual([]);
 
@@ -3407,7 +3407,7 @@ describeJourneys("required product journeys", () => {
           `remove bots ${gamma.id} from the group named Crew`,
         );
         const card = JSON.stringify(removal.waiting.messages);
-        expect(card).toContain("Update group “Crew”?");
+        expect(card).toContain("Cập nhật nhóm “Crew”?");
         expect(card).toContain("Remove: Gamma");
         await answerAndSettle(cookie, chief.id, removal, "allow");
 
@@ -3632,8 +3632,8 @@ describeJourneys("required product journeys", () => {
         rewrite(start.version, "Plan the offsite"),
       );
       const card = JSON.stringify(pending.waiting.messages);
-      expect(card).toContain("Replace the instructions of Scout?");
-      expect(card).toContain("Old length: 0 characters");
+      expect(card).toContain("Thay hướng dẫn của Scout?");
+      expect(card).toContain("Độ dài cũ: 0 ký tự");
       expect(card).toContain("New length: 16 characters");
       expect(card).toContain("Plan the offsite");
       expect(card).not.toContain("Always allow this tool");
@@ -3802,7 +3802,7 @@ describeJourneys("required product journeys", () => {
         `set the model of bot ${scout.id} to openrouter/scripted`,
       );
       const card = JSON.stringify(pending.waiting.messages);
-      expect(card).toContain("Change the model of Scout?");
+      expect(card).toContain("Đổi mô hình của Scout?");
       expect(card).toContain("To: scripted");
       expect(card).not.toContain("Always allow this tool");
       expect(await childState(scout.id)).toMatchObject({ modelProvider: null, modelId: null });

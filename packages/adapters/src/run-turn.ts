@@ -13,6 +13,7 @@ import {
   displayName,
   humanizeToolName,
   isBackgroundRunTrigger,
+  notificationText,
   redactSecrets,
   TAKEOVER_COMPUTER_PENDING_STATE,
   userRunError,
@@ -31,6 +32,7 @@ import {
   HISTORY_WINDOW_SIZE,
   shouldEnqueueCompaction,
 } from "./history-compaction.js";
+import { filterModelControlText } from "./model-control-filter.js";
 import {
   backOffRoutineAfterAccountError,
   clearRoutineBackoff,
@@ -121,7 +123,9 @@ export async function consumeRunEvents(
     }
   };
   try {
-    for await (const event of withRuntimeCleanup(events, ctx.abortController)) {
+    for await (const event of filterModelControlText(
+      withRuntimeCleanup(events, ctx.abortController),
+    )) {
       if (ctx.state.approval.pausePending) return true;
       if (!ctx.state.lease.valid) return true;
       if (await runLeaseLost(ctx)) return true;
@@ -372,7 +376,7 @@ async function pauseForAnswer(ctx: RunContext, event: RuntimeEvent<"ask">) {
   }
   await notifyRun(deps, run, {
     kind: "help",
-    title: `${displayName(bot.name, "Bot")} needs an answer`,
+    title: notificationText.needsAnswer(bot.name),
     body: safeText,
     botId: bot.id,
     threadId: thread.id,
@@ -440,7 +444,7 @@ async function pauseForTakeover(ctx: RunContext, event: RuntimeEvent<"takeover">
   ctx.state.lease.retainComputer = true;
   await notifyRun(deps, run, {
     kind: "takeover",
-    title: `${displayName(bot.name, "Bot")} needs you on the screen`,
+    title: notificationText.needsScreen(bot.name),
     body: safeReason,
     botId: bot.id,
     threadId: thread.id,
@@ -799,7 +803,7 @@ export async function completeRun(ctx: RunContext) {
   if (runSendsFinishNotification(run.trigger) && notifyBody && !completed.continuationRunId) {
     await notifyRun(deps, run, {
       kind: "completion",
-      title: `${displayName(bot.name, "Bot")} finished`,
+      title: notificationText.finished(bot.name),
       body: notifyBody,
       botId: bot.id,
       threadId: thread.id,
@@ -942,7 +946,7 @@ export async function failRun(
   if (runSendsFinishNotification(run.trigger) && !failed.continuationRunId && !retrying) {
     await notifyRun(deps, run, {
       kind: "failure",
-      title: `${displayName(bot.name, "Bot")} failed`,
+      title: notificationText.failed(bot.name),
       body: message,
       botId: bot.id,
       threadId: thread.id,

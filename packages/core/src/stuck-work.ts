@@ -1,4 +1,5 @@
 import { displayName } from "./display-name.js";
+import { notificationText } from "./notification-text.js";
 /** Remind once a queued run or a human wait has been sitting this long.
  *  Long enough that a short queue or stepping away stays quiet; short enough
  *  that a forgotten takeover is not silent until the next day. */
@@ -67,31 +68,36 @@ export function stuckWorkStatusMessages(): readonly string[] {
   return STUCK_WORK_STATUSES.map((status) => stuckWorkStatusMessage(status));
 }
 
+const STOPPED_PUSH_BODY: Record<StuckWorkStatus, string> = {
+  queued: notificationText.stoppedQueued,
+  waiting_input: notificationText.stoppedWaitingInput,
+  waiting_takeover: notificationText.stoppedWaitingTakeover,
+};
+
 export type StuckAttentionKind = "help" | "takeover" | "failure";
 
 export function stuckWorkReminder(
   status: StuckWorkStatus,
   botName: string,
 ): { kind: StuckAttentionKind; title: string; body: string } {
-  const name = botLabel(botName);
   switch (status) {
     case "queued":
       return {
         kind: "help",
-        title: `${name} is still queued`,
-        body: "It has been waiting to start.",
+        title: notificationText.stillQueued(botName),
+        body: notificationText.waitingToStart,
       };
     case "waiting_input":
       return {
         kind: "help",
-        title: `${name} still needs an answer`,
-        body: "This has been waiting on you.",
+        title: notificationText.stillNeedsAnswer(botName),
+        body: notificationText.waitingOnYou,
       };
     case "waiting_takeover":
       return {
         kind: "takeover",
-        title: `${name} still needs you`,
-        body: "The screen has been waiting.",
+        title: notificationText.stillNeedsYou(botName),
+        body: notificationText.screenWaiting,
       };
   }
 }
@@ -102,8 +108,9 @@ export function stuckWorkStoppedNotification(
 ): { kind: "failure"; title: string; body: string } {
   return {
     kind: "failure",
-    title: `${botLabel(botName)} stopped`,
-    body: stuckWorkStatusMessage(status),
+    title: notificationText.stopped(botName),
+    // The run keeps the English error text (old rows are matched by it); the push is Vietnamese.
+    body: STOPPED_PUSH_BODY[status],
   };
 }
 

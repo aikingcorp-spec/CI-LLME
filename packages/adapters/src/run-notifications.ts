@@ -2,6 +2,7 @@ import type { NotificationMessage } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
 import {
   isBackgroundRunTrigger,
+  notificationText,
   plainTextFromMarkdown,
   redactSecrets,
   truncatedPlainText,
@@ -131,7 +132,7 @@ export function secretAskNotification(botName: string, label: string, runSecrets
     redactSecrets(text, runSecrets),
     COMPLETION_NOTIFICATION_MAX_CHARS,
   );
-  return { title: `${botName} needs an answer`, body };
+  return { title: notificationText.needsAnswer(botName), body };
 }
 
 export function completionMarksUnread(

@@ -6,6 +6,7 @@ import {
   isBackgroundInputBlock,
   isBackgroundRunTrigger,
   isPeerReceiptBlocks,
+  sanitizeStoredBlocks,
 } from "@rakazo/core";
 import { messageReplyPreview } from "@rakazo/core/message-quote";
 import type { Prisma, PrismaClient } from "@rakazo/db";
@@ -59,7 +60,7 @@ export async function loadMessagePage(
       const messages = includePeerRuns ? rows : await withoutPeerRunMessages(prisma, rows);
       return {
         threadId,
-        messages: messages.map(toThreadMessage),
+        messages: toThreadMessages(messages),
         olderCursor: hasOlder ? (first?.seq ?? null) : null,
         coveredThroughSeq,
       };
@@ -88,7 +89,7 @@ export async function loadMessagePage(
     if (hasSubstantive || includePeerReceipts || !hasOlder || includePeerRuns) {
       return {
         threadId,
-        messages: visibleRows.map(toThreadMessage),
+        messages: toThreadMessages(visibleRows),
         olderCursor: hasOlder ? (pageRows[0]?.seq ?? null) : null,
       };
     }
@@ -250,6 +251,16 @@ export function shouldForwardBackgroundThreadEvent(event: {
   return Array.isArray(blocks) && blocks.some(isBackgroundInputBlock);
 }
 
+/** Old bot replies that were nothing but leaked model control text read back as no message. */
+function toThreadMessages(rows: Parameters<typeof toThreadMessage>[0][]): ThreadMessage[] {
+  return rows.flatMap((row) => {
+    const message = toThreadMessage(row);
+    const emptied =
+      message.blocks.length === 0 && Array.isArray(row.blocks) && row.blocks.length > 0;
+    return emptied ? [] : [message];
+  });
+}
+
 function toThreadMessage(row: {
   id: string;
   threadId: string;
@@ -274,7 +285,7 @@ function toThreadMessage(row: {
   const replyPreview =
     parent && parsed?.success
       ? messageReplyPreview(
-          parsed.data,
+          sanitizeStoredBlocks(parent.role, parsed.data),
           parent.role as ThreadMessage["role"],
           parent.botId ?? undefined,
         )
@@ -286,7 +297,7 @@ function toThreadMessage(row: {
     threadId: row.threadId,
     seq: row.seq,
     role: row.role as ThreadMessage["role"],
-    blocks: row.blocks as ThreadMessage["blocks"],
+    blocks: sanitizeStoredBlocks(row.role, row.blocks as ThreadMessage["blocks"]),
     botId: row.botId ?? undefined,
     replyToMessageId: row.replyToMessageId ?? undefined,
     replyQuote: row.replyQuote ?? undefined,

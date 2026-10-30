@@ -170,6 +170,51 @@ describe("thread message pages", () => {
     ]);
   });
 
+  it("cleans leaked model control text from old bot replies on read", async () => {
+    const leak = '<|channel|>commentary to=functions.web_search <|message|>{"q":"giá vàng"}';
+    const rows = [
+      { id: "m4", role: "bot", blocks: [{ kind: "text", text: "Giá vàng tăng 2%." }] },
+      { id: "m3", role: "user", blocks: [{ kind: "text", text: `gõ thử ${leak}` }] },
+      {
+        id: "m2",
+        role: "bot",
+        blocks: [
+          { kind: "text", text: "The tool invocation had syntax errors. Need proper JSON." },
+        ],
+      },
+      {
+        id: "m1",
+        role: "bot",
+        blocks: [
+          { kind: "text", text: `Xin chào ${leak}` },
+          { kind: "text", text: leak },
+        ],
+      },
+      { id: "m0", role: "bot", blocks: [{ kind: "text", text: leak }] },
+    ].map((row, index) => ({
+      ...row,
+      threadId: "thread-1",
+      seq: 4 - index,
+      botId: "bot-1",
+      replyToMessageId: null,
+      replyQuote: null,
+      runId: null,
+      createdAt: new Date("2026-08-16T00:00:00.000Z"),
+    }));
+    const prisma = {
+      message: { findMany: vi.fn(async () => rows) },
+      run: { findMany: vi.fn(async () => []) },
+    } as unknown as PrismaClient;
+
+    const page = await loadMessagePage(prisma, "thread-1", undefined, 10);
+
+    expect(page.messages.map((message) => [message.id, message.blocks])).toEqual([
+      ["m1", [{ kind: "text", text: "Xin chào" }]],
+      ["m3", rows[1]?.blocks],
+      ["m4", rows[0]?.blocks],
+    ]);
+  });
+
   it("caches background-run classification for live events", async () => {
     const findUnique = vi.fn(async () => ({ trigger: "tickets" }));
     const prisma = { run: { findUnique } } as unknown as PrismaClient;
