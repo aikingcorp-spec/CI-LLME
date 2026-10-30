@@ -41,6 +41,10 @@ GATEWAY_URL=http://127.0.0.1:8787 SESSION_TOKEN="$SESSION_TOKEN" pnpm exec tsx s
 
 This pairs a temporary node, obtains a client assertion, runs both peers, then unpairs the node. It exits 0 once both messages arrive.
 
+## HTTPS gateway
+
+`GATEWAY_URL` is the one setting for the gateway origin. HTTP calls use it as given, and signaling WebSockets (`/signal`, `/agent`) are derived from it by `toWsUrl`: `https://` becomes `wss://` and `http://` becomes `ws://`, so an HTTPS origin such as `https://test.vnbot.run` never opens an insecure `ws://` socket (and a browser page served over HTTPS would not hit mixed-content blocking). Other schemes are rejected. Give the origin without a trailing slash.
+
 ## Sign-in
 
 Sign in to vnbot.run through the existing app. Set `SESSION_TOKEN` to the **signed Better Auth session token returned by sign-in**, not a raw database session token. All client demos send it as `Authorization: Bearer <signed session token>`. For cookie clients, send the complete sign-in Cookie header instead, for example:
