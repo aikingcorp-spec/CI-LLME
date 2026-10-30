@@ -141,30 +141,107 @@ P2P_NETNS=1 pnpm exec vitest run --root ../.. packages/p2p-prototype/src/two-mac
 
 ## TURN over TCP and TLS
 
-node-datachannel 0.32 (libjuice) accepts `relayType: "TurnTcp" | "TurnTls"` but only gathers UDP relay candidates; the binary logs `TURN transports TCP and TLS are not supported with libjuice` and skips the server. To prove the data channel through a coturn over `turn:...?transport=tcp` and `turns:` (self-signed certificate), the test path swaps in [werift](https://github.com/shinyoshiaki/werift-webrtc) (pure TypeScript, dev dependency). `connectPeer` takes an optional `createPeerConnection`; `src/werift-peer-connection.ts` adapts werift to the callback API it drives. Production code keeps node-datachannel and does not import werift.
+node-datachannel 0.32 (libjuice) accepts `relayType: "TurnTcp" | "TurnTls"` but only gathers UDP relay candidates; the binary logs `TURN transports TCP and TLS are not supported with libjuice` and skips the server. To prove the data channel through a coturn over `turn:...?transport=tcp` and `turns:` (self-signed certificate), the test path swaps in werift (pure TypeScript, dev dependency, loaded only by this path). `connectPeer` takes an optional `createPeerConnection`; `src/werift-peer-connection.ts` adapts werift to the callback API it drives. Production code keeps node-datachannel and does not import werift.
 
-`PEER_IMPL=werift` makes `two-machine-peer.ts` use it, and `selected_pair` / `channel_open` events then carry `turnTransport` (`udp`, `tcp` or `tls`, read from werift's TURN client transport object behind the selected local candidate). The netns test adds `P2P_PEER_IMPL=werift`, `P2P_EXPECT_TURN_TRANSPORT=tcp|tls` and `P2P_TURN_TLS_CA_FILE=<PEM of the TURNS certificate>`, which pins that certificate as the only trust anchor (hostname is not checked because the peers reach the server through the forwarder). `scripts/turn-forwarder.py` prints per-port wire counters on `SIGUSR1`; with `P2P_EXPECT_TURN_TRANSPORT` set, the test also asserts that only the expected TCP port saw connections, that no UDP datagram went toward either TURN port, and that every TURN connection was closed afterwards (closing the connection frees the allocation).
+`PEER_IMPL=werift` makes `two-machine-peer.ts` load it with a dynamic import (it exits with `PEER_IMPL=werift needs the werift devDependency (test-only)` when the dependency is not installed), and `selected_pair` / `channel_open` events then carry `turnTransport` (`udp`, `tcp` or `tls`, read from werift's TURN client transport object behind the selected local candidate). The netns test adds `P2P_PEER_IMPL=werift`, `P2P_EXPECT_TURN_TRANSPORT=tcp|tls` and `P2P_TURN_TLS_CA_FILE=<PEM of the TURNS certificate>`, which pins that certificate as the only trust anchor (hostname is not checked because the peers reach the server through the forwarder). `scripts/turn-forwarder.py` prints per-port wire counters on `SIGUSR1`; with `P2P_EXPECT_TURN_TRANSPORT` set, the test also asserts that only the expected TCP port saw connections, that no UDP datagram went toward either TURN port, and that every TURN connection was closed afterwards (closing the connection frees the allocation).
+
+Caveat: werift falls back from a failed UDP allocation to TCP on its own, so always give an explicit `tcp`/`tls` transport (`P2P_TURN_TRANSPORTS`) and check `turnTransport`.
+
+## Reproduce the TURN TCP/TLS runs
+
+Needs:
+
+- Linux with network namespaces and `sudo -n` (or root); `python3`; `pnpm install` so the werift dev dependency is present. The routed topology needs no `iptables`.
+- A reachable coturn with a TURN/TCP listener on port 3479 and a TURNS/TLS listener on port 5350. The test fixes these two ports (`P2P_TURN_PORTS` changes only what the forwarder listens on).
+- A credentials file outside the repository, mode 600, one `KEY=VALUE` per line (placeholders shown):
+
+  ```
+  TURN_URLS=turn:<turn ip>:3479?transport=tcp,turns:<turn ip>:5350
+  TURN_USERNAME=<username>
+  TURN_CREDENTIAL=<credential>
+  EXPIRES_AT_UNIX=<unix seconds>
+  ```
+
+  The test takes its path from `P2P_TURN_CREDS_FILE` and hands it to the peers as `TURN_CREDS_FILE`; `readTurnCreds` reads the first three keys, and `EXPIRES_AT_UNIX` is only for your own check that the credential outlives the batch. Never print the file or commit it.
+- For TLS, the server's self-signed certificate (public data) as a PEM file, pinned with `P2P_TURN_TLS_CA_FILE` (the peers see it as `TURN_TLS_CA_FILE`). Without it default verification stays on and a self-signed certificate is rejected.
+
+One run, from the repository root (`tcp`; for TLS use `P2P_TURN_TRANSPORTS=TurnTls P2P_EXPECT_TURN_TRANSPORT=tls`):
 
 ```sh
-P2P_NETNS=1 P2P_TOPOLOGY=routed P2P_TURN_CREDS_FILE=/path/to/creds P2P_TURN_FORWARD=1 P2P_TURN_PUBLIC_IP=<turn ip> \
-  P2P_TURN_TRANSPORTS=TurnTcp P2P_ICE_POLICY=relay P2P_EXPECT_CANDIDATE_TYPE=relay \
-  P2P_PEER_IMPL=werift P2P_EXPECT_TURN_TRANSPORT=tcp \
-  pnpm exec vitest run --root ../.. packages/p2p-prototype/src/two-machine.netns.test.ts
+P2P_NETNS=1 P2P_TOPOLOGY=routed P2P_TURN_CREDS_FILE=/path/to/turn.creds P2P_TURN_FORWARD=1 \
+  P2P_TURN_PUBLIC_IP=<turn ip> P2P_TURN_TRANSPORTS=TurnTcp P2P_ICE_POLICY=relay \
+  P2P_EXPECT_CANDIDATE_TYPE=relay P2P_PEER_IMPL=werift P2P_EXPECT_TURN_TRANSPORT=tcp \
+  P2P_TURN_TLS_CA_FILE=/path/to/turns-cert.pem P2P_LOG_DIR=/tmp/p2p-turn-tcp/run-01 \
+  pnpm exec vitest run --root . packages/p2p-prototype/src/two-machine.netns.test.ts
 ```
 
-For TLS use `P2P_TURN_TRANSPORTS=TurnTls P2P_EXPECT_TURN_TRANSPORT=tls P2P_TURN_TLS_CA_FILE=...`. Caveat: werift falls back from a failed UDP allocation to TCP on its own, so always give an explicit `tcp`/`tls` transport and check `turnTransport`.
+Twenty runs (wait for a quiet box first; a batch run at a load average near 100 lost two of twenty):
+
+```sh
+OUT=/tmp/p2p-turn-tcp
+for i in $(seq -w 1 20); do
+  mkdir -p "$OUT/run-$i"
+  P2P_NETNS=1 P2P_TOPOLOGY=routed P2P_TURN_CREDS_FILE=/path/to/turn.creds P2P_TURN_FORWARD=1 \
+    P2P_TURN_PUBLIC_IP=<turn ip> P2P_TURN_TRANSPORTS=TurnTcp P2P_ICE_POLICY=relay \
+    P2P_EXPECT_CANDIDATE_TYPE=relay P2P_PEER_IMPL=werift P2P_EXPECT_TURN_TRANSPORT=tcp \
+    P2P_TURN_TLS_CA_FILE=/path/to/turns-cert.pem P2P_LOG_DIR="$OUT/run-$i" \
+    timeout 180 pnpm exec vitest run --root . packages/p2p-prototype/src/two-machine.netns.test.ts \
+    > "$OUT/run-$i/vitest.txt" 2>&1
+  sleep 3
+done
+```
+
+Count from the saved files, not from the exit codes (each run has 3 tests):
+
+```sh
+grep -l 'Tests  3 passed (3)' "$OUT"/run-*/vitest.txt | wc -l                                  # runs that passed
+grep -h '"event":"selected_pair"' "$OUT"/run-*/*.log | grep -cE 'typ (host|srflx|prflx)'       # 0: every pair is relay
+grep -h '"event":"selected_pair"' "$OUT"/run-*/*.log | grep -vc '"turnTransport":"tcp"'        # 0: client-to-TURN transport
+for f in "$OUT"/run-*/forwarder.log; do tail -n1 "$f"; done \
+  | grep -vc '"dgrams_down": 0, "dgrams_up": 0, "open": 0'                                     # 0: no UDP datagram, nothing left open
+```
+
+The last line of each `forwarder.log` holds the wire counters: TCP connections and bytes both ways on the expected port only. The recorded batches and how they were counted are in [`evidence/`](evidence/README.md).
+
+## Reproduce the NAT runs
+
+Needs Linux with network namespaces, `sudo -n`, kernel netfilter/conntrack, and an `iptables` that can program it (`P2P_IPTABLES` takes the command or the path of an `xtables-*-multi` binary, `P2P_IPT_LIBDIR` its libraries). `scripts/netns-two-machines.sh check` reports whether it works. The STUN server is local to the namespaces (`scripts/stun-server.py`), so no internet access is needed for the NAT itself. The recorded runs also had the TURN credentials file from the section above, because with symmetric NAT on both sides the selected pair is a relay; the TURN host is reached through the forwarder, which the router NATs into.
+
+```sh
+OUT=/tmp/p2p-nat-cone   # P2P_NAT_TYPE=cone or symmetric
+for i in $(seq -w 1 20); do
+  P2P_NETNS=1 P2P_TOPOLOGY=nat P2P_NAT_TYPE=cone P2P_ICE_POLICY=all \
+    P2P_IPTABLES=iptables P2P_TURN_CREDS_FILE=/path/to/turn.creds P2P_TURN_FORWARD=1 \
+    P2P_TURN_PUBLIC_IP=<turn ip> P2P_TURN_TRANSPORTS=TurnUdp,TurnTcp,TurnTls \
+    P2P_LOG_DIR="$OUT/run-$i" \
+    timeout 180 pnpm exec vitest run --root . packages/p2p-prototype/src/two-machine.netns.test.ts \
+    > "$OUT/run-$i.vitest.txt" 2>&1
+done
+```
+
+Each run checks, per peer, that the NAT mapping measured by `scripts/nat-probe.py` matches the configured type, then the usual exchange, restart and close tests. Count:
+
+```sh
+grep -l 'Tests  3 passed (3)' "$OUT"/run-*.vitest.txt | wc -l                                  # runs that passed
+grep -h '"event":"selected_pair"' "$OUT"/run-*/*.log | grep -o 'typ [a-z]*' | sort | uniq -c   # cone: srflx only; symmetric: relay only
+grep -h '"mapping"' "$OUT"/run-*/nat-probe-*.json | grep -o 'endpoint-[a-z]*' | sort | uniq -c   # cone: independent; symmetric: dependent
+```
+
+The STUN server is emulated, so the `srflx` addresses are the routers' `10.78.3.x` addresses; the NAT itself is the kernel's.
 
 ## What was tested
 
-All runs below were on one Linux box with network namespaces and a **routed topology without NAT** (the box has no `iptables`). Peers reach a real coturn (a separate public server) through `scripts/turn-forwarder.py`, a userspace L4 forwarder in the root namespace; it is not a NAT and not a router. Each run is: traffic both ways, SIGKILL of the node and reconnect, and a clean `BYE`/`BYE_ACK` close.
+All runs below were on one Linux box with network namespaces. Peers reach a real coturn (a separate public server) through `scripts/turn-forwarder.py`, a userspace L4 forwarder in the root namespace; it is not a NAT and not a router. Each run is: traffic both ways, SIGKILL of the node and reconnect, and a clean `BYE`/`BYE_ACK` close, plus the NAT probe (NAT runs) or the forwarder wire assertion (TURN TCP/TLS runs). Redacted per-run records are in [`evidence/`](evidence/README.md).
 
-| Path | Result |
-|---|---|
-| Host candidates (`iceTransportPolicy=all`) | 20/20 |
-| TURN/UDP relay, relay-only, real coturn | 20/20 |
-| TURN/TCP relay, relay-only, werift peers | 20/20 on a clean rerun at low load (runs-tcp-rerun2); an earlier rerun under box load ~100 was 18/20 (2 exchange timeouts) |
-| TURNS/TLS relay, relay-only, werift peers (self-signed certificate pinned) | 20/20 |
+| Path | Topology | Result |
+|---|---|---|
+| Host candidates (`iceTransportPolicy=all`) | routed, no NAT | 20/20 |
+| TURN/UDP relay, relay-only, real coturn | routed, no NAT | 20/20 |
+| TURN/TCP relay, relay-only, werift peers | routed, no NAT | 20/20 on a clean rerun at low load (`evidence/turn-tcp/`); an earlier batch while the box load average was 87 to 109 was 18/20, two exchange timeouts kept as failures (`evidence/turn-tcp-under-load/`) |
+| TURNS/TLS relay, relay-only, werift peers (self-signed certificate pinned) | routed, no NAT | 20/20 (`evidence/turn-tls/`) |
+| Cone NAT (port-restricted), `iceTransportPolicy=all`, node-datachannel | kernel NAT, peers on the same private subnet behind different routers | 20/20, every selected pair `srflx` to `srflx`, no host pair (`evidence/nat-cone/`) |
+| Symmetric NAT on both sides, `iceTransportPolicy=all`, node-datachannel | kernel NAT, same layout, `--random-fully` | 20/20, every selected pair `relay` to `relay` on the TURN host (`evidence/nat-symmetric/`) |
 
-An earlier TURN/TCP batch was discarded because another session tore down the same namespaces mid-run; reruns: 18/20 under load ~100, then 20/20 at load <5. TCP and TLS were proven with werift in the test path only; production uses node-datachannel (libjuice), which gathers UDP relay candidates only.
+Earlier TURN/TCP batches were discarded or superseded: one because another session tore down the same namespaces mid-run, one reran under heavy load (18/20) and then again at load below 5 (20/20). TCP and TLS were proven with werift in the test path only; production uses node-datachannel (libjuice), which gathers UDP relay candidates only.
 
-**Not tested:** real NAT on two real machines behind different NATs (carrier-grade NAT, symmetric NAT, hairpinning); mixed stacks (a libjuice peer with a werift peer); IPv6; networks that block UDP, with the production stack.
+**Not tested:** real NAT on two real machines behind different NATs (carrier-grade NAT, hairpinning, other filtering behaviours); a cone peer against a symmetric peer; the STUN server in the NAT runs is local to the emulated internet; mixed stacks (a libjuice peer with a werift peer); IPv6; networks that block UDP, with the production stack.
