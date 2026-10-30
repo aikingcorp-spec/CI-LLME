@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- The sign-in email field still gets focus when the page opens, without relying on the `autoFocus` attribute that screen readers can find disorienting.
+- Sign-in focuses the email field on arrival and when returning to the email step, and focuses the one-time-code field when the code step appears, without relying on `autoFocus`.
 - Mobile threads now show work started by another client as soon as the run starts, without hiding waiting runs or another group member's error.
 - Hovering a message no longer places its entire row above the floating chat header and other higher-priority controls.
 - Mobile chat and call subscriptions reject oversized event frames and release their readers after cancellation or connection failure.

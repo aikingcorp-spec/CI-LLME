@@ -181,6 +181,7 @@ it("sends a code, masks it, and signs in with a name taken from the email", asyn
   vi.mocked(authClient.signIn.emailOtp).mockResolvedValue({ data: {}, error: null } as never);
   await render();
   expect(host.querySelector("h1")!.textContent).toBe("Get started with VNBot");
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
   await enter(host.querySelector('input[name="email"]'), " person@example.com ");
   await submit();
   expect(authClient.emailOtp.sendVerificationOtp).toHaveBeenCalledWith({
@@ -192,6 +193,7 @@ it("sends a code, masks it, and signs in with a name taken from the email", asyn
   });
   expect(host.querySelector("h1")!.textContent).toBe("Check your email");
   const code = host.querySelector('input[aria-label="6-digit sign-in code"]')!;
+  expect(document.activeElement).toBe(code);
   expect(code.getAttribute("autocomplete")).toBe("one-time-code");
   await enter(code, "123456");
   expect(host.textContent).not.toContain("123456");
@@ -256,6 +258,27 @@ it("rejects a bad code without leaving the digits on the page, and offers a new 
   expect(host.querySelector<HTMLInputElement>('input[name="email"]')!.value).toBe(
     "ada@example.com",
   );
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
+});
+
+it("focuses email after a browser history transition back to the email step and on arrival", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+    data: { success: true },
+    error: null,
+  } as never);
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "history@example.com");
+  await submit();
+  await act(async () => button("Use a different email").click());
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
+
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  await render();
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
 });
 
 it("does not submit an unfinished code", async () => {

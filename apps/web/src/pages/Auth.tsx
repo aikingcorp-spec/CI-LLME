@@ -92,6 +92,22 @@ export function AuthPage() {
     restored?.step === "code" ? resendSecondsLeft(restored.sentAt, RESEND_SECONDS) : 0,
   );
   const [resent, setResent] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    (step === "email" ? emailRef : codeRef).current?.focus();
+  }, [reset, step]);
+
+  useEffect(() => {
+    const focusCurrentStep = () => {
+      window.setTimeout(() => {
+        (step === "email" ? emailRef : codeRef).current?.focus();
+      }, 0);
+    };
+    window.addEventListener("popstate", focusCurrentStep);
+    return () => window.removeEventListener("popstate", focusCurrentStep);
+  }, [step]);
 
   useEffect(() => {
     setReset(null);
@@ -327,7 +343,7 @@ export function AuthPage() {
                 pattern={"^\\d+$"}
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                autoFocus
+                ref={codeRef}
                 disabled={pending}
                 value={code}
                 onChange={(value) => {
@@ -357,6 +373,7 @@ export function AuthPage() {
               <input
                 id="email"
                 name="email"
+                ref={emailRef}
                 autoComplete="username webauthn"
                 value={email}
                 onChange={(event) => onEmailChange(event.target.value)}
