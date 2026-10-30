@@ -313,7 +313,9 @@ describe("NativePostgres lifecycle", () => {
       binDir,
       env: { PATH: "/usr/bin", DATABASE_URL: "postgres://leak:leak@x/y" },
       platform: "linux",
-      path: path.posix,
+      // The lifecycle tests touch the real temp directory and compare against host `path.join`,
+      // so the code under test must build host-native paths whatever platform it is told.
+      path,
       getuid: () => 1000,
       exists: () => true,
       run: fakeRun(),
