@@ -5,6 +5,7 @@ import { mkdir, readFile, rename, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { allocateLoopbackPort } from "./local-stack.js";
+import { createMigrationClient, type MigrationClient } from "./native-migrate.js";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
 
 export const PG_BIN_DIR_ENV = "RAKAZO_PG_BIN_DIR";
@@ -293,16 +294,46 @@ export function postgresEnv(platform: string, env: NodeJS.ProcessEnv): NodeJS.Pr
   return next;
 }
 
-export function initdbArgs(input: { scratchDir: string; ownerPasswordFile: string }): string[] {
+/** Everything `initdb` takes besides the data directory. */
+function initdbOptions(ownerPasswordFile: string): string[] {
   return [
-    "-D",
-    input.scratchDir,
     `--username=${PG_OWNER_ROLE}`,
-    `--pwfile=${input.ownerPasswordFile}`,
+    `--pwfile=${ownerPasswordFile}`,
     "--auth=scram-sha-256",
     "--encoding=UTF8",
     "--locale=C",
     "--no-instructions",
+  ];
+}
+
+export function initdbArgs(input: { scratchDir: string; ownerPasswordFile: string }): string[] {
+  return ["-D", input.scratchDir, ...initdbOptions(input.ownerPasswordFile)];
+}
+
+/**
+ * `pg_ctl -o` is pasted into a command line for the shell, so a path needs its own quotes.
+ * Windows paths cannot contain `"`, so one means the value is not a path.
+ */
+function quoteForPgCtl(value: string): string {
+  if (value.includes('"')) throw new Error("Value cannot be quoted for pg_ctl.");
+  return `"${value}"`;
+}
+
+/**
+ * Windows only: PostgreSQL refuses to run `initdb` directly from an Administrator account, but
+ * `pg_ctl initdb` runs it with a restricted token. The password file is passed by path, never
+ * its contents.
+ */
+export function pgCtlInitdbArgs(input: {
+  scratchDir: string;
+  ownerPasswordFile: string;
+}): string[] {
+  return [
+    "initdb",
+    "-D",
+    input.scratchDir,
+    "-o",
+    initdbOptions(quoteForPgCtl(input.ownerPasswordFile)).join(" "),
   ];
 }
 
@@ -341,14 +372,37 @@ export function databaseUrl(input: {
   return `postgres://${login}@127.0.0.1:${input.port}/${input.database ?? PG_DATABASE}`;
 }
 
+function createDatabaseSql(): string {
+  return `CREATE DATABASE ${PG_DATABASE} OWNER ${PG_OWNER_ROLE};`;
+}
+
+function createAppRoleSql(appPassword: string): string {
+  if (!SECRET.test(appPassword)) throw new Error("Generated password has an unexpected shape.");
+  return `CREATE ROLE ${PG_APP_ROLE} LOGIN PASSWORD '${appPassword}' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;`;
+}
+
 /** Statements for single-user mode, which is how the first database and login exist without a client library. */
 export function bootstrapSql(appPassword: string): string {
-  if (!SECRET.test(appPassword)) throw new Error("Generated password has an unexpected shape.");
-  return [
-    `CREATE DATABASE ${PG_DATABASE} OWNER ${PG_OWNER_ROLE};`,
-    `CREATE ROLE ${PG_APP_ROLE} LOGIN PASSWORD '${appPassword}' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;`,
-    "",
-  ].join("\n\n");
+  return [createDatabaseSql(), createAppRoleSql(appPassword), ""].join("\n\n");
+}
+
+/**
+ * Same database and login as `bootstrapSql`, through a connected client and safe to repeat:
+ * each statement runs only when its object is missing. `CREATE DATABASE` cannot share a
+ * transaction, so the statements go one by one.
+ */
+export async function bootstrapThroughClient(
+  client: Pick<MigrationClient, "query">,
+  appPassword: string,
+): Promise<void> {
+  const exists = async (sql: string, name: string) =>
+    (await client.query(sql, [name])).rows.length > 0;
+  if (!(await exists("SELECT 1 FROM pg_database WHERE datname = $1", PG_DATABASE))) {
+    await client.query(createDatabaseSql());
+  }
+  if (!(await exists("SELECT 1 FROM pg_roles WHERE rolname = $1", PG_APP_ROLE))) {
+    await client.query(createAppRoleSql(appPassword));
+  }
 }
 
 export interface PostgresEndpoints {
@@ -369,6 +423,10 @@ export interface NativePostgresOptions {
   /** `process.getuid`; undefined on Windows. */
   getuid?: () => number | undefined;
   resolveModule?: (name: string) => string;
+  /** Directory of the package that provides `pg`; Windows bootstrap connects with it. */
+  dbDir?: string;
+  /** Builds the client for the Windows bootstrap; defaults to the `pg` client in `dbDir`. */
+  createClient?: (databaseUrl: string) => MigrationClient;
   exists?: (file: string) => boolean;
   run?: RunProcess;
   runSync?: RunProcessSync;
@@ -525,6 +583,7 @@ export class NativePostgres {
       }
       this.current = "starting";
       const port = await this.startOnFreePort(paths);
+      if (this.platform === "win32") await this.bootstrapAfterStart(paths, secrets, port);
       await writePrivateFile(paths.portFile, `${port}\n`);
       this.endpoints = {
         port,
@@ -582,12 +641,31 @@ export class NativePostgres {
       });
     await rm(paths.scratchDir, { recursive: true, force: true });
     await rm(paths.dataDir, { recursive: true, force: true });
-    const init = await this.run(
-      paths.initdb,
-      initdbArgs({ scratchDir: paths.scratchDir, ownerPasswordFile: paths.ownerPasswordFile }),
-      { env: this.childEnv(), timeoutMs: INITDB_TIMEOUT_MS },
-    );
+    const initInput = {
+      scratchDir: paths.scratchDir,
+      ownerPasswordFile: paths.ownerPasswordFile,
+    };
+    let initFile: string;
+    let initArgs: string[];
+    try {
+      [initFile, initArgs] =
+        this.platform === "win32"
+          ? [paths.pgCtl, pgCtlInitdbArgs(initInput)]
+          : [paths.initdb, initdbArgs(initInput)];
+    } catch (error) {
+      throw fail(error);
+    }
+    const init = await this.run(initFile, initArgs, {
+      env: this.childEnv(),
+      timeoutMs: INITDB_TIMEOUT_MS,
+    });
     if (init.code !== 0) throw fail(new Error(init.stderr.slice(-LOG_TAIL_BYTES)));
+    if (this.platform === "win32") {
+      // `postgres --single` refuses an Administrator account; the database and login are
+      // created through a client once the server is up (`bootstrapAfterStart`).
+      await rename(paths.scratchDir, paths.dataDir);
+      return;
+    }
     // Single-user mode skips authentication and needs no listening socket.
     const bootstrap = await this.run(
       paths.postgres,
@@ -596,6 +674,50 @@ export class NativePostgres {
     );
     if (bootstrap.code !== 0) throw fail(new Error(bootstrap.stderr.slice(-LOG_TAIL_BYTES)));
     await rename(paths.scratchDir, paths.dataDir);
+  }
+
+  /**
+   * Windows only. Runs on every start because it is cheap and repeatable, which also finishes
+   * a first run that was interrupted after `initdb`. A failure stops the server again.
+   */
+  private async bootstrapAfterStart(
+    paths: PostgresPaths,
+    secrets: { owner: string; app: string },
+    port: number,
+  ) {
+    const dbDir = this.options.dbDir;
+    const createClient =
+      this.options.createClient ??
+      (dbDir === undefined ? undefined : (url: string) => createMigrationClient(url, dbDir));
+    let failure: unknown;
+    if (createClient === undefined) {
+      failure = new Error("No database client is available for the first-run setup.");
+    } else {
+      try {
+        const client = createClient(
+          databaseUrl({
+            role: PG_OWNER_ROLE,
+            password: secrets.owner,
+            port,
+            database: "postgres",
+          }),
+        );
+        try {
+          await client.connect();
+          await bootstrapThroughClient(client, secrets.app);
+        } finally {
+          await client.end().catch(() => undefined);
+        }
+      } catch (error) {
+        // The driver's message never holds a password; the cause is kept without its stack.
+        failure = new Error(error instanceof Error ? error.message : "bootstrap failed");
+      }
+    }
+    if (failure === undefined) return;
+    await this.ctl(paths, stopArgs(paths.dataDir)).catch(() => undefined);
+    throw new NativePostgresError("init-failed", "The local database could not be created.", {
+      cause: failure,
+    });
   }
 
   private async startOnFreePort(paths: PostgresPaths): Promise<number> {
