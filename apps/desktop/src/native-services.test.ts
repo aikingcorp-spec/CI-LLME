@@ -31,7 +31,9 @@ describe("native services", () => {
       expect(result.webUrl).toBe("http://127.0.0.1:43103");
       expect(forks).toHaveLength(2);
       expect(forks[0]!.env.SANDBOX_PROVIDER).toBe("desktop");
-      expect(forks[0]!.entry).toContain("apps/api/dist/index.js");
+      expect(forks[0]!.entry).toBe(
+        path.resolve("/repo/apps/desktop", "..", "..", "apps", "api", "dist", "index.js"),
+      );
       expect(await readPrivateFile(`${root}/native-stack-env`, 65536)).toContain(
         "BETTER_AUTH_SECRET",
       );
