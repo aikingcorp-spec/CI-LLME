@@ -50,6 +50,7 @@ import { installNativeShutdown } from "./native-shutdown.js";
 import { runNativeSmoke } from "./native-smoke.js";
 import { NativeStack } from "./native-stack.js";
 import { oauthCallbackFrom } from "./oauth-callback.js";
+import { P2PNode } from "./p2p-node.js";
 import { associatedPasskeyRpIds } from "./passkeys.js";
 import {
   bundledRendererCandidates,
@@ -130,6 +131,7 @@ let desktopUpdater: DesktopUpdateController;
 let launchUpdateCheckScheduled = false;
 let localStack: LocalStackController | NativeLocalStackController;
 let nativeStack: NativeStack | undefined;
+let nativeP2P: P2PNode | undefined;
 let nativeQuitComplete = false;
 let hostComputer: Awaited<ReturnType<typeof prepareHostComputer>> | undefined;
 let requestingComputerAccess = false;
@@ -1217,7 +1219,7 @@ app.whenReady().then(async () => {
     });
     installNativeShutdown({
       proc: process,
-      stop: () => nativeStack!.stop(),
+      stop: stopNativeRuntime,
       stopSync: () => nativeStack!.stopSync(),
       exit: (code) => app.exit(code),
     });
@@ -1227,7 +1229,18 @@ app.whenReady().then(async () => {
       onState: (state) => {
         if (setupWindow && !setupWindow.isDestroyed())
           setupWindow.webContents.send("desktop.setup.stack.changed", state);
+        if (state.phase === "ready") void nativeP2P?.start(localStack!.webUrl());
+        else void nativeP2P?.stop();
       },
+    });
+    nativeP2P = new P2PNode({
+      platform: process.platform,
+      packaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      appPath: app.getAppPath(),
+      userDataDir,
+      env: process.env,
+      log: (message) => console.warn(message),
     });
     if (process.env.RAKAZO_DESKTOP_SMOKE === "1") {
       const code = await runNativeSmoke({ stack: nativeStack, userDataDir });
@@ -1667,12 +1680,17 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+/** The remote link goes first, then the database it serves. */
+async function stopNativeRuntime() {
+  await nativeP2P?.stop();
+  await nativeStack?.stop();
+}
+
 /** Holds a quit until the bundled database has stopped; it must not outlive the app. */
 function holdQuitForNativeStack(event: { preventDefault(): void }) {
   if (!nativeStack || nativeQuitComplete) return;
   event.preventDefault();
-  void nativeStack
-    .stop()
+  void stopNativeRuntime()
     .then(() => {
       nativeQuitComplete = true;
       app.quit();
