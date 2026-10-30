@@ -1,5 +1,7 @@
 # @rakazo/p2p-prototype
 
+> **PROTOTYPE. Not for real user data.** It has not been tested behind real NAT on two real machines (see [What was tested](#what-was-tested)).
+
 Throwaway prototype for [ADR 0001](../../docs/architecture/vnbot/adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md): a loopback gateway, an outbound node agent, and a WebRTC data channel. It touches no app and no other package.
 
 ## Run it
@@ -133,9 +135,9 @@ The node agent receives authenticated signaling on its existing outbound gateway
 
 `src/bin/two-machine-peer.ts node|client` runs one side as a standalone process: it signals through the gateway, opens a data channel, and exchanges `whoami` requests in both directions (client to node and node to client) plus a heartbeat. Set `ICE_SERVERS` to comma-separated TURN URLs and `ICE_TRANSPORT_POLICY=relay` for relay-only runs. It logs JSON lines. The client re-dials after the channel is lost; `SIGTERM` closes with the `BYE`/`BYE_ACK` handshake. Signaling offers, answers, and candidates carry an attempt id; abandoned attempts send cancellation and stale node offers are discarded.
 
-`scripts/netns-two-machines.sh setup|teardown|status` builds two peer namespaces on one host: `p2pA` at `10.77.0.11` and `p2pB` at `10.77.0.12`, each behind its own router namespace with private `iptables` MASQUERADE. Both routers reach the shared public namespace (`10.77.3.10`) for STUN/TURN and reach the gateway through separate root veths (`10.77.1.1` and `10.77.2.1`). The peers have no direct route to each other. Setup is idempotent and needs passwordless `sudo` plus `iptables`; forwarding and NAT settings are confined to the router namespaces.
+`scripts/netns-two-machines.sh setup|teardown|status` builds two peer namespaces on one host. It has two topologies. The default `nat` topology puts each peer behind its own router namespace with `iptables` MASQUERADE; it needs `iptables`, which the test box does not have, so it has never been run here. `P2P_TOPOLOGY=routed` needs no `iptables`: `p2pA` (`10.77.10.11`) and `p2pB` (`10.77.20.12`) sit on different subnets behind one router namespace (`10.77.10.1` and `10.77.20.1`), so host candidates cross a routed hop, with **no NAT**. Each peer also has a veth to the root namespace (`10.77.1.1` and `10.77.2.1`), which runs the gateway. Setup is idempotent and needs passwordless `sudo`.
 
-`src/two-machine.netns.test.ts` starts the fake auth server and gateway, launches the node in `p2pB` and the client in `p2pA`, and checks both-way requests, the selected ICE pair on `10.77.0.x`, a killed and restarted node, and a clean close started from either side. By default it runs both processes on `127.0.0.1`; set `P2P_NETNS=1` for the namespaces (skipped when `sudo -n ip netns` is unavailable). `P2P_LOG_DIR` saves each process log.
+`src/two-machine.netns.test.ts` starts the fake auth server and gateway, launches the node in `p2pB` and the client in `p2pA`, and checks both-way requests, the selected ICE pair, a killed and restarted node, and a clean close started from either side. By default it runs both processes on `127.0.0.1`; set `P2P_NETNS=1` for the namespaces (skipped when `sudo -n ip netns` is unavailable). `P2P_LOG_DIR` saves each process log.
 
 ```sh
 pnpm exec vitest run --root ../.. packages/p2p-prototype/src/two-machine.netns.test.ts
@@ -156,3 +158,18 @@ P2P_NETNS=1 P2P_TOPOLOGY=routed P2P_TURN_CREDS_FILE=/path/to/creds P2P_TURN_FORW
 ```
 
 For TLS use `P2P_TURN_TRANSPORTS=TurnTls P2P_EXPECT_TURN_TRANSPORT=tls P2P_TURN_TLS_CA_FILE=...`. Caveat: werift falls back from a failed UDP allocation to TCP on its own, so always give an explicit `tcp`/`tls` transport and check `turnTransport`.
+
+## What was tested
+
+All runs below were on one Linux box with network namespaces and a **routed topology without NAT** (the box has no `iptables`). Peers reach a real coturn (a separate public server) through `scripts/turn-forwarder.py`, a userspace L4 forwarder in the root namespace; it is not a NAT and not a router. Each run is: traffic both ways, SIGKILL of the node and reconnect, and a clean `BYE`/`BYE_ACK` close.
+
+| Path | Result |
+|---|---|
+| Host candidates (`iceTransportPolicy=all`) | 20/20 |
+| TURN/UDP relay, relay-only, real coturn | 20/20 |
+| TURN/TCP relay, relay-only, werift peers | 18/20 (the 2 failures, runs 02 and 03, were connection timeouts with no cause found) |
+| TURNS/TLS relay, relay-only, werift peers (self-signed certificate pinned) | 20/20 |
+
+An earlier TURN/TCP batch was discarded because another session tore down the same namespaces mid-run; the 18/20 is the rerun. TCP and TLS were proven with werift in the test path only; production uses node-datachannel (libjuice), which gathers UDP relay candidates only.
+
+**Not tested:** real NAT on two real machines behind different NATs (carrier-grade NAT, symmetric NAT, hairpinning); mixed stacks (a libjuice peer with a werift peer); IPv6; networks that block UDP, with the production stack.
