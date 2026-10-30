@@ -162,9 +162,9 @@ All runs below were on one Linux box with network namespaces and a **routed topo
 |---|---|
 | Host candidates (`iceTransportPolicy=all`) | 20/20 |
 | TURN/UDP relay, relay-only, real coturn | 20/20 |
-| TURN/TCP relay, relay-only, werift peers | 18/20 (the 2 failures, runs 02 and 03, were connection timeouts with no cause found) |
+| TURN/TCP relay, relay-only, werift peers | 20/20 on a clean rerun at low load (runs-tcp-rerun2); an earlier rerun under box load ~100 was 18/20 (2 exchange timeouts) |
 | TURNS/TLS relay, relay-only, werift peers (self-signed certificate pinned) | 20/20 |
 
-An earlier TURN/TCP batch was discarded because another session tore down the same namespaces mid-run; the 18/20 is the rerun. TCP and TLS were proven with werift in the test path only; production uses node-datachannel (libjuice), which gathers UDP relay candidates only.
+An earlier TURN/TCP batch was discarded because another session tore down the same namespaces mid-run; reruns: 18/20 under load ~100, then 20/20 at load <5. TCP and TLS were proven with werift in the test path only; production uses node-datachannel (libjuice), which gathers UDP relay candidates only.
 
 **Not tested:** real NAT on two real machines behind different NATs (carrier-grade NAT, symmetric NAT, hairpinning); mixed stacks (a libjuice peer with a werift peer); IPv6; networks that block UDP, with the production stack.
