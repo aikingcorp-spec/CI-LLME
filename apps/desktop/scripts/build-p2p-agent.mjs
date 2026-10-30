@@ -1,11 +1,14 @@
 import { build } from "esbuild";
 
 // node-datachannel stays external: its native addon cannot be bundled and must be unpacked.
-const outfile = process.argv[2] ?? "dist/p2p-agent.js";
+const outdir = process.argv[2] ?? "dist";
 
 await build({
-  entryPoints: ["p2p/agent-entry.ts"],
-  outfile,
+  entryPoints: {
+    "p2p-agent": "p2p/agent-process.ts",
+    "p2p-pairing": "p2p/pairing-entry.ts",
+  },
+  outdir,
   bundle: true,
   platform: "node",
   format: "esm",

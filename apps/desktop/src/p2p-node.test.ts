@@ -1,15 +1,14 @@
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import type { P2PAgentModule, P2PNodeKeyFile } from "./p2p-node.js";
+import type { P2PChild, P2PNodeKeyFile, P2PPairingModule } from "./p2p-node.js";
 import {
-  desktopChannelHandler,
   hasNativeAddon,
   nodeDatachannelBinaryDir,
   P2P_AGENT_MODULE_ENV,
   P2P_GATEWAY_ENV,
   P2P_PAIR_CODE_ENV,
   P2PNode,
-  p2pAgentModulePath,
+  p2pBundlePaths,
   p2pUnavailableMessage,
   parseGatewayUrl,
 } from "./p2p-node.js";
@@ -69,7 +68,7 @@ describe("hasNativeAddon", () => {
   });
 });
 
-describe("p2pAgentModulePath", () => {
+describe("p2pBundlePaths", () => {
   const layout = {
     platform: "win32",
     resourcesPath: WIN_RESOURCES,
@@ -77,16 +76,20 @@ describe("p2pAgentModulePath", () => {
     pathModule: path.win32,
   };
 
-  it("loads the bundle from the app archive", () => {
-    expect(p2pAgentModulePath({ ...layout, packaged: true })).toBe(
-      `${WIN_RESOURCES}\\app.asar\\dist\\p2p-agent.js`,
-    );
+  it("loads both bundles from the app archive", () => {
+    expect(p2pBundlePaths({ ...layout, packaged: true })).toEqual({
+      agent: `${WIN_RESOURCES}\\app.asar\\dist\\p2p-agent.js`,
+      pairing: `${WIN_RESOURCES}\\app.asar\\dist\\p2p-pairing.js`,
+    });
   });
 
   it("honours the development override only when not packaged", () => {
-    const env = { [P2P_AGENT_MODULE_ENV]: "/tmp/agent.js" };
-    expect(p2pAgentModulePath({ ...layout, packaged: false, env })).toBe("/tmp/agent.js");
-    expect(p2pAgentModulePath({ ...layout, packaged: true, env })).toBe(
+    const env = { [P2P_AGENT_MODULE_ENV]: "C:\\build\\p2p-agent.js" };
+    expect(p2pBundlePaths({ ...layout, packaged: false, env })).toEqual({
+      agent: "C:\\build\\p2p-agent.js",
+      pairing: "C:\\build\\p2p-pairing.js",
+    });
+    expect(p2pBundlePaths({ ...layout, packaged: true, env }).agent).toBe(
       `${WIN_RESOURCES}\\app.asar\\dist\\p2p-agent.js`,
     );
   });
@@ -121,65 +124,65 @@ describe("p2pUnavailableMessage", () => {
   });
 });
 
-describe("desktopChannelHandler", () => {
-  const rpc = () => ({
-    call: vi.fn(async () => ({ status: 200, headers: {}, body: new Uint8Array([1]) })),
-    subscribe: vi.fn(async function* () {
-      yield new Uint8Array([2]);
-    }),
-  });
-
-  it("answers health from GET /health and forwards everything else to rpc", async () => {
-    const forward = rpc();
-    const request = vi.fn(async () => new Response("ok", { status: 200 }));
-    const handler = desktopChannelHandler("http://127.0.0.1:4000", forward, request);
-    const health = await handler.call("health", {}, new Uint8Array());
-    expect(new TextDecoder().decode(health.body)).toBe("ok");
-    expect(request).toHaveBeenCalledWith(new URL("http://127.0.0.1:4000/health"), {
-      method: "GET",
-    });
-    expect(forward.call).not.toHaveBeenCalled();
-    await handler.call("threads/list", {}, new Uint8Array());
-    expect(forward.call).toHaveBeenCalledWith("threads/list", {}, new Uint8Array());
-    for await (const _ of handler.subscribe(
-      "x",
-      {},
-      new Uint8Array(),
-      new AbortController().signal,
-    ));
-    expect(forward.subscribe).toHaveBeenCalledTimes(1);
-  });
-});
-
-function fakeAgent(saved?: P2PNodeKeyFile) {
+function fakePairing(saved?: P2PNodeKeyFile) {
   let stored = saved;
-  const close = vi.fn(async () => undefined);
-  const startNodeAgent = vi.fn(() => ({ close, connected: () => true }));
   const completePairing = vi.fn(async () => ({ gatewayPublicKey: "gw-public", user: "user-1" }));
   const writeKeyFile = vi.fn((_file: string, identity: P2PNodeKeyFile) => {
     stored = identity;
   });
-  const module: P2PAgentModule = {
-    startNodeAgent,
+  const module: P2PPairingModule = {
     completePairing,
     generateKeyPair: () => ({ publicKey: "pub", privateKey: "priv" }),
     readKeyFile: () => stored,
     writeKeyFile,
-    forwardChannelHandler: () => ({
-      call: async () => ({ status: 200, headers: {}, body: new Uint8Array() }),
-      subscribe: async function* () {},
-    }),
   };
-  return { module, close, startNodeAgent, completePairing, writeKeyFile };
+  return { module, completePairing, writeKeyFile };
+}
+
+type Reply = "started" | "error" | "exit";
+
+/** A child that answers the start message with `reply` and exits on stop. */
+function fakeChild(reply: Reply = "started") {
+  const listeners = { message: [] as Array<(m: unknown) => void>, exit: [] as Array<() => void> };
+  const sent: unknown[] = [];
+  const child: P2PChild = {
+    postMessage: (message) => {
+      sent.push(message);
+      const type = (message as { type: string }).type;
+      queueMicrotask(() => {
+        if (type === "start" && reply === "exit") for (const l of listeners.exit) l();
+        else if (type === "start") for (const l of listeners.message) l({ type: reply });
+        else if (type === "stop") for (const l of listeners.exit) l();
+      });
+    },
+    on: ((event: "message" | "exit", listener: never) => {
+      (listeners[event] as unknown[]).push(listener);
+    }) as P2PChild["on"],
+    kill: vi.fn(),
+  };
+  return {
+    child,
+    sent,
+    crash: () => {
+      for (const l of listeners.exit) l();
+    },
+    kill: child.kill,
+  };
 }
 
 function node(
-  agent: ReturnType<typeof fakeAgent> | null,
+  options: {
+    pairing?: ReturnType<typeof fakePairing> | null;
+    child?: ReturnType<typeof fakeChild>;
+  } = {},
   extra: Partial<ConstructorParameters<typeof P2PNode>[0]> = {},
   env: NodeJS.ProcessEnv = { [P2P_GATEWAY_ENV]: "http://127.0.0.1:8787" },
 ) {
   const files = new Map<string, string>();
   const log = vi.fn();
+  const spawnAgent = vi.fn(
+    async (_entry: string, _env: Record<string, string>) => (options.child ?? fakeChild()).child,
+  );
   const instance = new P2PNode({
     platform: "linux",
     packaged: false,
@@ -188,10 +191,11 @@ function node(
     pathModule: path.posix,
     userDataDir: "/data",
     env,
-    loadAgent: async () => {
-      if (!agent) throw new Error("Cannot find module");
-      return agent.module;
+    loadPairing: async () => {
+      if (options.pairing === null) throw new Error("Cannot find module");
+      return (options.pairing ?? fakePairing()).module;
     },
+    spawnAgent,
     readText: async (file) => files.get(file) ?? null,
     writeText: async (file, text) => void files.set(file, text),
     ensureDir: async () => undefined,
@@ -199,164 +203,217 @@ function node(
     log,
     ...extra,
   });
-  return { instance, files, log };
+  return { instance, files, log, spawnAgent };
 }
 
+const SAVED: P2PNodeKeyFile = {
+  publicKey: "pub",
+  privateKey: "priv",
+  gatewayPublicKey: "gw",
+  user: "u",
+};
+const WEB = "http://127.0.0.1:4000";
+
 describe("P2PNode", () => {
-  it("stays off without a gateway URL and never loads the agent", async () => {
-    const loadAgent = vi.fn();
-    const { instance, log } = node(null, { loadAgent }, {});
-    await expect(instance.start("http://127.0.0.1:4000")).resolves.toEqual({ state: "off" });
-    expect(loadAgent).not.toHaveBeenCalled();
+  it("stays off without a gateway URL and spawns nothing", async () => {
+    const { instance, log, spawnAgent } = node({}, {}, {});
+    await expect(instance.start(WEB)).resolves.toEqual({ state: "off" });
+    expect(spawnAgent).not.toHaveBeenCalled();
     expect(log).not.toHaveBeenCalled();
   });
 
   it("reads the gateway URL from saved settings when the environment has none", async () => {
-    const agent = fakeAgent({
-      publicKey: "pub",
-      privateKey: "priv",
-      gatewayPublicKey: "gw",
-      user: "u",
-    });
-    const { instance, files } = node(agent, { gatewayUrl: "https://gateway.example.test" }, {});
-    files.set("/data/p2p/node-id", "desktop-1\n");
-    await instance.start("http://127.0.0.1:4000");
-    expect(agent.startNodeAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ gatewayUrl: "https://gateway.example.test" }),
+    const child = fakeChild();
+    const { instance, files } = node(
+      { pairing: fakePairing(SAVED), child },
+      { gatewayUrl: "https://gateway.example.test" },
+      {},
     );
+    files.set("/data/p2p/node-id", "desktop-1\n");
+    await instance.start(WEB);
+    expect(child.sent[0]).toMatchObject({
+      type: "start",
+      gatewayUrl: "https://gateway.example.test",
+    });
   });
 
   it("turns P2P off with a message for a gateway that is not https", async () => {
-    const { instance } = node(null, {}, { [P2P_GATEWAY_ENV]: "http://gateway.example.test" });
-    expect(await instance.start("http://127.0.0.1:4000")).toMatchObject({
+    const { instance, spawnAgent } = node(
+      {},
+      {},
+      { [P2P_GATEWAY_ENV]: "http://gateway.example.test" },
+    );
+    expect(await instance.start(WEB)).toMatchObject({
       state: "unavailable",
       reason: "bad-gateway-url",
     });
+    expect(spawnAgent).not.toHaveBeenCalled();
   });
 
-  it("reports a missing Windows prebuild without loading the agent", async () => {
-    const loadAgent = vi.fn();
-    const { instance, log } = node(null, {
-      platform: "win32",
-      packaged: true,
-      resourcesPath: WIN_RESOURCES,
-      appPath: `${WIN_RESOURCES}\\app.asar`,
-      pathModule: path.win32,
-      list: async (dir) => {
-        expect(dir).toBe(
-          `${WIN_RESOURCES}\\app.asar.unpacked\\node_modules\\node-datachannel\\build\\Release`,
-        );
-        return [];
+  const WIN = {
+    platform: "win32",
+    packaged: true,
+    resourcesPath: WIN_RESOURCES,
+    appPath: `${WIN_RESOURCES}\\app.asar`,
+    pathModule: path.win32,
+  };
+
+  it("reports a missing Windows prebuild without loading anything", async () => {
+    const { instance, log, spawnAgent } = node(
+      {},
+      {
+        ...WIN,
+        list: async (dir) => {
+          expect(dir).toBe(
+            `${WIN_RESOURCES}\\app.asar.unpacked\\node_modules\\node-datachannel\\build\\Release`,
+          );
+          return [];
+        },
       },
-      loadAgent,
-    });
-    const status = await instance.start("http://127.0.0.1:4000");
+    );
+    const status = await instance.start(WEB);
     expect(status).toMatchObject({ state: "unavailable", reason: "no-prebuild" });
-    expect(loadAgent).not.toHaveBeenCalled();
+    expect(spawnAgent).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(expect.stringContaining("node-datachannel"));
     expect(log).toHaveBeenCalledWith(expect.stringContaining("win32"));
   });
 
-  it("goes on to load the agent when the Windows prebuild is present", async () => {
-    const agent = fakeAgent();
-    const { instance } = node(agent, {
-      platform: "win32",
-      packaged: true,
-      resourcesPath: WIN_RESOURCES,
-      appPath: `${WIN_RESOURCES}\\app.asar`,
-      pathModule: path.win32,
-      list: async () => ["node_datachannel.node"],
-    });
-    expect(await instance.start("http://127.0.0.1:4000")).toMatchObject({ reason: "not-paired" });
+  it("goes on to pairing when the Windows prebuild is present", async () => {
+    const { instance, spawnAgent } = node(
+      { pairing: fakePairing(SAVED) },
+      { ...WIN, list: async () => ["node_datachannel.node"] },
+    );
+    expect(await instance.start(WEB)).toMatchObject({ reason: "not-paired" });
+    expect(spawnAgent).not.toHaveBeenCalled();
   });
 
-  it("reports a library that fails to load instead of throwing", async () => {
-    const { instance } = node(null);
-    expect(await instance.start("http://127.0.0.1:4000")).toMatchObject({
+  it("reports a pairing bundle that fails to load instead of throwing", async () => {
+    const { instance } = node({ pairing: null });
+    expect(await instance.start(WEB)).toMatchObject({
       state: "unavailable",
       reason: "load-failed",
     });
   });
 
+  it("reports a missing native library when the agent process exits at load", async () => {
+    const { instance, files } = node({ pairing: fakePairing(SAVED), child: fakeChild("exit") });
+    files.set("/data/p2p/node-id", "desktop-1\n");
+    expect(await instance.start(WEB)).toMatchObject({ reason: "load-failed" });
+  });
+
+  it("reports an agent that refuses to start", async () => {
+    const { instance, files } = node({ pairing: fakePairing(SAVED), child: fakeChild("error") });
+    files.set("/data/p2p/node-id", "desktop-1\n");
+    expect(await instance.start(WEB)).toMatchObject({ reason: "start-failed" });
+  });
+
+  it("gives up on an agent that never answers", async () => {
+    const silent = fakeChild();
+    silent.child.postMessage = () => undefined;
+    const { instance, files } = node(
+      { pairing: fakePairing(SAVED), child: silent },
+      { startTimeoutMs: 20 },
+    );
+    files.set("/data/p2p/node-id", "desktop-1\n");
+    expect(await instance.start(WEB)).toMatchObject({ reason: "start-failed" });
+    expect(silent.kill).toHaveBeenCalled();
+  });
+
   it("asks for a pairing code when the node has no saved key", async () => {
-    const { instance } = node(fakeAgent());
-    expect(await instance.start("http://127.0.0.1:4000")).toMatchObject({ reason: "not-paired" });
+    const { instance } = node();
+    expect(await instance.start(WEB)).toMatchObject({ reason: "not-paired" });
   });
 
   it("pairs once with the code, saves the identity and starts the agent", async () => {
-    const agent = fakeAgent();
-    const { instance, files, log } = node(
-      agent,
+    const pairing = fakePairing();
+    const child = fakeChild();
+    const { instance, files, log, spawnAgent } = node(
+      { pairing, child },
       {},
-      {
-        [P2P_GATEWAY_ENV]: "http://127.0.0.1:8787/",
-        [P2P_PAIR_CODE_ENV]: "FAKE-CODE-123",
-      },
+      { [P2P_GATEWAY_ENV]: "http://127.0.0.1:8787/", [P2P_PAIR_CODE_ENV]: "FAKE-CODE-123" },
     );
-    const status = await instance.start("http://127.0.0.1:4000");
+    const status = await instance.start(WEB);
     expect(status).toEqual({ state: "running", nodeId: "desktop-abcd1234abcd1234" });
-    expect(agent.completePairing).toHaveBeenCalledWith(
+    expect(pairing.completePairing).toHaveBeenCalledWith(
       "http://127.0.0.1:8787",
       "FAKE-CODE-123",
       "desktop-abcd1234abcd1234",
       { publicKey: "pub", privateKey: "priv" },
     );
-    expect(agent.writeKeyFile).toHaveBeenCalledWith(
+    expect(pairing.writeKeyFile).toHaveBeenCalledWith(
       "/data/p2p/node-key.json",
       expect.objectContaining({ gatewayPublicKey: "gw-public", user: "user-1" }),
     );
     expect(files.get("/data/p2p/node-id")).toBe("desktop-abcd1234abcd1234\n");
-    expect(agent.startNodeAgent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        gatewayUrl: "http://127.0.0.1:8787",
-        nodeId: "desktop-abcd1234abcd1234",
-        channel: expect.objectContaining({ allowedUsers: ["user-1"] }),
-      }),
-    );
+    expect(spawnAgent).toHaveBeenCalledWith("/app/dist/p2p-agent.js", expect.any(Object));
+    expect(child.sent[0]).toEqual({
+      type: "start",
+      gatewayUrl: "http://127.0.0.1:8787",
+      nodeId: "desktop-abcd1234abcd1234",
+      webUrl: WEB,
+      key: { publicKey: "pub", privateKey: "priv", gatewayPublicKey: "gw-public", user: "user-1" },
+    });
     expect(JSON.stringify(log.mock.calls)).not.toMatch(/FAKE-CODE|priv|gw-public/);
 
     await instance.stop();
-    const again = node(agent, {}, { [P2P_GATEWAY_ENV]: "http://127.0.0.1:8787" });
+    const again = node(
+      { pairing, child: fakeChild() },
+      {},
+      { [P2P_GATEWAY_ENV]: "http://127.0.0.1:8787" },
+    );
     again.files.set("/data/p2p/node-id", "desktop-abcd1234abcd1234\n");
-    await again.instance.start("http://127.0.0.1:4000");
-    expect(agent.completePairing).toHaveBeenCalledTimes(1);
-    expect(agent.startNodeAgent).toHaveBeenCalledTimes(2);
+    await again.instance.start(WEB);
+    expect(pairing.completePairing).toHaveBeenCalledTimes(1);
+    expect(again.spawnAgent).toHaveBeenCalledTimes(1);
   });
 
-  it("saves nothing when the gateway refuses the pairing", async () => {
-    const agent = fakeAgent();
-    agent.completePairing.mockRejectedValueOnce(new Error("pair/complete failed: 403"));
-    const { instance, files } = node(
-      agent,
+  it("gives the agent only a few environment variables", async () => {
+    const { instance, files, spawnAgent } = node(
+      { pairing: fakePairing(SAVED) },
       {},
       {
         [P2P_GATEWAY_ENV]: "http://127.0.0.1:8787",
-        [P2P_PAIR_CODE_ENV]: "FAKE-CODE-123",
+        PATH: "/bin",
+        BETTER_AUTH_SECRET: "must-not-leak",
       },
     );
-    expect(await instance.start("http://127.0.0.1:4000")).toMatchObject({
-      reason: "start-failed",
-    });
-    expect(agent.writeKeyFile).not.toHaveBeenCalled();
+    files.set("/data/p2p/node-id", "desktop-1\n");
+    await instance.start(WEB);
+    expect(spawnAgent.mock.calls[0]?.[1]).toEqual({ PATH: "/bin" });
+  });
+
+  it("saves nothing when the gateway refuses the pairing", async () => {
+    const pairing = fakePairing();
+    pairing.completePairing.mockRejectedValueOnce(new Error("pair/complete failed: 403"));
+    const { instance, files } = node(
+      { pairing },
+      {},
+      { [P2P_GATEWAY_ENV]: "http://127.0.0.1:8787", [P2P_PAIR_CODE_ENV]: "FAKE-CODE-123" },
+    );
+    expect(await instance.start(WEB)).toMatchObject({ reason: "start-failed" });
+    expect(pairing.writeKeyFile).not.toHaveBeenCalled();
     expect(files.size).toBe(0);
   });
 
-  it("does not restart for the same web address and closes the agent on stop", async () => {
-    const agent = fakeAgent({
-      publicKey: "pub",
-      privateKey: "priv",
-      gatewayPublicKey: "gw",
-      user: "u",
-    });
-    const { instance, files } = node(agent);
+  it("does not restart for the same web address and stops the child on stop", async () => {
+    const child = fakeChild();
+    const { instance, files, spawnAgent } = node({ pairing: fakePairing(SAVED), child });
     files.set("/data/p2p/node-id", "desktop-1\n");
-    await instance.start("http://127.0.0.1:4000");
-    await instance.start("http://127.0.0.1:4000");
-    expect(agent.startNodeAgent).toHaveBeenCalledTimes(1);
-    expect(instance.connected()).toBe(true);
+    await instance.start(WEB);
+    await instance.start(WEB);
+    expect(spawnAgent).toHaveBeenCalledTimes(1);
     await instance.stop();
-    expect(agent.close).toHaveBeenCalledTimes(1);
+    expect(child.sent.at(-1)).toEqual({ type: "stop" });
     expect(instance.status()).toEqual({ state: "off" });
-    expect(instance.connected()).toBe(false);
+  });
+
+  it("reports the agent process dying while running", async () => {
+    const child = fakeChild();
+    const { instance, files, log } = node({ pairing: fakePairing(SAVED), child });
+    files.set("/data/p2p/node-id", "desktop-1\n");
+    await instance.start(WEB);
+    child.crash();
+    expect(instance.status()).toMatchObject({ state: "unavailable", reason: "start-failed" });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("cổng P2P"));
   });
 });
