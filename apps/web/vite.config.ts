@@ -512,7 +512,40 @@ export default defineConfig(({ command, mode }) => {
     crisp: parseCrispWebsiteId(process.env.CRISP_WEBSITE_ID ?? rootEnv.CRISP_WEBSITE_ID) !== null,
   });
   return {
-    build: { sourcemap: true },
+    build: {
+      sourcemap: false,
+      rolldownOptions: {
+        output: {
+          // Long-lived vendor chunks keep the entry small and stay cached across deploys.
+          // Heavy, rarely used features (mermaid, cytoscape, katex, plots) are already
+          // dynamic imports, so they are left to the default splitting.
+          codeSplitting: {
+            groups: [
+              {
+                name: "vendor-react",
+                test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?(?:react|react-dom|scheduler|react-router|react-router-dom)[\\/]/,
+                priority: 30,
+              },
+              {
+                name: "vendor-markdown",
+                test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?(?:react-markdown|micromark[^\\/]*|mdast-[^\\/]+|hast-[^\\/]+|unist-[^\\/]+|remark-[^\\/]+|rehype-[^\\/]+|unified|vfile[^\\/]*|property-information|markdown-table|linkify-it|decode-named-character-reference|character-entities[^\\/]*|space-separated-tokens|comma-separated-tokens|trim-lines|devlop|bail|trough|is-plain-obj|zwitch|longest-streak|ccount|html-url-attributes|style-to-js|style-to-object|inline-style-parser|estree-util-is-identifier-name|uc\.micro|mdurl|punycode\.js)[\\/]/,
+                priority: 20,
+              },
+              {
+                name: "vendor-tldts",
+                test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?tldts[^\\/]*[\\/]/,
+                priority: 20,
+              },
+              {
+                name: "vendor-query",
+                test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?@tanstack[\\/]/,
+                priority: 20,
+              },
+            ],
+          },
+        },
+      },
+    },
     define: { "import.meta.env.RAKAZO_BUILD": JSON.stringify(buildId) },
     plugins: [
       {
@@ -538,6 +571,26 @@ export default defineConfig(({ command, mode }) => {
             if (policy) {
               res.setHeader("content-security-policy", policy);
               res.setHeader("reporting-endpoints", CSP_REPORTING_ENDPOINTS);
+            }
+            next();
+          });
+        },
+      },
+      {
+        // Hashed bundles never change under their name; the HTML that names them must be revalidated.
+        name: "rakazo-cache-control",
+        configurePreviewServer({ config, middlewares }) {
+          const assetsPrefix = `${config.base}${config.build.assetsDir}/`;
+          middlewares.use((req, res, next) => {
+            if (req.method !== "GET" && req.method !== "HEAD") {
+              next();
+              return;
+            }
+            const pathname = req.url?.split("?", 1)[0] ?? "/";
+            if (pathname.startsWith(assetsPrefix)) {
+              res.setHeader("cache-control", "public, max-age=31536000, immutable");
+            } else if (!path.extname(pathname) || pathname.endsWith(".html")) {
+              res.setHeader("cache-control", "no-cache");
             }
             next();
           });

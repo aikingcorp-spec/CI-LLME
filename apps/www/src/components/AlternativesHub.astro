@@ -1,7 +1,7 @@
 ---
 import { GET_STARTED, ROUNDUP_UPDATED } from "../alternatives";
 import { ogPublicPath } from "../og-pages";
-import { DOCS_URL, GITHUB_URL } from "../site";
+import { APP_URL } from "../site";
 import {
   ROUNDUP_CARDS,
   ROUNDUP_CHANGELOG,
@@ -54,7 +54,6 @@ const columns = ROUNDUP_COLUMNS;
               <th scope="row">
                 <a href={row.href}>{row.product}</a>
               </th>
-              <td>{row.license}</td>
               <td>{row.selfHost}</td>
               <td>{row.model}</td>
               <td>{row.price}</td>
@@ -115,7 +114,6 @@ const columns = ROUNDUP_COLUMNS;
   <h2>{GET_STARTED.heading}</h2>
   <p>{GET_STARTED.copy}</p>
   <div class="alt-actions">
-    <Button href={DOCS_URL} external>{GET_STARTED.docsLabel}</Button>
-    <Button href={GITHUB_URL} variant="secondary" external>{GET_STARTED.githubLabel}</Button>
+    <Button href={APP_URL} external>{GET_STARTED.cloudLabel}</Button>
   </div>
 </SiteFrame>

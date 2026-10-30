@@ -1,8 +1,11 @@
+import { Trans as LocalizedText } from "@lingui/react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { LinkFavicons } from "@rakazo/chat-ui/web";
-import { LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web";
+import type { LinkFavicons } from "@rakazo/chat-ui/web-providers";
+import { LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web-providers";
 import { analyticsScreen } from "@rakazo/core";
-import { Button } from "@rakazo/ui-web";
+import { buttonVariants } from "@rakazo/ui-web/components/ui/button-variants";
+import { cn } from "@rakazo/ui-web/lib/utils";
+import type { ComponentProps, ComponentType } from "react";
 import {
   Suspense,
   useEffect,
@@ -11,12 +14,19 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MarkdownLinkPrompt } from "./components/markdown-link-prompt";
 import { PageLoading } from "./components/PageLoading";
-import { SubscriptionGate } from "./components/SubscriptionGate";
 import { authClient } from "./lib/auth";
 import { getTicketBoardEnabled, subscribeTicketBoardEnabled } from "./lib/bootstrap";
 import { desktopBridge } from "./lib/desktop";
@@ -35,28 +45,60 @@ import {
   showSessionUnavailable,
 } from "./lib/session-gate";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
+
 import { IntegrationCallbackPage } from "./pages/IntegrationCallback";
-import { IntegrationSetupPage } from "./pages/IntegrationSetup";
-import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
-import { ShellPage } from "./pages/Shell";
+
+function lazyPage(load: () => Promise<ComponentType>) {
+  return lazyComponent(async () => {
+    const [Page, { TooltipScope }] = await Promise.all([
+      load(),
+      import("./components/TooltipScope"),
+    ]);
+    return function PageWithTooltips() {
+      return (
+        <TooltipScope>
+          <Page />
+        </TooltipScope>
+      );
+    };
+  });
+}
+
+function FallbackButton({ className, ...props }: ComponentProps<"button">) {
+  return (
+    <button
+      type="button"
+      data-slot="button"
+      className={cn(buttonVariants({ variant: "secondary" }), className)}
+      {...props}
+    />
+  );
+}
 
 const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => module.AuthPage));
-const PasswordResetPage = lazyComponent(() =>
-  import("./pages/Auth").then((module) => module.PasswordResetPage),
-);
-const OnboardingPage = lazyComponent(() =>
+const OnboardingPage = lazyPage(() =>
   import("./pages/Onboarding").then((module) => module.OnboardingPage),
 );
 const WelcomePage = lazyComponent(() =>
   import("./pages/Welcome").then((module) => module.WelcomePage),
 );
-const ArtifactsPage = lazyComponent(() =>
+const ArtifactsPage = lazyPage(() =>
   import("./pages/Artifacts").then((module) => module.ArtifactsPage),
 );
-const BoardPage = lazyComponent(() => import("./pages/Board").then((module) => module.BoardPage));
-const NavLinkPage = lazyComponent(() =>
+const BoardPage = lazyPage(() => import("./pages/Board").then((module) => module.BoardPage));
+const NavLinkPage = lazyPage(() =>
   import("./pages/NavLinkPage").then((module) => module.NavLinkPage),
 );
+
+const IntegrationSetupPage = lazyPage(() =>
+  import("./pages/IntegrationSetup").then((module) => module.IntegrationSetupPage),
+);
+
+const McpOAuthCallbackPage = lazyPage(() =>
+  import("./pages/McpOAuthCallback").then((module) => module.McpOAuthCallbackPage),
+);
+
+const ShellPage = lazyPage(() => import("./pages/Shell").then((module) => module.ShellPage));
 
 function SsoCallbackPage() {
   useEffect(() => {
@@ -69,6 +111,14 @@ function SsoCallbackPage() {
 const linkFavicons: LinkFavicons = {
   load: (origin) => rpc.links.favicon({ origin }),
 };
+
+/** Email and code are one flow. `/sign-up` keeps `?next` and lands on sign-in. */
+function SignUpRedirect({ signedIn }: { signedIn: boolean }) {
+  const [params] = useSearchParams();
+  if (signedIn) return <Navigate to="/onboarding" replace />;
+  const next = params.get("next");
+  return <Navigate to={next ? `/sign-in?next=${encodeURIComponent(next)}` : "/sign-in"} replace />;
+}
 
 export function App() {
   const loadRemoteImages = useSyncExternalStore(
@@ -100,7 +150,7 @@ function SessionApp() {
   const next = searchParams.get("next") ?? "";
   // A connector sign-in started on another device lands here signed out; finish it after sign-in.
   const signInDestination =
-    next === "/integrations/setup" || next.startsWith(`${MCP_OAUTH_CALLBACK_PATH}?`)
+    next.startsWith("/") && !next.startsWith("//") && !/^\/sign-(?:in|up)(?:[/?#]|$)/.test(next)
       ? next
       : "/app";
   const ticketBoardEnabled = useSyncExternalStore(
@@ -169,27 +219,11 @@ function SessionApp() {
               <Route path="/" element={user ? <Navigate to="/app" replace /> : <WelcomePage />} />
               <Route
                 path="/sign-in"
-                element={
-                  user ? (
-                    <Navigate to={signInDestination} replace />
-                  ) : (
-                    <AuthPage key="in" mode="in" />
-                  )
-                }
+                element={user ? <Navigate to={signInDestination} replace /> : <AuthPage key="in" />}
               />
-              <Route
-                path="/sign-up"
-                element={
-                  user ? <Navigate to="/onboarding" replace /> : <AuthPage key="up" mode="up" />
-                }
-              />
-              <Route
-                path="/forgot-password"
-                element={
-                  user ? <Navigate to="/app" replace /> : <AuthPage key="forgot" mode="forgot" />
-                }
-              />
-              <Route path="/reset-password" element={<PasswordResetPage />} />
+              <Route path="/sign-up" element={<SignUpRedirect signedIn={Boolean(user)} />} />
+              <Route path="/forgot-password" element={<Navigate to="/sign-in" replace />} />
+              <Route path="/reset-password" element={<Navigate to="/sign-in" replace />} />
               <Route
                 path={MCP_OAUTH_CALLBACK_PATH}
                 element={
@@ -216,11 +250,12 @@ function SessionApp() {
               <Route
                 element={
                   user ? (
-                    <SubscriptionGate fallback={<PageLoading />}>
-                      <Outlet />
-                    </SubscriptionGate>
+                    <Outlet />
                   ) : (
-                    <Navigate to="/sign-in" replace />
+                    <Navigate
+                      to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
+                      replace
+                    />
                   )
                 }
               >
@@ -233,6 +268,19 @@ function SessionApp() {
                 <Route path="/app/x/:linkId" element={<NavLinkPage />} />
                 <Route path="/app/:botId" element={<ShellPage />} />
               </Route>
+              <Route
+                path="*"
+                element={
+                  user ? (
+                    <NotFoundPage />
+                  ) : (
+                    <Navigate
+                      to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
+                      replace
+                    />
+                  )
+                }
+              />
             </Routes>
           </Suspense>
         </div>
@@ -277,8 +325,7 @@ function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
           <Trans>Can&apos;t reach the server.</Trans>
         </p>
         <div className="mt-4">
-          <Button
-            variant="secondary"
+          <FallbackButton
             onClick={() => {
               retryImmediately.current = true;
               setAttempt(0);
@@ -286,7 +333,7 @@ function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
             }}
           >
             <Trans>Retry now</Trans>
-          </Button>
+          </FallbackButton>
         </div>
       </div>
     </div>
@@ -305,11 +352,29 @@ function AppFailed() {
           <Trans>Something went wrong. Try again.</Trans>
         </p>
         <div className="mt-4">
-          <Button variant="secondary" onClick={() => window.location.reload()}>
+          <FallbackButton onClick={() => window.location.reload()}>
             <Trans>Refresh</Trans>
-          </Button>
+          </FallbackButton>
         </div>
       </div>
     </div>
+  );
+}
+
+function NotFoundPage() {
+  const { i18n } = useLingui();
+  const vietnamese = i18n.locale === "vi";
+  return (
+    <main className="grid h-full place-content-center gap-3 text-center">
+      <h1>
+        <LocalizedText
+          id="Page not found"
+          message={vietnamese ? "Không tìm thấy trang" : "Page not found"}
+        />
+      </h1>
+      <Link to="/app" className="text-link underline">
+        <LocalizedText id="Go home" message={vietnamese ? "Về trang chủ" : "Go home"} />
+      </Link>
+    </main>
   );
 }

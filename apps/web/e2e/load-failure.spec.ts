@@ -146,7 +146,7 @@ test("preload recovery keeps Settings bound to another space", async ({ page }, 
     { times: 1 },
   );
   const reloaded = page.waitForEvent("load");
-  await page.locator("aside").first().getByRole("button", { name: "Actions for Personal" }).click();
+  await page.locator("aside").first().getByRole("button", { name: "Actions for Cá nhân" }).click();
   await page.getByRole("menuitem", { name: "Settings", exact: true }).click();
   await reloaded;
   const settings = page.getByTestId("user-settings");

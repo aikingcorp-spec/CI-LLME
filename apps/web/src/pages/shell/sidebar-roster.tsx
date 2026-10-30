@@ -393,11 +393,13 @@ export function SidebarRoster({
                         : compact
                           ? "w-full min-h-11 gap-2 rounded-xl px-2.5 py-1.5"
                           : "w-full gap-3 rounded-xl px-2.5 py-[10px]"
-                    } text-start ${
+                    } text-start outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${
                       item.kind === "bot" ? "cursor-grab active:cursor-grabbing" : ""
                     } ${
                       selected || rosterDropKey === rowDropKey
-                        ? "bg-sidebar-accent"
+                        ? mini
+                          ? "bg-sidebar-accent"
+                          : "bg-sidebar-accent shadow-[inset_3px_0_0_var(--primary)]"
                         : "group-hover/row:bg-accent"
                     }`}
                   >
@@ -468,7 +470,7 @@ export function SidebarRoster({
                             {!compact ? (
                               <span
                                 data-roster-time
-                                className="text-label text-faint-foreground tabular-nums"
+                                className="text-label text-muted-foreground tabular-nums"
                               >
                                 {formatRosterTime(item.chat.updatedAt)}
                               </span>

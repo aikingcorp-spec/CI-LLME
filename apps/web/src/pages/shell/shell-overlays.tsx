@@ -10,7 +10,7 @@ import { writeSaved } from "@rakazo/core/query";
 import { useQuery } from "@tanstack/react-query";
 import type { RefObject } from "react";
 import { useCallback } from "react";
-import { lazyOverlay } from "../../components/ErrorBoundary";
+import { lazyOverlay } from "../../components/lazy-overlay";
 import type { connectedAppMarks } from "../../lib/connected-apps";
 import type { SpaceQueries } from "../../lib/query";
 import { queryClient } from "../../lib/query";
@@ -152,13 +152,11 @@ export function SettingsOverlays({
           onUsageOpen={refreshUsage}
           section={overlay.section}
           onSectionChange={(section) => setOverlay({ ...overlay, section })}
-          billingEnabled={bootstrapMe?.billingEnabled === true}
           sandboxProvider={bootstrapMe?.sandboxProvider}
           onSandboxProviderChange={(sandboxProvider) =>
             setBootstrapMe((prev) => (prev ? { ...prev, sandboxProvider } : prev))
           }
           messagingEnabled={messagingEnabled}
-          paymentWalletProvider={bootstrapMe?.paymentWalletProvider ?? null}
           timezone={bootstrapMe?.timezone ?? null}
           onTimezoneChange={async (timezone) => {
             const nextMe = await rpc.preferences.update({ timezone });

@@ -83,7 +83,6 @@ import {
   resolveDeploymentModel,
   ScriptedAgentRuntime,
   SpaceMemoryProviderResolver,
-  StripeBillingProvider,
   sandboxProviderOptionsFromEnv,
   stripeBillingConfigFromEnv,
   toTeamChatInbound,
@@ -94,7 +93,7 @@ import {
   verifyModelServesAgents,
   withSecretPersistence,
 } from "@rakazo/adapters";
-import { createAuth, isBlockedAuthPath, loopbackTwinOrigins } from "@rakazo/auth";
+import { createAuth, isBlockedAuthPath, loopbackTwinOrigins, passwordsEnabled } from "@rakazo/auth";
 import type { Actor, AuthCapabilities } from "@rakazo/contracts";
 import { isLocalhostOrLoopbackIp, SERVER_BUILD_HEADER } from "@rakazo/contracts";
 import { signupPolicyFromEnv } from "@rakazo/core";
@@ -134,7 +133,9 @@ import { deleteAccountContent } from "./account-deletion.js";
 import { mountAppAssociation, nativePasskeys } from "./app-association.js";
 import { storeInboundAttachment } from "./artifacts.js";
 import { createBillingService } from "./billing.js";
+import { vnbotBillingProvider } from "./billing-off.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
+import { withCatalogLocale } from "./catalog-text.js";
 import { clientBuildMiddleware, readDeployedWebBuild } from "./client-build.js";
 import {
   clientIpMiddleware,
@@ -174,6 +175,7 @@ import {
   TeamChatStartupRetries,
 } from "./team-chat-startup.js";
 import { mountUserDeviceRoutes } from "./user-devices.js";
+import { versionRoutes } from "./version.js";
 import { mountVoiceHttpRoutes, voiceAccountErrorStatus } from "./voice.js";
 import { mountWebhookHttpRoutes } from "./webhook.js";
 
@@ -429,9 +431,11 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     throw new Error("EMAIL_EMULATOR requires API_HOST to be a loopback host");
   }
   const email: TransactionalEmailProvider | undefined = configuredEmail ?? localEmailEmulator;
-  const stripeBilling = stripeBillingConfigFromEnv(env);
-  const billingProvider: BillingProvider | undefined =
-    billingOverride ?? (stripeBilling ? new StripeBillingProvider(stripeBilling) : undefined);
+  const billingProvider = vnbotBillingProvider(
+    billingOverride,
+    Boolean(stripeBillingConfigFromEnv(env)),
+    (message) => logger.warn(message),
+  );
   const billing = billingProvider
     ? createBillingService({
         prisma,
@@ -490,6 +494,8 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   const auth = createAuth(prisma, {
     analytics,
     passwordAuth: env.passwordAuth,
+    emailCodeOnly: env.emailCodeOnly,
+    emailAllowlist: env.emailAllowlist,
     breachedPasswordCheck: env.breachedPasswordCheck,
     oidc: env.oidc,
     secret: env.authSecret,
@@ -693,7 +699,6 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     pluginRepoFetcher,
     pluginMarketplaceRead,
     cloudAgent,
-    paymentWallet,
     codexCatalog,
     prisma,
     pushTokens,
@@ -779,15 +784,16 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       c.header("cache-control", "no-store");
     });
   }
+  app.route("/", versionRoutes(env));
   app.get("/api/auth/capabilities", (c) => {
     return c.json({
       sso: env.oidc
         ? { name: env.oidc.name, availability: auth.ssoAvailability() ?? "checking" }
         : null,
-      passwordAuth: env.passwordAuth !== false,
-      passwordReset: env.passwordAuth !== false && Boolean(email),
+      passwordAuth: passwordsEnabled(env),
+      passwordReset: passwordsEnabled(env) && Boolean(email),
       resetUrl:
-        env.passwordAuth !== false && email ? new URL("/reset-password", env.webOrigin).href : null,
+        passwordsEnabled(env) && email ? new URL("/reset-password", env.webOrigin).href : null,
       emailCode: auth.emailCodeSignIn,
       billing: Boolean(billing),
       passkeyRpId: auth.passkeyRpId,
@@ -874,7 +880,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
         );
         return c.redirect(new URL("/app?settings=messaging", env.webOrigin).toString());
       } catch {
-        return c.text("Slack connection failed. Return to Rakazo and try again.", 400);
+        return c.text("Slack connection failed. Return to VNBot and try again.", 400);
       }
     });
   }
@@ -891,22 +897,25 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     if (actor) {
       enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
     }
-    const { matched, response } = await rpc.handle(c.req.raw, {
-      prefix: "/rpc",
-      context: {
-        actor,
-        sessionId: session?.sessionId,
-        signal: c.req.raw.signal,
-        // Same user in the same space, so leaving the space also ends a stream.
-        // A database failure rejects this check; only a missing membership is unauthorized.
-        stillAuthorized: async () => {
-          const current = await sessionActor(c.req.raw);
-          return Boolean(
-            actor && current?.userId === actor.userId && current.spaceId === actor.spaceId,
-          );
+    const locale = c.req.header("x-vnbot-ui-locale") ?? null;
+    const { matched, response } = await withCatalogLocale(locale, () =>
+      rpc.handle(c.req.raw, {
+        prefix: "/rpc",
+        context: {
+          actor,
+          sessionId: session?.sessionId,
+          signal: c.req.raw.signal,
+          // Same user in the same space, so leaving the space also ends a stream.
+          // A database failure rejects this check; only a missing membership is unauthorized.
+          stillAuthorized: async () => {
+            const current = await sessionActor(c.req.raw);
+            return Boolean(
+              actor && current?.userId === actor.userId && current.spaceId === actor.spaceId,
+            );
+          },
         },
-      },
-    });
+      }),
+    );
     if (matched) return c.newResponse(response.body, response);
     await next();
   });

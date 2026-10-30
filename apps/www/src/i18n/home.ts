@@ -29,19 +29,13 @@ export type HomeCopy = {
     docs: string;
     integrations: string;
     blog: string;
-    github: string;
     getStarted: string;
   };
   hero: {
-    eyebrow: string;
     heading: string;
     lead: string;
     getStarted: string;
     download: Record<"mac" | "windows" | "linux" | "ios" | "android", string>;
-    viewOnGithub: string;
-    setupWithAgent: string;
-    copiedForAgent: string;
-    copyFailed: string;
   };
   selfHost: {
     heading: string;
@@ -89,20 +83,13 @@ export type HomeCopy = {
     heading: string;
     items: Array<{ question: string; answer: string }>;
   };
-  openSource: {
-    heading: string;
-    copy: string;
-    starOnGithub: string;
-    readTheDocs: string;
-    cloudTitle: string;
-    cloudBadge: string;
+  cloud: {
+    title: string;
+    badge: string;
   };
   cta: {
     heading: string;
     copy: string;
-    openSourceValue: string;
-    selfHostValue: string;
-    stats: Array<{ value: "stars" | "license" | "openSource" | "selfHost"; label: string }>;
   };
   footer: {
     navLabel: string;
@@ -857,7 +844,7 @@ const TESTIMONIALS: HomeCopy["testimonials"]["items"] = [
   },
   {
     quote:
-      "Hermes is good but more complicated setup. Rakazo has better multi agent workflow and simpler to setup",
+      "Hermes is good but more complicated setup. VNBot has better multi agent workflow and simpler to setup",
     attribution: "@notabot_92732",
   },
   {
@@ -873,38 +860,32 @@ const TESTIMONIALS: HomeCopy["testimonials"]["items"] = [
 
 const HOME_COPY: Record<Locale, HomeCopy> = {
   en: {
-    title: "Rakazo | Open source Grok Bot alternative",
+    title: "VNBot | Grok Bot alternative",
     description: SITE_DESCRIPTION,
     ogImageAlt:
-      "Rakazo. AI teammates you actually own. Your keys, your model, your machine.",
+      "VNBot. AI teammates you actually own. Your keys, your model, your machine.",
     availableLanguage: "English",
     skipToContent: "Skip to content",
     nav: {
-      home: "Rakazo home",
+      home: "VNBot home",
       primary: "Primary",
       menu: "Menu",
       docs: "Docs",
       integrations: "Integrations",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Get started",
     },
     hero: {
-      eyebrow: "Open source",
-      heading: "The open source Grok Bot alternative you actually own",
+      heading: "The Grok Bot alternative you actually own",
       lead: "Give your bots a job. Check in from any device.",
       getStarted: "Get started",
       download: {
         mac: "Download for macOS",
         windows: "Download for Windows",
         linux: "Download for Linux",
-        ios: "Download for iOS",
+        ios: "iOS: coming soon",
         android: "Download for Android",
       },
-      viewOnGithub: "View on GitHub",
-      setupWithAgent: "Set up with your agent",
-      copiedForAgent: "Copied for your agent",
-      copyFailed: "Copy failed. Try again.",
     },
     selfHost: {
       heading: "Self-hosted",
@@ -966,7 +947,7 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Do I need an API key if I already pay for Claude or ChatGPT?",
           answer:
-            "No. Sign in with Claude Pro/Max or ChatGPT Plus/Pro and that subscription covers the model. An API key is the other path, for Anthropic, OpenAI, OpenRouter, or Grok. Rakazo does not pay either way.",
+            "No. Sign in with Claude Pro/Max or ChatGPT Plus/Pro and that subscription covers the model. An API key is the other path, for Anthropic, OpenAI, OpenRouter, or Grok. VNBot does not pay either way.",
         },
         {
           question: "Can I run a local model?",
@@ -980,25 +961,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Open source",
-      copy: "Apache-2.0. Run it, change it, make it yours.",
-      starOnGithub: "Star on GitHub",
-      readTheDocs: "Read the docs",
-      cloudTitle: "Cloud",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Cloud",
+      badge: "Beta",
     },
     cta: {
       heading: "Meet your first bot",
       copy: "Hand over your next task.",
-      openSourceValue: "Open source",
-      selfHostValue: "Self-host",
-      stats: [
-        { value: "stars", label: "GitHub stars" },
-        { value: "license", label: "License" },
-        { value: "openSource", label: "No seats, no gates" },
-        { value: "selfHost", label: "Your machine" },
-      ],
     },
     footer: {
       navLabel: "Footer",
@@ -1015,45 +984,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "Terms",
         company: "Company",
         blog: "Blog",
-        iosApp: "iPhone app",
+        iosApp: "iPhone app (coming soon)",
         androidApp: "Android app",
       },
     },
   },
   de: {
-    title: "Rakazo | Open-Source-Alternative zu Grok Bot",
+    title: "VNBot | Alternative zu Grok Bot",
     description:
-      "Rakazo ist eine Open-Source-Alternative zu Grok Bot für persistente KI-Teamkollegen, die echte Arbeit erledigen. Deine Keys, dein Modell, deine Maschine.",
+      "VNBot ist eine Alternative zu Grok Bot für persistente KI-Teamkollegen, die echte Arbeit erledigen. Deine Keys, dein Modell, deine Maschine.",
     ogImageAlt:
-      "Rakazo. KI-Teamkollegen, die dir wirklich gehören. Deine Keys, dein Modell, deine Maschine.",
+      "VNBot. KI-Teamkollegen, die dir wirklich gehören. Deine Keys, dein Modell, deine Maschine.",
     availableLanguage: "German",
     skipToContent: "Zum Inhalt springen",
     nav: {
-      home: "Rakazo-Startseite",
+      home: "VNBot-Startseite",
       primary: "Hauptnavigation",
       menu: "Menü",
       docs: "Docs",
       integrations: "Integrationen",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Loslegen",
     },
     hero: {
-      eyebrow: "Open Source",
-      heading: "Die Open-Source-Alternative zu Grok Bot, die dir wirklich gehört",
+      heading: "Die Alternative zu Grok Bot, die dir wirklich gehört",
       lead: "Gib deinen Bots eine Aufgabe. Schau von jedem Gerät nach.",
       getStarted: "Loslegen",
       download: {
         mac: "Für macOS laden",
         windows: "Für Windows laden",
         linux: "Für Linux laden",
-        ios: "Für iOS laden",
+        ios: "iOS: kommt bald",
         android: "Für Android laden",
       },
-      viewOnGithub: "Auf GitHub ansehen",
-      setupWithAgent: "Mit deinem Agenten einrichten",
-      copiedForAgent: "Für deinen Agenten kopiert",
-      copyFailed: "Kopieren fehlgeschlagen. Erneut versuchen.",
     },
     selfHost: {
       heading: "Self-hosted",
@@ -1114,12 +1077,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Kann ich mein Claude Pro/Max- oder ChatGPT Plus/Pro-Abo nutzen?",
           answer:
-            "Ja — melde dich mit diesem Abo an, oder nutze einen API-Key, OpenRouter oder einen lokalen OpenAI-kompatiblen Server (Ollama, LM Studio usw.). Rakazo zahlt die Modellrechnung nicht.",
+            "Ja — melde dich mit diesem Abo an, oder nutze einen API-Key, OpenRouter oder einen lokalen OpenAI-kompatiblen Server (Ollama, LM Studio usw.). VNBot zahlt die Modellrechnung nicht.",
         },
         {
           question: "Brauche ich einen API-Key, wenn ich schon für Claude oder ChatGPT zahle?",
           answer:
-            "Nein. Melde dich mit Claude Pro/Max oder ChatGPT Plus/Pro an. Dieses Abo deckt das Modell ab. Ein API-Key ist der andere Weg, für Anthropic, OpenAI, OpenRouter oder Grok. Rakazo zahlt so oder so nicht.",
+            "Nein. Melde dich mit Claude Pro/Max oder ChatGPT Plus/Pro an. Dieses Abo deckt das Modell ab. Ein API-Key ist der andere Weg, für Anthropic, OpenAI, OpenRouter oder Grok. VNBot zahlt so oder so nicht.",
         },
         {
           question: "Kann ich ein lokales Modell nutzen?",
@@ -1133,25 +1096,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Open Source",
-      copy: "Apache-2.0. Selbst betreiben, ändern und anpassen.",
-      starOnGithub: "Auf GitHub mit Stern markieren",
-      readTheDocs: "Docs lesen",
-      cloudTitle: "Cloud",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Cloud",
+      badge: "Beta",
     },
     cta: {
       heading: "Triff deinen ersten Bot",
       copy: "Gib deine nächste Aufgabe ab.",
-      openSourceValue: "Open Source",
-      selfHostValue: "Self-host",
-      stats: [
-        { value: "stars", label: "GitHub Stars" },
-        { value: "license", label: "Lizenz" },
-        { value: "openSource", label: "Keine Seats, keine Gates" },
-        { value: "selfHost", label: "Deine Maschine" },
-      ],
     },
     footer: {
       navLabel: "Fußzeile",
@@ -1168,44 +1119,38 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "AGB",
         company: "Unternehmen",
         blog: "Blog",
-        iosApp: "iPhone-App",
+        iosApp: "iPhone-App (kommt bald)",
         androidApp: "Android-App",
       },
     },
   },
   ko: {
-    title: "Rakazo | 오픈소스 Grok Bot 대안",
+    title: "VNBot | Grok Bot 대안",
     description:
-      "Rakazo는 실제 업무를 수행하는 지속형 AI 팀원을 위한 오픈소스 Grok Bot 대안입니다. 키, 모델, 머신, 모두 당신 것.",
-    ogImageAlt: "Rakazo. 진짜로 내 것인 AI 팀원. 키, 모델, 머신, 모두 당신 것.",
+      "VNBot는 실제 업무를 수행하는 지속형 AI 팀원을 위한 Grok Bot 대안입니다. 키, 모델, 머신, 모두 당신 것.",
+    ogImageAlt: "VNBot. 진짜로 내 것인 AI 팀원. 키, 모델, 머신, 모두 당신 것.",
     availableLanguage: "Korean",
     skipToContent: "본문으로 건너뛰기",
     nav: {
-      home: "Rakazo 홈",
+      home: "VNBot 홈",
       primary: "주 메뉴",
       menu: "메뉴",
       docs: "Docs",
       integrations: "통합",
       blog: "블로그",
-      github: "GitHub",
       getStarted: "시작하기",
     },
     hero: {
-      eyebrow: "오픈 소스",
-      heading: "진짜로 내 것인 오픈소스 Grok Bot 대안",
+      heading: "진짜로 내 것인 Grok Bot 대안",
       lead: "봇에게 일을 맡기세요. 어떤 기기에서든 확인하세요.",
       getStarted: "시작하기",
       download: {
         mac: "macOS용 다운로드",
         windows: "Windows용 다운로드",
         linux: "Linux용 다운로드",
-        ios: "iOS용 다운로드",
+        ios: "iOS: 곧 출시",
         android: "Android용 다운로드",
       },
-      viewOnGithub: "GitHub에서 보기",
-      setupWithAgent: "에이전트로 설정하기",
-      copiedForAgent: "에이전트용으로 복사됨",
-      copyFailed: "복사 실패. 다시 시도하세요.",
     },
     selfHost: {
       heading: "셀프 호스트",
@@ -1266,12 +1211,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Claude Pro/Max 또는 ChatGPT Plus/Pro 구독을 쓸 수 있나요?",
           answer:
-            "네 — 그 구독으로 로그인하거나, API 키, OpenRouter, 로컬 OpenAI 호환 서버(Ollama, LM Studio 등)를 사용하세요. 모델 요금은 Rakazo가 내지 않습니다.",
+            "네 — 그 구독으로 로그인하거나, API 키, OpenRouter, 로컬 OpenAI 호환 서버(Ollama, LM Studio 등)를 사용하세요. 모델 요금은 VNBot가 내지 않습니다.",
         },
         {
           question: "이미 Claude나 ChatGPT를 결제 중이면 API 키가 필요한가요?",
           answer:
-            "아니요. Claude Pro/Max 또는 ChatGPT Plus/Pro로 로그인하면 그 구독이 모델을 부담합니다. API 키는 Anthropic, OpenAI, OpenRouter, Grok을 쓰는 다른 경로입니다. 어느 쪽이든 Rakazo가 요금을 내지 않습니다.",
+            "아니요. Claude Pro/Max 또는 ChatGPT Plus/Pro로 로그인하면 그 구독이 모델을 부담합니다. API 키는 Anthropic, OpenAI, OpenRouter, Grok을 쓰는 다른 경로입니다. 어느 쪽이든 VNBot가 요금을 내지 않습니다.",
         },
         {
           question: "로컬 모델을 쓸 수 있나요?",
@@ -1285,25 +1230,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "오픈소스",
-      copy: "Apache-2.0. 직접 실행하고 원하는 대로 수정하세요.",
-      starOnGithub: "GitHub에서 Star",
-      readTheDocs: "문서 읽기",
-      cloudTitle: "Cloud",
-      cloudBadge: "베타",
+    cloud: {
+      title: "Cloud",
+      badge: "베타",
     },
     cta: {
       heading: "첫 봇을 만나보세요",
       copy: "다음 할 일을 맡겨 보세요.",
-      openSourceValue: "오픈소스",
-      selfHostValue: "셀프 호스트",
-      stats: [
-        { value: "stars", label: "GitHub 스타" },
-        { value: "license", label: "라이선스" },
-        { value: "openSource", label: "시트·게이트 없음" },
-        { value: "selfHost", label: "당신 머신" },
-      ],
     },
     footer: {
       navLabel: "푸터",
@@ -1320,44 +1253,38 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "이용약관",
         company: "회사",
         blog: "블로그",
-        iosApp: "iPhone 앱",
+        iosApp: "iPhone 앱 (곧 출시)",
         androidApp: "Android 앱",
       },
     },
   },
   zh: {
-    title: "Rakazo | 开源 Grok Bot 替代品",
+    title: "VNBot | Grok Bot 替代品",
     description:
-      "Rakazo 是一个开源 Grok Bot 替代品，用于运行真正干活的持久化 AI 队友。密钥、模型、机器，都归你所有。",
-    ogImageAlt: "Rakazo：真正属于你的 AI 队友。密钥、模型、机器，都归你所有。",
+      "VNBot 是一个 Grok Bot 替代品，用于运行真正干活的持久化 AI 队友。密钥、模型、机器，都归你所有。",
+    ogImageAlt: "VNBot：真正属于你的 AI 队友。密钥、模型、机器，都归你所有。",
     availableLanguage: "Chinese",
     skipToContent: "跳到主要内容",
     nav: {
-      home: "Rakazo 首页",
+      home: "VNBot 首页",
       primary: "主导航",
       menu: "菜单",
       docs: "文档",
       integrations: "集成",
       blog: "博客",
-      github: "GitHub",
       getStarted: "开始使用",
     },
     hero: {
-      eyebrow: "开源",
-      heading: "真正属于你的开源 Grok Bot 替代品",
+      heading: "真正属于你的 Grok Bot 替代品",
       lead: "把工作交给 Bot，随时用任意设备查看。",
       getStarted: "开始使用",
       download: {
         mac: "下载 macOS 版",
         windows: "下载 Windows 版",
         linux: "下载 Linux 版",
-        ios: "下载 iOS 版",
+        ios: "iOS：即将推出",
         android: "下载 Android 版",
       },
-      viewOnGithub: "在 GitHub 上查看",
-      setupWithAgent: "用你的智能体安装",
-      copiedForAgent: "已为你的智能体复制",
-      copyFailed: "复制失败。请重试。",
     },
     selfHost: {
       heading: "自托管",
@@ -1418,12 +1345,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "可以用我的 Claude Pro/Max 或 ChatGPT Plus/Pro 订阅吗？",
           answer:
-            "可以 — 用该订阅登录，或使用 API 密钥、OpenRouter，或本地的 OpenAI 兼容服务（Ollama、LM Studio 等）。模型费用不由 Rakazo 支付。",
+            "可以 — 用该订阅登录，或使用 API 密钥、OpenRouter，或本地的 OpenAI 兼容服务（Ollama、LM Studio 等）。模型费用不由 VNBot 支付。",
         },
         {
           question: "已经在为 Claude 或 ChatGPT 付费，还需要 API 密钥吗？",
           answer:
-            "不需要。用 Claude Pro/Max 或 ChatGPT Plus/Pro 登录，由该订阅承担模型费用。API 密钥是另一条路，用于 Anthropic、OpenAI、OpenRouter 或 Grok。两种方式都不是 Rakazo 付费。",
+            "不需要。用 Claude Pro/Max 或 ChatGPT Plus/Pro 登录，由该订阅承担模型费用。API 密钥是另一条路，用于 Anthropic、OpenAI、OpenRouter 或 Grok。两种方式都不是 VNBot 付费。",
         },
         {
           question: "可以用本地模型吗？",
@@ -1437,25 +1364,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "开源",
-      copy: "Apache-2.0。自由运行、修改，按需定制。",
-      starOnGithub: "在 GitHub 上点星",
-      readTheDocs: "阅读文档",
-      cloudTitle: "云端",
-      cloudBadge: "测试版",
+    cloud: {
+      title: "云端",
+      badge: "测试版",
     },
     cta: {
       heading: "认识你的第一个 Bot",
       copy: "把下一项任务交给 Bot。",
-      openSourceValue: "开源",
-      selfHostValue: "自托管",
-      stats: [
-        { value: "stars", label: "GitHub 星标" },
-        { value: "license", label: "许可证" },
-        { value: "openSource", label: "无席位、无门槛" },
-        { value: "selfHost", label: "你的机器" },
-      ],
     },
     footer: {
       navLabel: "页脚",
@@ -1472,45 +1387,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "条款",
         company: "公司",
         blog: "博客",
-        iosApp: "iPhone 应用",
+        iosApp: "iPhone 应用（即将推出）",
         androidApp: "Android 应用",
       },
     },
   },
   ja: {
-    title: "Rakazo | オープンソースの Grok Bot 代替ツール",
+    title: "VNBot | Grok Bot 代替ツール",
     description:
-      "Rakazo は、実際の仕事をこなす常駐型 AI チームメイトのための、オープンソースの Grok Bot 代替ツールです。キーもモデルもマシンも、すべてあなたのものです。",
+      "VNBot は、実際の仕事をこなす常駐型 AI チームメイトのための、Grok Bot 代替ツールです。キーもモデルもマシンも、すべてあなたのものです。",
     ogImageAlt:
-      "Rakazo。本当に自分のものにできる AI チームメイト。キーもモデルもマシンも、すべてあなたのもの。",
+      "VNBot。本当に自分のものにできる AI チームメイト。キーもモデルもマシンも、すべてあなたのもの。",
     availableLanguage: "Japanese",
     skipToContent: "本文へスキップ",
     nav: {
-      home: "Rakazo ホーム",
+      home: "VNBot ホーム",
       primary: "メインナビゲーション",
       menu: "メニュー",
       docs: "ドキュメント",
       integrations: "連携",
       blog: "ブログ",
-      github: "GitHub",
       getStarted: "はじめる",
     },
     hero: {
-      eyebrow: "オープンソース",
-      heading: "本当に自分のものにできる、オープンソースの Grok Bot 代替ツール",
+      heading: "本当に自分のものにできる、Grok Bot 代替ツール",
       lead: "ボットに仕事を任せて、どのデバイスからでも確認できます。",
       getStarted: "はじめる",
       download: {
         mac: "macOS 版をダウンロード",
         windows: "Windows 版をダウンロード",
         linux: "Linux 版をダウンロード",
-        ios: "iOS 版をダウンロード",
+        ios: "iOS：近日公開",
         android: "Android 版をダウンロード",
       },
-      viewOnGithub: "GitHub で見る",
-      setupWithAgent: "エージェントでセットアップ",
-      copiedForAgent: "エージェント用にコピーしました",
-      copyFailed: "コピーできませんでした。もう一度お試しください。",
     },
     selfHost: {
       heading: "セルフホスト",
@@ -1571,12 +1480,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Claude Pro/Max や ChatGPT Plus/Pro のサブスクリプションを使えますか？",
           answer:
-            "はい。そのサブスクリプションでサインインするか、API キー、OpenRouter、ローカルの OpenAI 互換サーバー（Ollama、LM Studio など）を使えます。モデルの利用料を Rakazo が支払うことはありません。",
+            "はい。そのサブスクリプションでサインインするか、API キー、OpenRouter、ローカルの OpenAI 互換サーバー（Ollama、LM Studio など）を使えます。モデルの利用料を VNBot が支払うことはありません。",
         },
         {
           question: "Claude や ChatGPT にすでに課金している場合、API キーは必要ですか？",
           answer:
-            "いいえ。Claude Pro/Max または ChatGPT Plus/Pro でサインインすれば、そのサブスクリプションでモデルを利用できます。もう一つの方法は API キーで、Anthropic、OpenAI、OpenRouter、Grok に対応しています。どちらの場合も、Rakazo が料金を支払うことはありません。",
+            "いいえ。Claude Pro/Max または ChatGPT Plus/Pro でサインインすれば、そのサブスクリプションでモデルを利用できます。もう一つの方法は API キーで、Anthropic、OpenAI、OpenRouter、Grok に対応しています。どちらの場合も、VNBot が料金を支払うことはありません。",
         },
         {
           question: "ローカルモデルを使えますか？",
@@ -1590,25 +1499,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "オープンソース",
-      copy: "Apache-2.0。自由に実行し、変更して、自分のものに。",
-      starOnGithub: "GitHub で Star する",
-      readTheDocs: "ドキュメントを読む",
-      cloudTitle: "クラウド",
-      cloudBadge: "ベータ",
+    cloud: {
+      title: "クラウド",
+      badge: "ベータ",
     },
     cta: {
       heading: "最初のボットを迎えましょう",
       copy: "次のタスクを任せてみましょう。",
-      openSourceValue: "オープンソース",
-      selfHostValue: "セルフホスト",
-      stats: [
-        { value: "stars", label: "GitHub スター" },
-        { value: "license", label: "ライセンス" },
-        { value: "openSource", label: "シート課金なし、機能制限なし" },
-        { value: "selfHost", label: "あなたのマシン" },
-      ],
     },
     footer: {
       navLabel: "フッター",
@@ -1625,45 +1522,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "利用規約",
         company: "会社情報",
         blog: "ブログ",
-        iosApp: "iPhone アプリ",
+        iosApp: "iPhone アプリ（近日公開）",
         androidApp: "Android アプリ",
       },
     },
   },
   "es": {
-    title: "Rakazo | Alternativa de código abierto a Grok Bot",
+    title: "VNBot | Alternativa a Grok Bot",
     description:
-      "Rakazo es una alternativa de código abierto a Grok Bot para compañeros de IA persistentes que hacen trabajo real. Tus claves, tu modelo, tu máquina.",
+      "VNBot es una alternativa a Grok Bot para compañeros de IA persistentes que hacen trabajo real. Tus claves, tu modelo, tu máquina.",
     ogImageAlt:
-      "Rakazo. Compañeros de IA que de verdad son tuyos. Tus claves, tu modelo, tu máquina.",
+      "VNBot. Compañeros de IA que de verdad son tuyos. Tus claves, tu modelo, tu máquina.",
     availableLanguage: "Spanish",
     skipToContent: "Saltar al contenido",
     nav: {
-      home: "Inicio de Rakazo",
+      home: "Inicio de VNBot",
       primary: "Navegación principal",
       menu: "Menú",
       docs: "Documentación",
       integrations: "Integraciones",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Empezar",
     },
     hero: {
-      eyebrow: "Código abierto",
-      heading: "La alternativa de código abierto a Grok Bot que de verdad es tuya",
+      heading: "La alternativa a Grok Bot que de verdad es tuya",
       lead: "Dale un trabajo a tus bots. Síguelos desde cualquier dispositivo.",
       getStarted: "Empezar",
       download: {
         mac: "Descargar para macOS",
         windows: "Descargar para Windows",
         linux: "Descargar para Linux",
-        ios: "Descargar para iOS",
+        ios: "iOS: próximamente",
         android: "Descargar para Android",
       },
-      viewOnGithub: "Ver en GitHub",
-      setupWithAgent: "Configurar con tu agente",
-      copiedForAgent: "Copiado para tu agente",
-      copyFailed: "No se pudo copiar. Inténtalo de nuevo.",
     },
     selfHost: {
       heading: "Autoalojado",
@@ -1724,12 +1615,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "¿Puedo usar mi suscripción a Claude Pro/Max o ChatGPT Plus/Pro?",
           answer:
-            "Sí — inicia sesión con esa suscripción, o usa una clave de API, OpenRouter o un servidor local compatible con OpenAI (Ollama, LM Studio, etc.). Rakazo no paga la factura del modelo.",
+            "Sí — inicia sesión con esa suscripción, o usa una clave de API, OpenRouter o un servidor local compatible con OpenAI (Ollama, LM Studio, etc.). VNBot no paga la factura del modelo.",
         },
         {
           question: "¿Necesito una clave de API si ya pago Claude o ChatGPT?",
           answer:
-            "No. Inicia sesión con Claude Pro/Max o ChatGPT Plus/Pro y esa suscripción cubre el modelo. Una clave de API es la otra opción, para Anthropic, OpenAI, OpenRouter o Grok. Rakazo no paga en ningún caso.",
+            "No. Inicia sesión con Claude Pro/Max o ChatGPT Plus/Pro y esa suscripción cubre el modelo. Una clave de API es la otra opción, para Anthropic, OpenAI, OpenRouter o Grok. VNBot no paga en ningún caso.",
         },
         {
           question: "¿Puedo usar un modelo local?",
@@ -1743,25 +1634,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Código abierto",
-      copy: "Apache-2.0. Ejecútalo, modifícalo, hazlo tuyo.",
-      starOnGithub: "Dar una estrella en GitHub",
-      readTheDocs: "Leer la documentación",
-      cloudTitle: "Cloud",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Cloud",
+      badge: "Beta",
     },
     cta: {
       heading: "Conoce a tu primer bot",
       copy: "Delégale tu próxima tarea.",
-      openSourceValue: "Código abierto",
-      selfHostValue: "Autoalojado",
-      stats: [
-        { value: "stars", label: "Estrellas en GitHub" },
-        { value: "license", label: "Licencia" },
-        { value: "openSource", label: "Sin licencias por usuario ni bloqueos" },
-        { value: "selfHost", label: "Tu máquina" },
-      ],
     },
     footer: {
       navLabel: "Pie de página",
@@ -1778,45 +1657,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "Términos",
         company: "Empresa",
         blog: "Blog",
-        iosApp: "App para iPhone",
+        iosApp: "App para iPhone (próximamente)",
         androidApp: "App para Android",
       },
     },
   },
   "fr": {
-    title: "Rakazo | Alternative open source à Grok Bot",
+    title: "VNBot | Alternative à Grok Bot",
     description:
-      "Rakazo est une alternative open source à Grok Bot pour des coéquipiers IA persistants qui font un vrai travail. Vos clés, votre modèle, votre machine.",
+      "VNBot est une alternative à Grok Bot pour des coéquipiers IA persistants qui font un vrai travail. Vos clés, votre modèle, votre machine.",
     ogImageAlt:
-      "Rakazo. Des coéquipiers IA qui vous appartiennent vraiment. Vos clés, votre modèle, votre machine.",
+      "VNBot. Des coéquipiers IA qui vous appartiennent vraiment. Vos clés, votre modèle, votre machine.",
     availableLanguage: "French",
     skipToContent: "Aller au contenu",
     nav: {
-      home: "Accueil Rakazo",
+      home: "Accueil VNBot",
       primary: "Navigation principale",
       menu: "Menu",
       docs: "Documentation",
       integrations: "Intégrations",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Commencer",
     },
     hero: {
-      eyebrow: "Open source",
-      heading: "L’alternative open source à Grok Bot qui vous appartient vraiment",
+      heading: "L’alternative à Grok Bot qui vous appartient vraiment",
       lead: "Confiez une mission à vos bots. Suivez-les depuis n’importe quel appareil.",
       getStarted: "Commencer",
       download: {
         mac: "Télécharger pour macOS",
         windows: "Télécharger pour Windows",
         linux: "Télécharger pour Linux",
-        ios: "Télécharger pour iOS",
+        ios: "iOS : bientôt disponible",
         android: "Télécharger pour Android",
       },
-      viewOnGithub: "Voir sur GitHub",
-      setupWithAgent: "Configurer avec votre agent",
-      copiedForAgent: "Copié pour votre agent",
-      copyFailed: "Échec de la copie. Réessayez.",
     },
     selfHost: {
       heading: "Auto-hébergé",
@@ -1877,12 +1750,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Puis-je utiliser mon abonnement Claude Pro/Max ou ChatGPT Plus/Pro ?",
           answer:
-            "Oui — connectez-vous avec cet abonnement, ou utilisez une clé API, OpenRouter ou un serveur local compatible OpenAI (Ollama, LM Studio, etc.). Rakazo ne paie pas la facture du modèle.",
+            "Oui — connectez-vous avec cet abonnement, ou utilisez une clé API, OpenRouter ou un serveur local compatible OpenAI (Ollama, LM Studio, etc.). VNBot ne paie pas la facture du modèle.",
         },
         {
           question: "Ai-je besoin d’une clé API si je paie déjà Claude ou ChatGPT ?",
           answer:
-            "Non. Connectez-vous avec Claude Pro/Max ou ChatGPT Plus/Pro et cet abonnement couvre le modèle. Une clé API est l’autre option, pour Anthropic, OpenAI, OpenRouter ou Grok. Rakazo ne paie dans aucun des cas.",
+            "Non. Connectez-vous avec Claude Pro/Max ou ChatGPT Plus/Pro et cet abonnement couvre le modèle. Une clé API est l’autre option, pour Anthropic, OpenAI, OpenRouter ou Grok. VNBot ne paie dans aucun des cas.",
         },
         {
           question: "Puis-je utiliser un modèle local ?",
@@ -1896,25 +1769,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Open source",
-      copy: "Apache-2.0. Exécutez-le, modifiez-le, appropriez-le-vous.",
-      starOnGithub: "Ajouter une étoile sur GitHub",
-      readTheDocs: "Lire la documentation",
-      cloudTitle: "Cloud",
-      cloudBadge: "Bêta",
+    cloud: {
+      title: "Cloud",
+      badge: "Bêta",
     },
     cta: {
       heading: "Rencontrez votre premier bot",
       copy: "Confiez-lui votre prochaine tâche.",
-      openSourceValue: "Open source",
-      selfHostValue: "Auto-hébergé",
-      stats: [
-        { value: "stars", label: "Étoiles GitHub" },
-        { value: "license", label: "Licence" },
-        { value: "openSource", label: "Ni licences par siège, ni restrictions" },
-        { value: "selfHost", label: "Votre machine" },
-      ],
     },
     footer: {
       navLabel: "Pied de page",
@@ -1931,45 +1792,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "Conditions",
         company: "Entreprise",
         blog: "Blog",
-        iosApp: "App iPhone",
+        iosApp: "App iPhone (bientôt)",
         androidApp: "App Android",
       },
     },
   },
   "pt-br": {
-    title: "Rakazo | Alternativa de código aberto ao Grok Bot",
+    title: "VNBot | Alternativa ao Grok Bot",
     description:
-      "Rakazo é uma alternativa de código aberto ao Grok Bot para colegas de IA persistentes que fazem trabalho de verdade. Suas chaves, seu modelo, sua máquina.",
+      "VNBot é uma alternativa ao Grok Bot para colegas de IA persistentes que fazem trabalho de verdade. Suas chaves, seu modelo, sua máquina.",
     ogImageAlt:
-      "Rakazo. Colegas de IA que são realmente seus. Suas chaves, seu modelo, sua máquina.",
+      "VNBot. Colegas de IA que são realmente seus. Suas chaves, seu modelo, sua máquina.",
     availableLanguage: "Portuguese",
     skipToContent: "Pular para o conteúdo",
     nav: {
-      home: "Página inicial do Rakazo",
+      home: "Página inicial do VNBot",
       primary: "Navegação principal",
       menu: "Menu",
       docs: "Documentação",
       integrations: "Integrações",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Começar",
     },
     hero: {
-      eyebrow: "Código aberto",
-      heading: "A alternativa de código aberto ao Grok Bot que é realmente sua",
+      heading: "A alternativa ao Grok Bot que é realmente sua",
       lead: "Dê um trabalho aos seus bots. Acompanhe de qualquer dispositivo.",
       getStarted: "Começar",
       download: {
         mac: "Baixar para macOS",
         windows: "Baixar para Windows",
         linux: "Baixar para Linux",
-        ios: "Baixar para iOS",
+        ios: "iOS: em breve",
         android: "Baixar para Android",
       },
-      viewOnGithub: "Ver no GitHub",
-      setupWithAgent: "Configurar com seu agente",
-      copiedForAgent: "Copiado para seu agente",
-      copyFailed: "Falha ao copiar. Tente novamente.",
     },
     selfHost: {
       heading: "Auto-hospedado",
@@ -2030,12 +1885,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Posso usar minha assinatura do Claude Pro/Max ou ChatGPT Plus/Pro?",
           answer:
-            "Sim — entre com essa assinatura, ou use uma chave de API, OpenRouter ou um servidor local compatível com OpenAI (Ollama, LM Studio etc.). O Rakazo não paga a conta do modelo.",
+            "Sim — entre com essa assinatura, ou use uma chave de API, OpenRouter ou um servidor local compatível com OpenAI (Ollama, LM Studio etc.). O VNBot não paga a conta do modelo.",
         },
         {
           question: "Preciso de uma chave de API se já pago pelo Claude ou ChatGPT?",
           answer:
-            "Não. Entre com Claude Pro/Max ou ChatGPT Plus/Pro e essa assinatura cobre o modelo. A chave de API é o outro caminho, para Anthropic, OpenAI, OpenRouter ou Grok. O Rakazo não paga em nenhum dos casos.",
+            "Não. Entre com Claude Pro/Max ou ChatGPT Plus/Pro e essa assinatura cobre o modelo. A chave de API é o outro caminho, para Anthropic, OpenAI, OpenRouter ou Grok. O VNBot não paga em nenhum dos casos.",
         },
         {
           question: "Posso usar um modelo local?",
@@ -2049,25 +1904,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Código aberto",
-      copy: "Apache-2.0. Rode, modifique, deixe do seu jeito.",
-      starOnGithub: "Dar estrela no GitHub",
-      readTheDocs: "Ler a documentação",
-      cloudTitle: "Cloud",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Cloud",
+      badge: "Beta",
     },
     cta: {
       heading: "Conheça seu primeiro bot",
       copy: "Entregue sua próxima tarefa.",
-      openSourceValue: "Código aberto",
-      selfHostValue: "Auto-hospedado",
-      stats: [
-        { value: "stars", label: "Estrelas no GitHub" },
-        { value: "license", label: "Licença" },
-        { value: "openSource", label: "Sem licenças por usuário, sem bloqueios" },
-        { value: "selfHost", label: "Sua máquina" },
-      ],
     },
     footer: {
       navLabel: "Rodapé",
@@ -2084,45 +1927,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "Termos",
         company: "Empresa",
         blog: "Blog",
-        iosApp: "App para iPhone",
+        iosApp: "App para iPhone (em breve)",
         androidApp: "App para Android",
       },
     },
   },
   "nl": {
-    title: "Rakazo | Open source alternatief voor Grok Bot",
+    title: "VNBot | Alternatief voor Grok Bot",
     description:
-      "Rakazo is een open source alternatief voor Grok Bot voor blijvende AI-teamgenoten die echt werk doen. Jouw keys, jouw model, jouw machine.",
+      "VNBot is een alternatief voor Grok Bot voor blijvende AI-teamgenoten die echt werk doen. Jouw keys, jouw model, jouw machine.",
     ogImageAlt:
-      "Rakazo. AI-teamgenoten die echt van jou zijn. Jouw keys, jouw model, jouw machine.",
+      "VNBot. AI-teamgenoten die echt van jou zijn. Jouw keys, jouw model, jouw machine.",
     availableLanguage: "Dutch",
     skipToContent: "Naar inhoud springen",
     nav: {
-      home: "Rakazo-startpagina",
+      home: "VNBot-startpagina",
       primary: "Hoofdnavigatie",
       menu: "Menu",
       docs: "Docs",
       integrations: "Integraties",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Aan de slag",
     },
     hero: {
-      eyebrow: "Open source",
-      heading: "Het open source alternatief voor Grok Bot dat echt van jou is",
+      heading: "Het alternatief voor Grok Bot dat echt van jou is",
       lead: "Geef je bots een taak. Kijk mee vanaf elk apparaat.",
       getStarted: "Aan de slag",
       download: {
         mac: "Downloaden voor macOS",
         windows: "Downloaden voor Windows",
         linux: "Downloaden voor Linux",
-        ios: "Downloaden voor iOS",
+        ios: "iOS: binnenkort",
         android: "Downloaden voor Android",
       },
-      viewOnGithub: "Bekijken op GitHub",
-      setupWithAgent: "Instellen met je agent",
-      copiedForAgent: "Gekopieerd voor je agent",
-      copyFailed: "Kopiëren mislukt. Probeer het opnieuw.",
     },
     selfHost: {
       heading: "Zelf gehost",
@@ -2183,12 +2020,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Kan ik mijn Claude Pro/Max- of ChatGPT Plus/Pro-abonnement gebruiken?",
           answer:
-            "Ja — log in met dat abonnement, of gebruik een API-key, OpenRouter of een lokale OpenAI-compatibele server (Ollama, LM Studio enz.). Rakazo betaalt de modelrekening niet.",
+            "Ja — log in met dat abonnement, of gebruik een API-key, OpenRouter of een lokale OpenAI-compatibele server (Ollama, LM Studio enz.). VNBot betaalt de modelrekening niet.",
         },
         {
           question: "Heb ik een API-key nodig als ik al voor Claude of ChatGPT betaal?",
           answer:
-            "Nee. Log in met Claude Pro/Max of ChatGPT Plus/Pro en dat abonnement dekt het model. Een API-key is de andere route, voor Anthropic, OpenAI, OpenRouter of Grok. Rakazo betaalt in geen van beide gevallen.",
+            "Nee. Log in met Claude Pro/Max of ChatGPT Plus/Pro en dat abonnement dekt het model. Een API-key is de andere route, voor Anthropic, OpenAI, OpenRouter of Grok. VNBot betaalt in geen van beide gevallen.",
         },
         {
           question: "Kan ik een lokaal model draaien?",
@@ -2202,25 +2039,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Open source",
-      copy: "Apache-2.0. Draai het, pas het aan, maak het je eigen.",
-      starOnGithub: "Ster geven op GitHub",
-      readTheDocs: "Lees de docs",
-      cloudTitle: "Cloud",
-      cloudBadge: "Bèta",
+    cloud: {
+      title: "Cloud",
+      badge: "Bèta",
     },
     cta: {
       heading: "Maak kennis met je eerste bot",
       copy: "Draag je volgende taak over.",
-      openSourceValue: "Open source",
-      selfHostValue: "Zelf hosten",
-      stats: [
-        { value: "stars", label: "GitHub-sterren" },
-        { value: "license", label: "Licentie" },
-        { value: "openSource", label: "Geen seats, geen drempels" },
-        { value: "selfHost", label: "Jouw machine" },
-      ],
     },
     footer: {
       navLabel: "Voettekst",
@@ -2237,45 +2062,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "Voorwaarden",
         company: "Bedrijf",
         blog: "Blog",
-        iosApp: "iPhone-app",
+        iosApp: "iPhone-app (binnenkort)",
         androidApp: "Android-app",
       },
     },
   },
   "ru": {
-    title: "Rakazo | Альтернатива Grok Bot с открытым исходным кодом",
+    title: "VNBot | Альтернатива Grok Bot",
     description:
-      "Rakazo — альтернатива Grok Bot с открытым исходным кодом: постоянные ИИ-коллеги, которые выполняют реальную работу. Ваши ключи, ваша модель, ваш компьютер.",
+      "VNBot — альтернатива Grok Bot: постоянные ИИ-коллеги, которые выполняют реальную работу. Ваши ключи, ваша модель, ваш компьютер.",
     ogImageAlt:
-      "Rakazo. ИИ-коллеги, которые действительно принадлежат вам. Ваши ключи, ваша модель, ваш компьютер.",
+      "VNBot. ИИ-коллеги, которые действительно принадлежат вам. Ваши ключи, ваша модель, ваш компьютер.",
     availableLanguage: "Russian",
     skipToContent: "Перейти к содержимому",
     nav: {
-      home: "Главная Rakazo",
+      home: "Главная VNBot",
       primary: "Основная навигация",
       menu: "Меню",
       docs: "Документация",
       integrations: "Интеграции",
       blog: "Блог",
-      github: "GitHub",
       getStarted: "Начать",
     },
     hero: {
-      eyebrow: "Открытый исходный код",
-      heading: "Альтернатива Grok Bot с открытым исходным кодом, которая действительно ваша",
+      heading: "Альтернатива Grok Bot, которая действительно ваша",
       lead: "Дайте ботам работу. Следите за ней с любого устройства.",
       getStarted: "Начать",
       download: {
         mac: "Скачать для macOS",
         windows: "Скачать для Windows",
         linux: "Скачать для Linux",
-        ios: "Скачать для iOS",
+        ios: "iOS: скоро",
         android: "Скачать для Android",
       },
-      viewOnGithub: "Открыть на GitHub",
-      setupWithAgent: "Настроить с помощью агента",
-      copiedForAgent: "Скопировано для агента",
-      copyFailed: "Не удалось скопировать. Попробуйте ещё раз.",
     },
     selfHost: {
       heading: "На своём сервере",
@@ -2336,12 +2155,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Можно ли использовать подписку Claude Pro/Max или ChatGPT Plus/Pro?",
           answer:
-            "Да — войдите с этой подпиской или используйте API-ключ, OpenRouter или локальный OpenAI-совместимый сервер (Ollama, LM Studio и т. д.). Rakazo не оплачивает счёт за модель.",
+            "Да — войдите с этой подпиской или используйте API-ключ, OpenRouter или локальный OpenAI-совместимый сервер (Ollama, LM Studio и т. д.). VNBot не оплачивает счёт за модель.",
         },
         {
           question: "Нужен ли API-ключ, если я уже плачу за Claude или ChatGPT?",
           answer:
-            "Нет. Войдите с Claude Pro/Max или ChatGPT Plus/Pro, и эта подписка покроет модель. API-ключ — другой путь: для Anthropic, OpenAI, OpenRouter или Grok. В любом случае Rakazo не платит.",
+            "Нет. Войдите с Claude Pro/Max или ChatGPT Plus/Pro, и эта подписка покроет модель. API-ключ — другой путь: для Anthropic, OpenAI, OpenRouter или Grok. В любом случае VNBot не платит.",
         },
         {
           question: "Можно ли запустить локальную модель?",
@@ -2355,25 +2174,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Открытый исходный код",
-      copy: "Apache-2.0. Запускайте, меняйте, настраивайте под себя.",
-      starOnGithub: "Поставить звезду на GitHub",
-      readTheDocs: "Читать документацию",
-      cloudTitle: "Облако",
-      cloudBadge: "Бета",
+    cloud: {
+      title: "Облако",
+      badge: "Бета",
     },
     cta: {
       heading: "Познакомьтесь с первым ботом",
       copy: "Передайте ему следующую задачу.",
-      openSourceValue: "Открытый код",
-      selfHostValue: "Свой сервер",
-      stats: [
-        { value: "stars", label: "Звёзды на GitHub" },
-        { value: "license", label: "Лицензия" },
-        { value: "openSource", label: "Без платы за места, без ограничений" },
-        { value: "selfHost", label: "Ваш компьютер" },
-      ],
     },
     footer: {
       navLabel: "Нижнее меню",
@@ -2390,45 +2197,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "Условия",
         company: "Компания",
         blog: "Блог",
-        iosApp: "Приложение для iPhone",
+        iosApp: "Приложение для iPhone (скоро)",
         androidApp: "Приложение для Android",
       },
     },
   },
   "tr": {
-    title: "Rakazo | Açık kaynaklı Grok Bot alternatifi",
+    title: "VNBot | Grok Bot alternatifi",
     description:
-      "Rakazo, gerçek işler yapan kalıcı yapay zekâ ekip arkadaşları için açık kaynaklı bir Grok Bot alternatifidir. Sizin anahtarlarınız, sizin modeliniz, sizin makineniz.",
+      "VNBot, gerçek işler yapan kalıcı yapay zekâ ekip arkadaşları için bir Grok Bot alternatifidir. Sizin anahtarlarınız, sizin modeliniz, sizin makineniz.",
     ogImageAlt:
-      "Rakazo. Gerçekten size ait yapay zekâ ekip arkadaşları. Sizin anahtarlarınız, sizin modeliniz, sizin makineniz.",
+      "VNBot. Gerçekten size ait yapay zekâ ekip arkadaşları. Sizin anahtarlarınız, sizin modeliniz, sizin makineniz.",
     availableLanguage: "Turkish",
     skipToContent: "İçeriğe geç",
     nav: {
-      home: "Rakazo ana sayfa",
+      home: "VNBot ana sayfa",
       primary: "Ana menü",
       menu: "Menü",
       docs: "Belgeler",
       integrations: "Entegrasyonlar",
       blog: "Blog",
-      github: "GitHub",
       getStarted: "Başlayın",
     },
     hero: {
-      eyebrow: "Açık kaynak",
-      heading: "Gerçekten size ait, açık kaynaklı Grok Bot alternatifi",
+      heading: "Gerçekten size ait, Grok Bot alternatifi",
       lead: "Botlarınıza bir iş verin. Her cihazdan takip edin.",
       getStarted: "Başlayın",
       download: {
         mac: "macOS için indir",
         windows: "Windows için indir",
         linux: "Linux için indir",
-        ios: "iOS için indir",
+        ios: "iOS: yakında",
         android: "Android için indir",
       },
-      viewOnGithub: "GitHub'da görüntüle",
-      setupWithAgent: "Ajanınızla kurun",
-      copiedForAgent: "Ajanınız için kopyalandı",
-      copyFailed: "Kopyalanamadı. Tekrar deneyin.",
     },
     selfHost: {
       heading: "Kendi sunucunuzda",
@@ -2489,12 +2290,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "Claude Pro/Max veya ChatGPT Plus/Pro aboneliğimi kullanabilir miyim?",
           answer:
-            "Evet — bu abonelikle giriş yapın ya da bir API anahtarı, OpenRouter veya yerel bir OpenAI uyumlu sunucu (Ollama, LM Studio vb.) kullanın. Model faturasını Rakazo ödemez.",
+            "Evet — bu abonelikle giriş yapın ya da bir API anahtarı, OpenRouter veya yerel bir OpenAI uyumlu sunucu (Ollama, LM Studio vb.) kullanın. Model faturasını VNBot ödemez.",
         },
         {
           question: "Claude veya ChatGPT için zaten ödeme yapıyorsam API anahtarına ihtiyacım var mı?",
           answer:
-            "Hayır. Claude Pro/Max veya ChatGPT Plus/Pro ile giriş yapın; model bu abonelikle karşılanır. Diğer yol Anthropic, OpenAI, OpenRouter veya Grok için bir API anahtarıdır. Her iki durumda da Rakazo ödeme yapmaz.",
+            "Hayır. Claude Pro/Max veya ChatGPT Plus/Pro ile giriş yapın; model bu abonelikle karşılanır. Diğer yol Anthropic, OpenAI, OpenRouter veya Grok için bir API anahtarıdır. Her iki durumda da VNBot ödeme yapmaz.",
         },
         {
           question: "Yerel bir model çalıştırabilir miyim?",
@@ -2508,25 +2309,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "Açık kaynak",
-      copy: "Apache-2.0. Çalıştırın, değiştirin, size göre uyarlayın.",
-      starOnGithub: "GitHub'da yıldız verin",
-      readTheDocs: "Belgeleri okuyun",
-      cloudTitle: "Bulut",
-      cloudBadge: "Beta",
+    cloud: {
+      title: "Bulut",
+      badge: "Beta",
     },
     cta: {
       heading: "İlk botunuzla tanışın",
       copy: "Sıradaki görevinizi devredin.",
-      openSourceValue: "Açık kaynak",
-      selfHostValue: "Kendi sunucunuz",
-      stats: [
-        { value: "stars", label: "GitHub yıldızı" },
-        { value: "license", label: "Lisans" },
-        { value: "openSource", label: "Kullanıcı başı ücret yok, kısıtlama yok" },
-        { value: "selfHost", label: "Sizin makineniz" },
-      ],
     },
     footer: {
       navLabel: "Alt bilgi",
@@ -2543,45 +2332,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "Koşullar",
         company: "Şirket",
         blog: "Blog",
-        iosApp: "iPhone uygulaması",
+        iosApp: "iPhone uygulaması (yakında)",
         androidApp: "Android uygulaması",
       },
     },
   },
   "he": {
-    title: "Rakazo | חלופת קוד פתוח ל-Grok Bot",
+    title: "VNBot | חלופה ל-Grok Bot",
     description:
-      "Rakazo היא חלופת קוד פתוח ל-Grok Bot לעמיתי AI קבועים שעושים עבודה אמיתית. המפתחות שלך, המודל שלך, המכונה שלך.",
+      "VNBot היא חלופה ל-Grok Bot לעמיתי AI קבועים שעושים עבודה אמיתית. המפתחות שלך, המודל שלך, המכונה שלך.",
     ogImageAlt:
-      "Rakazo. עמיתי AI ששייכים לך באמת. המפתחות שלך, המודל שלך, המכונה שלך.",
+      "VNBot. עמיתי AI ששייכים לך באמת. המפתחות שלך, המודל שלך, המכונה שלך.",
     availableLanguage: "Hebrew",
     skipToContent: "דילוג לתוכן",
     nav: {
-      home: "דף הבית של Rakazo",
+      home: "דף הבית של VNBot",
       primary: "ניווט ראשי",
       menu: "תפריט",
       docs: "תיעוד",
       integrations: "אינטגרציות",
       blog: "בלוג",
-      github: "GitHub",
       getStarted: "להתחיל",
     },
     hero: {
-      eyebrow: "קוד פתוח",
-      heading: "חלופת הקוד הפתוח ל-Grok Bot ששייכת לך באמת",
+      heading: "החלופה ל-Grok Bot ששייכת לך באמת",
       lead: "נותנים לבוטים משימה. מתעדכנים מכל מכשיר.",
       getStarted: "להתחיל",
       download: {
         mac: "הורדה ל-macOS",
         windows: "הורדה ל-Windows",
         linux: "הורדה ל-Linux",
-        ios: "הורדה ל-iOS",
+        ios: "iOS: בקרוב",
         android: "הורדה ל-Android",
       },
-      viewOnGithub: "צפייה ב-GitHub",
-      setupWithAgent: "הגדרה עם הסוכן שלך",
-      copiedForAgent: "הועתק עבור הסוכן שלך",
-      copyFailed: "ההעתקה נכשלה. אפשר לנסות שוב.",
     },
     selfHost: {
       heading: "באירוח עצמי",
@@ -2642,12 +2425,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "אפשר להשתמש במנוי Claude Pro/Max או ChatGPT Plus/Pro שלי?",
           answer:
-            "כן — אפשר להתחבר עם המנוי הזה, או להשתמש במפתח API, ב-OpenRouter או בשרת מקומי תואם OpenAI (Ollama, LM Studio וכו'). Rakazo לא משלמת את חשבון המודל.",
+            "כן — אפשר להתחבר עם המנוי הזה, או להשתמש במפתח API, ב-OpenRouter או בשרת מקומי תואם OpenAI (Ollama, LM Studio וכו'). VNBot לא משלמת את חשבון המודל.",
         },
         {
           question: "צריך מפתח API אם כבר יש לי מנוי בתשלום ל-Claude או ל-ChatGPT?",
           answer:
-            "לא. מתחברים עם Claude Pro/Max או ChatGPT Plus/Pro, והמנוי הזה מכסה את המודל. מפתח API הוא הדרך השנייה, עבור Anthropic, OpenAI, OpenRouter או Grok. בכל מקרה, Rakazo לא משלמת.",
+            "לא. מתחברים עם Claude Pro/Max או ChatGPT Plus/Pro, והמנוי הזה מכסה את המודל. מפתח API הוא הדרך השנייה, עבור Anthropic, OpenAI, OpenRouter או Grok. בכל מקרה, VNBot לא משלמת.",
         },
         {
           question: "אפשר להריץ מודל מקומי?",
@@ -2661,25 +2444,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "קוד פתוח",
-      copy: "Apache-2.0. אפשר להריץ, לשנות ולהתאים לעצמך.",
-      starOnGithub: "סימון בכוכב ב-GitHub",
-      readTheDocs: "לקריאת התיעוד",
-      cloudTitle: "ענן",
-      cloudBadge: "בטא",
+    cloud: {
+      title: "ענן",
+      badge: "בטא",
     },
     cta: {
       heading: "הכירו את הבוט הראשון שלכם",
       copy: "העבירו לו את המשימה הבאה.",
-      openSourceValue: "קוד פתוח",
-      selfHostValue: "אירוח עצמי",
-      stats: [
-        { value: "stars", label: "כוכבים ב-GitHub" },
-        { value: "license", label: "רישיון" },
-        { value: "openSource", label: "בלי מושבים, בלי חסימות" },
-        { value: "selfHost", label: "המכונה שלך" },
-      ],
     },
     footer: {
       navLabel: "כותרת תחתונה",
@@ -2696,45 +2467,39 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "תנאים",
         company: "חברה",
         blog: "בלוג",
-        iosApp: "אפליקציית iPhone",
+        iosApp: "אפליקציית iPhone (בקרוב)",
         androidApp: "אפליקציית Android",
       },
     },
   },
   "hi": {
-    title: "Rakazo | Grok Bot का ओपन सोर्स विकल्प",
+    title: "VNBot | Grok Bot का विकल्प",
     description:
-      "Rakazo, Grok Bot का ओपन सोर्स विकल्प है, ऐसे स्थायी AI साथियों के लिए जो असली काम करते हैं। आपकी कुंजियाँ, आपका मॉडल, आपकी मशीन।",
+      "VNBot, Grok Bot का विकल्प है, ऐसे स्थायी AI साथियों के लिए जो असली काम करते हैं। आपकी कुंजियाँ, आपका मॉडल, आपकी मशीन।",
     ogImageAlt:
-      "Rakazo. ऐसे AI साथी जो सच में आपके अपने हैं। आपकी कुंजियाँ, आपका मॉडल, आपकी मशीन।",
+      "VNBot. ऐसे AI साथी जो सच में आपके अपने हैं। आपकी कुंजियाँ, आपका मॉडल, आपकी मशीन।",
     availableLanguage: "Hindi",
     skipToContent: "सामग्री पर जाएं",
     nav: {
-      home: "Rakazo होम",
+      home: "VNBot होम",
       primary: "मुख्य नेविगेशन",
       menu: "मेनू",
       docs: "दस्तावेज़",
       integrations: "इंटीग्रेशन",
       blog: "ब्लॉग",
-      github: "GitHub",
       getStarted: "शुरू करें",
     },
     hero: {
-      eyebrow: "ओपन सोर्स",
-      heading: "Grok Bot का ओपन सोर्स विकल्प, जो सच में आपका अपना है",
+      heading: "Grok Bot का विकल्प, जो सच में आपका अपना है",
       lead: "अपने बॉट्स को काम दें। किसी भी डिवाइस से हाल देखें।",
       getStarted: "शुरू करें",
       download: {
         mac: "macOS के लिए डाउनलोड करें",
         windows: "Windows के लिए डाउनलोड करें",
         linux: "Linux के लिए डाउनलोड करें",
-        ios: "iOS के लिए डाउनलोड करें",
+        ios: "iOS: जल्द आ रहा है",
         android: "Android के लिए डाउनलोड करें",
       },
-      viewOnGithub: "GitHub पर देखें",
-      setupWithAgent: "अपने एजेंट से सेट अप करें",
-      copiedForAgent: "आपके एजेंट के लिए कॉपी किया गया",
-      copyFailed: "कॉपी नहीं हो सका। फिर से कोशिश करें।",
     },
     selfHost: {
       heading: "सेल्फ़-होस्टेड",
@@ -2795,12 +2560,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "क्या मेरा Claude Pro/Max या ChatGPT Plus/Pro सब्सक्रिप्शन इस्तेमाल हो सकता है?",
           answer:
-            "हाँ — उसी सब्सक्रिप्शन से साइन इन करें, या API कुंजी, OpenRouter या कोई लोकल OpenAI-संगत सर्वर (Ollama, LM Studio आदि) इस्तेमाल करें। मॉडल का बिल Rakazo नहीं भरता।",
+            "हाँ — उसी सब्सक्रिप्शन से साइन इन करें, या API कुंजी, OpenRouter या कोई लोकल OpenAI-संगत सर्वर (Ollama, LM Studio आदि) इस्तेमाल करें। मॉडल का बिल VNBot नहीं भरता।",
         },
         {
           question: "अगर Claude या ChatGPT का पेड सब्सक्रिप्शन पहले से है, तो क्या API कुंजी चाहिए?",
           answer:
-            "नहीं। Claude Pro/Max या ChatGPT Plus/Pro से साइन इन करें, और वही सब्सक्रिप्शन मॉडल का खर्च उठाता है। API कुंजी दूसरा रास्ता है, Anthropic, OpenAI, OpenRouter या Grok के लिए। दोनों में से किसी भी तरीके में Rakazo भुगतान नहीं करता।",
+            "नहीं। Claude Pro/Max या ChatGPT Plus/Pro से साइन इन करें, और वही सब्सक्रिप्शन मॉडल का खर्च उठाता है। API कुंजी दूसरा रास्ता है, Anthropic, OpenAI, OpenRouter या Grok के लिए। दोनों में से किसी भी तरीके में VNBot भुगतान नहीं करता।",
         },
         {
           question: "क्या लोकल मॉडल चलाया जा सकता है?",
@@ -2814,25 +2579,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "ओपन सोर्स",
-      copy: "Apache-2.0. इसे चलाएं, बदलें, अपने हिसाब से बनाएं।",
-      starOnGithub: "GitHub पर स्टार करें",
-      readTheDocs: "दस्तावेज़ पढ़ें",
-      cloudTitle: "क्लाउड",
-      cloudBadge: "बीटा",
+    cloud: {
+      title: "क्लाउड",
+      badge: "बीटा",
     },
     cta: {
       heading: "अपने पहले बॉट से मिलें",
       copy: "अपना अगला काम सौंप दें।",
-      openSourceValue: "ओपन सोर्स",
-      selfHostValue: "सेल्फ़-होस्ट",
-      stats: [
-        { value: "stars", label: "GitHub स्टार्स" },
-        { value: "license", label: "लाइसेंस" },
-        { value: "openSource", label: "न सीट्स, न पाबंदियां" },
-        { value: "selfHost", label: "आपकी मशीन" },
-      ],
     },
     footer: {
       navLabel: "फ़ुटर",
@@ -2849,44 +2602,38 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "शर्तें",
         company: "कंपनी",
         blog: "ब्लॉग",
-        iosApp: "iPhone ऐप",
+        iosApp: "iPhone ऐप (जल्द आ रहा है)",
         androidApp: "Android ऐप",
       },
     },
   },
   "zh-tw": {
-    title: "Rakazo | 開源 Grok Bot 替代方案",
+    title: "VNBot | Grok Bot 替代方案",
     description:
-      "Rakazo 是開源的 Grok Bot 替代方案，讓常駐的 AI 隊友幫你完成實際工作。金鑰、模型、機器，全都屬於你。",
-    ogImageAlt: "Rakazo：真正屬於你的 AI 隊友。金鑰、模型、機器，全都屬於你。",
+      "VNBot 是 Grok Bot 替代方案，讓常駐的 AI 隊友幫你完成實際工作。金鑰、模型、機器，全都屬於你。",
+    ogImageAlt: "VNBot：真正屬於你的 AI 隊友。金鑰、模型、機器，全都屬於你。",
     availableLanguage: "Chinese (Traditional)",
     skipToContent: "跳至主要內容",
     nav: {
-      home: "Rakazo 首頁",
+      home: "VNBot 首頁",
       primary: "主要導覽",
       menu: "選單",
       docs: "說明文件",
       integrations: "整合",
       blog: "部落格",
-      github: "GitHub",
       getStarted: "開始使用",
     },
     hero: {
-      eyebrow: "開源",
-      heading: "真正屬於你的開源 Grok Bot 替代方案",
+      heading: "真正屬於你的 Grok Bot 替代方案",
       lead: "把工作交給機器人，用任何裝置隨時查看。",
       getStarted: "開始使用",
       download: {
         mac: "下載 macOS 版",
         windows: "下載 Windows 版",
         linux: "下載 Linux 版",
-        ios: "下載 iOS 版",
+        ios: "iOS：即將推出",
         android: "下載 Android 版",
       },
-      viewOnGithub: "在 GitHub 上查看",
-      setupWithAgent: "用你的代理程式設定",
-      copiedForAgent: "已為你的代理程式複製",
-      copyFailed: "複製失敗，請重試。",
     },
     selfHost: {
       heading: "自行託管",
@@ -2947,12 +2694,12 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         {
           question: "可以用我的 Claude Pro/Max 或 ChatGPT Plus/Pro 訂閱嗎？",
           answer:
-            "可以 — 用該訂閱登入，或使用 API 金鑰、OpenRouter，或本機的 OpenAI 相容伺服器（Ollama、LM Studio 等）。模型費用不由 Rakazo 支付。",
+            "可以 — 用該訂閱登入，或使用 API 金鑰、OpenRouter，或本機的 OpenAI 相容伺服器（Ollama、LM Studio 等）。模型費用不由 VNBot 支付。",
         },
         {
           question: "已經付費使用 Claude 或 ChatGPT，還需要 API 金鑰嗎？",
           answer:
-            "不需要。用 Claude Pro/Max 或 ChatGPT Plus/Pro 登入，模型費用由該訂閱涵蓋。API 金鑰是另一種方式，適用於 Anthropic、OpenAI、OpenRouter 或 Grok。無論哪種方式，Rakazo 都不會付費。",
+            "不需要。用 Claude Pro/Max 或 ChatGPT Plus/Pro 登入，模型費用由該訂閱涵蓋。API 金鑰是另一種方式，適用於 Anthropic、OpenAI、OpenRouter 或 Grok。無論哪種方式，VNBot 都不會付費。",
         },
         {
           question: "可以執行本機模型嗎？",
@@ -2966,25 +2713,13 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         },
       ],
     },
-    openSource: {
-      heading: "開源",
-      copy: "Apache-2.0。自由執行、修改，打造成你要的樣子。",
-      starOnGithub: "在 GitHub 上加星號",
-      readTheDocs: "閱讀說明文件",
-      cloudTitle: "雲端",
-      cloudBadge: "Beta 版",
+    cloud: {
+      title: "雲端",
+      badge: "Beta 版",
     },
     cta: {
       heading: "認識你的第一個機器人",
       copy: "把下一項任務交給它。",
-      openSourceValue: "開源",
-      selfHostValue: "自行託管",
-      stats: [
-        { value: "stars", label: "GitHub 星號" },
-        { value: "license", label: "授權" },
-        { value: "openSource", label: "不限席次，沒有門檻" },
-        { value: "selfHost", label: "你的機器" },
-      ],
     },
     footer: {
       navLabel: "頁尾",
@@ -3001,7 +2736,7 @@ const HOME_COPY: Record<Locale, HomeCopy> = {
         terms: "條款",
         company: "公司",
         blog: "部落格",
-        iosApp: "iPhone App",
+        iosApp: "iPhone 應用（即將推出）",
         androidApp: "Android App",
       },
     },

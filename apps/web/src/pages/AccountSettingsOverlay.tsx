@@ -34,7 +34,7 @@ import { AccountAccess } from "../components/AccountAccess";
 import { SuccessPop } from "../components/ai/primitives";
 import { ComputerDeviceSettings } from "../components/ComputerDeviceSettings";
 import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint";
-import { DesktopUpdateSection } from "../components/DesktopUpdates";
+import { DesktopUpdateSection } from "../components/DesktopUpdateViews";
 import { PasskeySettings } from "../components/PasskeySettings";
 import { SettingsGroup, SettingsRow } from "../components/SettingsRows";
 import { TrustedLinkSitesSettings } from "../components/TrustedLinkSitesSettings";
@@ -68,7 +68,7 @@ import {
 import type { AppearancePreference } from "../lib/ui-appearance";
 import { getUiAppearancePreference, setUiAppearance } from "../lib/ui-appearance";
 import type { UiLocale } from "../lib/ui-locale";
-import { UI_LOCALE_LABELS, UI_LOCALES } from "../lib/ui-locale";
+import { PICKER_LOCALES, UI_LOCALE_LABELS } from "../lib/ui-locale";
 import { authErrorText } from "../lib/user-error";
 
 export type SettingsGeneralProps = {
@@ -480,19 +480,15 @@ export function UsageSettingsPanel({
 }) {
   const { t, i18n } = useLingui();
   const count = new Intl.NumberFormat(i18n.locale);
-  const usd = new Intl.NumberFormat(i18n.locale, { style: "currency", currency: "USD" });
   const number = (value: number | null | undefined) => (value == null ? "—" : count.format(value));
-  const cost = (value: number | null | undefined) =>
-    value == null ? "—" : value > 0 && value < 0.01 ? `<${usd.format(0.01)}` : usd.format(value);
   const models = usage?.models ?? [];
   return (
     <div ref={panelRef} tabIndex={-1} data-testid="usage-settings" className="outline-none">
       {usage ? (
-        <dl className="grid grid-cols-3 gap-3">
+        <dl className="grid grid-cols-2 gap-3">
           {[
             { label: t`Runs`, value: number(usage.runs) },
             { label: t`Tokens`, value: number(usage.totalTokens) },
-            { label: t`Cost`, value: cost(usage.costUsd) },
           ].map((stat) => (
             <div key={stat.label} className="rounded-xl border border-border px-4 py-3">
               <dt className="text-[12.5px] text-muted-foreground">{stat.label}</dt>
@@ -520,9 +516,6 @@ export function UsageSettingsPanel({
                 <TableHead className="text-right text-muted-foreground">
                   <Trans>Output</Trans>
                 </TableHead>
-                <TableHead className="text-right text-muted-foreground">
-                  <Trans>Cost</Trans>
-                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -541,7 +534,6 @@ export function UsageSettingsPanel({
                   <TableCell className="text-right tabular-nums">
                     {number(row.outputTokens)}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{cost(row.costUsd)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -804,7 +796,7 @@ function UiLocalePicker({
       className="w-56 max-w-full"
       data-testid="ui-locale-select"
       aria-label={t`Language`}
-      options={UI_LOCALES.map((code) => ({ value: code, label: UI_LOCALE_LABELS[code] }))}
+      options={PICKER_LOCALES.map((code) => ({ value: code, label: UI_LOCALE_LABELS[code] }))}
       value={value}
       onValueChange={onChange}
     />

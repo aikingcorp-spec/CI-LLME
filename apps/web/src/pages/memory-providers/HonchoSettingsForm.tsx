@@ -1,4 +1,4 @@
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button, Field, FieldError, FieldLabel, Input } from "@rakazo/ui-web";
 import { useId, useState } from "react";
 import type { ConnectionMode } from "./ConnectionModeFields";
@@ -12,6 +12,7 @@ function isReservedPeerId(value: string): boolean {
 }
 
 export function HonchoSettingsForm({ busy, onConnect }: MemoryProviderSettingsFormProps) {
+  const { t } = useLingui();
   const apiKeyId = useId();
   const workspaceId = useId();
   const workspaceErrorId = useId();
@@ -66,7 +67,7 @@ export function HonchoSettingsForm({ busy, onConnect }: MemoryProviderSettingsFo
           value={apiKey}
           disabled={busy}
           onChange={(event) => setApiKey(event.target.value)}
-          placeholder={mode === "cloud" ? "hch-…" : undefined}
+          placeholder={mode === "cloud" ? t`hch-…` : undefined}
           type="password"
           autoComplete="new-password"
           maxLength={4096}
@@ -84,7 +85,7 @@ export function HonchoSettingsForm({ busy, onConnect }: MemoryProviderSettingsFo
           aria-invalid={workspaceValid ? undefined : true}
           aria-describedby={workspaceValid ? undefined : workspaceErrorId}
           onChange={(event) => setWorkspace(event.target.value)}
-          placeholder="rakazo-<space>"
+          placeholder={t`vnbot-<space>`}
           maxLength={512}
           autoComplete="off"
         />
@@ -113,12 +114,12 @@ export function HonchoSettingsForm({ busy, onConnect }: MemoryProviderSettingsFo
             autoComplete="off"
           />
           <p id={userPeerDescriptionId} className="mt-2 text-[13px] text-muted-foreground">
-            <Trans>An existing Honcho peer to read from. Rakazo never writes to it.</Trans>
+            <Trans>An existing Honcho peer to read from. VNBot never writes to it.</Trans>
           </p>
           {!userPeerValid ? (
             <FieldError id={userPeerErrorId}>
               {userPeerFormatValid ? (
-                <Trans>rakazo-shared and IDs starting with bot- are reserved for Rakazo.</Trans>
+                <Trans>vnbot-shared and IDs starting with bot- are reserved for VNBot.</Trans>
               ) : (
                 <Trans>Use up to 512 letters, digits, _ or -.</Trans>
               )}

@@ -1087,7 +1087,6 @@ export type MobileMe = Pick<
   | "isDeploymentOwner"
   | "needsSignupSurvey"
   | "billingEnabled"
-  | "paymentWalletProvider"
 >;
 
 export type MobileModel = ModelCatalogEntry;

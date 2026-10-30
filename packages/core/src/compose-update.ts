@@ -13,7 +13,7 @@ import {
  * `OFFICIAL_REPO_URL` names the same repository, so the source commit selected from a release is
  * guaranteed to have been eligible for this repository's publishing workflow.
  */
-export const PUBLISHED_IMAGE_REPO = "elie222/rakazo";
+export const PUBLISHED_IMAGE_REPO = "aikingcorp-spec/vnbot";
 
 /** The published server image. One image runs api, worker, and web. */
 export const OFFICIAL_SERVER_IMAGE = `ghcr.io/${PUBLISHED_IMAGE_REPO}/app`;
@@ -265,7 +265,7 @@ export function resolveExecutionMode(input: {
   hasCheckout?: boolean;
   disabled?: boolean;
 }): ExecutionModeDecision {
-  if (input.disabled === true) {
+  if (input.disabled !== false) {
     return { mode: "unavailable", reason: "Self-update is switched off for this deployment." };
   }
   if (input.hasUpdater === true) return { mode: "sidecar", reason: null };

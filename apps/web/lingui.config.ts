@@ -5,6 +5,7 @@ export default defineConfig({
   sourceLocale: "en",
   locales: [
     "en",
+    "vi",
     "de",
     "ko",
     "tr",

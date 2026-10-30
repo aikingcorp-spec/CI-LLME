@@ -66,28 +66,27 @@ export function marketingEmailRoutes(prisma: PrismaClient, secret: string) {
   };
   app.get(UNSUBSCRIBE_PATH, (c) =>
     verifiedUser(c.req.url)
-      ? page(
-          `<form method="post"><button type="submit">Unsubscribe from Rakazo emails</button></form>`,
-        )
-      : page("This link is not valid.", 400),
+      ? page(`<form method="post"><button type="submit">Hủy nhận email VNBot</button></form>`)
+      : page("Liên kết này không hợp lệ.", 400),
   );
   app.post(UNSUBSCRIBE_PATH, async (c) => {
     const userId = verifiedUser(c.req.url);
-    if (!userId) return page("This link is not valid.", 400);
+    if (!userId) return page("Liên kết này không hợp lệ.", 400);
     await runAsSystem("unsubscribe a user from product email", () =>
       prisma.user.updateMany({
         where: { id: userId, marketingEmailOptOutAt: null },
         data: { marketingEmailOptOutAt: new Date() },
       }),
     );
-    return page("You're unsubscribed.");
+    return page("Bạn đã hủy nhận email.");
   });
   return app;
 }
 
 function page(content: string, status = 200): Response {
   return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Rakazo</title></head><body style="font-family: Arial, sans-serif; max-width: 480px; margin: 48px auto; padding: 0 24px">${content}</body></html>`,
+    `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>VNBot</title></head><body style="font-family: Arial, sans-serif; max-width: 480px; margin: 48px auto; padding: 0 24px">${content}</body></html>`,
+
     {
       status,
       headers: { "cache-control": "no-store", "content-type": "text/html; charset=utf-8" },

@@ -11,7 +11,39 @@ import {
   resolvePersonaColorDef,
 } from "./bot-avatar.js";
 
+import { VNBOT_SHAPES, vnbotShape } from "./vnbot-avatar.js";
+
 describe("BotAvatar", () => {
+  it.each(VNBOT_SHAPES)(
+    "honours the explicit VNBot shape %s over identity at every size",
+    (shape) => {
+      for (const size of [16, 26, 28, 36, 40, 72, 96]) {
+        const index = VNBOT_SHAPES.indexOf(shape);
+        const html = renderToString(
+          <BotAvatar
+            avatarSet="vnbot"
+            color={`#10B981::shape_${index}`}
+            identity="sample-bot"
+            size={size}
+          />,
+        );
+        expect(html).toContain(`data-vnbot-shape="${shape}"`);
+        expect(html).toContain(`width:${size}px;height:${size}px`);
+        // Inline CSS beats Button's descendant SVG size rule; presentation attributes do not.
+        expect(html).toMatch(
+          /<svg[^>]*width="100%"[^>]*height="100%"[^>]*style="width:100%;height:100%;display:block"/,
+        );
+        expect(html).not.toContain("bot-character-eyes");
+      }
+    },
+  );
+
+  it("keeps identity hashing for a VNBot with no explicit shape", () => {
+    const html = renderToString(
+      <BotAvatar avatarSet="vnbot" color="#10B981" identity="sample-bot" />,
+    );
+    expect(html).toContain(`data-vnbot-shape="${vnbotShape("sample-bot")}"`);
+  });
   it("renders distinct SVG gradient IDs for concurrent working avatars", () => {
     const html = renderToString(
       <div>

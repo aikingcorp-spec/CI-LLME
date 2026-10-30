@@ -1,5 +1,6 @@
 import { plural, t } from "@lingui/core/macro";
 import type { ModelCredential } from "@rakazo/contracts";
+import { modelConnectionErrorText } from "./user-error";
 
 type ModelPreflightOutcome =
   | "timeout"
@@ -31,7 +32,7 @@ export function sanitizeModelConnectionError(raw: string): string {
   for (const pattern of SECRET_PATTERNS) {
     text = text.replace(pattern, "•••");
   }
-  return text;
+  return modelConnectionErrorText(text);
 }
 
 function messageFromError(error: unknown): string {
@@ -281,7 +282,7 @@ export async function runModelConnectionPreflight(
   }
 }
 
-/** Catalog models-list result. Custom servers use `openAiCompatibleProbeSuccessMessage`. */
+/** Catalog models-list result. Custom servers use `compatibleProbeSuccessMessage`. */
 export function modelPreflightSuccessMessage(modelCount: number): string {
   if (modelCount === 0) {
     return t`No models listed.`;
@@ -290,4 +291,11 @@ export function modelPreflightSuccessMessage(modelCount: number): string {
     one: "# model",
     other: "# models",
   })} available. Chat was not tested.`;
+}
+
+/** Result of "Find models" on a custom OpenAI-compatible server. */
+export function compatibleProbeSuccessMessage(modelCount: number): string {
+  if (modelCount === 0) return t`Server found. Enter a model name.`;
+  if (modelCount === 1) return t`Found 1 model.`;
+  return t`Found ${modelCount} models.`;
 }

@@ -99,5 +99,6 @@ export * from "./tool-activity.js";
 export * from "./ui-locale.js";
 export * from "./unread-divider.js";
 export * from "./user-error.js";
+export * from "./vnbot-palette.js";
 export * from "./voice-chat-groups.js";
 export * from "./voice-response.js";

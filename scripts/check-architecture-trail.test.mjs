@@ -109,12 +109,7 @@ test("a docs-only path is not sensitive", () => {
 });
 
 test("git name-status and diff additions parse", () => {
-  const files = parseNameStatus(
-    "M\tpackages/auth/src/index.ts\nR100\tdocs/old.md\tdocs/new.md\n",
-  );
-  assert.deepEqual(files, [
-    { path: "packages/auth/src/index.ts" },
-    { path: "docs/new.md" },
-  ]);
+  const files = parseNameStatus("M\tpackages/auth/src/index.ts\nR100\tdocs/old.md\tdocs/new.md\n");
+  assert.deepEqual(files, [{ path: "packages/auth/src/index.ts" }, { path: "docs/new.md" }]);
   assert.equal(addedLines("+++ b/file\n+hello\n-old\n"), "hello");
 });

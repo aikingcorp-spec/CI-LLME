@@ -12,6 +12,7 @@ const SPEECH_LOCALE_TAGS = {
   "pt-BR": "pt-BR",
   ru: "ru-RU",
   tr: "tr-TR",
+  vi: "vi-VN",
   "zh-CN": "zh-CN",
   "zh-TW": "zh-TW",
 } as const;

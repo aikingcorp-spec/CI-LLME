@@ -766,6 +766,9 @@ importers:
       '@rakazo/adapter-kit':
         specifier: workspace:*
         version: link:../adapter-kit
+      '@rakazo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@rakazo/core':
         specifier: workspace:*
         version: link:../core
@@ -880,6 +883,9 @@ importers:
       '@rakazo/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@rakazo/ui-tokens':
+        specifier: workspace:*
+        version: link:../ui-tokens
       '@tanstack/query-core':
         specifier: 5.104.5
         version: 5.104.5

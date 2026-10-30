@@ -24,10 +24,16 @@ import {
 } from "@rakazo/core";
 import { monitoringPseudonymSecret } from "@rakazo/logging";
 
+import { readBuildTime } from "./version.js";
+
 export { resolveCloudAgentProvider, resolveSandboxProvider } from "@rakazo/adapters";
 
 export interface AppEnv {
   passwordAuth?: boolean;
+  /** AUTH_EMAIL_CODE_ONLY=true. Closes password sign-in without closing email codes or passkeys. */
+  emailCodeOnly?: boolean;
+  /** AUTH_EMAIL_ALLOWLIST=on. Only auth_email_allowlist addresses can sign in. */
+  emailAllowlist?: boolean;
   /** Opt-in Have I Been Pwned check for new passwords. Default off: it calls an outside service. */
   breachedPasswordCheck?: boolean;
   oidc?: OidcConfig;
@@ -58,7 +64,8 @@ export interface AppEnv {
   ticketBoardEnabled: boolean;
   /** USER_DEVICES_ENABLED=false stops users connecting their own computers. Default on. */
   userDevicesEnabled: boolean;
-  /** Operator menu links that frame a same-origin page (RAKAZO_NAV_LINKS). */
+  /** Operator menu links that frame a same-origin page (VNBOT_NAV_LINKS, or legacy RAKAZO_NAV_LINKS). The label is shown as written,
+   * so write it in the users' language (e.g. "Khách hàng"). */
   navLinks?: NavLink[];
   phoneCallsEnabled: boolean;
   phoneCallRingSeconds: number;
@@ -147,6 +154,7 @@ export interface AppEnv {
   mcpAllowPrivateEndpoint: boolean;
   port: number;
   gitSha: string | undefined;
+  builtAt?: string;
   /** Oldest client build per kind the API still serves (RAKAZO_MIN_CLIENT_BUILD). */
   minimumClientBuilds?: MinimumClientBuilds;
   /** Browser error reporting, served to the web app at runtime. The DSN is public by design. */
@@ -179,6 +187,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   }
   for (const key of [
     "AUTH_PASSWORD_ENABLED",
+    "AUTH_EMAIL_CODE_ONLY",
     "AUTH_BREACHED_PASSWORD_CHECK_ENABLED",
     "OIDC_ALLOW_SIGNUP_BYPASS",
   ]) {
@@ -186,6 +195,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     if (value && !["true", "false"].includes(value))
       throw new Error(`${key} must be true or false`);
   }
+  const allowlist = source.AUTH_EMAIL_ALLOWLIST;
+  if (allowlist && !["on", "off"].includes(allowlist))
+    throw new Error("AUTH_EMAIL_ALLOWLIST must be on or off");
   const passwordAuth = source.AUTH_PASSWORD_ENABLED !== "false";
   if (!passwordAuth && !issuer)
     throw new Error("AUTH_PASSWORD_ENABLED=false requires OIDC configuration");
@@ -208,6 +220,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   const deploymentModel = resolveDeploymentModel(source);
   return {
     passwordAuth,
+    emailCodeOnly: source.AUTH_EMAIL_CODE_ONLY === "true",
+    emailAllowlist: allowlist === "on",
     breachedPasswordCheck: source.AUTH_BREACHED_PASSWORD_CHECK_ENABLED === "true",
     oidc,
     nodeEnv: source.NODE_ENV ?? "",
@@ -235,7 +249,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     piSessionRecording: source.PI_SESSION_RECORDING === "true",
     ticketBoardEnabled: source.TICKET_BOARD_ENABLED === "true",
     userDevicesEnabled: source.USER_DEVICES_ENABLED !== "false",
-    navLinks: parseNavLinks(source.RAKAZO_NAV_LINKS),
+    // VNBOT_NAV_LINKS wins; RAKAZO_NAV_LINKS still works for older deployments.
+    navLinks: parseNavLinks(source.VNBOT_NAV_LINKS ?? source.RAKAZO_NAV_LINKS),
     ...phoneCallSettings(source),
     maxUploadSizeBytes: uploadSizeFromEnv(source),
     voiceSummaryMinChars: voiceSummaryMinCharsFromEnv(source.VOICE_SUMMARY_MIN_CHARS),
@@ -316,6 +331,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     mcpAllowPrivateEndpoint: source.MCP_ALLOW_PRIVATE_ENDPOINT === "true",
     port: Number(source.API_PORT ?? 3100),
     gitSha: optional(source.GIT_SHA) ?? optional(source.RAKAZO_GIT_SHA),
+    builtAt: optional(source.BUILT_AT) ?? readBuildTime(),
     minimumClientBuilds: parseMinimumClientBuilds(source.RAKAZO_MIN_CLIENT_BUILD),
     browserMonitoring: browserMonitoringFromEnv(source),
     crispWebsiteId: parseCrispWebsiteId(source.CRISP_WEBSITE_ID),

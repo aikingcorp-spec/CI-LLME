@@ -1,0 +1,33 @@
+#!/bin/sh
+# Local pre-push guard (CORRECT 2026-10-29 item 5): CI is the final confirmation,
+# not the place to find lint/type/test errors. Runs only on this machine.
+# Enable once per clone: pnpm run hooks:install (sets core.hooksPath=.githooks).
+set -u
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+run() {
+  echo "pre-push: $1" >&2
+  shift
+  if ! "$@"; then
+    return 1
+  fi
+}
+
+run "pnpm lint" pnpm lint || {
+  echo "pre-push: biome check/banned-brand thất bại, chạy pnpm lint --write (hoặc pnpm format) rồi commit lại. CI chỉ là xác nhận cuối." >&2
+  exit 1
+}
+run "pnpm check" pnpm check || {
+  echo "pre-push: pnpm check (typecheck) thất bại, sửa rồi commit lại. CI chỉ là xác nhận cuối." >&2
+  exit 1
+}
+# Only tests affected by commits not yet on the remote (upstream, else origin/main).
+base=$(git merge-base HEAD "@{upstream}" 2>/dev/null || git merge-base HEAD origin/main 2>/dev/null || echo HEAD)
+# Git exports GIT_DIR/GIT_INDEX_FILE/etc. to hooks; tests that run git in temp
+# repos would otherwise write into this repo. Drop them before running tests.
+for v in $(env | sed -n 's/^\(GIT_[A-Z_]*\)=.*/\1/p'); do unset "$v"; done
+run "pnpm test --changed $base" pnpm test --changed "$base" || {
+  echo "pre-push: pnpm test --changed thất bại, sửa rồi commit lại. CI chỉ là xác nhận cuối." >&2
+  exit 1
+}
+echo "pre-push: lint, check, test xanh." >&2

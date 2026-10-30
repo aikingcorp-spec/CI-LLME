@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { contentKeyProviderFromEnv } from "@rakazo/adapters";
-import { createAuth } from "@rakazo/auth";
+import { addAllowlistEmail, createAuth, normalizeEmail } from "@rakazo/auth";
 import { bootstrapUserSpace, createDb, runAsSystem } from "@rakazo/db";
 
 function required(name: string): string {
@@ -20,7 +20,7 @@ try {
 }
 
 async function bootstrap() {
-  const email = required("OWNER_EMAIL").trim().toLowerCase();
+  const email = normalizeEmail(required("OWNER_EMAIL"));
   const existing = await prisma.user.findUnique({ where: { email } });
   if (!existing?.emailVerified) {
     const password = required("OWNER_PASSWORD");
@@ -74,4 +74,6 @@ async function bootstrap() {
     where: { id: "default" },
     data: { signupsEnabled: false, signupPolicyInitialized: true },
   });
+  // The owner row bypasses the auth hooks, so invite it after bootstrap succeeds.
+  await addAllowlistEmail(prisma, email, { note: "owner", addedBy: "bootstrap-owner" });
 }

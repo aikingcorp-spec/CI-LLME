@@ -1,6 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { NavLink } from "@rakazo/contracts";
-import { ANDROID_APK_URL, IOS_APP_STORE_URL } from "@rakazo/contracts";
 import {
   AppMarkStack,
   Button,
@@ -24,6 +23,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { VNBOT_DOCS_URL, VNBOT_DOWNLOAD_URL } from "../lib/vnbot-links";
 import { useSidebarUpdate } from "./DesktopUpdates";
 import { IconTooltip } from "./IconTooltip";
 
@@ -169,7 +169,7 @@ export function SidebarFooter({
             </Button>
             <a
               className={`${buttonVariants({ variant: "ghost" })} h-9 w-full justify-start gap-2.5 font-normal`}
-              href={/Android/i.test(navigator.userAgent) ? ANDROID_APK_URL : IOS_APP_STORE_URL}
+              href={VNBOT_DOWNLOAD_URL}
               target="_blank"
               rel="noreferrer"
             >
@@ -178,7 +178,7 @@ export function SidebarFooter({
             </a>
             <a
               className={`${buttonVariants({ variant: "ghost" })} h-9 w-full justify-start gap-2.5 font-normal`}
-              href="https://github.com/elie222/rakazo/blob/main/docs/self-host.md"
+              href={VNBOT_DOCS_URL}
               target="_blank"
               rel="noreferrer"
             >

@@ -14,7 +14,6 @@ import {
   OLLAMA_CLOUD_BASE_URL,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   openAiCompatibleConnectReady,
-  openAiCompatibleProbeSuccessMessage,
   parseModelContextWindow,
   parseModelMaxImagesPerPrompt,
   parseModelMaxTokens,
@@ -26,9 +25,11 @@ import {
   initialModelProbeState,
   pickCatalogModelId,
   popularModelProvidersFirst,
+  seededVnbotBodyColor,
 } from "@rakazo/core";
 import {
   Button,
+  defaultVnbotAvatarValue,
   Input,
   ModelThinkingOptions,
   Select,
@@ -49,12 +50,14 @@ import {
 import { ModelHeadersEditor } from "../components/ModelHeadersEditor";
 import { PageLoading } from "../components/PageLoading";
 import { SignupSurvey } from "../components/SignupSurvey";
+import { VnbotMascot } from "../components/VnbotMascotRow";
 import { useCopyText } from "../lib/copy-text";
 import { providerDisplayName } from "../lib/localized-provider-hint";
 import type { ModelCatalogEntry } from "../lib/model-auth";
 import type { ModelPreflightFailure } from "../lib/model-connection-preflight";
 import {
   classifyModelConnectionFailure,
+  compatibleProbeSuccessMessage,
   modelPreflightSuccessMessage,
   runModelConnectionPreflight,
   unavailableSelectedModel,
@@ -66,8 +69,6 @@ import { CompatibleKeyField } from "./model-settings/compatible-key-field";
 import { OnboardingImport } from "./onboarding-import";
 
 const CUSTOM_MODEL_OPTION = "__rakazo_custom_model__";
-/** Rakazo credits sit among the providers as the one choice that needs no account of its own. */
-const CREDITS_OPTION = "__rakazo_credits__";
 /** A provider whose catalog entry offers both sign-in and a key appears once per way to connect. */
 type ProviderAuth = "sign-in" | "key";
 
@@ -112,6 +113,9 @@ async function createOrReuseFirstBot(): Promise<{ id: string }> {
       instructions: "",
       notifyOnFinish: true,
       spawnKey: FIRST_BOT_SPAWN_KEY,
+      // Same Nón look the New bot dialog starts from.
+      color: defaultVnbotAvatarValue(seededVnbotBodyColor(FIRST_BOT_SPAWN_KEY)),
+      avatarSet: "vnbot",
     });
     return { id: created.id };
   } catch (error) {
@@ -150,13 +154,11 @@ export function OnboardingPage() {
   const [creatingBot, setCreatingBot] = useState(false);
   const [surveyDone, setSurveyDone] = useState(false);
   const step = creatingBot ? "bot" : surveyDone ? "loading" : (linkedStep ?? "loading");
-  const [billingEnabled, setBillingEnabled] = useState(false);
   // The step after the survey; null until me loads.
   const [afterSurvey, setAfterSurvey] = useState<"model" | "bot" | null>(null);
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [provider, setProvider] = useState("");
   const [providerAuth, setProviderAuth] = useState<ProviderAuth | undefined>();
-  const [credits, setCredits] = useState(false);
   const [modelId, setModelId] = useState("");
   const modelIdRef = useRef(modelId);
   modelIdRef.current = modelId;
@@ -212,7 +214,6 @@ export function OnboardingPage() {
   useEffect(() => {
     void Promise.all([rpc.me(), rpc.models.list().catch(() => [])])
       .then(([me, models]) => {
-        setBillingEnabled(me.billingEnabled);
         setCatalog(models);
         const next = me.needsModel ? "model" : "bot";
         setAfterSurvey(next);
@@ -284,7 +285,6 @@ export function OnboardingPage() {
       return providerDisplayName(id, byId.get(id)?.providerName ?? id, auth);
     };
     const main = [
-      ...(billingEnabled ? [{ value: CREDITS_OPTION, label: t`Rakazo credits` }] : []),
       ...MAIN_PROVIDER_OPTIONS.filter((option) => byId.has(option.provider)).map((option) => ({
         value: providerOptionValue(option.provider, option.auth),
         label: optionLabel(option.provider, option.auth),
@@ -301,7 +301,7 @@ export function OnboardingPage() {
           : [item];
       });
     return { main, rest };
-  }, [billingEnabled, providers, t]);
+  }, [providers, t]);
   // Base UI Select.Value only resolves labels when Root gets `items`.
   const providerItems = useMemo(
     () => [...providerOptions.main, ...providerOptions.rest],
@@ -413,7 +413,7 @@ export function OnboardingPage() {
         }
         setPreflightTarget(null);
         setPreflightFailure(null);
-        setNotice(openAiCompatibleProbeSuccessMessage(models.length));
+        setNotice(compatibleProbeSuccessMessage(models.length));
       },
       onError: (err) => {
         if (!preflightStillCurrent(revision)) return;
@@ -512,16 +512,6 @@ export function OnboardingPage() {
       goTo("bot");
     } catch (err) {
       setError(errorText(err, t`Could not save model`));
-    }
-  }
-
-  async function fundWithCredits() {
-    setError(null);
-    try {
-      await rpc.billing.selectFunding({ funding: "credits" });
-      window.location.assign("/onboarding");
-    } catch {
-      setError(t`Could not open billing`);
     }
   }
 
@@ -625,41 +615,34 @@ export function OnboardingPage() {
         ) : null}
         {step === "model" ? (
           <div>
+            <VnbotMascot name="non" className="mb-4 size-16 sm:size-20" />
             <h1 className="text-[32px] font-medium text-foreground">
               <Trans>Connect a model</Trans>
             </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              <Trans>Use your own key — VNBot doesn't provide a model</Trans>
+            </p>
             <div className="mt-8 block text-sm font-medium text-foreground">
               <span>
                 <Trans>Provider</Trans>
               </span>
               <Select
                 value={
-                  credits
-                    ? CREDITS_OPTION
-                    : isOpenAiCompatible && isOllamaCloudBaseUrl(baseUrl)
-                      ? "ollama-preset"
-                      : provider
-                        ? providerOptionValue(provider, providerAuth)
-                        : null
+                  isOpenAiCompatible && isOllamaCloudBaseUrl(baseUrl)
+                    ? "ollama-preset"
+                    : provider
+                      ? providerOptionValue(provider, providerAuth)
+                      : null
                 }
                 onValueChange={(value) => {
                   if (typeof value !== "string" || !value) return;
-                  if (value === CREDITS_OPTION) {
-                    cancelOAuthAttempt();
-                    setProvider("");
-                    setProviderAuth(undefined);
-                    setCredits(true);
-                    setError(null);
-                    return;
-                  }
-                  setCredits(false);
                   if (value === "ollama-preset")
                     selectProvider(OPENAI_COMPATIBLE_PROVIDER_ID, OLLAMA_CLOUD_BASE_URL);
                   else selectProvider(value);
                 }}
                 items={providerItems}
               >
-                <SelectTrigger aria-label={t`Provider`} className="mt-2 w-full">
+                <SelectTrigger aria-label={t`Provider`} className="mt-2 min-h-11 w-full">
                   <SelectValue placeholder={t`Choose a provider`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -702,6 +685,7 @@ export function OnboardingPage() {
                     <div className="mt-3">
                       <Button
                         variant="outline"
+                        className="min-h-11"
                         disabled={probing || !baseUrl.trim()}
                         onClick={() => void probeServerModels()}
                       >
@@ -732,7 +716,10 @@ export function OnboardingPage() {
                           }}
                           items={probeModelItems}
                         >
-                          <SelectTrigger aria-label={t`Models from server`} className="mt-2 w-full">
+                          <SelectTrigger
+                            aria-label={t`Models from server`}
+                            className="mt-2 min-h-11 w-full"
+                          >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -757,7 +744,7 @@ export function OnboardingPage() {
                             invalidatePreflight();
                           }}
                           aria-label={t`Model id`}
-                          placeholder="exact-model-id"
+                          placeholder={t`exact-model-id`}
                           className="mt-2"
                         />
                       )}
@@ -765,7 +752,7 @@ export function OnboardingPage() {
                         <Button
                           variant="link"
                           size="xs"
-                          className="mt-2 px-0 text-muted-foreground"
+                          className="mt-2 min-h-11 px-0 text-muted-foreground"
                           onClick={() => {
                             setManualModelId(false);
                             setModelId(probeModels[0] ?? "");
@@ -851,6 +838,7 @@ export function OnboardingPage() {
                                 spellCheck={false}
                               />
                               <Button
+                                className="min-h-11"
                                 disabled={!pasteCode.trim()}
                                 onClick={() => void submitOAuthCode()}
                               >
@@ -903,6 +891,7 @@ export function OnboardingPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="min-h-11"
                                 onClick={() => copyOAuthCode(oauth.userCode)}
                               >
                                 {codeCopied ? (
@@ -925,7 +914,7 @@ export function OnboardingPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="mt-2 -ml-2 text-muted-foreground"
+                          className="mt-2 -ml-2 min-h-11 text-muted-foreground"
                           onClick={() => cancelOAuthAttempt()}
                         >
                           <Trans>Cancel</Trans>
@@ -933,6 +922,7 @@ export function OnboardingPage() {
                       </div>
                     ) : (
                       <Button
+                        className="min-h-11"
                         disabled={oauthPending}
                         onClick={() => beginSelectedSubscriptionSignIn()}
                       >
@@ -1021,7 +1011,7 @@ export function OnboardingPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="mt-3"
+                      className="mt-3 min-h-11"
                       disabled={preflightTesting || apiKey.trim().length < 8}
                       onClick={() => void testApiKeyConnection()}
                     >
@@ -1056,7 +1046,7 @@ export function OnboardingPage() {
                       }}
                       items={modelItems}
                     >
-                      <SelectTrigger aria-label={t`Model`} className="mt-2 w-full">
+                      <SelectTrigger aria-label={t`Model`} className="mt-2 min-h-11 w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1079,13 +1069,25 @@ export function OnboardingPage() {
               </p>
             ) : null}
             {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
-            <Button
-              className="mt-6"
-              disabled={!credits && !canSaveModel}
-              onClick={() => void (credits ? fundWithCredits() : saveModel())}
-            >
-              <Trans>Continue</Trans>
-            </Button>
+            <div className="mt-6 flex items-center gap-2">
+              <Button
+                className="min-h-11"
+                disabled={!canSaveModel}
+                onClick={() => void saveModel()}
+              >
+                <Trans>Continue</Trans>
+              </Button>
+              <Button
+                variant="text"
+                className="min-h-11"
+                onClick={() => {
+                  cancelOAuthAttempt();
+                  goTo("bot");
+                }}
+              >
+                <Trans>Skip for now</Trans>
+              </Button>
+            </div>
           </div>
         ) : null}
         {step === "bot" ? (

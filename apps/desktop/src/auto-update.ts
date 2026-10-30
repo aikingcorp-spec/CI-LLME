@@ -1,5 +1,6 @@
 import type { DesktopUpdateState } from "@rakazo/contracts";
 import { reportDesktopError } from "./monitoring.js";
+import { strings } from "./strings.js";
 
 /** Long enough that a cold launch is never competing with the update feed for bandwidth. */
 export const LAUNCH_CHECK_DELAY_MS = 8_000;
@@ -13,11 +14,11 @@ export interface UpdaterEnvironment {
 }
 
 export function updaterSupport(env: UpdaterEnvironment): { supported: boolean; reason: string } {
-  if (env.disabled === true) {
-    return { supported: false, reason: "Automatic updates are turned off for this install." };
+  if (env.disabled !== false) {
+    return { supported: false, reason: strings().updater.disabled };
   }
   if (!env.packaged) {
-    return { supported: false, reason: "Automatic updates only run in an installed build." };
+    return { supported: false, reason: strings().updater.notInstalled };
   }
   return { supported: true, reason: "" };
 }
@@ -65,7 +66,7 @@ export function classifyUpdaterFailure(error: unknown): UpdaterFailure {
   if (NO_RELEASES.some((needle) => text.includes(needle))) {
     return {
       kind: "no-releases",
-      message: "No desktop releases are published for this build yet.",
+      message: strings().updater.noReleases,
     };
   }
   if (OFFLINE.some((needle) => text.includes(needle))) {
@@ -74,12 +75,12 @@ export function classifyUpdaterFailure(error: unknown): UpdaterFailure {
   if (SIGNATURE.some((needle) => text.includes(needle))) {
     return {
       kind: "signature",
-      message: "This update could not be verified. Reinstall Rakazo from a trusted download.",
+      message: strings().updater.unverified,
     };
   }
   return {
     kind: "other",
-    message: "The update could not be completed. Try again later.",
+    message: strings().updater.failed,
   };
 }
 
@@ -153,7 +154,7 @@ export function reduceUpdateState(
       if (state.phase === "ready" && event.installFailed === true) {
         return {
           ...state,
-          message: failure.message ?? "The update could not be completed. Try again later.",
+          message: failure.message ?? strings().updater.failed,
         };
       }
       if (failure.kind === "no-releases" && state.phase === "checking") {
@@ -171,7 +172,7 @@ export function reduceUpdateState(
           ...state,
           phase: "error",
           percent: null,
-          message: "The update could not be completed. Try again later.",
+          message: strings().updater.failed,
           checkedAt: now,
         };
       }
@@ -180,7 +181,7 @@ export function reduceUpdateState(
           ...state,
           phase: "idle",
           percent: null,
-          message: event.userInitiated ? "Could not reach the update server." : null,
+          message: event.userInitiated ? strings().updater.unreachable : null,
           checkedAt: now,
         };
       }

@@ -1,9 +1,16 @@
 import { i18n } from "@lingui/core";
 import type { RunErrorTranslator } from "@rakazo/core";
+import { HOSTED_MODEL_CREDITS_REQUIRED_ERROR, normalizeRunError } from "@rakazo/core";
 
 /** Static descriptors keep shared run-error messages in Lingui extraction. */
 export const translateRunError: RunErrorTranslator = (message, values) => {
   switch (message) {
+    case "Chat context is inconsistent. Try again or start a new chat.":
+      return i18n._({
+        id: "Chat context is inconsistent. Try again or start a new chat.",
+        message: "Chat context is inconsistent. Try again or start a new chat.",
+        values,
+      });
     case "This connection's request limit is too small. Choose another model.":
       return i18n._({
         id: "This connection's request limit is too small. Choose another model.",
@@ -36,10 +43,10 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         message: "Connect a model in Settings before running bots.",
         values,
       });
-    case "Connect your own API key in Models or choose Rakazo credits in Billing.":
+    case "Connect your own API key in Models.":
       return i18n._({
-        id: "Connect your own API key in Models or choose Rakazo credits in Billing.",
-        message: "Connect your own API key in Models or choose Rakazo credits in Billing.",
+        id: "Connect your own API key in Models.",
+        message: "Connect your own API key in Models.",
         values,
       });
     case "The model provider returned an error.":
@@ -193,6 +200,30 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         message: "{provider} reached its monthly spending limit.",
         values,
       });
+    case "{provider} reached its usage limit.":
+      return i18n._({
+        id: "{provider} reached its usage limit.",
+        message: "{provider} reached its usage limit.",
+        values,
+      });
+    case "{provider} reached its daily usage limit.":
+      return i18n._({
+        id: "{provider} reached its daily usage limit.",
+        message: "{provider} reached its daily usage limit.",
+        values,
+      });
+    case "{provider} reached its weekly usage limit.":
+      return i18n._({
+        id: "{provider} reached its weekly usage limit.",
+        message: "{provider} reached its weekly usage limit.",
+        values,
+      });
+    case "{provider} reached its monthly usage limit.":
+      return i18n._({
+        id: "{provider} reached its monthly usage limit.",
+        message: "{provider} reached its monthly usage limit.",
+        values,
+      });
     case "{summary} Your backup models also failed.":
       return i18n._({
         id: "{summary} Your backup models also failed.",
@@ -215,3 +246,19 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
       return message;
   }
 };
+
+/**
+ * Users bring their own model key, so a provider credit error asks them to pick another model;
+ * only missing-key and legacy funding advice point to API key setup. Raw provider diagnostics
+ * can carry removed billing copy, so they never reach the expandable details.
+ */
+export function normalizeWebRunError(details: string, locale = i18n.locale || "en") {
+  const result = normalizeRunError(details, translateRunError, locale);
+  if (result.kind === "credit") {
+    return { ...result, details: result.summary, recovery: "model" as const };
+  }
+  const advice = translateRunError(HOSTED_MODEL_CREDITS_REQUIRED_ERROR);
+  return result.summary === advice
+    ? { ...result, summary: advice, details: advice, recovery: "connection" as const }
+    : result;
+}

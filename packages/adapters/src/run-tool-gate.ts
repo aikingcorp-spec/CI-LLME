@@ -359,7 +359,11 @@ export async function gateToolCall(
     gateDecision = judged.decision;
   };
 
-  if (applied && plan === "judge" && (injectedReview || checker)) {
+  if (
+    applied &&
+    plan === "judge" &&
+    (injectedReview || checker || reviewSettings?.backups.length)
+  ) {
     if (!applied.duplicate) {
       await runAutoReview();
     } else {

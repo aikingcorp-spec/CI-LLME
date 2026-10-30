@@ -12,12 +12,12 @@ Compose bot homes mount only their own subdirectory of the application volume us
 
 ## Published images (no checkout)
 
-Pull Postgres and `ghcr.io/elie222/rakazo/app` into any empty folder. No clone or image build.
+Pull Postgres and `ghcr.io/aikingcorp-spec/vnbot/app` into any empty folder. No clone or image build.
 Requires Docker Engine 26+ (API 1.45+ for bot home volume subpaths), the Compose plugin, curl, and OpenSSL.
 
 ```bash
 mkdir -p rakazo && cd rakazo &&
-curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/install-images.sh &&
+curl -fsSLO https://raw.githubusercontent.com/aikingcorp-spec/vnbot/main/infra/compose/install-images.sh &&
 bash install-images.sh
 ```
 
@@ -29,7 +29,7 @@ optional providers before startup, run `bash install-images.sh --prepare-only`, 
 run `bash install-images.sh`. Flags may be combined in either order: `--prepare-only`, `--local`.
 
 `SANDBOX_PROVIDER` defaults to `docker`. The images Compose file runs a sandbox supervisor
-(from the app image, on the internal network only) and pulls `ghcr.io/elie222/rakazo/computer`.
+(from the app image, on the internal network only) and pulls `ghcr.io/aikingcorp-spec/vnbot/computer`.
 Signup and local Docker computers work without an E2B account. Optional remote providers: set
 `SANDBOX_PROVIDER` to `e2b`, `novita`, `daytona`, `createos`, or `boat` and add the matching API key. The published-images
 Compose stack requires `SANDBOX_SUPERVISOR_TOKEN` for every provider; leave it empty and `compose up` fails closed.
@@ -1065,7 +1065,7 @@ The Electron desktop app is a client of the same API. Docker remains the default
 Native file reads and workspace exports are limited to 8 MiB per file. A larger workspace file fails the checkpoint and preserves the previous saved workspace; local files remain on the computer. Writes are bounded by the 12 MiB encoded request limit.
 
 - **Published images** (`docker-compose.images.yml`) default to `SANDBOX_PROVIDER=docker` with a
-  local supervisor and published `ghcr.io/elie222/rakazo/computer` image. No E2B account required.
+  local supervisor and published `ghcr.io/aikingcorp-spec/vnbot/computer` image. No E2B account required.
   Optional: set `e2b`, `novita`, `daytona`, `createos`, or `boat` plus the matching API key for remote computers.
 - **Docker** is the quick-start default for published images and for a source checkout / full local
   Compose stack. Workspace bots share a persistent Team Computer by default; Private computers are
@@ -1831,9 +1831,9 @@ this repository that is:
 
 | Image | Contents |
 | --- | --- |
-| `ghcr.io/elie222/rakazo/app` | api, worker, web, and sandbox supervisor — one image, multiple commands |
-| `ghcr.io/elie222/rakazo/computer` | Linux desktop used as each bot computer |
-| `ghcr.io/elie222/rakazo/updater` | the updater sidecar, plus the Docker CLI |
+| `ghcr.io/aikingcorp-spec/vnbot/app` | api, worker, web, and sandbox supervisor — one image, multiple commands |
+| `ghcr.io/aikingcorp-spec/vnbot/computer` | Linux desktop used as each bot computer |
+| `ghcr.io/aikingcorp-spec/vnbot/updater` | the updater sidecar, plus the Docker CLI |
 
 `infra/compose/docker-compose.images.yml` is the no-checkout path for those app and computer tags
 plus Postgres. The supervisor runs from the app image on the internal network only (not a separate
@@ -1892,8 +1892,10 @@ and refuses the official path until a stable `vX.Y.Z` exists.
 ### Updater sidecar
 
 Compose production deployments offer an opt-in `updater` profile on a private `control` network.
-Normal deployments do not start it or require its credential. To enable it, set a dedicated
-`RAKAZO_UPDATER_TOKEN` and explicitly start the profile:
+Normal deployments do not start it or require its credential. Self-update stays off until an
+official release. To opt in deliberately after a release is available, set
+`RAKAZO_DISABLE_AUTO_UPDATE=0`, set a dedicated `RAKAZO_UPDATER_TOKEN`, and explicitly start
+the profile:
 
 ```bash
 docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
@@ -2155,3 +2157,14 @@ when they next open the app. Remove the archived token files after verifying the
 Restart API and worker processes after both commands finish. A schema-only rollback remains
 compatible with the previous release, but the old code does not read database registrations
 or object-backed artifacts.
+
+Desktop automatic updates are also off by default until an official release. An operator can
+opt in with `RAKAZO_DISABLE_AUTO_UPDATE=0`; no update credentials are bundled.
+
+Plugin previews work without `GITHUB_TOKEN`. GitHub allows 60 unauthenticated API requests per
+hour per server IP. Resolved commits share a per-commit cache for trees and files; each preview
+still resolves its ref. Preview failures log the cause, including rate limits. An optional
+read-only token raises the quota and is sent only to the GitHub API.
+
+The marketing integrations catalog defaults to `https://vnbot.run/integrations/catalog.json`.
+Set `PUBLIC_CATALOG_URL` at site build time to override it.

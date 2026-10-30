@@ -3,7 +3,7 @@ export const DOCS_PATH = "/docs/";
 export const DOCS_NAV = [
   { title: "Get started", pages: [{ slug: "getting-started", label: "Getting started" }] },
   {
-    title: "Using Rakazo",
+    title: "Using VNBot",
     pages: [
       { slug: "bot-secrets", label: "Reusable credentials" },
       { slug: "fleet-management", label: "Bots that manage bots" },
@@ -11,13 +11,7 @@ export const DOCS_NAV = [
   },
   {
     title: "Self-hosting",
-    pages: [
-      { slug: "self-host", label: "Overview" },
-      { slug: "self-host-secrets", label: "Secrets" },
-      { slug: "self-host-sandbox-providers", label: "Computer providers" },
-      { slug: "self-host-restricted-network", label: "Restricted networks" },
-      { slug: "computer-runtime", label: "Computer runtime" },
-    ],
+    pages: [{ slug: "install-on-your-computer", label: "Install VNBot on your computer" }],
   },
 ] as const;
 

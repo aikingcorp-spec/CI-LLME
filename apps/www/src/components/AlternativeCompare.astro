@@ -1,8 +1,8 @@
 ---
 import type { Alternative } from "../alternatives";
-import { GET_STARTED, OPEN_SOURCE_REASONS } from "../alternatives";
+import { GET_STARTED, WHY_VNBOT_REASONS } from "../alternatives";
 import { ogPublicPath } from "../og-pages";
-import { DOCS_URL, GITHUB_URL } from "../site";
+import { APP_URL } from "../site";
 import { vsCard } from "../vs-points";
 import Button from "./Button.astro";
 import InlineCode from "./InlineCode.astro";
@@ -45,11 +45,11 @@ const card = vsCard(page.slug);
 
   <div class="alt-table-wrap">
     <table class="alt-table">
-      <caption class="sr-only">Rakazo compared with {page.otherName}</caption>
+      <caption class="sr-only">VNBot compared with {page.otherName}</caption>
       <thead>
         <tr>
           <th scope="col">Topic</th>
-          <th scope="col">Rakazo</th>
+          <th scope="col">VNBot</th>
           <th scope="col">{page.otherName}</th>
         </tr>
       </thead>
@@ -67,16 +67,15 @@ const card = vsCard(page.slug);
     </table>
   </div>
 
-  <h2>Why open source and self-hosted</h2>
+  <h2>Why VNBot</h2>
   <ul>
-    {OPEN_SOURCE_REASONS.map((reason) => <li>{reason}</li>)}
+    {WHY_VNBOT_REASONS.map((reason) => <li>{reason}</li>)}
   </ul>
 
   <h2>{GET_STARTED.heading}</h2>
   <p>{GET_STARTED.copy}</p>
   <div class="alt-actions">
-    <Button href={DOCS_URL} external>{GET_STARTED.docsLabel}</Button>
-    <Button href={GITHUB_URL} variant="secondary" external>{GET_STARTED.githubLabel}</Button>
+    <Button href={APP_URL} external>{GET_STARTED.cloudLabel}</Button>
   </div>
 
   <h2 id="faq">FAQ</h2>

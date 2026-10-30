@@ -8,7 +8,7 @@ import type {
 import { backupChoiceKey, usableModelId } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { appliedModelRole } from "@rakazo/db";
-import { resolveAutoReviewChecker } from "./auto-review.js";
+import { resolveAutoReviewChecker, resolveAutoReviewProviderKind } from "./auto-review.js";
 import type { ModelChoice, ModelCredential } from "./model-selection.js";
 import { findConnectedModelCredential } from "./model-selection.js";
 
@@ -27,7 +27,12 @@ export function deploymentModelRole(
   defaults: DeploymentModelDefaults,
 ): ModelRoleSettings {
   if (role === "approval") {
-    const checker = resolveAutoReviewChecker(defaults.env);
+    const env = defaults.env ?? process.env;
+    // Only explicit approval configuration overrides the member's main model.
+    const explicit =
+      (env.RAKAZO_AUTO_REVIEW_PROVIDER?.trim() && env.RAKAZO_AUTO_REVIEW_MODEL?.trim()) ||
+      resolveAutoReviewProviderKind(env) !== "llm";
+    const checker = explicit ? resolveAutoReviewChecker(env) : null;
     return {
       primary: checker ? { provider: checker.provider, modelId: checker.model } : null,
       backups: [],
@@ -58,6 +63,14 @@ export async function effectiveModelRole(
   const own = await appliedModelRole(prisma, scope, role, requested);
   if (own.primary) return { ...own, primarySource: "member" };
   const deployment = deploymentModelRole(role, defaults);
+  if (role === "approval" && !deployment.primary) {
+    const main = await appliedModelRole(prisma, scope, "main", requested);
+    return {
+      primary: main.primary,
+      backups: own.backups,
+      primarySource: main.primary ? "member" : null,
+    };
+  }
   return {
     primary: deployment.primary,
     backups: own.backups.length ? own.backups : deployment.backups,

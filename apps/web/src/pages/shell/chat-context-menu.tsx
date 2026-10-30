@@ -1,5 +1,5 @@
 import type { Bot, BotSection, Group } from "@rakazo/contracts";
-import { lazyOverlay } from "../../components/ErrorBoundary";
+import { lazyOverlay } from "../../components/lazy-overlay";
 import type { createSpaceRpc } from "../../lib/rpc";
 import type { ShellDialogsState } from "./shell-dialogs";
 import type { useChatRead } from "./use-chat-read";

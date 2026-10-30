@@ -78,9 +78,9 @@ test("focus choice suggests apps and preserves a completed connection", async ({
   await captureScreenshot(page, testInfo, "04-connected-after-reload");
 });
 
-test("focus choice follows Simplified Chinese UI locale", async ({ page }, testInfo) => {
+test("focus choice follows Vietnamese UI locale", async ({ page }, testInfo) => {
   const stamp = Date.now();
-  await signup(page, `onboarding-zh-cn-${stamp}@rakazo.test`, "password12", "Robin");
+  await signup(page, `onboarding-vi-${stamp}@rakazo.test`, "password12", "Robin");
   await completeOnboarding(page);
 
   await expect(page.getByText("What do you want me on first?", { exact: true })).toBeVisible();
@@ -88,19 +88,21 @@ test("focus choice follows Simplified Chinese UI locale", async ({ page }, testI
   const settings = await openUserSettings(page);
   const picker = settings.getByTestId("ui-locale-select");
   await picker.click();
-  await page.getByRole("option", { name: "简体中文", exact: true }).click();
-  await expect(settings.getByText("语言", { exact: true })).toBeVisible();
-  await settings.getByRole("button", { name: "关闭用户设置" }).click();
+  await expect(page.getByRole("option", { name: "简体中文", exact: true })).toHaveCount(0);
+  await page.getByRole("option", { name: "Tiếng Việt", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "vi");
+  await expect(settings.getByText("Ngôn ngữ", { exact: true })).toBeVisible();
+  await settings.getByRole("button", { name: "Đóng cài đặt người dùng" }).click();
   await expect(settings).toHaveCount(0);
 
   await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("你想让我先做什么？", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /日常工作/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /收件箱和邮件/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /调研和写作/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /什么都做一点/ })).toBeVisible();
+  await expect(page.getByText("Bạn muốn mình làm gì trước?", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Công việc hằng ngày/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Hộp thư & email/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Nghiên cứu & viết/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Mỗi thứ một chút/ })).toBeVisible();
   await page.mouse.move(1, 1);
-  await captureScreenshot(page, testInfo, "choice-card-onboarding-zh-cn");
+  await captureScreenshot(page, testInfo, "choice-card-onboarding-vi");
 });
 
 test("choice refresh failures leave options available for retry", async ({ page }) => {

@@ -127,7 +127,7 @@ export function CompatibleModelFields({
           summary={<Trans>Setup help</Trans>}
         >
           <p className="mt-1">
-            {t`Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.`}
+            {t`Paste the OpenAI-compatible address from your server. VNBot adds /v1 if needed.`}
           </p>
         </Disclosure>
       ) : null}
@@ -173,7 +173,7 @@ export function CompatibleModelFields({
               setNotice(null);
             }}
             aria-label={t`Model id`}
-            placeholder="exact-model-id"
+            placeholder={t`exact-model-id`}
             className="mt-2 h-10 text-foreground"
           />
         )}

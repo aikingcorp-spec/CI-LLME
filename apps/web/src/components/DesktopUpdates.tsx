@@ -1,9 +1,9 @@
-import { Trans, useLingui } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { DesktopUpdateState } from "@rakazo/contracts";
-import { Button, toast } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, Suspense, useContext, useEffect, useRef, useState } from "react";
 import { desktopBridge } from "../lib/desktop";
+import { lazyComponent } from "../lib/preload-recovery";
 
 function useDesktopUpdates() {
   const { t } = useLingui();
@@ -78,7 +78,11 @@ function useDesktopUpdates() {
   return { state, busy, error, act, confirmedCheck };
 }
 
-const UpdatesContext = createContext<ReturnType<typeof useDesktopUpdates> | null>(null);
+export const UpdatesContext = createContext<ReturnType<typeof useDesktopUpdates> | null>(null);
+
+const DesktopUpdatePrompt = lazyComponent(() =>
+  import("./DesktopUpdateViews").then((module) => module.DesktopUpdatePrompt),
+);
 
 const DESKTOP_UPDATE_TOAST = "desktop-update";
 
@@ -104,50 +108,28 @@ export function DesktopUpdatesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!visible) return;
     // The app's Toaster renders inside this provider, so the toast reads live state from context.
-    toast.custom(() => <DesktopUpdatePrompt onLater={setDismissed} />, {
-      id: DESKTOP_UPDATE_TOAST,
-      duration: Number.POSITIVE_INFINITY,
-      dismissible: false,
+    const sonner = import("@rakazo/ui-web/components/ui/sonner");
+    void sonner.then(({ toast }) => {
+      toast.custom(
+        () => (
+          <Suspense fallback={null}>
+            <DesktopUpdatePrompt onLater={setDismissed} />
+          </Suspense>
+        ),
+        {
+          id: DESKTOP_UPDATE_TOAST,
+          duration: Number.POSITIVE_INFINITY,
+          dismissible: false,
+        },
+      );
     });
     return () => {
-      toast.dismiss(DESKTOP_UPDATE_TOAST);
+      void sonner.then(({ toast }) => {
+        toast.dismiss(DESKTOP_UPDATE_TOAST);
+      });
     };
   }, [visible]);
   return <UpdatesContext.Provider value={updates}>{children}</UpdatesContext.Provider>;
-}
-
-function DesktopUpdatePrompt({ onLater }: { onLater: (version: string | null) => void }) {
-  const { t } = useLingui();
-  const updates = useContext(UpdatesContext);
-  if (!updates?.state) return null;
-  const { state, busy, error, act } = updates;
-  return (
-    <aside
-      aria-label={t`Desktop update`}
-      className="w-full rounded-xl border border-border bg-card p-3 text-card-foreground shadow-lg"
-    >
-      <div className="flex items-center gap-2">
-        <Button
-          disabled={busy}
-          onClick={() => void act(state.phase === "ready" ? "install" : "check")}
-        >
-          {state.phase === "ready" ? (
-            <Trans>Restart to update</Trans>
-          ) : (
-            <Trans>Check for updates</Trans>
-          )}
-        </Button>
-        <Button variant="ghost" disabled={busy} onClick={() => onLater(state.availableVersion)}>
-          <Trans>Later</Trans>
-        </Button>
-      </div>
-      {error || state.message ? (
-        <p role="status" className="mt-2 text-sm">
-          {error ?? state.message}
-        </p>
-      ) : null}
-    </aside>
-  );
 }
 
 export function useSidebarUpdate() {
@@ -159,49 +141,4 @@ export function useSidebarUpdate() {
       void updates?.act("install");
     },
   };
-}
-
-export function DesktopUpdateSection() {
-  const updates = useContext(UpdatesContext);
-  if (!updates?.state) return null;
-  const { state, busy, error, act, confirmedCheck } = updates;
-  const ready = state.phase === "ready";
-  const downloading = state.phase === "available" || state.phase === "downloading";
-  return (
-    <section
-      data-testid="desktop-update-settings"
-      className="mt-5 rounded-xl border border-border px-4 py-4"
-    >
-      <h3 className="text-heading3 font-medium text-foreground">
-        <Trans>Desktop app</Trans>
-      </h3>
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-sm text-muted-foreground">v{state.currentVersion}</span>
-        <Button
-          variant="outline"
-          disabled={busy || downloading || state.phase === "checking"}
-          onClick={() => void act(ready ? "install" : "check")}
-        >
-          {ready ? (
-            <Trans>Restart to update</Trans>
-          ) : downloading ? (
-            <Trans>Downloading…</Trans>
-          ) : busy || state.phase === "checking" ? (
-            <Trans>Checking…</Trans>
-          ) : (
-            <Trans>Check for updates</Trans>
-          )}
-        </Button>
-      </div>
-      <p role="status" className="mt-2 text-sm text-muted-foreground">
-        {error ??
-          state.message ??
-          (downloading ? (
-            `${state.percent ?? 0}%`
-          ) : state.phase === "idle" && confirmedCheck && state.checkedAt === confirmedCheck ? (
-            <Trans>Up to date</Trans>
-          ) : null)}
-      </p>
-    </section>
-  );
 }

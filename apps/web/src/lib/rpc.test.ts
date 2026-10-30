@@ -3,14 +3,17 @@ import {
   clearSpaceSelection,
   createSpaceRpc,
   leaveUnavailableSpace,
+  resetNotInvitedGuardForTests,
   rpc,
   rpcForSpace,
   selectedSpaceId,
   selectSpace,
+  signOutIfNotInvited,
 } from "./rpc.js";
 
 const notify = vi.hoisted(() => vi.fn());
-vi.mock("./auth", () => ({ authClient: { $store: { notify } } }));
+const signOut = vi.hoisted(() => vi.fn(async () => ({ data: null, error: null })));
+vi.mock("./auth", () => ({ authClient: { $store: { notify }, signOut } }));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -252,5 +255,51 @@ describe("space-bound clients", () => {
   it("reuses one client per space", () => {
     expect(rpcForSpace("space-a")).toBe(rpcForSpace("space-a"));
     expect(rpcForSpace("space-a")).not.toBe(rpcForSpace("space-b"));
+  });
+});
+
+describe("revoked invite (401 EMAIL_NOT_INVITED)", () => {
+  function browser() {
+    const assign = vi.fn();
+    const items = new Map([["rakazo:space-id", "s1"]]);
+    vi.stubGlobal("window", {
+      location: { assign, origin: "http://localhost" },
+      localStorage: {
+        getItem: (key: string) => items.get(key) ?? null,
+        setItem: (key: string, value: string) => items.set(key, value),
+        removeItem: (key: string) => items.delete(key),
+      },
+    });
+    return { assign, items };
+  }
+  afterEach(() => {
+    resetNotInvitedGuardForTests();
+    signOut.mockClear();
+  });
+
+  it("signs out and routes to the not-invited screen, for plain and oRPC bodies", async () => {
+    for (const body of [
+      { code: "EMAIL_NOT_INVITED", message: "This email is not invited yet" },
+      { json: { code: "EMAIL_NOT_INVITED", status: 401 } },
+    ]) {
+      resetNotInvitedGuardForTests();
+      const { assign, items } = browser();
+      expect(await signOutIfNotInvited(Response.json(body, { status: 401 }))).toBe(true);
+      expect(signOut).toHaveBeenCalled();
+      expect(items.has("rakazo:space-id")).toBe(false);
+      expect(assign).toHaveBeenCalledWith("/sign-in?error=EMAIL_NOT_INVITED");
+    }
+  });
+
+  it("ignores other 401s and the 403 send-code answer", async () => {
+    const { assign } = browser();
+    expect(
+      await signOutIfNotInvited(Response.json({ json: { code: "UNAUTHORIZED" } }, { status: 401 })),
+    ).toBe(false);
+    expect(
+      await signOutIfNotInvited(Response.json({ code: "EMAIL_NOT_INVITED" }, { status: 403 })),
+    ).toBe(false);
+    expect(signOut).not.toHaveBeenCalled();
+    expect(assign).not.toHaveBeenCalled();
   });
 });

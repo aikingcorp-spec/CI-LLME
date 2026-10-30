@@ -12,14 +12,8 @@ import {
 import { HUB_CARDS } from "../alternatives";
 import { getHomeCopy } from "../i18n/home";
 import type { HomeCopy } from "../i18n/home";
-import {
-  ANDROID_APK_URL,
-  CHANGELOG_URL,
-  GITHUB_URL,
-  INBOX_ZERO_URL,
-  IOS_APP_URL,
-  SELF_HOST_GUIDE_PATH,
-} from "../site";
+import { DOCS_PATH } from "../docs";
+import { ANDROID_APK_URL, INBOX_ZERO_URL, IOS_APP_URL } from "../site";
 import Logo from "./Logo.astro";
 
 type Props = {
@@ -50,7 +44,7 @@ function isCurrentPage(href: string): boolean {
   return (href.replace(/\/+$/, "") || "/") === currentPath;
 }
 
-type FooterLink = { href: string; label: string; external?: boolean };
+type FooterLink = { href: string | null; label: string; external?: boolean };
 
 const columns: Array<{ heading: string; links: FooterLink[] }> = [
   {
@@ -58,9 +52,7 @@ const columns: Array<{ heading: string; links: FooterLink[] }> = [
     links: [
       { href: IOS_APP_URL, label: linkLabels.iosApp, external: true },
       { href: ANDROID_APK_URL, label: linkLabels.androidApp },
-      { href: SELF_HOST_GUIDE_PATH, label: linkLabels.docs },
-      { href: CHANGELOG_URL, label: linkLabels.changelog, external: true },
-      { href: GITHUB_URL, label: "GitHub", external: true },
+      { href: DOCS_PATH, label: linkLabels.docs },
     ],
   },
   {
@@ -73,7 +65,6 @@ const columns: Array<{ heading: string; links: FooterLink[] }> = [
   {
     heading: linkLabels.company,
     links: [
-      { href: "/blog/", label: linkLabels.blog },
       { href: "/about/", label: linkLabels.about },
       { href: "/support/", label: linkLabels.support },
       { href: "/privacy/", label: linkLabels.privacy },
@@ -113,7 +104,6 @@ const columns: Array<{ heading: string; links: FooterLink[] }> = [
     </nav>
     <span class="site-footer__legal">
       <span>© 2026 <a href={INBOX_ZERO_URL} target="_blank" rel="noreferrer">Inbox Zero Inc.</a></span>
-      <span>Apache-2.0</span>
     </span>
   </div>
   <nav class="site-footer__columns" aria-label={navLabel}>
@@ -124,13 +114,17 @@ const columns: Array<{ heading: string; links: FooterLink[] }> = [
           <ul>
             {column.links.map((link) => (
               <li>
-                <a
-                  href={link.href}
-                  aria-current={!link.external && isCurrentPage(link.href) ? "page" : undefined}
-                  {...(link.external ? { target: "_blank", rel: "noreferrer" } : {})}
-                >
-                  {link.label}
-                </a>
+                {link.href === null ? (
+                  <span>{link.label}</span>
+                ) : (
+                  <a
+                    href={link.href}
+                    aria-current={!link.external && isCurrentPage(link.href) ? "page" : undefined}
+                    {...(link.external ? { target: "_blank", rel: "noreferrer" } : {})}
+                  >
+                    {link.label}
+                  </a>
+                )}
               </li>
             ))}
           </ul>

@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { loadEnv } from "./env.js";
+import { readBuildTime } from "./version.js";
+
+vi.mock("./version.js", { spy: true });
 
 const base = {
   DATABASE_URL: "postgres://rakazo:rakazo@127.0.0.1:5433/rakazo",
@@ -52,7 +55,14 @@ describe("loadEnv", () => {
     ).toEqual([{ id: "clients", label: "Clients", path: "/ext/clients/", trusted: false }]);
     expect(() =>
       loadEnv({ ...base, RAKAZO_NAV_LINKS: '[{"id":"x","label":"X","path":"/api/me"}]' }),
-    ).toThrow("RAKAZO_NAV_LINKS");
+    ).toThrow("VNBOT_NAV_LINKS");
+    expect(
+      loadEnv({
+        ...base,
+        RAKAZO_NAV_LINKS: '[{"id":"old","label":"Old","path":"/ext/old/"}]',
+        VNBOT_NAV_LINKS: '[{"id":"clients","label":"Khách hàng","path":"/ext/clients/"}]',
+      }).navLinks,
+    ).toEqual([{ id: "clients", label: "Khách hàng", path: "/ext/clients/", trusted: false }]);
   });
   it("keeps Crisp chat off unless a valid website ID is set", () => {
     expect(loadEnv(base).crispWebsiteId).toBeNull();
@@ -263,6 +273,17 @@ describe("loadEnv", () => {
     expect(loadEnv({ ...base, RAKAZO_GIT_SHA: "abc1234" }).gitSha).toBe("abc1234");
   });
 
+  it("falls back to the image timestamp when BUILT_AT is not passed", () => {
+    vi.mocked(readBuildTime).mockReturnValueOnce("2026-10-29T13:00:00Z");
+    expect(loadEnv({ ...base, GIT_SHA: "abc1234" }).builtAt).toBe("2026-10-29T13:00:00Z");
+  });
+
+  it("loads an explicit build timestamp", () => {
+    expect(loadEnv({ ...base, BUILT_AT: " 2026-10-29T13:00:00Z " }).builtAt).toBe(
+      "2026-10-29T13:00:00Z",
+    );
+  });
+
   it("loads per-client minimum builds and refuses a malformed one", () => {
     expect(loadEnv(base).minimumClientBuilds).toEqual({});
     expect(
@@ -350,6 +371,19 @@ describe("OIDC environment", () => {
       );
     },
   );
+  it("reads email-code-only and the invite list without closing passwords by themselves", () => {
+    expect(loadEnv(base).emailCodeOnly).toBe(false);
+    expect(loadEnv(base).emailAllowlist).toBe(false);
+    expect(loadEnv({ ...base, AUTH_EMAIL_CODE_ONLY: "true" }).emailCodeOnly).toBe(true);
+    expect(loadEnv({ ...base, AUTH_EMAIL_ALLOWLIST: "on" }).emailAllowlist).toBe(true);
+    expect(loadEnv({ ...base, AUTH_EMAIL_ALLOWLIST: "off" }).emailAllowlist).toBe(false);
+    expect(() => loadEnv({ ...base, AUTH_EMAIL_CODE_ONLY: "yes" })).toThrow(
+      "AUTH_EMAIL_CODE_ONLY must be true or false",
+    );
+    expect(() => loadEnv({ ...base, AUTH_EMAIL_ALLOWLIST: "true" })).toThrow(
+      "AUTH_EMAIL_ALLOWLIST must be on or off",
+    );
+  });
   it("guards password-only lockout without contacting discovery", () => {
     expect(() => loadEnv({ ...base, AUTH_PASSWORD_ENABLED: "false" })).toThrow(/requires OIDC/);
     expect(loadEnv({ ...base, ...oidc, AUTH_PASSWORD_ENABLED: "false" }).passwordAuth).toBe(false);

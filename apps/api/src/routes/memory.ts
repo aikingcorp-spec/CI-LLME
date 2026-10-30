@@ -3,6 +3,7 @@ import { MEMORY_REVISION_CONFLICT_ERROR } from "@rakazo/adapter-kit";
 import { isScratchpadStatus, listScratchpadItems, mapScratchpadItem } from "@rakazo/adapters";
 import { isDeletableMemoryDocument } from "@rakazo/contracts";
 import { findSpaceMemoryConfig, IsolationError } from "@rakazo/db";
+import { isCatalogContentAllowed, sanitizeAgentSkill } from "../catalog-text.js";
 import {
   disconnectMemoryProvider,
   persistMemoryProviderConfig,
@@ -231,10 +232,19 @@ export function memoryRoutes(ctx: RouterContext) {
       ),
     },
     agentSkills: {
-      list: authed.agentSkills.list.handler(async ({ context }) => agentSkills.list(context.actor)),
-      get: authed.agentSkills.get.handler(async ({ context, input }) =>
-        agentSkills.get(context.actor, input),
+      list: authed.agentSkills.list.handler(async ({ context }) =>
+        (await agentSkills.list(context.actor))
+          // Only the shipped catalog is filtered; installed (plugin) and user skills stay listed
+          // so they can still be removed.
+          .filter((skill) => skill.source !== "builtin" || isCatalogContentAllowed(skill))
+          .map(sanitizeAgentSkill),
       ),
+      get: authed.agentSkills.get.handler(async ({ context, input }) => {
+        const skill = await agentSkills.get(context.actor, input);
+        if (skill.source === "builtin" && !isCatalogContentAllowed(skill))
+          throw new ORPCError("NOT_FOUND", { message: "Không tìm thấy kỹ năng." });
+        return sanitizeAgentSkill(skill);
+      }),
       create: authed.agentSkills.create.handler(async ({ context, input }) =>
         agentSkills.create(context.actor, input),
       ),

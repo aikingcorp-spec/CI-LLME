@@ -57,6 +57,7 @@ describe("activateUiLocale", () => {
       he: async () => ({ messages: { Settings: "הגדרות" } }),
       nl: async () => ({ messages: { Settings: "Instellingen" } }),
       ja: async () => ({ messages: { Settings: "設定" } }),
+      vi: async () => ({ messages: { Settings: "Cài đặt" } }),
     });
 
     const locale = await activateUiLocale("de");
@@ -110,6 +111,9 @@ describe("activateUiLocale", () => {
       ja: async () => {
         throw new Error("ja missing");
       },
+      vi: async () => {
+        throw new Error("vi missing");
+      },
     });
 
     const locale = await activateUiLocale("ko");
@@ -138,6 +142,7 @@ describe("activateUiLocale", () => {
       he: async () => ({ messages: { Settings: "הגדרות" } }),
       nl: async () => ({ messages: { Settings: "Instellingen" } }),
       ja: async () => ({ messages: { Settings: "設定" } }),
+      vi: async () => ({ messages: { Settings: "Cài đặt" } }),
     });
 
     const first = activateUiLocale("de");
@@ -171,6 +176,7 @@ describe("activateUiLocale", () => {
       he: async () => ({ messages: { Settings: "הגדרות" } }),
       nl: async () => ({ messages: { Settings: "Instellingen" } }),
       ja: async () => ({ messages: { Settings: "設定" } }),
+      vi: async () => ({ messages: { Settings: "Cài đặt" } }),
     });
 
     await activateUiLocale("en");
@@ -209,6 +215,7 @@ describe("activateUiLocale", () => {
       he: async () => ({ messages: { Settings: "הגדרות" } }),
       nl: async () => ({ messages: { Settings: "Instellingen" } }),
       ja: async () => ({ messages: { Settings: "設定" } }),
+      vi: async () => ({ messages: { Settings: "Cài đặt" } }),
     });
 
     await activateUiLocale("en");

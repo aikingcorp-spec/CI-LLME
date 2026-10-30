@@ -1,4 +1,4 @@
-import { GITHUB_URL, SITE_NAME, SITE_URL } from "./site";
+import { SITE_NAME, SITE_URL, SUPPORT_EMAIL } from "./site";
 
 const LEGAL_NAME = "Inbox Zero Inc.";
 
@@ -29,11 +29,11 @@ export function homeStructuredData(input: HomeStructuredDataInput) {
         legalName: LEGAL_NAME,
         url: `${SITE_URL}/`,
         logo: `${SITE_URL}/brand/rakazo-mark.png`,
-        email: "hello@rakazo.com",
+        email: SUPPORT_EMAIL,
         contactPoint: {
           "@type": "ContactPoint",
           contactType: "customer support",
-          email: "hello@rakazo.com",
+          email: SUPPORT_EMAIL,
           url: `${SITE_URL}/support/`,
           availableLanguage: input.availableLanguages,
         },
@@ -45,7 +45,7 @@ export function homeStructuredData(input: HomeStructuredDataInput) {
           postalCode: "19713",
           addressCountry: "US",
         },
-        sameAs: [GITHUB_URL, "https://www.getinboxzero.com/"],
+        sameAs: ["https://www.getinboxzero.com/"],
       },
       {
         "@type": "WebSite",
@@ -76,8 +76,6 @@ export function homeStructuredData(input: HomeStructuredDataInput) {
         applicationSubCategory: "AI agent platform",
         operatingSystem: "Web, macOS, Linux, iOS, Android",
         isAccessibleForFree: true,
-        codeRepository: GITHUB_URL,
-        license: `${GITHUB_URL}/blob/main/LICENSE`,
         provider: { "@id": `${SITE_URL}/#organization` },
         inLanguage: input.availableLanguages,
         offers: {

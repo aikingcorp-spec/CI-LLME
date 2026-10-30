@@ -129,6 +129,7 @@ x-app-environment: &app-environment
   CEREBRAS_API_KEY:
   CLOUDFLARE_API_KEY:
   COPILOT_GITHUB_TOKEN:
+  GITHUB_TOKEN:
   DEEPSEEK_API_KEY:
   FIREWORKS_API_KEY:
   GEMINI_API_KEY:
@@ -275,7 +276,7 @@ services:
 
   # Pull-only stub so `compose up` fetches the published desktop image without a checkout.
   computer:
-    image: ${RAKAZO_COMPUTER_IMAGE:-ghcr.io/elie222/rakazo/computer}:${RAKAZO_COMPUTER_IMAGE_TAG:-edge}
+    image: ${RAKAZO_COMPUTER_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/computer}:${RAKAZO_COMPUTER_IMAGE_TAG:-edge}
     command: ["true"]
     network_mode: none
     restart: "no"
@@ -292,7 +293,7 @@ services:
   # Runs from the app image. Not published as its own image and not exposed on the host:
   # access to the supervisor is equivalent to control of the Docker host.
   supervisor:
-    image: ${RAKAZO_IMAGE:-ghcr.io/elie222/rakazo/app}:${RAKAZO_IMAGE_TAG:-edge}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-edge}
     restart: unless-stopped
     command: ["pnpm", "--filter", "@rakazo/sandbox-supervisor", "start"]
     init: true
@@ -308,7 +309,7 @@ services:
       SUPERVISOR_HOST: "0.0.0.0"
       SUPERVISOR_PORT: "7091"
       DOCKER_SOCKET: /var/run/docker.sock
-      RAKAZO_COMPUTER_IMAGE: ${RAKAZO_COMPUTER_IMAGE:-ghcr.io/elie222/rakazo/computer}:${RAKAZO_COMPUTER_IMAGE_TAG:-edge}
+      RAKAZO_COMPUTER_IMAGE: ${RAKAZO_COMPUTER_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/computer}:${RAKAZO_COMPUTER_IMAGE_TAG:-edge}
       RAKAZO_COMPUTER_MEMORY: ${RAKAZO_COMPUTER_MEMORY:-2g}
       RAKAZO_COMPUTER_CPUS: ${RAKAZO_COMPUTER_CPUS:-2}
       RAKAZO_COMPUTER_PIDS_LIMIT: ${RAKAZO_COMPUTER_PIDS_LIMIT:-2048}
@@ -350,7 +351,7 @@ services:
   # container gets the owner login: the API and worker connect as rakazo_app, which row-level
   # security binds, so code running in either cannot find a login that bypasses it.
   migrate:
-    image: ${RAKAZO_IMAGE:-ghcr.io/elie222/rakazo/app}:${RAKAZO_IMAGE_TAG:-edge}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-edge}
     working_dir: /app/apps/api
     command: ["pnpm", "db:deploy"]
     restart: "no"
@@ -370,7 +371,7 @@ services:
         condition: service_healthy
 
   api:
-    image: ${RAKAZO_IMAGE:-ghcr.io/elie222/rakazo/app}:${RAKAZO_IMAGE_TAG:-edge}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-edge}
     restart: unless-stopped
     # Node runs directly, not through pnpm: pnpm does not pass SIGTERM on, so a stop would kill the
     # process before its graceful shutdown finishes in-flight requests and jobs.
@@ -394,6 +395,8 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://127.0.0.1:5173}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://127.0.0.1:5173}
       AUTH_PASSWORD_ENABLED: ${AUTH_PASSWORD_ENABLED:-true}
+      AUTH_EMAIL_CODE_ONLY: ${AUTH_EMAIL_CODE_ONLY:-false}
+      AUTH_EMAIL_ALLOWLIST: ${AUTH_EMAIL_ALLOWLIST:-on}
       AUTH_BREACHED_PASSWORD_CHECK_ENABLED: ${AUTH_BREACHED_PASSWORD_CHECK_ENABLED:-false}
       PASSKEY_APPLE_APP_IDS:
       PASSKEY_ANDROID_CERT_SHA256:
@@ -432,6 +435,7 @@ services:
       SPACE_TEARDOWN_TIMEOUT_MS:
       RAKAZO_MIN_CLIENT_BUILD:
       RAKAZO_NAV_LINKS:
+      VNBOT_NAV_LINKS:
       VOICE_SUMMARY_MIN_CHARS:
     ports:
       - "127.0.0.1:${RAKAZO_API_PORT:-3100}:3100"
@@ -460,7 +464,7 @@ services:
       retries: 20
 
   worker:
-    image: ${RAKAZO_IMAGE:-ghcr.io/elie222/rakazo/app}:${RAKAZO_IMAGE_TAG:-edge}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-edge}
     restart: unless-stopped
     # Directly, not through pnpm, so a stop reaches it (see the api command).
     working_dir: /app/apps/worker
@@ -499,7 +503,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${RAKAZO_IMAGE:-ghcr.io/elie222/rakazo/app}:${RAKAZO_IMAGE_TAG:-edge}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-edge}
     restart: unless-stopped
     # Directly, not through pnpm, so a stop reaches it (see the api command).
     working_dir: /app/apps/web

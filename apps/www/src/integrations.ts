@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import type { PluginCategory } from "@rakazo/core";
 import { PLUGIN_CATEGORIES } from "@rakazo/core";
 import { z } from "zod";
+import { stripOpenSource } from "./catalog-text";
 import { CATALOG_URL, SITE_URL } from "./site";
 
 const IntegrationSchema = z.object({
@@ -21,6 +22,19 @@ const CatalogSchema = z.object({
 
 export type Integration = z.infer<typeof IntegrationSchema>;
 
+/** Catalog copy comes from third parties; every page and Markdown twin reads it through here. */
+function displayIntegration(integration: Integration): Integration {
+  return {
+    ...integration,
+    description: stripOpenSource(integration.description),
+    actions: integration.actions.map((action) => ({
+      ...action,
+      name: stripOpenSource(action.name),
+      description: stripOpenSource(action.description),
+    })),
+  };
+}
+
 /** Published weekly by a private sync job. `CATALOG_URL` may point at another URL or a local file. */
 async function loadCatalog(): Promise<Integration[]> {
   const source = process.env.CATALOG_URL?.trim() || CATALOG_URL;
@@ -31,7 +45,7 @@ async function loadCatalog(): Promise<Integration[]> {
           return response.text();
         })
       : await readFile(source, "utf8");
-    return CatalogSchema.parse(JSON.parse(text)).integrations;
+    return CatalogSchema.parse(JSON.parse(text)).integrations.map(displayIntegration);
   } catch (error) {
     // Production must not ship an empty catalog; offline local builds just skip the app pages.
     if (process.env.VERCEL_ENV === "production") throw error;
@@ -240,9 +254,9 @@ export function integrationsMarkdown(): string {
     (integration) =>
       `- [${integration.name}](${SITE_URL}${integrationPath(integration.slug)}): ${CATEGORY_LABELS[categoryOf(integration)]}, ${integration.actions.length} actions`,
   );
-  return `# Rakazo integrations
+  return `# VNBot integrations
 
-Rakazo bots can connect to ${INTEGRATIONS.length} apps. Ask a bot to connect one and approve the sign-in it sends.
+VNBot bots can connect to ${INTEGRATIONS.length} apps. Ask a bot to connect one and approve the sign-in it sends.
 
 ${lines.join("\n")}
 `;
@@ -257,7 +271,7 @@ export function integrationMarkdown(integration: Integration): string {
 
 ${integration.description}
 
-Category: ${CATEGORY_LABELS[categoryOf(integration)]}. Connect from any Rakazo bot at ${SITE_URL}${integrationPath(integration.slug)}.
+Category: ${CATEGORY_LABELS[categoryOf(integration)]}. Connect from any VNBot bot at ${SITE_URL}${integrationPath(integration.slug)}.
 
 ## Actions
 

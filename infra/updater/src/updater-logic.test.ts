@@ -11,11 +11,19 @@ import {
 } from "./updater-logic.js";
 
 const base = {
+  RAKAZO_DISABLE_AUTO_UPDATE: "0",
   RAKAZO_DEPLOY_DIR: "/srv/rakazo",
   RAKAZO_UPDATER_TOKEN: "fake-review-updater-token-000000000000",
 } as const;
 
 describe("resolveUpdaterConfig", () => {
+  it("refuses to start unless self-update is explicitly enabled", () => {
+    for (const value of [undefined, "", "1", "false"]) {
+      expect(() => resolveUpdaterConfig({ ...base, RAKAZO_DISABLE_AUTO_UPDATE: value })).toThrow(
+        /Self-update is off/,
+      );
+    }
+  });
   it("derives the compose file, env file, and defaults from the deployment directory", () => {
     const config = resolveUpdaterConfig({ ...base });
     expect(config).toMatchObject({
@@ -50,7 +58,9 @@ describe("resolveUpdaterConfig", () => {
   });
 
   it("refuses a deployment directory that is missing or relative", () => {
-    expect(() => resolveUpdaterConfig({ RAKAZO_UPDATER_TOKEN: "t" })).toThrow(/RAKAZO_DEPLOY_DIR/);
+    expect(() =>
+      resolveUpdaterConfig({ RAKAZO_DISABLE_AUTO_UPDATE: "0", RAKAZO_UPDATER_TOKEN: "t" }),
+    ).toThrow(/RAKAZO_DEPLOY_DIR/);
     expect(() => resolveUpdaterConfig({ ...base, RAKAZO_DEPLOY_DIR: "srv/rakazo" })).toThrow(
       /RAKAZO_DEPLOY_DIR/,
     );

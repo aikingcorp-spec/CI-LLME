@@ -79,20 +79,56 @@ export async function signup(
   await page.goto(verify ? "/sign-up?verify=email" : "/onboarding");
 }
 
+/** The 6-digit code from the e2e mailbox. It is typed into the form and never rendered. */
+export async function readSignInCode(page: Page, email: string): Promise<string> {
+  const emailApi = process.env.API_URL ?? "http://127.0.0.1:3110";
+  let found = "";
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(`${emailApi}/__e2e/emails`);
+      const messages = (await response.json()) as Array<{
+        to: string;
+        subject: string;
+        text: string;
+      }>;
+      const mine = messages.filter(
+        (message) => message.to === email && /sign-in code|mã đăng nhập/i.test(message.subject),
+      );
+      found = mine.at(-1)?.text.match(/\b(\d{6})\b/)?.[1] ?? "";
+      return found;
+    })
+    .not.toBe("");
+  return found;
+}
+
+export async function signInWithEmailCode(page: Page, email: string) {
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByRole("button", { name: "Send code", exact: true }).click();
+  const code = await readSignInCode(page, email);
+  await page.getByLabel("6-digit sign-in code").fill(code);
+}
+
 export async function signupThroughForm(
   page: Page,
   email: string,
-  password: string,
+  _password: string,
   name: string,
   testInfo?: TestInfo,
 ) {
-  await page.goto("/sign-up");
-  await expect(page.getByRole("heading", { name: "Create your Rakazo" })).toBeVisible();
+  await page.goto("/sign-in");
+  await expect(page.getByRole("heading", { name: "Get started with VNBot" })).toBeVisible();
   if (testInfo) await captureScreenshot(page, testInfo, "01-sign-up");
-  await page.getByPlaceholder("Your name").fill(name);
-  await page.getByPlaceholder("Your email address").fill(email);
-  await page.getByPlaceholder("Password").fill(password);
-  await page.getByRole("button", { name: "Create account" }).click();
+  await signInWithEmailCode(page, email);
+  await page.waitForURL(/\/(onboarding|app)/, { timeout: 20_000 });
+  if (name) {
+    const response = await page.request.post("/api/auth/update-user", {
+      data: { name },
+      headers: { origin: new URL(page.url()).origin },
+    });
+    if (!response.ok()) throw new Error(`update-user ${response.status()}`);
+    // The app cached the session before the name was set; reload so it shows the new name.
+    await page.reload();
+  }
 }
 
 /** Open Advanced through its trigger, preserving an already-expanded section. */
@@ -197,7 +233,6 @@ export async function openUserSettings(
     | "memory"
     | "voice"
     | "vault"
-    | "wallet"
     | "usage"
     | "computer"
     | "billing"

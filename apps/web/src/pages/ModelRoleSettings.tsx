@@ -274,7 +274,11 @@ export function ModelRoleSettings({
             {ordered ? number(0) : null}
             <RoleModelPicker
               trigger={pickerTrigger(
-                deployment ? modelLabel(deployment) : defaultLabel,
+                !settings && !state.error
+                  ? t`Loading…`
+                  : deployment
+                    ? modelLabel(deployment)
+                    : defaultLabel,
                 deployment ? providerName(deployment) : undefined,
               )}
               label={t`Change ${title}`}

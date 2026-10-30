@@ -9,14 +9,14 @@ test("the only space is named in the sidebar and chat creation requires approval
   await completeOnboarding(page);
 
   const sidebar = page.locator("aside").first();
-  await expect(sidebar.getByText("Personal", { exact: true })).toBeVisible();
+  await expect(sidebar.getByText("Cá nhân", { exact: true })).toBeVisible();
   await expect(sidebar.getByRole("button", { name: /^Chief/ })).toHaveCount(1);
-  await sidebar.getByRole("button", { name: "Actions for Personal" }).click();
+  await sidebar.getByRole("button", { name: "Actions for Cá nhân" }).click();
   await expect(page.getByRole("menuitem", { name: "Delete space" })).toHaveCount(0);
   await page.getByRole("menuitem", { name: "Settings" }).click();
   const onlySpaceSettings = page.getByTestId("user-settings");
   await expect(onlySpaceSettings).toHaveAttribute("data-settings-section", "space");
-  await expect(onlySpaceSettings.getByLabel("Name")).toHaveValue("Personal");
+  await expect(onlySpaceSettings.getByLabel("Name")).toHaveValue("Cá nhân");
   // The default space is never deletable, so the action is absent.
   await expect(onlySpaceSettings.getByRole("button", { name: "Delete space" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "space-settings-only-space");
@@ -47,7 +47,7 @@ test("the only space is named in the sidebar and chat creation requires approval
   await page.getByRole("button", { name: "Create space", exact: true }).click();
   await expect(page.getByText("Created", { exact: true })).toBeVisible();
 
-  await expect(sidebar.getByText("Personal", { exact: true })).toBeVisible();
+  await expect(sidebar.getByText("Cá nhân", { exact: true })).toBeVisible();
   await expect(sidebar.getByText("Customer support", { exact: true })).toBeVisible({
     timeout: 15_000,
   });
@@ -65,14 +65,14 @@ test("the only space is named in the sidebar and chat creation requires approval
     .toBe(supportSpaceId);
   await completeOnboarding(page);
 
-  await expect(sidebar.getByText("Personal", { exact: true })).toBeVisible();
+  await expect(sidebar.getByText("Cá nhân", { exact: true })).toBeVisible();
   await expect(sidebar.getByText("Customer support", { exact: true })).toBeVisible();
   await expect(sidebar.getByRole("button", { name: /^Chief/ })).toHaveCount(2);
   await captureScreenshot(page, testInfo, "spaces-sidebar");
 
   const personalSpace = sidebar
     .locator('[data-sidebar-group^="space:"]')
-    .filter({ hasText: "Personal" });
+    .filter({ hasText: "Cá nhân" });
   const personalSpaceGroup = await personalSpace.getAttribute("data-sidebar-group");
   const personalSpaceId = personalSpaceGroup?.split(":")[1];
   expect(personalSpaceId).toBeTruthy();
@@ -221,11 +221,11 @@ test("a space's menu opens its settings in place, and General lists every space"
   });
 
   // Support is selected; Personal's menu opens Personal's settings without leaving Support.
-  await sidebar.getByRole("button", { name: "Actions for Personal" }).click();
+  await sidebar.getByRole("button", { name: "Actions for Cá nhân" }).click();
   await page.getByRole("menuitem", { name: "Settings" }).click();
   const settings = page.getByTestId("user-settings");
   await expect(settings).toHaveAttribute("data-settings-section", "space");
-  await expect(settings.getByRole("heading", { name: "Personal" })).toBeVisible();
+  await expect(settings.getByRole("heading", { name: "Cá nhân" })).toBeVisible();
   onChat();
   expect(await page.evaluate(() => localStorage.getItem("rakazo:space-id"))).toBe(selected);
   await expect(page.locator("html")).toHaveAttribute("data-settings-test", "same-document");
@@ -235,7 +235,7 @@ test("a space's menu opens its settings in place, and General lists every space"
   await settings.getByRole("button", { name: "Back" }).click();
   await expect(settings).toHaveAttribute("data-settings-section", "general");
   const spaceList = settings.getByTestId("settings-spaces");
-  await expect(spaceList.getByText("Personal", { exact: true })).toBeVisible();
+  await expect(spaceList.getByText("Cá nhân", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "settings-general-spaces");
   await spaceList.getByRole("button", { name: "Manage Support" }).click();
   await expect(settings.getByRole("heading", { name: "Support" })).toBeVisible();

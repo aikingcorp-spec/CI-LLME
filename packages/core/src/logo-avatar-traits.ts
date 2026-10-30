@@ -1,3 +1,4 @@
+import { vnbotBodyColors } from "@rakazo/ui-tokens";
 import {
   contrastRatio,
   resolvePersonaColorDef,
@@ -42,6 +43,12 @@ export function seededLogoAvatarColor(identity: string): string {
     color = hex();
   }
   return color;
+}
+
+/** Stable body colour for a `vnbot` bot: one hex from `vnbotBodyColors`. */
+export function seededVnbotBodyColor(identity: string): string {
+  const index = shippedHash(`vnbot-body/v1/${identity}`) % vnbotBodyColors.length;
+  return vnbotBodyColors[index]!.hex;
 }
 
 /** Evaluate once per identity, never on an animation frame or from React's useId. */

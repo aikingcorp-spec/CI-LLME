@@ -1,7 +1,6 @@
 import type { ConnectorTool } from "@rakazo/adapter-kit";
 
 export const CLOUD_AGENT_TOOL_NAMES = new Set([
-  "cloud_agent_launch",
   "cloud_agent_status",
   "cloud_agent_reply",
   "cloud_agent_cancel",

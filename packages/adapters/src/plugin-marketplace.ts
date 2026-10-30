@@ -2,7 +2,7 @@ import type { PluginMarketplaceCatalog, PluginMarketplaceEntry } from "@rakazo/c
 import { comparePlugins, matchesPluginQuery, pluginCategory } from "@rakazo/core";
 import { z } from "zod";
 import type { PluginCompleteness, PluginTextReader } from "./plugin-connectors.js";
-import { classifyPluginFiles, parsePluginSource } from "./plugin-connectors.js";
+import { classifyPluginFiles, githubApiHeaders, parsePluginSource } from "./plugin-connectors.js";
 import { fetchSafeWebText } from "./web-ssrf.js";
 
 const REGISTRIES = [
@@ -174,8 +174,8 @@ function displayName(name: string): string {
     .join(" ");
 }
 
-const publicRead: PluginTextReader = async (url, maxBytes, signal) =>
-  (await fetchSafeWebText(url, { maxBytes, signal })).body;
+const publicRead: PluginTextReader = async (url, maxBytes, signal, headers) =>
+  (await fetchSafeWebText(url, { maxBytes, signal, headers })).body;
 
 /** Cache is per API router instance; failures are never cached. Concurrent
  * requests share one bounded fetch, without sharing an actor's abort signal. */
@@ -215,6 +215,7 @@ export function createPluginMarketplace(read: PluginTextReader = publicRead) {
         `https://api.github.com/repos${repo}/git/trees/HEAD?recursive=1`,
         8_000_000,
         AbortSignal.timeout(15_000),
+        githubApiHeaders(),
       ),
     ) as { truncated?: boolean; tree?: Array<{ path: string; type: string; size?: number }> };
     if (tree.truncated || !Array.isArray(tree.tree)) throw new Error("Registry tree is incomplete");

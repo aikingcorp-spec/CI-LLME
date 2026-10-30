@@ -8,6 +8,7 @@ import {
   organicAvatarFamily,
   organicAvatarSampleIdentity,
   seededLogoAvatarColor,
+  seededVnbotBodyColor,
 } from "@rakazo/core";
 import {
   BotAvatar,
@@ -17,6 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  defaultVnbotAvatarValue,
   Input,
   parseBotAvatar,
 } from "@rakazo/ui-web";
@@ -62,10 +64,17 @@ export function CreateBotDialog({
     return id;
   });
   const [look, setLook] = useState(() => ({
-    value: seededLogoAvatarColor(previewId),
+    // Seed the preview from the default set's own palette, so a new vnbot bot
+    // is created with a body colour from vnbotBodyColors (PR #2 contract) and
+    // the Nón shape until the person picks another.
+    value:
+      DEFAULT_NEW_BOT_AVATAR_SET === "vnbot"
+        ? defaultVnbotAvatarValue(seededVnbotBodyColor(previewId))
+        : seededLogoAvatarColor(previewId),
     identity: pick(ORGANIC_IDENTITIES),
   }));
   const [avatarSet, setAvatarSet] = useState<BotAvatarSet>(DEFAULT_NEW_BOT_AVATAR_SET);
+  const reservesPreview = avatarSet === "rakazo" || avatarSet === "vnbot";
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const trimmed = name.trim();
@@ -79,7 +88,7 @@ export function CreateBotDialog({
       await onCreate({
         name: trimmed,
         color: look.value,
-        ...(avatarSet === "rakazo" ? { id: previewId } : {}),
+        ...(reservesPreview ? { id: previewId } : {}),
         avatarSet,
         ...(organic ? { avatarFamily: organicAvatarFamily(look.identity) } : {}),
       });
@@ -118,7 +127,7 @@ export function CreateBotDialog({
           <div className="flex justify-center py-2">
             <BotAvatar
               color={look.value}
-              identity={avatarSet === "rakazo" ? previewId : look.identity}
+              identity={reservesPreview ? previewId : look.identity}
               size={96}
               avatarSet={avatarSet}
             />
@@ -139,7 +148,7 @@ export function CreateBotDialog({
           ) : null}
           <BotLookPicker
             value={look.value}
-            identity={avatarSet === "rakazo" ? previewId : look.identity}
+            identity={reservesPreview ? previewId : look.identity}
             organicIdentities={ORGANIC_IDENTITIES}
             avatarSet={avatarSet}
             onAvatarSetChange={(set, value) => {
@@ -160,7 +169,7 @@ export function CreateBotDialog({
                 data-testid="create-bot-import"
                 onClick={onImport}
               >
-                <Trans>Import</Trans>
+                <Trans>Import an agent</Trans>
               </Button>
             ) : null}
             <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>

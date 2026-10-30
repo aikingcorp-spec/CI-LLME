@@ -2,16 +2,16 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md) | [日本語](./README.ja.md)
 
-[![GitHub stars](https://img.shields.io/github/stars/elie222/rakazo?labelColor=black&style=for-the-badge&color=2563EB)](https://github.com/elie222/rakazo/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/aikingcorp-spec/vnbot?labelColor=black&style=for-the-badge&color=2563EB)](https://github.com/aikingcorp-spec/vnbot/stargazers)
 [![加入 Discord 社区](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?labelColor=black&style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/RWwKa2Sn7h)
-[![在 App Store 下载 iPhone 版](https://img.shields.io/badge/App%20Store-Download%20for%20iPhone-black?labelColor=black&style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/app/rakazo/id6801531099)
-[![下载 Android APK](https://img.shields.io/badge/Android-Download%20APK-black?labelColor=black&style=for-the-badge&logo=android&logoColor=white)](https://github.com/elie222/rakazo/releases/download/android/rakazo.apk)
+iOS: Sắp có.
+[![下载 Android APK](https://img.shields.io/badge/Android-Download%20APK-black?labelColor=black&style=for-the-badge&logo=android&logoColor=white)](https://github.com/aikingcorp-spec/vnbot/releases/download/android/rakazo.apk)
 
 ![Rakazo：由你掌控的 AI 队友](./docs/readme-hero.png)
 
 Rakazo 是一个开源 AI 智能体项目，让你拥有可长期协作的 AI 队友，也可以作为自托管 AI 助手在自己的电脑上运行。
-它提供网页版、Electron 桌面应用，以及 [iPhone](https://apps.apple.com/app/rakazo/id6801531099) 和
-[Android](https://github.com/elie222/rakazo/releases/download/android/rakazo.apk) 应用。
+它提供网页版、Electron 桌面应用，以及 iOS (Sắp có) 和
+[Android](https://github.com/aikingcorp-spec/vnbot/releases/download/android/rakazo.apk) 应用。
 你可以接入自己的模型和计算环境提供商，也可以在本地运行完整服务。
 
 它是 Grok Bot、Meta Muse、OpenAI Dots、Instinct、OpenClaw、Hermes Agent、Claude Duet 和 Hark Pro 的开源、自托管替代方案。
@@ -79,7 +79,7 @@ https://github.com/user-attachments/assets/dccdeddb-2134-4a56-8eed-b2e591736b1c
 
 ```bash
 mkdir -p rakazo && cd rakazo &&
-curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/install-images.sh &&
+curl -fsSLO https://raw.githubusercontent.com/aikingcorp-spec/vnbot/main/infra/compose/install-images.sh &&
 bash install-images.sh
 ```
 
@@ -119,8 +119,8 @@ bash install-images.sh
 不支持 Node.js 23.x 和 25.x。
 
 ```bash
-git clone https://github.com/elie222/rakazo.git
-cd rakazo
+git clone https://github.com/aikingcorp-spec/vnbot.git
+cd vnbot
 cp .env.example .env
 ```
 

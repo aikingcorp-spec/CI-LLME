@@ -3,7 +3,7 @@ import {
   compareBuilds,
   SERVER_BUILD_HEADER,
 } from "@rakazo/contracts";
-import { getSnapshot as activeCall } from "./call-session";
+import { isCallActive } from "./call-active";
 import { CLIENT_BUILD } from "./client-build";
 import { composerHoldsUnsavedWork, hasUnsentComposerDraft } from "./composer-draft";
 import { recoveryReload } from "./preload-recovery";
@@ -209,7 +209,7 @@ export function clientUpdates(): ReturnType<typeof createClientUpdates> {
       return response.ok ? (await response.text()).trim() : null;
     },
     reload: recoveryReload,
-    holdsUnsavedWork: () => activeCall() !== null || composerHoldsUnsavedWork(),
+    holdsUnsavedWork: () => isCallActive() || composerHoldsUnsavedWork(),
     hasUnsentDraft: () => hasUnsentComposerDraft(),
     now: () => Date.now(),
     setInterval: (callback, ms) => window.setInterval(callback, ms),

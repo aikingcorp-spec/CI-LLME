@@ -139,6 +139,7 @@ it("opens integrations and keeps the existing account actions and links", async 
   )!;
   await act(async () => connect.click());
   expect(onIntegrations).toHaveBeenCalledOnce();
+  expect(document.querySelector('a[href="https://vnbot.run"]')?.textContent).toBe("Docs");
   const menu = document.querySelector('[data-slot="popover-content"]')!;
   expect([...menu.querySelectorAll("button, a")].map((row) => row.textContent)).toEqual([
     "Skills",
@@ -161,16 +162,17 @@ it("omits Board when unavailable", async () => {
   );
 });
 
-it("offers the existing Android download on Android", async () => {
-  vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Android");
-  await render();
-  const mobile = [...document.querySelectorAll("a")].find(
-    (link) => link.textContent === "Get the mobile app",
-  )!;
-  expect(mobile.href).toBe(
-    "https://github.com/elie222/rakazo/releases/download/android/rakazo.apk",
-  );
-});
+it.each(["Android", "iPhone"])(
+  "links the mobile app to the VNBot download page on %s",
+  async (agent) => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(agent);
+    await render();
+    const mobile = [...document.querySelectorAll("a")].find(
+      (link) => link.textContent === "Get the mobile app",
+    )!;
+    expect(mobile.href).toBe("https://vnbot.run/#tai-ve");
+  },
+);
 
 it("falls back when app artwork fails and accepts replacement artwork", async () => {
   await render("Demo User", undefined, undefined, undefined, [

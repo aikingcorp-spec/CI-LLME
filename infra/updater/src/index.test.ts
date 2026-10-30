@@ -15,6 +15,7 @@ import { resolveUpdaterConfig } from "./updater-logic.js";
 const token = "fake-review-updater-token-000000000000";
 const app = createUpdaterApp(
   resolveUpdaterConfig({
+    RAKAZO_DISABLE_AUTO_UPDATE: "0",
     RAKAZO_DEPLOY_DIR: "/rakazo-updater-tests-no-such-directory",
     RAKAZO_UPDATER_TOKEN: token,
   }),
@@ -36,7 +37,11 @@ async function deployment(env = "RAKAZO_IMAGE_TAG=v1.0.0\nRAKAZO_IMAGE_TAG_PREVI
   await writeFile(path.join(deployDir, ".env"), env);
   return {
     deployDir,
-    config: resolveUpdaterConfig({ RAKAZO_DEPLOY_DIR: deployDir, RAKAZO_UPDATER_TOKEN: token }),
+    config: resolveUpdaterConfig({
+      RAKAZO_DISABLE_AUTO_UPDATE: "0",
+      RAKAZO_DEPLOY_DIR: deployDir,
+      RAKAZO_UPDATER_TOKEN: token,
+    }),
   };
 }
 
@@ -108,7 +113,10 @@ describe("updater HTTP surface", () => {
     const response = await app.request("/apply", {
       method: "POST",
       headers: authorized,
-      body: JSON.stringify({ repoUrl: "https://github.com/elie222/rakazo", branch: "--exec=id" }),
+      body: JSON.stringify({
+        repoUrl: "https://github.com/aikingcorp-spec/vnbot",
+        branch: "--exec=id",
+      }),
     });
     expect(response.status).toBe(400);
   });
@@ -176,7 +184,7 @@ describe("updater orchestration", () => {
       return ok();
     };
     const subject = createUpdaterApp(fixture.config, { run });
-    const input = { repoUrl: "https://github.com/elie222/rakazo", branch: "main" };
+    const input = { repoUrl: "https://github.com/aikingcorp-spec/vnbot", branch: "main" };
     const first = request(subject, "/apply", input);
     await atRemote;
     const second = await request(subject, "/apply", input);
@@ -229,7 +237,7 @@ describe("updater orchestration", () => {
     };
     const subject = createUpdaterApp(fixture.config, { run });
     const response = await request(subject, "/apply", {
-      repoUrl: "https://github.com/elie222/rakazo",
+      repoUrl: "https://github.com/aikingcorp-spec/vnbot",
       branch: "main",
     });
     const record = (await response.json()) as ServerUpdateRun;
@@ -352,7 +360,7 @@ describe("updater orchestration", () => {
     const run: UpdaterCommandRunner = async (command) =>
       command === "git" ? ok(`${targetCommit}\trefs/tags/v1.1.0\n`) : ok();
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/elie222/rakazo",
+      repoUrl: "https://github.com/aikingcorp-spec/vnbot",
       branch: "main",
     });
     expect(response.status).toBe(200);
@@ -376,7 +384,7 @@ describe("updater orchestration", () => {
       return ok();
     };
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/elie222/rakazo",
+      repoUrl: "https://github.com/aikingcorp-spec/vnbot",
       branch: "main",
     });
     await expect(response.json()).resolves.toMatchObject({ ok: true });
@@ -394,7 +402,7 @@ describe("updater orchestration", () => {
     const run: UpdaterCommandRunner = async (command) =>
       command === "git" ? ok(`${targetCommit}\trefs/tags/v1.1.0\n`) : ok();
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/elie222/rakazo",
+      repoUrl: "https://github.com/aikingcorp-spec/vnbot",
       branch: "main",
     });
     expect(response.status).toBe(200);

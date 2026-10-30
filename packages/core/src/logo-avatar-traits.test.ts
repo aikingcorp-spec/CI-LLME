@@ -1,6 +1,7 @@
+import { vnbotBodyColors } from "@rakazo/ui-tokens";
 import { describe, expect, it } from "vitest";
 import { contrastRatio } from "./bot-avatar-colors.js";
-import { seededLogoAvatarColor } from "./logo-avatar-traits.js";
+import { seededLogoAvatarColor, seededVnbotBodyColor } from "./logo-avatar-traits.js";
 
 describe("seeded logo colours", () => {
   it("reproduces a valid colour from a persisted identity across calls and reload data", () => {
@@ -35,6 +36,16 @@ describe("seeded logo colours", () => {
 });
 
 import { LOGO_AVATAR_LOOP_MS, logoAvatarTraits } from "./logo-avatar-traits.js";
+
+describe("vnbot body colours", () => {
+  it("picks a stable hex from vnbotBodyColors", () => {
+    const hexes = vnbotBodyColors.map((color) => color.hex);
+    const first = seededVnbotBodyColor("persistent-bot-1");
+    expect(hexes).toContain(first);
+    expect(seededVnbotBodyColor("persistent-bot-1")).toBe(first);
+    expect(new Set(hexes).size).toBe(vnbotBodyColors.length);
+  });
+});
 
 describe("stable logo avatar traits", () => {
   it("reproduces colour, phase and timing from the same identity", () => {

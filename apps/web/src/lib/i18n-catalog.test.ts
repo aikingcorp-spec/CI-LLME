@@ -38,7 +38,8 @@ describe("lingui catalogs", () => {
 
   it("localizes provider error guidance and retains its placeholders", () => {
     const messages = [
-      ...Object.values(RUN_ERROR_LIMIT_MESSAGES).flatMap(Object.values),
+      // Credit limits show the generic "connect your own key" copy; there is no credit message.
+      ...Object.values({ ...RUN_ERROR_LIMIT_MESSAGES, credit: {} }).flatMap(Object.values),
       "{summary} Your backup models also failed.",
       "{summary} No backup model was usable for this request.",
       "{summary} Backup models failed or were unavailable for this request.",
@@ -48,7 +49,7 @@ describe("lingui catalogs", () => {
       "Your model provider",
       "The model provider returned an error.",
       "Connect a model in Settings before running bots.",
-      "Connect your own API key in Models or choose Rakazo credits in Billing.",
+      "Connect your own API key in Models.",
       "{provider} is rate limiting requests. Try again shortly.",
       "{summary} Resets {date}.",
       "{provider} rejected the API key. Check your connection settings.",
@@ -275,5 +276,49 @@ it("keeps source placeholders and JSX markers in Traditional Chinese translation
     const translation = translated[id]?.translation;
     if (!translation?.trim()) continue;
     expect(markers(translation), message).toEqual(markers(message));
+  }
+});
+
+it("renders model connection errors in Vietnamese", async () => {
+  const filename = fileURLToPath(new URL("../locales/vi/messages.po", import.meta.url));
+  const catalog = await formatter().parse(readFileSync(filename, "utf8"), {
+    locale: "vi",
+    sourceLocale: "en",
+    filename,
+  });
+  i18n.load(
+    "vi",
+    Object.fromEntries(
+      Object.entries(catalog).map(([id, entry]) => [
+        entry.message || id,
+        entry.translation || entry.message || id,
+      ]),
+    ),
+  );
+  i18n.activate("vi");
+  try {
+    expect(
+      i18n._("Your model provider rejected the API key. Check your connection settings."),
+    ).toContain("từ chối khóa API");
+    expect(
+      i18n._({
+        id: "Model server returned {status}. You can still Connect with an explicit model id.",
+        values: { status: "401" },
+      }),
+    ).toContain("trả về mã 401");
+    expect(
+      i18n._({
+        id: "In use by {names}. Pick another model for them first.",
+        values: { names: i18n._("backup models") },
+      }),
+    ).toContain("các mô hình dự phòng");
+    expect(
+      i18n._({
+        id: "In use by {names}. Pick another model for them first.",
+        values: { names: i18n._("main model") },
+      }),
+    ).not.toContain("dự phòng");
+  } finally {
+    i18n.activate("en");
   }
 });

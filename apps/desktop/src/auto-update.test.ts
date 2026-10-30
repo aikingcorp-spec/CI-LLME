@@ -9,9 +9,12 @@ import {
   shouldCheck,
   updaterSupport,
 } from "./auto-update.js";
+import { strings } from "./strings.js";
+
+vi.mock("./monitoring.js", () => ({ reportDesktopError: vi.fn() }));
 
 const NOW = "2026-08-22T12:00:00.000Z";
-const packaged = { packaged: true, version: "0.1.0" };
+const packaged = { disabled: false, packaged: true, version: "0.1.0" };
 const clock = { now: () => 1_000, iso: () => NOW };
 
 function apply(events: UpdaterEvent[], env = packaged) {
@@ -55,16 +58,17 @@ function deferred() {
 }
 
 describe("updaterSupport", () => {
-  it("only runs in an installed build that has not opted out", () => {
+  it("only runs in an installed build that explicitly opts in", () => {
     expect(updaterSupport(packaged).supported).toBe(true);
+    expect(updaterSupport({ packaged: true, version: "0.1.0" }).supported).toBe(false);
     expect(updaterSupport({ packaged: false, version: "0.1.0" }).supported).toBe(false);
     expect(updaterSupport({ ...packaged, disabled: true }).supported).toBe(false);
   });
 
   it("starts unsupported builds in a state that explains itself", () => {
-    const state = initialUpdateState({ packaged: false, version: "0.1.0" });
+    const state = initialUpdateState({ packaged: false, version: "0.1.0", disabled: false });
     expect(state).toMatchObject({ phase: "unsupported", currentVersion: "0.1.0" });
-    expect(state.message).toContain("installed build");
+    expect(state.message).toBe(strings().updater.notInstalled);
   });
 });
 
@@ -93,7 +97,7 @@ describe("classifyUpdaterFailure", () => {
       new Error("Code signature at https://private.invalid/update.zip did not pass validation"),
     );
     expect(failure.kind).toBe("signature");
-    expect(failure.message).toContain("could not be verified");
+    expect(failure.message).toBe(strings().updater.unverified);
     expect(failure.message).not.toContain("private.invalid");
   });
 
@@ -101,7 +105,7 @@ describe("classifyUpdaterFailure", () => {
     const failure = classifyUpdaterFailure(new Error("disk full at /Users/example/private"));
     expect(failure).toEqual({
       kind: "other",
-      message: "The update could not be completed. Try again later.",
+      message: strings().updater.failed,
     });
   });
 });
@@ -168,7 +172,7 @@ describe("reduceUpdateState", () => {
       { type: "failed", error: new Error("HttpError: 404 Not Found"), userInitiated: false },
     ]);
     expect(state.phase).toBe("unsupported");
-    expect(state.message).toContain("No desktop releases");
+    expect(state.message).toBe(strings().updater.noReleases);
     expect(reduceUpdateState(state, { type: "check-start" }, NOW)).toBe(state);
     expect(shouldCheck(state, 10_000_000, 0)).toBe(false);
   });
@@ -194,7 +198,7 @@ describe("reduceUpdateState", () => {
     expect(failed).toMatchObject({
       phase: "ready",
       availableVersion: "0.2.0",
-      message: "The update could not be completed. Try again later.",
+      message: strings().updater.failed,
     });
   });
 
@@ -210,8 +214,8 @@ describe("reduceUpdateState", () => {
   it("says nothing about being offline unless the user asked", () => {
     const offline = new Error("getaddrinfo ENOTFOUND github.com");
     expect(apply([{ type: "failed", error: offline, userInitiated: false }]).message).toBeNull();
-    expect(apply([{ type: "failed", error: offline, userInitiated: true }]).message).toContain(
-      "Could not reach",
+    expect(apply([{ type: "failed", error: offline, userInitiated: true }]).message).toBe(
+      strings().updater.unreachable,
     );
   });
 
@@ -219,7 +223,7 @@ describe("reduceUpdateState", () => {
     const state = apply([{ type: "failed", error: new Error("disk full"), userInitiated: false }]);
     expect(state).toMatchObject({
       phase: "error",
-      message: "The update could not be completed. Try again later.",
+      message: strings().updater.failed,
     });
   });
 });
@@ -431,7 +435,7 @@ describe("DesktopUpdateController", () => {
       expect(fake.updater.checkForUpdates).toHaveBeenCalledTimes(1);
       expect(controller.state()).toMatchObject({
         phase: "idle",
-        message: "Could not reach the update server.",
+        message: strings().updater.unreachable,
       });
     },
   );
@@ -476,11 +480,11 @@ describe("DesktopUpdateController", () => {
     const state = await controller.install();
     expect(state).toMatchObject({
       phase: "ready",
-      message: "The update could not be completed. Try again later.",
+      message: strings().updater.failed,
     });
     expect(await controller.install()).toMatchObject({
       phase: "ready",
-      message: "The update could not be completed. Try again later.",
+      message: strings().updater.failed,
     });
     vi.mocked(fake.updater.quitAndInstall).mockImplementation(() => undefined);
     expect(await controller.install()).toMatchObject({ phase: "ready", message: null });
@@ -516,7 +520,7 @@ describe("DesktopUpdateController", () => {
     expect(controller.state()).toMatchObject({
       phase: "ready",
       availableVersion: "0.2.0",
-      message: "The update could not be completed. Try again later.",
+      message: strings().updater.failed,
     });
     expect(onInstallFailure).toHaveBeenCalledTimes(1);
 

@@ -31,6 +31,13 @@ import {
   serverAvailability,
   serverSecretSpace,
 } from "../availability.js";
+import {
+  isCatalogContentAllowed,
+  sanitizeCatalogInstall,
+  sanitizeIntegrationResults,
+  sanitizePluginCatalog,
+  sanitizePluginPreview,
+} from "../catalog-text.js";
 import { searchIntegrationCatalog } from "../integration-catalog.js";
 import {
   queueMcpConnectedRun,
@@ -110,8 +117,8 @@ export function mcpRoutes(ctx: RouterContext) {
   };
   return {
     marketplace: {
-      catalog: authed.marketplace.catalog.handler(({ input }) =>
-        pluginMarketplace.catalog(input.query),
+      catalog: authed.marketplace.catalog.handler(async ({ input }) =>
+        sanitizePluginCatalog(await pluginMarketplace.catalog(input.query)),
       ),
     },
     capabilities: {
@@ -120,18 +127,20 @@ export function mcpRoutes(ctx: RouterContext) {
           where: availableInSpace(context.actor),
           include: { availableIn: AVAILABILITY_SELECT },
         });
-        return rows.map((row) => ({
-          id: row.id,
-          kind: row.kind as "skill" | "plugin" | "mcp" | "api" | "connection",
-          name: row.name,
-          source: row.source,
-          version: row.version,
-          digest: row.digest,
-          secretConfigured: Boolean(row.secretId),
-          config: row.config as Record<string, unknown>,
-          availability: spaceAvailability(row),
-          createdAt: row.createdAt.toISOString(),
-        }));
+        return rows.map((row) =>
+          sanitizeCatalogInstall({
+            id: row.id,
+            kind: row.kind as "skill" | "plugin" | "mcp" | "api" | "connection",
+            name: row.name,
+            source: row.source,
+            version: row.version,
+            digest: row.digest,
+            secretConfigured: Boolean(row.secretId),
+            config: row.config as Record<string, unknown>,
+            availability: spaceAvailability(row),
+            createdAt: row.createdAt.toISOString(),
+          }),
+        );
       }),
       catalogSearch: authed.capabilities.catalogSearch.handler(async ({ context, input }) => {
         const baseUrl =
@@ -145,25 +154,30 @@ export function mcpRoutes(ctx: RouterContext) {
             signal: context.signal ?? new AbortController().signal,
             fetch: deps.remoteConnectors?.fetch,
           });
-          return { enabled: true, results };
+          return { enabled: true, results: sanitizeIntegrationResults(results) };
         } catch (error) {
+          getLogger().warn("integration catalog search failed", {
+            cause: error instanceof Error ? error.message : String(error),
+          });
           throw new ORPCError("BAD_GATEWAY", {
-            message: error instanceof Error ? error.message : "Integration catalog search failed",
+            message: "Chưa thể tìm ứng dụng lúc này. Vui lòng thử lại sau.",
           });
         }
       }),
       install: authed.capabilities.install.handler(async ({ context, input }) => {
         if (input.kind === "plugin") {
-          return installPlugin(
-            {
-              prisma: deps.prisma,
-              secrets: deps.secrets,
-              fetcher: deps.pluginRepoFetcher,
-              assertEndpoint: (endpoint) => assertMcpRemoteEndpoint(endpoint, deps),
-            },
-            context.actor,
-            input,
-            context.signal,
+          return sanitizeCatalogInstall(
+            await installPlugin(
+              {
+                prisma: deps.prisma,
+                secrets: deps.secrets,
+                fetcher: deps.pluginRepoFetcher,
+                assertEndpoint: (endpoint) => assertMcpRemoteEndpoint(endpoint, deps),
+              },
+              context.actor,
+              input,
+              context.signal,
+            ),
           );
         }
         let source = input.source.trim();
@@ -292,11 +306,15 @@ export function mcpRoutes(ctx: RouterContext) {
       }),
       pluginPreview: authed.capabilities.pluginPreview.handler(async ({ context, input }) => {
         try {
+          if (!isCatalogContentAllowed({ source: input.source }))
+            throw new Error("Plugin source excluded by catalog content policy");
           const preview = await previewPluginInstall({
             source: input.source,
             signal: context.signal,
             fetcher: deps.pluginRepoFetcher,
           });
+          if (!isCatalogContentAllowed(pluginPreviewDto(preview)))
+            throw new Error("Plugin excluded by catalog content policy");
           for (const server of preview.mcpServers) {
             await assertMcpRemoteEndpoint(server.endpoint, deps);
           }
@@ -304,16 +322,25 @@ export function mcpRoutes(ctx: RouterContext) {
           if (preview.skipped.some((part) => part.kind !== "unsupported_field"))
             pluginMarketplace.markUnreadable(input.source);
           else pluginMarketplace.clearUnreadable(input.source);
-          return {
+          return sanitizePluginPreview({
             ...pluginPreviewDto(preview),
             pinnedSource: `${preview.source.gitUrl}@${preview.resolvedSha}${preview.source.subdir ? `#${preview.source.subdir}` : ""}`,
             installedSource: `${preview.source.gitUrl}${preview.source.subdir ? `#${preview.source.subdir}` : ""}`,
-          };
+          });
         } catch (error) {
           // Only content we can't support leaves browse; a slow or failing GitHub is retried.
-          if (!isTransientFetchError(error)) pluginMarketplace.markUnreadable(input.source);
+          const transient = isTransientFetchError(error);
+          // The client only sees a generic message; the log says whether GitHub refused
+          // (HTTP 403/429 = rate limit, set GITHUB_TOKEN), timed out, or the plugin is unsupported.
+          getLogger().warn("plugin preview failed", {
+            source: input.source,
+            transient,
+            cause: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+          });
+          // A failed preview must not erase a searchable app; explicit partial previews
+          // above still suppress plugins known to be incomplete.
           throw new ORPCError("BAD_REQUEST", {
-            message: "Could not preview a supported plugin from this repository",
+            message: "Chưa thể xem trước tiện ích này. Vui lòng thử lại sau.",
           });
         }
       }),
@@ -338,7 +365,7 @@ export function mcpRoutes(ctx: RouterContext) {
         );
         for (const event of notify) await deps.events.notify(event.threadId, event.seq);
         if (!install) await removeInstall(context.actor, input.id);
-        return { install };
+        return { install: install ? sanitizeCatalogInstall(install) : null };
       }),
     },
     mcp: {

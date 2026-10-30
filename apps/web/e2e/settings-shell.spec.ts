@@ -16,18 +16,18 @@ test("changing language updates settings overflow without resizing", async ({ pa
   // Below the desktop breakpoint, where the section list scrolls sideways.
   await page.setViewportSize({ width: 640, height: 700 });
   const nav = settings.getByTestId("settings-nav");
-  const next = settings.getByRole("button", { name: "Next settings sections" });
   const overflow = () => nav.evaluate((node) => node.scrollWidth - node.clientWidth);
   const english = await overflow();
 
   const language = settings.getByTestId("ui-locale-select");
   await language.click();
-  await page.getByRole("option", { name: "Deutsch", exact: true }).click();
-  await expect(settings.getByRole("heading", { name: "Allgemein", exact: true })).toBeVisible();
-  // Longer German labels overflow further, and the scroll control follows without a resize.
+  await page.getByRole("option", { name: "Tiếng Việt", exact: true }).click();
+  await expect(settings.getByRole("heading", { name: "Chung", exact: true })).toBeVisible();
+  // Longer Vietnamese labels overflow further, and the scroll control follows without a resize.
   await expect.poll(overflow).toBeGreaterThan(english);
-  await expect(next).toBeVisible();
-  await expect(next).toBeEnabled();
+  const nextVi = settings.getByRole("button", { name: "Các mục cài đặt sau" });
+  await expect(nextVi).toBeVisible();
+  await expect(nextVi).toBeEnabled();
   await captureScreenshot(page, testInfo, "settings-tabs-language-overflow");
 
   await language.click();
@@ -212,7 +212,7 @@ test("Honcho memory settings empty and filled", async ({ page }, testInfo) => {
   await userPeer.fill("bot-123");
   await expect(userPeer).toHaveAttribute("aria-invalid", "true");
   await expect(
-    memory.getByText("rakazo-shared and IDs starting with bot- are reserved for Rakazo."),
+    memory.getByText("vnbot-shared and IDs starting with bot- are reserved for VNBot."),
   ).toBeVisible();
   await expect(memory.getByRole("button", { name: "Connect", exact: true })).toBeDisabled();
   await captureScreenshot(page, testInfo, "memory-honcho-user-peer-reserved");

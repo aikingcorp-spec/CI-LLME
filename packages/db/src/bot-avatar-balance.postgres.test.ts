@@ -5,6 +5,7 @@ import {
   organicAvatarFamily,
   organicAvatarLook,
   seededLogoAvatarColor,
+  seededVnbotBodyColor,
 } from "@rakazo/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
@@ -112,15 +113,15 @@ describePostgres("new bot avatars (PostgreSQL)", () => {
     expect(after).toEqual(expect.arrayContaining(before));
   });
 
-  it("defaults only new creation to Rakazo and reloads explicit original sets without altering photos or shapes", async () => {
+  it("defaults only new creation to vnbot and reloads explicit original sets without altering photos or shapes", async () => {
     const repos = createRepos(prisma);
     const created = await runAsTenant(owner, () =>
       repos.createBot(actor(), botInput("Logo default")),
     );
-    expect(created.avatarSet).toBe("rakazo");
-    expect(created.color).toBe(seededLogoAvatarColor(created.id));
+    expect(created.avatarSet).toBe("vnbot");
+    expect(created.color).toBe(seededVnbotBodyColor(created.id));
     const restored = await runAsTenant(owner, () => repos.getBot(actor(), created.id));
-    expect(restored.color).toBe(seededLogoAvatarColor(restored.id));
+    expect(restored.color).toBe(seededVnbotBodyColor(restored.id));
     for (const color of ["#8B5CF6", "#8B5CF6::shape_3", "data:image/png;base64,aGVsbG8="]) {
       const original = await runAsTenant(owner, () =>
         repos.createBot(actor(), { ...botInput("Original look"), avatarSet: "organic", color }),

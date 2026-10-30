@@ -54,6 +54,10 @@ export function categoryCounts(): Map<BlogCategory, number> {
   return counts;
 }
 
+function totalPosts(): number {
+  return [...categoryCounts().values()].reduce((sum, count) => sum + count, 0);
+}
+
 export function categoryIsIndexed(category: BlogCategory): boolean {
   return categoryIsIndexedAtCount(categoryCounts().get(category) ?? 0);
 }
@@ -71,6 +75,7 @@ function normalizePath(pathname: string): string {
 export function isIndexedPath(pathname: string): boolean {
   const normalized = normalizePath(pathname);
   if (normalized.endsWith(".xml")) return false;
+  if (normalized === "/blog" && totalPosts() === 0) return false;
   const category = BLOG_CATEGORIES.find(
     (candidate) => normalizePath(categoryPath(candidate)) === normalized,
   );

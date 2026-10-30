@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "license": "Apache-2.0",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -63,6 +64,11 @@
       "types": "./src/query.ts",
       "development": "./src/query.ts",
       "default": "./src/query.ts"
+    },
+    "./banned-brand": {
+      "types": "./src/banned-brand.ts",
+      "development": "./src/banned-brand.ts",
+      "default": "./src/banned-brand.ts"
     }
   },
   "scripts": {
@@ -72,6 +78,7 @@
   "dependencies": {
     "@observablehq/plot": "0.6.17",
     "@rakazo/contracts": "workspace:*",
+    "@rakazo/ui-tokens": "workspace:*",
     "@tanstack/query-core": "5.104.5",
     "croner": "10.0.1",
     "d3-dsv": "3.0.1",

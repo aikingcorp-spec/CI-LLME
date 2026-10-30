@@ -3,7 +3,9 @@ import type { Bot } from "@rakazo/contracts";
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@rakazo/ui-web";
 import { Bell, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { IconTooltip } from "../../components/IconTooltip";
+import { VnbotWordmark } from "../../components/VnbotWordmark";
 import { desktopBridge } from "../../lib/desktop";
 import type { Panel } from "../../lib/right-panel-state";
 import { WindowChrome } from "../WindowChrome";
@@ -26,6 +28,20 @@ export function useCreateMenu() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   return [open, setOpen] as const;
+}
+
+function SidebarBrand({ mini }: { mini: boolean }) {
+  return (
+    <Link
+      to="/app"
+      className="app-no-drag flex items-center gap-2 rounded-md text-body1 font-semibold text-sidebar-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <VnbotWordmark
+        variant={mini ? "leaf" : "wordmark"}
+        className={mini ? "size-6" : "h-4 w-auto"}
+      />
+    </Link>
+  );
 }
 
 export function SidebarHeader({
@@ -66,7 +82,7 @@ export function SidebarHeader({
     <div
       className={`app-drag flex items-center ${mini ? `flex-col gap-2 px-0 pb-2 ${hasWindowChrome ? "pt-4" : "pt-2"}` : "justify-between px-[18px] pb-3 pt-4"}`}
     >
-      {!mini || hasWindowChrome ? <WindowChrome /> : null}
+      {hasWindowChrome ? <WindowChrome /> : <SidebarBrand mini={mini} />}
       <div className={`relative flex items-center ${mini ? "flex-col gap-0.5" : "gap-2.5"}`}>
         {onSearch ? (
           <IconTooltip label={t`Search`}>

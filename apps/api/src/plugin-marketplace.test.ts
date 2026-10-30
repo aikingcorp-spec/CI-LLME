@@ -17,7 +17,9 @@ function setup() {
     if (url.endsWith("plugin-index.json"))
       return JSON.stringify({ plugins: { notes: { components: { skills: [{}] } } } });
     if (url.endsWith("marketplace.json"))
-      return JSON.stringify({ plugins: [{ name: "notes", source: "notes" }] });
+      return JSON.stringify({
+        plugins: [{ name: "notes", source: "https://github.com/example/notes" }],
+      });
     throw new Error("Not found");
   });
   const router = createRouter({
@@ -42,8 +44,9 @@ describe("marketplace RPC", () => {
   it("uses the bounded server catalog rather than a browser fetch", async () => {
     const { read, client } = setup();
     const result = await client(actor).marketplace.catalog({ query: "notes" });
-    expect(result.entries).toHaveLength(2);
-    expect(result.entries.map((row) => row.registry)).toEqual(["Cursor", "xAI"]);
+    // A neutral entry survives even when discovered through a branded registry.
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries.map((row) => row.name)).toEqual(["notes"]);
     const reads = read.mock.calls.length;
     expect((await client(actor).marketplace.catalog({ query: "missing" })).entries).toEqual([]);
     expect(read).toHaveBeenCalledTimes(reads);

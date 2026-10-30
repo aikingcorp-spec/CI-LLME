@@ -5074,6 +5074,18 @@ describe("bot intro run", () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
+  it("supplies Vietnamese defaults even when the intro cannot use tools", () => {
+    for (const disabledBuiltinTools of [[], ["ask_user", "update_bot"]]) {
+      const prompt = botIntroPrompt({ userName: "", spaceName: null, disabledBuiltinTools });
+      expect(prompt).toContain(
+        "Use Vietnamese by default for the greeting, question, choices, title and description. Switch languages only when the user explicitly asks.",
+      );
+      expect(prompt).toContain('"Chào bạn, bạn muốn mình hỗ trợ việc gì?"');
+      expect(prompt).toContain('"Hỗ trợ dự án", "Giải đáp thắc mắc", "Hướng dẫn", "Việc khác"');
+      expect(prompt).toContain('"Ghi sổ kế toán" and "Lập báo cáo"');
+    }
+  });
+
   it("names only the intro tools the bot still has", () => {
     const prompt = (disabledBuiltinTools: string[]) =>
       botIntroPrompt({ userName: "Ada", spaceName: null, disabledBuiltinTools });
@@ -7175,7 +7187,8 @@ describe("openai-compatible enabled models", () => {
     ["bot", { bots: [{ name: "Ada", modelId: "m-b" }] }, "Ada"],
     ["routine", { routines: [{ name: "Nightly digest", modelId: "m-b" }] }, "Nightly digest"],
     ["backup", { backups: ["m-b"] }, "backup models"],
-    ["approval model", { roleChoices: ["m-b"] }, "backup models"],
+    ["main model without backups", { mainPrimary: "m-b" }, "main model"],
+    ["approval model", { roleChoices: ["m-b"] }, "approval model"],
   ])("refuses a shrunk list while a %s pins the removed id", async (_kind, pins, names) => {
     const { call, secrets, state, initialCredential, prisma } = fixture({
       plaintext: secretText(["m-a", "m-b"]),
@@ -7455,7 +7468,7 @@ describe("openai-compatible enabled models", () => {
     });
     expect(await call("models/setDefault", { provider: compatible, modelId: "m-b" })).toEqual({
       status: 400,
-      message: refusal("backup models"),
+      message: refusal("approval model"),
     });
   });
 

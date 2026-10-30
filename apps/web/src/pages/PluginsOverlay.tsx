@@ -72,6 +72,7 @@ import {
   reachesOtherSpaces,
   useOwnSpaces,
 } from "../components/integrations/space-availability";
+import { catalogDescription } from "../lib/catalog-text";
 import { connectedAppMarks } from "../lib/connected-apps";
 import { optionalCatalogFeedProbe } from "../lib/optional-catalog-feed";
 import { useSpaceQueries } from "../lib/query";
@@ -860,7 +861,7 @@ export function PluginsOverlay({
                   key={tool.name}
                   variant="secondary"
                   className="h-6 px-2.5 text-[12px] font-normal"
-                  title={tool.description || undefined}
+                  title={catalogDescription(tool.description ?? "") || undefined}
                 >
                   {toolLabel(tool.name, item)}
                 </Badge>
@@ -915,7 +916,7 @@ export function PluginsOverlay({
     if (category || searching)
       return pluginMatches.length || brandMatches.length ? (
         <section data-testid="plugin-results" className="mt-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {brandMatches.map(({ item }) => renderCatalogTile(item, item.name, item.logo))}
             {pluginMatches.slice(0, pluginCount).map(renderPluginRow)}
           </div>
@@ -956,7 +957,7 @@ export function PluginsOverlay({
             <h2 className="mb-2 px-2.5 text-[15px] font-medium text-foreground">
               <Trans>Recommended</Trans>
             </h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {recommended.map(({ entry, item }) =>
                 item ? renderCatalogTile(item, item.name, item.logo) : renderPluginRow(entry),
               )}
@@ -973,7 +974,7 @@ export function PluginsOverlay({
                 </Button>
               ) : null}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {entries.slice(0, SECTION_SIZE).map(renderPluginRow)}
             </div>
           </section>
@@ -1283,7 +1284,9 @@ export function PluginsOverlay({
               </div>
               <div className="text-xs text-muted-foreground">{result.domain}</div>
               {result.description ? (
-                <p className="mt-2 text-sm leading-5 text-muted-foreground">{result.description}</p>
+                <p className="mt-2 text-sm leading-5 text-muted-foreground">
+                  {catalogDescription(result.description ?? "")}
+                </p>
               ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {result.surfaces.map((surface) => {
@@ -1405,7 +1408,7 @@ export function PluginsOverlay({
                 {sourceError}
               </p>
             ) : null}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {connectedItems.map((item) =>
                 renderCatalogTile(item, item.name, item.logo, { tileTestId: false }),
               )}
@@ -1676,7 +1679,7 @@ export function PluginsOverlay({
                       </p>
                     )
                   ) : (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {featuredTiles.map((tile) => {
                         const item = tile.item;
                         const key = item ? catalogItemKey(item) : tile.id;
@@ -1716,15 +1719,6 @@ export function PluginsOverlay({
               ) : null}
 
               {catalogLoaded &&
-              catalog.length === 0 &&
-              !showFeatured &&
-              !pluginMatches.length &&
-              !brandMatches.length ? (
-                <p className="text-muted-foreground/80">
-                  <Trans>No managed app catalog is configured on this deployment.</Trans>
-                </p>
-              ) : null}
-              {catalogLoaded &&
               visible.length === 0 &&
               !showFeatured &&
               !pluginMatches.length &&
@@ -1742,7 +1736,7 @@ export function PluginsOverlay({
                     </h2>
                   ) : null}
                   {visible.length > 0 && !category ? (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {rendered.map((item) =>
                         renderCatalogTile(item, item.name, item.logo, {
                           // Avoid duplicate connection-tile-* ids while featured is also shown.
@@ -1769,7 +1763,7 @@ export function PluginsOverlay({
               ) : (
                 <>
                   {strongMatches.length > 0 && !category ? (
-                    <div className="mb-2 grid grid-cols-2 gap-2">
+                    <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {strongMatches.map((item) =>
                         renderCatalogTile(item, item.name, item.logo, { tileTestId: true }),
                       )}
@@ -1777,7 +1771,7 @@ export function PluginsOverlay({
                   ) : null}
                   {renderPluginSections()}
                   {rendered.length > 0 && !category ? (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {rendered.map((item) =>
                         renderCatalogTile(item, item.name, item.logo, { tileTestId: true }),
                       )}

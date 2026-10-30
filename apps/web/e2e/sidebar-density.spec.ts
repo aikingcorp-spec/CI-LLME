@@ -133,9 +133,9 @@ test("compact bot sidebar hides previews and preserves roster status accessibly"
     await expect(previewRow.locator('[data-roster-status="running"]')).toHaveText("Working…", {
       timeout: 30_000,
     });
-    await expect(previewRow.locator(".rakazo-logo-avatar")).not.toHaveAttribute(
-      "data-activity",
-      "idle",
+    await expect(previewRow.locator(".rakazo-organic-avatar")).toHaveAttribute(
+      "data-working",
+      "true",
     );
     await expect(previewRow.locator('[data-roster-status="running"]')).toHaveClass(
       /text-status-working/,

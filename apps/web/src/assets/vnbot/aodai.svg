@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" class="vnbot-icon vnbot-aodai">
+  <defs>
+    <symbol id="eye" viewBox="0 0 12 22"><rect width="12" height="22" rx="6" fill="#000"/></symbol>
+  </defs>
+  <ellipse id="shadow" cx="128" cy="216" rx="72" ry="7" fill="#000" fill-opacity=".08"/>
+  <g id="body">
+    <g id="feet" fill="var(--body,#F1E6CF)"><rect x="82" y="196" width="30" height="20" rx="10"/><rect x="144" y="196" width="30" height="20" rx="10"/>
+      <rect x="82" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/><rect x="144" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/></g>
+    <path fill="var(--body,#F1E6CF)" d="M128 66 C174 66 200 124 202 166 C204 202 178 208 128 208 C78 208 52 202 54 166 C56 124 82 66 128 66 Z"/>
+  </g>
+    <g id="acc-aodai-collar">
+    <path d="M62 150 Q128 182 194 150" fill="none" stroke="var(--vnbot-accent-collar,#E2B32E)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M128 166 L112 158 Q108 170 114 176 Z M128 166 L144 158 Q148 170 142 176 Z" fill="var(--vnbot-accent-collar,#E2B32E)" stroke="var(--vnbot-accent-collar-line,#C6961A)" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="128" cy="167" r="5.5" fill="var(--vnbot-accent-collar,#E2B32E)" stroke="var(--vnbot-accent-collar-line,#C6961A)" stroke-width="2.5"/>
+  </g>
+  <g id="eyes"><use href="#eye" xlink:href="#eye" x="104" y="120" width="12" height="22"/><use href="#eye" xlink:href="#eye" x="140" y="120" width="12" height="22"/></g>
+</svg>

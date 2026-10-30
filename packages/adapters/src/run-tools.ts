@@ -34,7 +34,10 @@ const TOOL_HANDLERS = new Map<string, ToolHandler>([
 
 function toolHandler(name: string): ToolHandler {
   return (
-    TOOL_HANDLERS.get(name) ?? (name.startsWith("cloud_agent_") ? cloudAgentTool : connectorTool)
+    TOOL_HANDLERS.get(name) ??
+    (["cloud_agent_status", "cloud_agent_reply", "cloud_agent_cancel"].includes(name)
+      ? cloudAgentTool
+      : connectorTool)
   );
 }
 

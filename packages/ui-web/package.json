@@ -5,8 +5,12 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./svg-ids": "./src/svg-ids.ts",
     "./styles.css": "./src/styles.css",
     "./lib/utils": "./src/lib/utils.ts",
+    "./bot-avatar-activity": "./src/bot-avatar-activity.tsx",
+    "./components/ui/button-variants": "./src/components/ui/button-variants.ts",
+    "./components/ui/input-variants": "./src/components/ui/input-variants.ts",
     "./components/ui/*": "./src/components/ui/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   },

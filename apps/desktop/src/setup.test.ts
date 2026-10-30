@@ -11,6 +11,8 @@ import type {
   RakazoSetup,
 } from "@rakazo/contracts";
 import { afterEach, describe, expect, it } from "vitest";
+import type { Locale } from "./strings.js";
+import { format, stringsFor } from "./strings.js";
 
 const DEFAULT_LOCAL_URL = "http://127.0.0.1:6130";
 const CLOUD_URL = "https://cloud.rakazo.example";
@@ -83,7 +85,7 @@ interface Harness {
   saves: DesktopSetup[];
 }
 
-function mount(saved: DesktopSetup | null): Harness {
+function mount(saved: DesktopSetup | null, locale: Locale = "vi"): Harness {
   document.body.innerHTML = setupBody ?? "";
   const checkCalls: Array<Deferred<DesktopReachability>> = [];
   const startResult = deferred<DesktopLocalStackState>();
@@ -123,6 +125,10 @@ function mount(saved: DesktopSetup | null): Harness {
     },
   };
   (window as { rakazoSetup?: RakazoSetup }).rakazoSetup = bridge;
+  (window as { rakazoSetupText?: unknown }).rakazoSetupText = {
+    lang: locale,
+    strings: stringsFor(locale).setup,
+  };
   // Run the plain script the same way setup.html's script tag does.
   new Function(setupScript)();
 
@@ -149,8 +155,8 @@ function mount(saved: DesktopSetup | null): Harness {
 }
 
 /** Loads the page and lets init settle on an idle stack. */
-async function boot(saved: DesktopSetup | null): Promise<Harness> {
-  const ui = mount(saved);
+async function boot(saved: DesktopSetup | null, locale: Locale = "vi"): Promise<Harness> {
+  const ui = mount(saved, locale);
   await flush(); // init reaches its stack.state call only after its state await resumes
   ui.resolveStackState(stackState("idle"));
   await flush();
@@ -158,17 +164,20 @@ async function boot(saved: DesktopSetup | null): Promise<Harness> {
   return ui;
 }
 
+const text = stringsFor("vi").setup;
+
 describe("setup", () => {
   afterEach(() => {
     document.body.innerHTML = "";
     delete (window as { rakazoSetup?: RakazoSetup }).rakazoSetup;
+    delete (window as { rakazoSetupText?: unknown }).rakazoSetupText;
   });
 
   it("keeps an address edited while the connection check is pending", async () => {
     const ui = await boot({ mode: "existing", serverUrl: "https://one.example" });
     element<HTMLButtonElement>("check").click();
     await flush();
-    expect(element("status").textContent).toBe("Checking…");
+    expect(element("status").textContent).toBe(text.checking);
 
     element<HTMLInputElement>("server-url").value = "https://two.example";
     element<HTMLInputElement>("server-url").dispatchEvent(new Event("input"));
@@ -201,20 +210,22 @@ describe("setup", () => {
     await flush();
     expect(element<HTMLButtonElement>("check").disabled).toBe(true);
     expect(element<HTMLButtonElement>("continue").disabled).toBe(true);
-    expect(element("status").textContent).toBe("Checking…");
+    expect(element("status").textContent).toBe(text.checking);
 
     // The retired check settles last; its stale success must not touch the newer check's state.
     staleCheck.resolve({ ok: true, url: "https://one.example" });
     await flush();
     expect(field.value).toBe("two.example");
-    expect(element("status").textContent).toBe("Checking…");
+    expect(element("status").textContent).toBe(text.checking);
     expect(element<HTMLButtonElement>("check").disabled).toBe(true);
     expect(element<HTMLButtonElement>("continue").disabled).toBe(true);
 
     currentCheck.resolve({ ok: true, url: "https://two.example" });
     await flush();
     expect(field.value).toBe("https://two.example");
-    expect(element("status").textContent).toBe("Rakazo answered at https://two.example.");
+    expect(element("status").textContent).toBe(
+      format(text.answered, { url: "https://two.example" }),
+    );
     expect(element("status").getAttribute("data-tone")).toBe("ok");
     expect(element<HTMLButtonElement>("check").disabled).toBe(false);
     expect(element<HTMLButtonElement>("continue").disabled).toBe(false);
@@ -271,7 +282,7 @@ describe("setup", () => {
     await flush();
 
     expect(element("stack").hidden).toBe(false);
-    expect(element("stack-phase").textContent).toBe("Downloading Rakazo…");
+    expect(element("stack-phase").textContent).toBe(text.phasePulling);
   });
 
   it("normalizes the address and reports success for the current check", async () => {
@@ -284,7 +295,9 @@ describe("setup", () => {
     await flush();
 
     expect(element<HTMLInputElement>("server-url").value).toBe("https://one.example");
-    expect(element("status").textContent).toBe("Rakazo answered at https://one.example.");
+    expect(element("status").textContent).toBe(
+      format(text.answered, { url: "https://one.example" }),
+    );
     expect(element("status").getAttribute("data-tone")).toBe("ok");
     expect(element<HTMLButtonElement>("check").disabled).toBe(false);
   });
@@ -310,7 +323,7 @@ describe("setup", () => {
     ui.startResult.resolve(stackState("pulling"));
     await flush();
     expect(element("stack").hidden).toBe(false);
-    expect(element("stack-phase").textContent).toBe("Downloading Rakazo…");
+    expect(element("stack-phase").textContent).toBe(text.phasePulling);
     expect(element<HTMLButtonElement>("continue").disabled).toBe(true);
 
     ui.resolveStackState(stackState("ready"));
@@ -318,9 +331,46 @@ describe("setup", () => {
     ui.resolveAppState(null);
     await flush();
 
-    expect(element("stack-phase").textContent).toBe("Rakazo is ready.");
+    expect(element("stack-phase").textContent).toBe(text.phaseReady);
     expect(element("stack-phase").getAttribute("data-tone")).toBe("ok");
     expect(ui.saves).toEqual([{ mode: "new", serverUrl: DEFAULT_LOCAL_URL }]);
     expect(element<HTMLButtonElement>("continue").disabled).toBe(false);
+  });
+
+  it("renders the page in Vietnamese by default", async () => {
+    await boot(null);
+    expect(document.documentElement.lang).toBe("vi");
+    expect(document.title).toBe(text.windowTitle);
+    expect(document.querySelector(".heading")?.textContent).toBe(text.heading);
+    expect(element("continue").textContent).toBe(text.continue);
+    expect(element("quit").getAttribute("title")).toBe(text.quitTitle);
+    expect(element("server-url").getAttribute("placeholder")).toBe("https://vnbot.example.com");
+  });
+
+  it("renders the page in English when asked", async () => {
+    await boot(null, "en");
+    const english = stringsFor("en").setup;
+    expect(document.documentElement.lang).toBe("en");
+    expect(document.querySelector(".heading")?.textContent).toBe(english.heading);
+    expect(element("continue").textContent).toBe(english.continue);
+    expect(element("check").textContent).toBe(english.check);
+  });
+
+  it("ships Vietnamese text in the page itself", () => {
+    document.body.innerHTML = setupBody ?? "";
+    for (const node of document.querySelectorAll<HTMLElement>("[data-text]")) {
+      const key = node.dataset.text as keyof typeof text;
+      expect(node.textContent, key).toBe(text[key]);
+    }
+    for (const [attribute, key] of [
+      ["title", "title"],
+      ["aria-label", "ariaLabel"],
+      ["placeholder", "placeholder"],
+    ] as const) {
+      for (const node of document.querySelectorAll<HTMLElement>(`[data-${attribute}]`)) {
+        const textKey = node.dataset[key] as keyof typeof text;
+        expect(node.getAttribute(attribute), textKey).toBe(text[textKey]);
+      }
+    }
   });
 });

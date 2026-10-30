@@ -238,13 +238,22 @@ describe("builtin tools", () => {
         disabledBuiltinTools: ticketNames,
       }).map((tool) => tool.name),
     ).toEqual(disabled);
-    const purchaseNames = ["request_purchase", "purchase_status", "paid_request"];
+    const purchaseNames = ["purchase_status"];
     expect(enabled.filter((name) => purchaseNames.includes(name))).toEqual([]);
     expect(
       selectBuiltinToolsForRun({ ...options, paymentWalletEnabled: true })
         .map((tool) => tool.name)
         .filter((name) => purchaseNames.includes(name)),
     ).toEqual(purchaseNames);
+    for (const name of ["cloud_agent_launch", "request_purchase", "paid_request"]) {
+      expect(BUILTIN_TOOL_NAMES).not.toContain(name);
+      expect(builtinAgentTools.map((tool) => tool.name)).not.toContain(name);
+      expect(
+        selectBuiltinToolsForRun({ ...options, paymentWalletEnabled: true }).map(
+          (tool) => tool.name,
+        ),
+      ).not.toContain(name);
+    }
     const updateBot = builtinAgentTools.find((tool) => tool.name === "update_bot");
     expect(updateBot?.inputSchema).toEqual(
       expect.objectContaining({

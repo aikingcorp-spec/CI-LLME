@@ -1,0 +1,29 @@
+:root {
+  --vnbot-body-la-ma: #93a460; /* eye 7.72:1 */
+  --vnbot-body-la-dong: #6c763d; /* eye 4.3:1 */
+  --vnbot-body-kem-lua: #f3e1c9; /* eye 16.42:1 */
+  --vnbot-body-cham-ran: #4d5a80; /* eye 3.09:1 */
+  --vnbot-body-hong-sen: #f1a4a4; /* eye 10.59:1 */
+  --vnbot-body-do-son: #c8322b; /* eye 3.95:1 */
+  --vnbot-body-vang-nghe: #f2b705; /* eye 11.55:1 */
+  --vnbot-body-xanh-ma: #7bc043; /* eye 9.46:1 */
+  --vnbot-body-xanh-ngoc: #1fa7a0; /* eye 7.09:1 */
+  --vnbot-body-cam-gach: #e8743b; /* eye 6.99:1 */
+  --vnbot-body-nau-ca-phe: #a8714b; /* eye 5.13:1 */
+  --vnbot-body-cham: #5566b0; /* eye 3.91:1 */
+  --vnbot-accent-collar: #e2b32e;
+  --vnbot-accent-on-light-collar: #8a5a12;
+  --vnbot-accent-collar-line: #c6961a;
+  --vnbot-accent-on-light-collar-line: #5e3d0a;
+  --vnbot-accent-lat: #e2c98a;
+  --vnbot-accent-on-light-lat: #8c6a2e;
+  --vnbot-accent-lat-line: #c6a55e;
+  --vnbot-accent-on-light-lat-line: #6b4f1e;
+}
+[data-body-tone="light"],
+.vnbot-tone-light {
+  --vnbot-accent-collar: var(--vnbot-accent-on-light-collar);
+  --vnbot-accent-collar-line: var(--vnbot-accent-on-light-collar-line);
+  --vnbot-accent-lat: var(--vnbot-accent-on-light-lat);
+  --vnbot-accent-lat-line: var(--vnbot-accent-on-light-lat-line);
+}

@@ -66,7 +66,14 @@ const SCHEMAS = new Set([
   "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "https://agent-plugins.org/schemas/1.1.0/plugin.schema.json",
 ]);
-const MANIFESTS = ["plugin.json", ".cursor-plugin/plugin.json", ".grok-plugin/plugin.json"];
+// Prefer a VNBot Agent Plugins manifest. Keep legacy packages ahead of the root
+// manifest so their HTTP MCP config does not inherit an unrelated root schema.
+const MANIFESTS = [
+  ".vnbot-plugin/plugin.json",
+  ".cursor-plugin/plugin.json",
+  ".grok-plugin/plugin.json",
+  "plugin.json",
+];
 /** Parts that only run inside an editor or execute the plugin's own code on the host. */
 const UNSUPPORTED_DIRS = new Set(["rules", "hooks", "automations"]);
 const UNSUPPORTED_FILES = new Set([".lsp.json"]);
@@ -184,9 +191,63 @@ export type PluginTextReader = (
   url: string,
   maxBytes: number,
   signal?: AbortSignal,
+  headers?: Record<string, string>,
 ) => Promise<string>;
-const readPublicText: PluginTextReader = async (url, maxBytes, signal) =>
-  (await fetchSafeWebText(url, { maxBytes, signal })).body;
+const readPublicText: PluginTextReader = async (url, maxBytes, signal, headers) =>
+  (await fetchSafeWebText(url, { maxBytes, signal, headers })).body;
+
+/** Unauthenticated GitHub API calls share 60 per hour per server IP. An operator can set
+ * GITHUB_TOKEN (any read-only token) to raise that; it is sent only to api.github.com. */
+export function githubApiHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { accept: "application/vnd.github+json" };
+  const token = process.env.GITHUB_TOKEN?.trim();
+  if (token) headers.authorization = `Bearer ${token}`;
+  return headers;
+}
+
+/** One stalled connection must not eat the whole preview budget: each request gets its own
+ * short deadline and one retry, inside the overall deadline. */
+const ATTEMPT_TIMEOUT_MS = 8_000;
+const MAX_RETRIES = 3;
+async function readWithRetry(
+  read: PluginTextReader,
+  url: string,
+  maxBytes: number,
+  deadline: AbortSignal,
+  headers?: Record<string, string>,
+): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await read(
+        url,
+        maxBytes,
+        AbortSignal.any([deadline, AbortSignal.timeout(ATTEMPT_TIMEOUT_MS)]),
+        headers,
+      );
+    } catch (error) {
+      // GitHub answers an exhausted unauthenticated quota with 403; that says nothing about the
+      // plugin, so report it as a rate limit and keep the plugin in browse.
+      if (
+        url.startsWith("https://api.github.com/") &&
+        error instanceof Error &&
+        /HTTP (?:403|429)\b/.test(error.message)
+      )
+        throw new Error(
+          `Request failed: HTTP 429 (GitHub API rate limit${headers?.authorization ? "" : "; unauthenticated requests share 60/hour per server IP"}; optionally set GITHUB_TOKEN)`,
+        );
+      // The 8088 VPS path drops ~5-10% of TLS handshakes to GitHub (ERR_SSL_UNEXPECTED_MESSAGE);
+      // a plugin like Figma reads dozens of files, so one retry per file was not enough.
+      if (attempt >= MAX_RETRIES || deadline.aborted || !isTransientFetchError(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+    }
+  }
+}
+
+/** Files at a resolved commit never change, so repeat previews of the same plugin skip the
+ * tree and file downloads and cost one commit lookup. */
+const REPO_CACHE_TTL_MS = 10 * 60_000;
+const REPO_CACHE_MAX = 100;
+const repoCache = new Map<string, { expires: number; files: PluginRepoFile[] }>();
 
 export async function fetchGitHubRepo(
   ref: PluginSourceRef,
@@ -198,11 +259,14 @@ export async function fetchGitHubRepo(
     throw new Error("Only public github.com plugin sources are supported right now");
   const repo = url.pathname;
   const deadline = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(30_000)]);
+  const apiHeaders = githubApiHeaders();
   const commit = JSON.parse(
-    await read(
+    await readWithRetry(
+      read,
       `https://api.github.com/repos${repo}/commits/${encodeURIComponent(ref.ref ?? "HEAD")}`,
       512_000,
       deadline,
+      apiHeaders,
     ),
   ) as { sha?: string; commit?: { tree?: { sha?: string } } };
   const sha = commit.sha;
@@ -211,11 +275,19 @@ export async function fetchGitHubRepo(
     throw new Error("Plugin commit SHA did not match the requested pin");
   const treeSha = commit.commit?.tree?.sha;
   if (!treeSha || !FULL_SHA.test(treeSha)) throw new Error("Could not resolve plugin tree");
+  const cacheKey = `${repo}@${sha}#${ref.subdir ?? ""}`;
+  // Only the real public reader is cached; injected readers (tests, other hosts) always read.
+  const cacheable = read === readPublicText;
+  const hit = cacheable ? repoCache.get(cacheKey) : undefined;
+  if (hit && hit.expires > Date.now())
+    return { files: hit.files.map((file) => ({ ...file })), resolvedSha: sha };
   const tree = JSON.parse(
-    await read(
+    await readWithRetry(
+      read,
       `https://api.github.com/repos${repo}/git/trees/${treeSha}?recursive=1`,
       MAX_BYTES,
       deadline,
+      apiHeaders,
     ),
   ) as {
     truncated?: boolean;
@@ -258,7 +330,8 @@ export async function fetchGitHubRepo(
   await Promise.all(
     Array.from({ length: FETCH_CONCURRENCY }, async () => {
       for (let path = queue.shift(); path !== undefined; path = queue.shift()) {
-        const body = await read(
+        const body = await readWithRetry(
+          read,
           `https://raw.githubusercontent.com${repo}/${sha}/${path.split("/").map(encodeURIComponent).join("/")}`,
           MAX_FILE_BYTES,
           deadline,
@@ -271,7 +344,10 @@ export async function fetchGitHubRepo(
   );
   // Parallel downloads finish in any order; parsing must not depend on it.
   files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  return { files, resolvedSha: sha };
+  if (cacheable && repoCache.size >= REPO_CACHE_MAX)
+    repoCache.delete(repoCache.keys().next().value as string);
+  if (cacheable) repoCache.set(cacheKey, { expires: Date.now() + REPO_CACHE_TTL_MS, files });
+  return { files: files.map((file) => ({ ...file })), resolvedSha: sha };
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -518,7 +594,7 @@ export function parsePluginDirectory(input: {
   const raw: unknown = JSON.parse(files.get(manifestPath) ?? "");
   if (!object(raw)) throw new Error("Plugin manifest must be an object");
   const format =
-    manifestPath === "plugin.json"
+    manifestPath === "plugin.json" || manifestPath === ".vnbot-plugin/plugin.json"
       ? "agent-plugins"
       : manifestPath.startsWith(".cursor")
         ? "cursor"
@@ -703,6 +779,9 @@ export function pluginPreviewDto(plugin: ParsedPlugin): PluginPreview {
 export function isTransientFetchError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   if (error.name === "AbortError" || error.name === "TimeoutError") return true;
+  const code = (error.cause as { code?: unknown } | undefined)?.code;
+  if (typeof code === "string" && /^(ERR_SSL_|ECONN|EPIPE|ETIMEDOUT|UND_ERR_)/.test(code))
+    return true;
   return /HTTP (408|429|5\d\d)|fetch failed|timed? ?out|aborted|ECONN|ENOTFOUND|EAI_AGAIN/i.test(
     error.message,
   );

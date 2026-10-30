@@ -96,4 +96,16 @@ for case in env git key-file key-body; do
   done
 done
 
+# Source maps fail the check and are each named; third-party maps under node_modules are skipped.
+dir="$(image maps)"
+mkdir -p "$dir/app/apps/web/dist/assets" && touch "$dir/app/apps/web/dist/assets/index-abc.js.map" \
+  "$dir/app/apps/api/dist/index.js.map" "$dir/app/node_modules/pkg/index.js.map"
+for checker in check check_tar; do
+  if output="$($checker "$dir")"; then fail "maps: $checker passed an image with source maps"; fi
+  grep -q "source maps that must not ship" <<<"$output" || fail "maps: unexpected $checker output: $output"
+  grep -q "app/apps/web/dist/assets/index-abc.js.map" <<<"$output" || fail "maps: web map not listed: $output"
+  grep -q "app/apps/api/dist/index.js.map" <<<"$output" || fail "maps: api map not listed: $output"
+  grep -q "node_modules" <<<"$output" && fail "maps: a third-party map was listed: $output"
+done
+
 echo "check-image smoke passed"

@@ -49,20 +49,20 @@ export const SUBSCRIPTION_SIGN_IN_PROVIDERS: Record<
     mode: "device-code",
     loginLabel: "Sign in with ChatGPT",
     hint: "ChatGPT Plus/Pro",
-    billing:
-      "Sign in with ChatGPT Plus or Pro. Uses your OpenAI subscription. Rakazo does not pay.",
+    billing: "Đăng nhập bằng ChatGPT Plus hoặc Pro. Dùng gói OpenAI của bạn. VNBot không trả phí.",
   },
   [COPILOT_OAUTH_PROVIDER]: {
     mode: "device-code",
     loginLabel: "Sign in with GitHub Copilot",
     hint: "Copilot",
-    billing: "Sign in with GitHub Copilot. Uses your Copilot subscription. Rakazo does not pay.",
+    billing: "Đăng nhập bằng GitHub Copilot. Dùng gói Copilot của bạn. VNBot không trả phí.",
   },
   [XAI_OAUTH_PROVIDER]: {
     mode: "device-code",
     loginLabel: "Sign in with SuperGrok or X Premium",
     hint: "SuperGrok / key",
-    billing: "Sign in with SuperGrok or X Premium, or paste an xAI API key. Rakazo does not pay.",
+    billing:
+      "Đăng nhập bằng SuperGrok hoặc X Premium, hoặc dán khóa API của bạn. VNBot không trả phí.",
   },
   [ANTHROPIC_OAUTH_PROVIDER]: {
     mode: "auth-url",

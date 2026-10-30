@@ -176,6 +176,8 @@ export function botIntroPrompt(input: {
     ]
       .filter(Boolean)
       .join(" "),
+    "Use Vietnamese by default for the greeting, question, choices, title and description. Switch languages only when the user explicitly asks.",
+    'A default question is "Chào bạn, bạn muốn mình hỗ trợ việc gì?". If their role is unknown, offer "Hỗ trợ dự án", "Giải đáp thắc mắc", "Hướng dẫn", "Việc khác". For an accounting role, use choices such as "Ghi sổ kế toán" and "Lập báo cáo". Adapt these choices to their profile, keeping them in Vietnamese.',
     // Text streamed before ask_user is not kept once the run pauses, so the greeting
     // goes in the question itself.
     canAsk

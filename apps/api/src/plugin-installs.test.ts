@@ -185,7 +185,7 @@ describe("confirmed plugin installation", () => {
     const digest = (await previewPluginInstall({ source, fetcher: deps.fetcher })).digest;
     await expect(
       installPlugin(deps, actor, { source, name: "Example", config: {}, pluginDigest: digest }),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
+    ).rejects.toMatchObject({ code: "PLUGIN_SKILL_CONFLICT", status: 409 });
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
   it("cleans prepared secret references when a later encryption fails", async () => {

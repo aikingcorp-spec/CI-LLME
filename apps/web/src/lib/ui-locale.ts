@@ -1,6 +1,7 @@
 import { matchUiLocale } from "@rakazo/core";
 
 export const UI_LOCALES = [
+  "vi",
   "en",
   "de",
   "ko",
@@ -17,11 +18,14 @@ export const UI_LOCALES = [
   "ja",
 ] as const;
 
+export const PICKER_LOCALES = ["vi", "en"] as const;
+
 export type UiLocale = (typeof UI_LOCALES)[number];
 
 export const UI_LOCALE_STORAGE_KEY = "rakazo.uiLocale";
 
 export const UI_LOCALE_LABELS: Record<UiLocale, string> = {
+  vi: "Tiếng Việt",
   en: "English",
   de: "Deutsch",
   ko: "한국어",
@@ -43,6 +47,13 @@ export function normalizeUiLocale(raw: string | null | undefined): UiLocale {
   return matchUiLocale(raw, UI_LOCALES);
 }
 
+/** Saved catalogs the web UI no longer offers; they move to Vietnamese. */
+const RETIRED_UI_LOCALES: readonly UiLocale[] = ["ja", "ko", "zh-CN", "zh-TW"];
+
+function migrateRetiredLocale(locale: UiLocale): UiLocale {
+  return RETIRED_UI_LOCALES.includes(locale) ? "vi" : locale;
+}
+
 function readStoredLocale(storage: Pick<Storage, "getItem"> | null | undefined): string | null {
   if (!storage) return null;
   try {
@@ -57,27 +68,16 @@ function readEnvDefault(env: { VITE_DEFAULT_UI_LOCALE?: string } | undefined): s
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function readNavigatorLanguage(
-  nav: Pick<Navigator, "language" | "languages"> | null | undefined,
-): string | null {
-  if (!nav) return null;
-  if (typeof nav.language === "string" && nav.language) return nav.language;
-  const first = nav.languages?.[0];
-  return typeof first === "string" && first ? first : null;
-}
-
 export type ResolveUiLocaleOptions = {
   stored?: string | null;
   envDefault?: string | null;
-  navigatorLanguage?: string | null;
   storage?: Pick<Storage, "getItem"> | null;
   env?: { VITE_DEFAULT_UI_LOCALE?: string };
-  navigator?: Pick<Navigator, "language" | "languages"> | null;
 };
 
 /**
- * Order: saved choice (`localStorage`) → `VITE_DEFAULT_UI_LOCALE` →
- * `navigator.language` → English.
+ * Order: saved choice (`localStorage`) → valid `VITE_DEFAULT_UI_LOCALE` → Vietnamese.
+ * Browser language never overrides the default.
  */
 export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale {
   const stored =
@@ -86,7 +86,7 @@ export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale 
       : readStoredLocale(
           options.storage ?? (typeof localStorage !== "undefined" ? localStorage : null),
         );
-  if (stored) return normalizeUiLocale(stored);
+  if (stored) return migrateRetiredLocale(normalizeUiLocale(stored));
 
   const envDefault =
     options.envDefault !== undefined
@@ -99,17 +99,14 @@ export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale 
                 }
               : undefined),
         );
-  if (envDefault) return normalizeUiLocale(envDefault);
+  if (envDefault) {
+    const locale = normalizeUiLocale(envDefault);
+    // The shared normalizer also returns English for unsupported values.
+    const language = envDefault.trim().toLowerCase().split(/[-_]/)[0];
+    if (locale !== "en" || language === "en") return locale;
+  }
 
-  const navigatorLanguage =
-    options.navigatorLanguage !== undefined
-      ? options.navigatorLanguage
-      : readNavigatorLanguage(
-          options.navigator ?? (typeof navigator !== "undefined" ? navigator : null),
-        );
-  if (navigatorLanguage) return normalizeUiLocale(navigatorLanguage);
-
-  return "en";
+  return "vi";
 }
 
 export function persistUiLocale(
@@ -124,4 +121,16 @@ export function persistUiLocale(
   } catch {
     // Ignore quota / private-mode failures; in-memory locale still applies.
   }
+}
+
+/** Rewrite a saved retired locale (`ja`, `ko`, `zh-CN`, `zh-TW`, or a raw tag like `ja-JP`) to `vi`. */
+export function migrateStoredUiLocale(
+  storage: Pick<Storage, "getItem" | "setItem"> | null = typeof localStorage !== "undefined"
+    ? localStorage
+    : null,
+): void {
+  const stored = readStoredLocale(storage);
+  if (!stored) return;
+  const normalized = normalizeUiLocale(stored);
+  if (migrateRetiredLocale(normalized) !== normalized) persistUiLocale("vi", storage);
 }

@@ -343,6 +343,96 @@ describe("GitHub acquisition", () => {
       return JSON.stringify(manifest);
     });
   }
+  it("retries one stalled GitHub request instead of failing the preview", async () => {
+    const inner = reader();
+    let stalled = false;
+    const read = vi.fn(async (url: string, _max: number, _signal?: AbortSignal) => {
+      if (!stalled && url.includes("raw.githubusercontent.com")) {
+        stalled = true;
+        throw Object.assign(new Error("The operation timed out"), { name: "TimeoutError" });
+      }
+      return inner(url);
+    });
+    const repo = await fetchGitHubRepo(
+      parsePluginSource("https://github.com/example/plugin@main"),
+      undefined,
+      read,
+    );
+    expect(repo.resolvedSha).toBe(SHA);
+    expect(read.mock.calls.filter(([url]) => url.includes("raw.githubusercontent")).length).toBe(2);
+  });
+  it("sends GITHUB_TOKEN only to the GitHub API, never to raw file hosts", async () => {
+    const read = reader();
+    vi.stubEnv("GITHUB_TOKEN", "test-token");
+    try {
+      await fetchGitHubRepo(
+        parsePluginSource("https://github.com/example/plugin@main"),
+        undefined,
+        read,
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    for (const [url, , , headers] of read.mock.calls as unknown as Array<
+      [string, number, AbortSignal, Record<string, string> | undefined]
+    >) {
+      if (url.startsWith("https://api.github.com/"))
+        expect(headers?.authorization).toBe("Bearer test-token");
+      else expect(headers?.authorization).toBeUndefined();
+    }
+  });
+  it("previews without a token and does not send authorization", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "");
+    const read = reader();
+    try {
+      await fetchGitHubRepo(
+        parsePluginSource("https://github.com/example/plugin@main"),
+        undefined,
+        read,
+      );
+      for (const call of read.mock.calls) {
+        expect(
+          (call as unknown as [string, number, AbortSignal, Record<string, string>])[3]
+            ?.authorization,
+        ).toBeUndefined();
+      }
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+  it.each([403, 429])("reports the unauthenticated GitHub quota for HTTP %s", async (status) => {
+    vi.stubEnv("GITHUB_TOKEN", "");
+    try {
+      const read = vi.fn(async () => {
+        throw new Error(`Request failed: HTTP ${status}`);
+      });
+      await expect(
+        fetchGitHubRepo(
+          parsePluginSource("https://github.com/example/plugin@main"),
+          undefined,
+          read,
+        ),
+      ).rejects.toThrow(/HTTP 429.*unauthenticated.*60\/hour.*optionally set GITHUB_TOKEN/);
+      expect(read).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+  it("fetches and parses the VNBot manifest", async () => {
+    const read = reader([
+      { path: ".vnbot-plugin/plugin.json", type: "blob", mode: "100644", size: 80 },
+    ]);
+    const repo = await fetchGitHubRepo(
+      parsePluginSource("https://github.com/example/plugin"),
+      undefined,
+      read,
+    );
+    expect(repo.files.map((file) => file.path)).toEqual([".vnbot-plugin/plugin.json"]);
+    expect(parsePluginDirectory(repo)).toMatchObject({
+      name: "example-plugin",
+      format: "agent-plugins",
+    });
+  });
   it("resolves once then fetches an immutable tree and raw files", async () => {
     const read = reader();
     const repo = await fetchGitHubRepo(
@@ -398,6 +488,14 @@ describe("GitHub acquisition", () => {
   });
   it("tells temporary fetch failures from unsupported content", () => {
     expect(isTransientFetchError(new Error("Request failed: HTTP 503"))).toBe(true);
+    // A dropped TLS handshake on the VPS path (seen 3/40 to raw.githubusercontent.com) is transient.
+    expect(
+      isTransientFetchError(
+        new TypeError("x", {
+          cause: Object.assign(new Error("ssl"), { code: "ERR_SSL_UNEXPECTED_MESSAGE" }),
+        }),
+      ),
+    ).toBe(true);
     expect(isTransientFetchError(new Error("Request failed: HTTP 429"))).toBe(true);
     expect(isTransientFetchError(new DOMException("The operation timed out", "TimeoutError"))).toBe(
       true,
@@ -448,5 +546,65 @@ describe("GitHub acquisition", () => {
     });
     expect(preview.source.subdir).toBe("one");
     expect(preview.skills).toHaveLength(1);
+  });
+});
+
+describe("repositories publishing multiple plugin formats", () => {
+  it("prefers the VNBot manifest over legacy and root manifests", () => {
+    const preview = parse([
+      ...files(),
+      { path: ".cursor-plugin/plugin.json", content: JSON.stringify({ name: "legacy" }) },
+      {
+        path: ".vnbot-plugin/plugin.json",
+        content: JSON.stringify({ ...manifest, name: "vnbot-package" }),
+      },
+    ]);
+    expect(preview.name).toBe("vnbot-package");
+    expect(preview.format).toBe("agent-plugins");
+    expect(preview.mcpServers).toHaveLength(1);
+  });
+
+  it("previews the Figma layout without applying the root schema to legacy MCP config", async () => {
+    const preview = await previewPluginInstall({
+      source: "https://github.com/figma/mcp-server-guide",
+      fetcher: async () => ({
+        resolvedSha: SHA,
+        files: [
+          { path: "plugin.json", content: JSON.stringify({ ...manifest, name: "figma" }) },
+          {
+            path: ".cursor-plugin/plugin.json",
+            content: JSON.stringify({ name: "figma", mcpServers: "./.mcp.json" }),
+          },
+          {
+            path: "mcp.json",
+            content: JSON.stringify({
+              mcpServers: {
+                figma: {
+                  type: "http",
+                  url: "https://mcp.figma.com/mcp",
+                  _meta: { ideToolTitles: {} },
+                },
+              },
+            }),
+          },
+          { path: "skills/design/SKILL.md", content: skill },
+        ],
+      }),
+    });
+    expect(preview.name).toBe("figma");
+    expect(preview.mcpServers).toMatchObject([
+      { endpoint: "https://mcp.figma.com/mcp", transport: "streamable_http" },
+    ]);
+    expect(preview.skipped).toEqual([]);
+  });
+  it("still rejects an unsupported standalone root schema", () => {
+    expect(() =>
+      parse([
+        {
+          path: "plugin.json",
+          content: JSON.stringify({ name: "figma", $schema: "https://example.test/unknown" }),
+        },
+      ]),
+    ).toThrow("Unsupported Agent Plugins schema");
   });
 });

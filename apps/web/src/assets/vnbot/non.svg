@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" class="vnbot-icon vnbot-non">
+  <defs>
+    <symbol id="eye" viewBox="0 0 12 22"><rect width="12" height="22" rx="6" fill="#000"/></symbol>
+  </defs>
+  <ellipse id="shadow" cx="128" cy="216" rx="74" ry="7" fill="#000" fill-opacity=".08"/>
+  <g id="body">
+    <g id="feet" fill="var(--body,#93A460)"><rect x="84" y="196" width="30" height="20" rx="10"/><rect x="142" y="196" width="30" height="20" rx="10"/>
+      <rect x="84" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/><rect x="142" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/></g>
+    <path fill="var(--body,#93A460)" d="M58 156 C58 116 88 106 128 106 C168 106 198 116 198 156 C198 196 176 206 128 206 C80 206 58 196 58 156 Z"/>
+  </g>
+    <g id="acc-non">
+    <path d="M128 38 L226 112 Q230 120 220 121 Q128 134 36 121 Q26 120 30 112 Z" fill="#E6C891"/>
+    <path d="M36 121 Q128 134 220 121 Q214 130 202 131 Q128 142 54 131 Q42 130 36 121 Z" fill="#C79E62"/>
+    <g fill="none" stroke="#B88E55" stroke-width="2.5" stroke-linecap="round"><path d="M128 40 L84 125 M128 40 L128 128 M128 40 L172 125"/><path d="M95 64 Q128 70 161 64 M66 90 Q128 102 190 90"/></g>
+  </g>
+  <g id="eyes"><use href="#eye" xlink:href="#eye" x="104" y="140" width="12" height="22"/><use href="#eye" xlink:href="#eye" x="140" y="140" width="12" height="22"/></g>
+</svg>

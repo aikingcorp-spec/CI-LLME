@@ -12,7 +12,6 @@ import {
   MAX_MODEL_MAX_TOKENS,
   modelHeadersInput,
   OPENAI_COMPATIBLE_PROVIDER_ID,
-  openAiCompatibleProbeSuccessMessage,
   savedCompatibleEndpointMatches,
 } from "@rakazo/contracts";
 import type { ConnectionFormFields } from "@rakazo/core";
@@ -39,6 +38,7 @@ import type { ModelCatalogEntry } from "../../lib/model-auth";
 import type { ModelPreflightFailure } from "../../lib/model-connection-preflight";
 import {
   classifyModelConnectionFailure,
+  compatibleProbeSuccessMessage,
   loadStoredModelAuth,
   modelPreflightSuccessMessage,
   runModelConnectionPreflight,
@@ -445,7 +445,7 @@ export function useModelSettings(onClose: () => void, scope: SettingsScope) {
         }
         setPreflightTarget(null);
         setPreflightFailure(null);
-        setNotice(openAiCompatibleProbeSuccessMessage(models.length));
+        setNotice(compatibleProbeSuccessMessage(models.length));
       },
       onError: (err) => {
         if (!preflightStillCurrent(revision)) return;

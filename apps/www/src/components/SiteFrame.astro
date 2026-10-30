@@ -1,7 +1,6 @@
 ---
 import type { FaqItem } from "../alternatives";
 import { faqPageSchema } from "../alternatives";
-import { githubStarsLabel } from "../github";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Footer from "./Footer.astro";
 import Header from "./Header.astro";
@@ -29,7 +28,6 @@ const {
   wide = false,
   markdownAlternate,
 } = Astro.props;
-const starsLabel = await githubStarsLabel();
 const structuredData =
   structuredDataProp ?? (faq && faq.length > 0 ? faqPageSchema(faq) : undefined);
 ---
@@ -45,7 +43,7 @@ const structuredData =
   markdownAlternate={markdownAlternate}
 >
   <div class="container">
-    <Header starsLabel={starsLabel} />
+    <Header />
     <main id="main" class:list={[wide ? "wide-page" : "alt-page"]}>
       <slot />
     </main>

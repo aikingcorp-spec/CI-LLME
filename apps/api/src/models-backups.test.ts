@@ -738,3 +738,24 @@ it("lets a deployment-managed model lead the main model like any other purpose",
     vi.unstubAllEnvs();
   }
 });
+
+it("shows the selected main model as the approval default", async () => {
+  const { call } = setup();
+  const primary = { provider: "openrouter", modelId: "openai/gpt-6-luna" };
+  const saved = await call("models/setRole", { role: "main", primary });
+  expect(saved.response.status).toBe(200);
+  const read = await call("models/role", { role: "approval" });
+  expect((await read.response.json()).json).toMatchObject({
+    primary: null,
+    backups: [],
+    deploymentPrimary: primary,
+  });
+});
+it("shows no approval default without a selected main model", async () => {
+  const { call } = setup();
+  const read = await call("models/role", { role: "approval" });
+  expect((await read.response.json()).json).toMatchObject({
+    primary: null,
+    deploymentPrimary: null,
+  });
+});

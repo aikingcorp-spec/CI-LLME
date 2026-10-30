@@ -72,7 +72,7 @@ test("adds a passkey after signup and signs in with it", async ({ page }, testIn
   await cdp.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId, enabled: false });
   await account.click();
   await page.getByRole("button", { name: "Log out" }).click();
-  const signIn = page.getByRole("button", { name: "Sign in with passkey" });
+  const signIn = page.getByRole("button", { name: "Sign in with a passkey" });
   await expect(signIn).toBeVisible();
   await expect(page.getByLabel("Email")).toHaveAttribute("autocomplete", "username webauthn");
   await captureScreenshot(page, testInfo, "passkey-sign-in");

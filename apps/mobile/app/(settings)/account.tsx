@@ -729,9 +729,6 @@ export default function Account() {
           {(
             [
               { title: t("Vault"), href: "/vault" },
-              ...(me?.paymentWalletProvider
-                ? [{ title: t("Wallet"), href: "/wallet" } as const]
-                : []),
               { title: t("Integrations"), href: "/integrations" },
               { title: t("Skills"), href: "/skills" },
               { title: t("Messaging"), href: "/messaging" },

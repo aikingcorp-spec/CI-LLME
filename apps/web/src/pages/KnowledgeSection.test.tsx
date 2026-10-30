@@ -185,6 +185,42 @@ it("badges built-in skills and leaves plugin skills to their plugin", async () =
   }
 });
 
+it("hides skills named after another product and filters skill descriptions", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.list.mockReset();
+  api.list.mockResolvedValueOnce([
+    {
+      id: "builtin:grok-voice",
+      name: "Grok Voice",
+      description: "Add Grok voice to an app",
+      source: "builtin",
+      readOnly: true,
+    },
+    {
+      id: "builtin:review",
+      name: "Review",
+      description: "An open-source Cursor review helper",
+      source: "builtin",
+      readOnly: true,
+    },
+  ] satisfies AgentSkillCatalogEntry[]);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await show(root, <AgentSkills />);
+    expect(container.textContent).not.toContain("Grok");
+    expect(container.textContent).toContain("Review");
+    expect(container.textContent).toContain("A review helper");
+    expect(container.textContent).not.toContain("Cursor");
+    expect(container.textContent).not.toContain("open-source");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
 it("deletes a bot memory document after confirmation but never MEMORY.md", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const doc = (id: string, path: string) => ({

@@ -26,8 +26,8 @@ test("onboarding requires a model and uses compact model selects without mislead
     timeout: 20_000,
   });
 
-  // A deployment without a model cannot skip setup or continue without a usable key.
-  await expect(page.getByRole("button", { name: "Skip for now" })).toBeHidden();
+  // Skip stays available, but Continue needs a usable key.
+  await expect(page.getByRole("button", { name: "Skip for now" })).toBeVisible();
   const continueButton = page.getByRole("button", { name: "Continue", exact: true });
   await expect(continueButton).toBeDisabled();
   // No provider is preselected, and nothing else shows until one is chosen.

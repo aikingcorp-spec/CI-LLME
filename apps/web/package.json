@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "cross-env NODE_ENV=production vite build",
+    "build": "cross-env NODE_ENV=production vite build && tsx ../../scripts/check-paywall-bundle.ts dist",
     "preview": "vite preview",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. apps/web/src",
     "e2e": "playwright test",
     "intl:extract": "lingui extract --clean",
-    "intl:compile": "lingui compile"
+    "intl:compile": "lingui compile",
+    "intl:check-vi": "node scripts/check-vi-catalog.mjs"
   },
   "dependencies": {
     "@better-auth/passkey": "1.7.12",

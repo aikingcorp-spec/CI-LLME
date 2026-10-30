@@ -7,10 +7,8 @@ const SETTINGS_SECTIONS = [
   "confirmations",
   "vault",
   "messaging",
-  "wallet",
   "usage",
   "computer",
-  "billing",
   "updates",
 ] as const;
 
@@ -24,7 +22,15 @@ export type ShellOverlay =
   | { kind: "mcp"; serverId?: string }
   | null;
 
-const OVERLAY_KEYS = ["settings", "space", "integrations", "skills", "mcp", "messaging"] as const;
+const OVERLAY_KEYS = [
+  "settings",
+  "space",
+  "integrations",
+  "skills",
+  "mcp",
+  "messaging",
+  "plans",
+] as const;
 
 function isSettingsSection(value: string): value is SettingsSection {
   return (SETTINGS_SECTIONS as readonly string[]).includes(value);
@@ -47,6 +53,7 @@ export function readShellOverlay(params: URLSearchParams): ShellOverlay {
   }
   // Links from before Messaging moved into settings.
   if (params.has("messaging")) return { kind: "settings", section: "messaging", spaceId: null };
+  if (params.has("plans")) return { kind: "settings", section: "general", spaceId: null };
   return null;
 }
 
@@ -74,7 +81,5 @@ export function searchString(params: URLSearchParams): string {
 /** Only the overlay params, for redirects that change the route but should keep the overlay open. */
 export function shellOverlaySearch(params: URLSearchParams): string {
   const next = withShellOverlay(new URLSearchParams(), readShellOverlay(params));
-  // The plan choice opens above the shell from its own link, so it survives the redirect too.
-  if (params.has("plans")) next.set("plans", "");
   return searchString(next);
 }

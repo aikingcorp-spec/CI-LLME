@@ -43,7 +43,7 @@ describe("bootstrapUserSpace", () => {
 
     expect(prisma.organization.create).toHaveBeenCalledTimes(1);
     const orgData = prisma.organization.create.mock.calls[0]![0].data;
-    expect(orgData.name).toBe("Personal");
+    expect(orgData.name).toBe("Cá nhân");
     expect(orgData.slug).toBe("user-user-1".slice(0, 16));
     expect(result.spaceId).toBe(orgData.id);
 
@@ -57,7 +57,7 @@ describe("bootstrapUserSpace", () => {
       expect.objectContaining({
         id: orgData.id,
         organizationId: orgData.id,
-        name: "Personal",
+        name: "Cá nhân",
       }),
     );
     const spaceMemberData = prisma.spaceMember.create.mock.calls[0]![0].data;

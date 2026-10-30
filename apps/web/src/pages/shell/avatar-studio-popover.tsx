@@ -1,7 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { BotAvatarSet } from "@rakazo/contracts";
-import { resolveBotAvatarSet } from "@rakazo/contracts";
 import { SHIPPED_BOT_AVATAR_SHAPE_KEYS } from "@rakazo/core";
 import {
   BOT_AVATAR_COLORS,
@@ -15,11 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
   defaultBotAvatarValue,
+  defaultVnbotAvatarValue,
   parseBotAvatar,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  VNBOT_SHAPES,
+  VnbotAvatar,
 } from "@rakazo/ui-web";
 import { Button } from "@rakazo/ui-web/components/ui/button";
 import { Check, Pencil, Upload, X } from "lucide-react";
@@ -27,9 +29,13 @@ import type { ClipboardEvent, DragEvent } from "react";
 import { useRef, useState } from "react";
 
 /**
- * The shape grid and color row for a bot's look. With `organicIdentities`, the grid also offers
- * the organic body each identity draws (for a bot that has no id yet); without them, "Default"
- * restores the bot's own organic body.
+ * Shape and colour choices for VNBot and Classic. Classic also offers organic bodies
+ * before a bot has an id; otherwise Default restores the bot's own organic body.
+ *
+ * With `onAvatarSetChange` (a bot still being created) switching tabs commits the new
+ * set with its default look. Without it, switching tabs only changes which grid is
+ * shown; the saved look changes when a shape is picked, and `onChange` then receives
+ * the set being viewed.
  */
 export function BotLookPicker({
   value,
@@ -44,11 +50,36 @@ export function BotLookPicker({
   organicIdentities?: readonly string[];
   avatarSet?: BotAvatarSet;
   onAvatarSetChange?: (set: BotAvatarSet, value: string) => void;
-  onChange: (value: string, identity?: string) => void;
+  onChange: (value: string, identity?: string, avatarSet?: BotAvatarSet) => void;
 }) {
+  const selectedSet = avatarSet === "vnbot" ? "vnbot" : "organic";
+  const [browsedSet, setBrowsedSet] = useState<BotAvatarSet>();
+  const viewSet = onAvatarSetChange ? selectedSet : (browsedSet ?? selectedSet);
+  const showingSaved = viewSet === selectedSet;
+  const shapeNames = {
+    non: t`Nón`,
+    chung: t`Bánh chưng`,
+    aodai: t`Áo dài`,
+    ran: t`Khăn rằn`,
+    sen: t`Sen`,
+  };
+  const classicShapeNames = [
+    t`hex`,
+    t`wedge`,
+    t`squircle`,
+    t`tablet`,
+    t`pebble`,
+    t`blob`,
+    t`teardrop`,
+    t`cloud`,
+  ];
   const parsed = parseBotAvatar(value);
   const currentColor = parsed.color || DEFAULT_BOT_AVATAR_COLOR;
-  const isDefaultLook = !parsed.isImage && parsed.shapeIndex === undefined;
+  const isDefaultLook = showingSaved && !parsed.isImage && parsed.shapeIndex === undefined;
+
+  function selectShape(next: string, nextIdentity?: string) {
+    onChange(next, nextIdentity, showingSaved ? undefined : viewSet);
+  }
 
   function selectColor(color: string) {
     onChange(parsed.shapeIndex === undefined ? color : `${color}::shape_${parsed.shapeIndex}`);
@@ -57,21 +88,45 @@ export function BotLookPicker({
   return (
     <div className="space-y-4">
       <Tabs
-        value={avatarSet}
-        onValueChange={(next) =>
-          onAvatarSetChange?.(resolveBotAvatarSet(next), defaultBotAvatarValue(value))
-        }
+        value={viewSet}
+        onValueChange={(next) => {
+          const set = next === "vnbot" ? "vnbot" : "organic";
+          if (!onAvatarSetChange) {
+            setBrowsedSet(set);
+            return;
+          }
+          onAvatarSetChange(
+            set,
+            set === "vnbot" ? defaultVnbotAvatarValue(value) : defaultBotAvatarValue(value),
+          );
+        }}
       >
         <TabsList className="w-full" aria-label={t`Icon set`}>
-          <TabsTrigger value="rakazo" className="flex-1">
-            <Trans>Rakazo</Trans>
+          <TabsTrigger value="vnbot" className="flex-1">
+            <Trans>VNBot</Trans>
           </TabsTrigger>
           <TabsTrigger value="organic" className="flex-1">
-            <Trans>Original</Trans>
+            <Trans>Classic</Trans>
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      {avatarSet === "organic" ? (
+      {viewSet === "vnbot" ? (
+        <div className="grid grid-cols-5 place-items-center gap-2">
+          {VNBOT_SHAPES.map((shape, index) => (
+            <button
+              key={shape}
+              type="button"
+              aria-label={shapeNames[shape]}
+              data-testid={`vnbot-shape-${shape}`}
+              aria-pressed={showingSaved && !parsed.isImage && parsed.shapeIndex === index}
+              onClick={() => selectShape(`${currentColor}::shape_${index}`)}
+              className="flex size-11 items-center justify-center rounded-xl hover:bg-accent aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <VnbotAvatar shape={shape} body={currentColor} size={40} />
+            </button>
+          ))}
+        </div>
+      ) : (
         <div>
           {organicIdentities ? null : (
             <div className="mb-2 flex items-center justify-between">
@@ -86,7 +141,7 @@ export function BotLookPicker({
                 aria-pressed={isDefaultLook}
                 onClick={() => {
                   const next = defaultBotAvatarValue(value);
-                  if (next !== value) onChange(next);
+                  if (next !== value || !showingSaved) selectShape(next);
                 }}
                 className={`px-3 py-1 text-xs font-medium transition-colors ${
                   isDefaultLook
@@ -108,21 +163,22 @@ export function BotLookPicker({
                 label={t`Shape ${index + 1}`}
                 color={currentColor}
                 selected={isDefaultLook && identity === organicIdentity}
-                onClick={() => onChange(currentColor, organicIdentity)}
+                onClick={() => selectShape(currentColor, organicIdentity)}
               />
             ))}
             {SHIPPED_BOT_AVATAR_SHAPE_KEYS.map((key, shapeIndex) => (
               <BotShapePreview
                 key={key}
                 shapeIndex={shapeIndex}
+                label={classicShapeNames[shapeIndex]}
                 color={currentColor}
-                selected={!parsed.isImage && parsed.shapeIndex === shapeIndex}
-                onClick={() => onChange(`${currentColor}::shape_${shapeIndex}`)}
+                selected={showingSaved && !parsed.isImage && parsed.shapeIndex === shapeIndex}
+                onClick={() => selectShape(`${currentColor}::shape_${shapeIndex}`)}
               />
             ))}
           </div>
         </div>
-      ) : null}
+      )}
 
       <div className="border-t border-border pt-2">
         {organicIdentities ? null : (
@@ -252,7 +308,7 @@ export function AvatarStudioPopover({
           identity={identity}
           size={size}
           status={status}
-          avatarSet={avatarSet}
+          avatarSet={avatarSet === "rakazo" ? "organic" : avatarSet}
         />
         <div className="absolute -right-1 -bottom-1 flex size-6 items-center justify-center rounded-full border-2 border-background bg-secondary text-foreground shadow-md transition-transform group-hover:scale-110">
           <Pencil size={12} strokeWidth={2.2} />
@@ -290,7 +346,7 @@ export function AvatarStudioPopover({
               identity={identity}
               size={78}
               status={status}
-              avatarSet={avatarSet}
+              avatarSet={avatarSet === "rakazo" ? "organic" : avatarSet}
             />
           </div>
 
@@ -325,8 +381,7 @@ export function AvatarStudioPopover({
                 value={value}
                 identity={identity}
                 avatarSet={avatarSet}
-                onChange={(next) => onChange(next)}
-                onAvatarSetChange={(set, next) => onChange(next, set)}
+                onChange={(next, _identity, set) => onChange(next, set)}
               />
             </TabsContent>
             <TabsContent value="upload">

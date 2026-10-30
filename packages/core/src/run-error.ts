@@ -24,12 +24,13 @@ export const MODEL_REQUEST_LIMIT_ERROR =
 
 export const MISSING_MODEL_RUN_ERROR = "Connect a model in Settings before running bots.";
 
-/** A deployment model run while the organization has not chosen Rakazo credits. */
-export const HOSTED_MODEL_CREDITS_REQUIRED_ERROR =
-  "Connect your own API key in Models or choose Rakazo credits in Billing.";
+/** A deployment model run while the organization has not configured an API key. */
+export const HOSTED_MODEL_CREDITS_REQUIRED_ERROR = "Connect your own API key in Models.";
+/** Pre-free servers asked users to subscribe before running bots. */
+const LEGACY_SUBSCRIBE_ADVICE = /^Subscribe in \p{L}+ to keep running bots\.$/u;
 
 /** A run in a billing organization without a paid plan, credits, or free period. */
-export const MODEL_ACCESS_REQUIRED_RUN_ERROR = "Subscribe in Billing to keep running bots.";
+export const MODEL_ACCESS_REQUIRED_RUN_ERROR = "Connect your own API key in Models.";
 
 /** The API rejects a send with this message until the user can reach a model. */
 export const MODEL_REQUIRED_SEND_ERROR = "Connect a model to start a run.";
@@ -128,6 +129,12 @@ export const RUN_ERROR_LIMIT_MESSAGES = {
     weekly: "{provider} reached its weekly spending limit.",
     monthly: "{provider} reached its monthly spending limit.",
   },
+  usage: {
+    none: "{provider} reached its usage limit.",
+    daily: "{provider} reached its daily usage limit.",
+    weekly: "{provider} reached its weekly usage limit.",
+    monthly: "{provider} reached its monthly usage limit.",
+  },
 } as const;
 
 export type RunErrorTranslator = (
@@ -217,6 +224,20 @@ export function normalizeRunError(
   period?: "none" | "daily" | "weekly" | "monthly";
 } {
   const trimmed = details.trim();
+  if (
+    [
+      "Unmatched tool result in context",
+      "Orphaned tool result in context",
+      "Duplicate tool result in context",
+      "Missing tool result in context",
+    ].includes(trimmed)
+  ) {
+    return {
+      summary: translate("Chat context is inconsistent. Try again or start a new chat."),
+      details,
+      kind: "context",
+    };
+  }
   if ([MODEL_IMAGE_INPUT_ERROR, MODEL_IMAGE_INPUT_UNKNOWN].includes(trimmed)) {
     return {
       summary: translate(trimmed),
@@ -249,6 +270,18 @@ export function normalizeRunError(
         fallback.primaryError,
         ...fallback.backups.map((item) => `${item.provider} ${item.modelId}: ${item.reason}`),
       ].join("\n"),
+    };
+  }
+  // Older nodes and persisted runs can still return the former funding advice. Match it by
+  // shape, not by its literal copy, so that copy never ships in the web bundle.
+  if (
+    trimmed.startsWith(HOSTED_MODEL_CREDITS_REQUIRED_ERROR.slice(0, -1)) ||
+    LEGACY_SUBSCRIBE_ADVICE.test(trimmed)
+  ) {
+    return {
+      summary: translate(HOSTED_MODEL_CREDITS_REQUIRED_ERROR),
+      details,
+      recovery: "connection",
     };
   }
   // Preserve only known recovery advice: provider diagnostics can also be plain text.
@@ -363,7 +396,11 @@ export function normalizeRunError(
       ? "key"
       : /credit|insufficient_quota/i.test(signals)
         ? "credit"
-        : "spending";
+        : // Only a provider that names spend, budget or billing set a spending cap. A free-tier or
+          // plan usage limit is not money the user spent.
+          /spend|budget|billing|funds|balance|recharge/i.test(signals)
+          ? "spending"
+          : "usage";
     // A capped key is fixed by connecting another; an account out of money or quota is not, but
     // another model keeps the user going.
     recovery = kind === "key" ? "connection" : "model";

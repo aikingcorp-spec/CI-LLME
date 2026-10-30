@@ -1,8 +1,22 @@
+import { readFileSync } from "node:fs";
+import { i18n } from "@lingui/core";
+import { formatter } from "@lingui/format-po";
 import { MAX_VOICE_AUDIO_BYTES, VOICE_RESPONSE_TIMEOUT_MS } from "@rakazo/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Speaker } from "./tts.js";
 
+// The shared test stub renders the English template; route `t` through the active catalog instead.
+vi.mock("@lingui/core/macro", async () => {
+  const { i18n } = await import("@lingui/core");
+  return {
+    t: (strings: TemplateStringsArray, ...values: unknown[]) =>
+      i18n._(String.raw(strings, ...values)),
+  };
+});
+
 afterEach(() => {
+  i18n.load("en", {});
+  i18n.activate("en");
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -145,7 +159,7 @@ describe("Speaker", () => {
   });
 
   it.each([
-    ["VOICE_OUT_OF_CREDIT", 402, "Your voice provider is out of credit."],
+    ["VOICE_OUT_OF_CREDIT", 402, "Connect your own API key in Models."],
     ["VOICE_KEY_REJECTED", 403, "Your voice provider key was rejected."],
   ])("shows its own copy for %s", async (code, status, copy) => {
     vi.stubGlobal(
@@ -166,6 +180,42 @@ describe("Speaker", () => {
     await expect(speaker.speak("Hello.")).resolves.toBe(copy);
 
     expect(speaker.state.error).toBe(copy);
+  });
+
+  it("shows the Vietnamese copy for VOICE_OUT_OF_CREDIT in the vi UI", async () => {
+    const catalog = await formatter().parse(
+      readFileSync(new URL("../locales/vi/messages.po", import.meta.url), "utf8"),
+      { filename: "messages.po", locale: "vi", sourceLocale: "en" },
+    );
+    i18n.load(
+      "vi",
+      Object.fromEntries(
+        Object.entries(catalog).map(([id, entry]) => [id, entry.translation ?? id]),
+      ),
+    );
+    i18n.activate("vi");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "Insufficient API credit at fish.audio",
+              code: "VOICE_OUT_OF_CREDIT",
+            }),
+            { status: 402 },
+          ),
+      ),
+    );
+    const speaker = new Speaker();
+    vi.spyOn(
+      speaker as unknown as { prepare: () => Promise<string[]> },
+      "prepare",
+    ).mockResolvedValue(["Hello."]);
+
+    await expect(speaker.speak("Hello.")).resolves.toBe(
+      "Hãy kết nối API key của bạn trong Mô hình.",
+    );
   });
 
   it("times out while a voice response body is stalled", async () => {

@@ -12,6 +12,7 @@ import { installedPluginParts } from "@rakazo/core";
 import { Button, Spinner } from "@rakazo/ui-web";
 import { ArrowUpRight, Check, ChevronLeft, FileText, Plug } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { catalogDescription, isForeignProductName } from "../../lib/catalog-text";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -107,6 +108,7 @@ export function PluginRow({
   installed: boolean;
   onOpen: () => void;
 }) {
+  if (isForeignProductName(name)) return null;
   return (
     <div
       data-testid="plugin-row"
@@ -121,7 +123,9 @@ export function PluginRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-medium text-foreground">{name}</span>
           {description ? (
-            <span className="block truncate text-[13px] text-muted-foreground">{description}</span>
+            <span className="block truncate text-[13px] text-muted-foreground">
+              {catalogDescription(description ?? "")}
+            </span>
           ) : null}
         </span>
       </button>
@@ -314,7 +318,7 @@ export function PluginDetail({
   // An ignored manifest field loses nothing, so it isn't reported.
   const notAdded = (detail?.skipped ?? []).filter((entry) => entry.kind !== "unsupported_field");
   const prefix = `${detail?.name ?? ""}: `;
-  const skills = detail?.skills ?? [];
+  const skills = (detail?.skills ?? []).filter((skill) => !isForeignProductName(skill.name));
   const shownSkills = allSkills ? skills : skills.slice(0, SKILLS_SHOWN);
   const connectorCount = detail?.mcpServers.length ?? 0;
   // Without a connector there is nothing to connect, so the page adds the skills instead.
@@ -433,7 +437,7 @@ export function PluginDetail({
 
       {detail?.description || selection.description ? (
         <p className="text-[15px] leading-6 text-muted-foreground">
-          {detail?.description || selection.description}
+          {catalogDescription(detail?.description || selection.description || "")}
         </p>
       ) : null}
 
@@ -596,7 +600,7 @@ export function PluginDetail({
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14.5px] font-medium">{skill.name}</span>
                     <span className="block truncate text-[12.5px] text-muted-foreground">
-                      {skill.description}
+                      {catalogDescription(skill.description ?? "")}
                     </span>
                   </span>
                   {skill.files?.length ? (

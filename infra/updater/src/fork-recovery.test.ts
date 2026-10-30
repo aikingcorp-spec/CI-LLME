@@ -99,6 +99,7 @@ async function deployment(options: { failures: Failure[]; branch?: string; compo
   const bin = path.join(deployDir, "fake-bin");
   const composeFile = path.join(deployDir, options.composePath ?? DEFAULT_COMPOSE_FILE);
   const config = resolveUpdaterConfig({
+    RAKAZO_DISABLE_AUTO_UPDATE: "0",
     RAKAZO_DEPLOY_DIR: deployDir,
     RAKAZO_UPDATER_TOKEN: token,
     RAKAZO_COMPOSE_FILE: options.composePath,

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" class="vnbot-icon vnbot-chung">
+  <defs>
+    <symbol id="eye" viewBox="0 0 12 22"><rect width="12" height="22" rx="6" fill="#000"/></symbol>
+  </defs>
+  <ellipse id="shadow" cx="128" cy="216" rx="74" ry="7" fill="#000" fill-opacity=".08"/>
+  <g id="body">
+    <g id="feet" fill="var(--body,#6E9A4A)"><rect x="78" y="196" width="30" height="20" rx="10"/><rect x="148" y="196" width="30" height="20" rx="10"/>
+      <rect x="78" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/><rect x="148" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/></g>
+    <rect x="54" y="74" width="148" height="134" rx="28" fill="var(--body,#6E9A4A)"/>
+  </g>
+    <g id="acc-lat" fill="var(--vnbot-accent-lat,#E2C98A)"><rect x="121" y="74" width="14" height="134"/><rect x="54" y="158" width="148" height="12"/>
+    <path d="M121 74h14v134h-14z M54 158h148v12H54z" fill="none" stroke="var(--vnbot-accent-lat-line,#C6A55E)" stroke-width="2"/></g>
+  <g id="eyes"><use href="#eye" xlink:href="#eye" x="100" y="128" width="12" height="22"/><use href="#eye" xlink:href="#eye" x="144" y="128" width="12" height="22"/></g>
+</svg>

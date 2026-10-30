@@ -10,6 +10,7 @@ import {
   previewPluginInstall,
 } from "@rakazo/adapters";
 import type { Actor, CapabilityInstall, PluginPart } from "@rakazo/contracts";
+import { PLUGIN_SKILL_CONFLICT } from "@rakazo/contracts";
 import { installedPluginParts } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 import {
@@ -97,9 +98,9 @@ function withPreparedServers<T>(
 
 const BUILTIN_SKILL_NAMES = new Set(BUILTIN_AGENT_SKILLS.map((skill) => skill.name.toLowerCase()));
 
-function assertNoBuiltinSkillNames(plugin: LoadedPlugin) {
+export function assertNoBuiltinSkillNames(plugin: Pick<LoadedPlugin, "skills">) {
   if (plugin.skills.some((skill) => BUILTIN_SKILL_NAMES.has(skill.name.toLowerCase())))
-    throw new ORPCError("CONFLICT", { message: "Plugin skill conflicts with a built-in skill" });
+    throw new ORPCError(PLUGIN_SKILL_CONFLICT, { status: 409, message: PLUGIN_SKILL_CONFLICT });
 }
 
 /** Where an install's skills and connectors live: wherever the install itself is available. */

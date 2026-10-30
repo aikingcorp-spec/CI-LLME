@@ -22,6 +22,19 @@ describe("normalizeRunError", () => {
   beforeEach(() => {
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-01T00:00:00Z"));
   });
+  it.each([
+    "Unmatched tool result in context",
+    "Orphaned tool result in context",
+    "Duplicate tool result in context",
+    "Missing tool result in context",
+  ])("classifies app transcript failures without provider recovery: %s", (details) => {
+    expect(normalizeRunError(details)).toEqual({
+      summary: "Chat context is inconsistent. Try again or start a new chat.",
+      details,
+      kind: "context",
+    });
+  });
+
   it("summarizes the weekly OpenRouter key limit without exposing diagnostics", () => {
     const details =
       '403: {"message":"Key limit exceeded (weekly limit). Manage it using https://openrouter.ai/workspaces/default/keys/<long hash> $20.05 of $20.00 used; resets 2026-10-12T00:00:00.000Z.","code":403,"metadata":{"limit_source":"openrouter_key_limit"}}';
@@ -495,6 +508,8 @@ it.each([
   ["403: OpenRouter weekly key limit exceeded", "key", "weekly"],
   ["402: Monthly spending limit exceeded", "spending", "monthly"],
   ["429: insufficient_quota", "credit", "none"],
+  ["402: Payment required", "usage", "none"],
+  ["Daily usage limit exceeded", "usage", "daily"],
   ["429: Too many requests", "rate", undefined],
   ["401: Invalid API key", "auth", undefined],
   ["404: Model unavailable", "model", undefined],
@@ -817,4 +832,27 @@ describe("the one action that fixes a failed run", () => {
       });
     },
   );
+});
+
+it.each([
+  "Connect your own API key in Models or choose Rakazo credits in Billing.",
+  "Connect your own API key in Models or choose VNBot credits in Billing.",
+  "Subscribe in Billing to keep running bots.",
+  HOSTED_MODEL_CREDITS_REQUIRED_ERROR,
+])("replaces funding advice with API key setup: %s", (details) => {
+  expect(normalizeRunError(details)).toMatchObject({
+    summary: "Connect your own API key in Models.",
+    recovery: "connection",
+  });
+});
+
+it.each([
+  '{"type":"error","error":{"type":"FreeUsageLimitError","message":"Free usage limit reached. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go"}}',
+  "Free usage limit reached. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go",
+])("does not call a free-tier usage limit a spending limit: %s", (details) => {
+  const error = normalizeRunError(details);
+  expect(error.kind).toBe("usage");
+  expect(error.recovery).toBe("model");
+  expect(error.summary).toBe("Your model provider reached its usage limit.");
+  expect(error.summary).not.toMatch(/spending/);
 });

@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { promisify } from "node:util";
 import { createAuth } from "@rakazo/auth";
-import { createDb, createPool } from "@rakazo/db";
+import { createDb, createPool, runAsSystem } from "@rakazo/db";
 import { expect, it } from "vitest";
 
 const run = promisify(execFile);
@@ -47,6 +47,12 @@ it.skipIf(!testDatabase)(
       ).toMatchObject({ ownerUserId: null, signupsEnabled: false });
       expect(await prisma.session.count()).toBe(0);
       expect(owner.emailVerified).toBe(true);
+      // Created past the auth hooks, so the owner is put on the invite list explicitly.
+      expect(
+        await runAsSystem("read the owner invite", () =>
+          prisma.authEmailAllowlist.findUnique({ where: { email: env.OWNER_EMAIL } }),
+        ),
+      ).toMatchObject({ email: env.OWNER_EMAIL, addedBy: "bootstrap-owner" });
       const memberships = await prisma.spaceMember.count({ where: { userId: owner.id } });
       expect(memberships).toBeGreaterThan(0);
       await prisma.user.update({ where: { id: owner.id }, data: { emailVerified: false } });

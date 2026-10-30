@@ -24,6 +24,7 @@ import {
   stackFailureMessage,
   stackResourceDir,
 } from "./local-stack.js";
+import { format, strings } from "./strings.js";
 
 const COMPOSE_DIR = path.resolve(import.meta.dirname, "..", "..", "..", "infra", "compose");
 const fakeHex = (bytes: number) => "ab".repeat(bytes);
@@ -80,7 +81,7 @@ describe("renderStackEnv", () => {
     expect(lines.some((line) => line.startsWith("RAKAZO_IMAGE_TAG="))).toBe(false);
     expect(lines.some((line) => line.startsWith("RAKAZO_COMPUTER_IMAGE_TAG="))).toBe(false);
     // Everything else, including the image names and empty optional keys, stays verbatim.
-    expect(lines).toContain("RAKAZO_IMAGE=ghcr.io/elie222/rakazo/app");
+    expect(lines).toContain("RAKAZO_IMAGE=ghcr.io/aikingcorp-spec/vnbot/app");
     expect(lines).toContain("SANDBOX_PROVIDER=docker");
     expect(lines).toContain("OPENROUTER_API_KEY=");
     expect(rendered.endsWith("\n")).toBe(template.endsWith("\n"));
@@ -290,11 +291,11 @@ describe("reduceStackState", () => {
   it("records why Docker is unavailable", () => {
     const state = reduceStackState(reduceStackState(start, { type: "check-start" }), {
       type: "docker-missing",
-      message: "Docker is not installed on this computer.",
+      message: strings().stack.dockerMissing,
     });
     expect(state).toMatchObject({
       phase: "docker-missing",
-      message: "Docker is not installed on this computer.",
+      message: strings().stack.dockerMissing,
     });
   });
 });
@@ -302,21 +303,23 @@ describe("reduceStackState", () => {
 describe("stackFailureMessage", () => {
   it("names the tag when images are not published yet", () => {
     expect(stackFailureMessage("image-not-found", "pulling", "v0.2.0")).toBe(
-      "Images for v0.2.0 are not published yet. Try again in a few minutes.",
+      format(strings().stack.imageNotFound, { imageTag: "v0.2.0" }),
     );
   });
 
   it("points at the ports for a port clash", () => {
-    expect(stackFailureMessage("port-in-use", "starting", "edge")).toContain("local port");
+    expect(stackFailureMessage("port-in-use", "starting", "edge")).toBe(strings().stack.portInUse);
   });
 
   it("explains the docker group for socket permission errors", () => {
-    expect(stackFailureMessage("socket-permission", "pulling", "edge")).toContain("docker group");
+    expect(stackFailureMessage("socket-permission", "pulling", "edge")).toBe(
+      strings().stack.dockerGroup,
+    );
   });
 
   it("falls back to phase-specific wording", () => {
-    expect(stackFailureMessage("other", "pulling", "edge")).toContain("Downloading");
-    expect(stackFailureMessage("other", "starting", "edge")).toContain("did not start");
+    expect(stackFailureMessage("other", "pulling", "edge")).toBe(strings().stack.pullFailed);
+    expect(stackFailureMessage("other", "starting", "edge")).toBe(strings().stack.startFailed);
   });
 });
 
@@ -621,7 +624,7 @@ describe("LocalStackController", () => {
     const state = await stack.start();
     expect(state).toMatchObject({
       phase: "docker-missing",
-      message: "Docker is not installed on this computer.",
+      message: strings().stack.dockerMissing,
     });
     expect(calls).toEqual([]);
     await expect(stat(path.join(root, "stack", STACK_ENV_FILE))).rejects.toThrow();
@@ -635,7 +638,7 @@ describe("LocalStackController", () => {
     );
     const state = await stack.start();
     expect(state.phase).toBe("docker-missing");
-    expect(state.message).toContain("Docker Compose is missing");
+    expect(state.message).toBe(strings().stack.composeNotInstalled);
     expect(calls).toHaveLength(1);
   });
 
@@ -648,7 +651,7 @@ describe("LocalStackController", () => {
     const state = await stack.start();
     expect(state).toMatchObject({
       phase: "docker-not-running",
-      message: "Docker is installed but not running. Start Docker, then check again.",
+      message: strings().stack.dockerNotRunning,
     });
     expect(calls).toHaveLength(2);
   });
@@ -661,7 +664,7 @@ describe("LocalStackController", () => {
     );
     const state = await stack.start();
     expect(state.phase).toBe("docker-not-running");
-    expect(state.message).toContain("docker group");
+    expect(state.message).toBe(strings().stack.dockerGroup);
   });
 
   it("fails with a tag-specific message when the images are not published", async () => {
@@ -677,7 +680,7 @@ describe("LocalStackController", () => {
     const state = await stack.start();
     expect(state).toMatchObject({
       phase: "failed",
-      message: "Images for v1.2.3 are not published yet. Try again in a few minutes.",
+      message: format(strings().stack.imageNotFound, { imageTag: "v1.2.3" }),
       output: ["Error response from daemon: manifest unknown"],
     });
     expect(calls.map((call) => call.args[7] ?? call.args[0])).toEqual([
@@ -695,7 +698,7 @@ describe("LocalStackController", () => {
     const state = await stack.start();
     expect(state).toMatchObject({
       phase: "failed",
-      message: "The start was interrupted. Retry to continue.",
+      message: strings().stack.interrupted,
     });
   });
 
@@ -742,7 +745,7 @@ describe("LocalStackController", () => {
     );
     expect(await stack.start()).toMatchObject({
       phase: "failed",
-      message: expect.stringContaining("local port"),
+      message: strings().stack.portInUse,
     });
     expect(calls.filter((call) => call.args[7] === "up")).toHaveLength(3);
     expect(phases).not.toContain("waiting-healthy");
@@ -758,7 +761,7 @@ describe("LocalStackController", () => {
     });
     const state = await stack.start();
     expect(state.phase).toBe("failed");
-    expect(state.message).toContain("did not start");
+    expect(state.message).toBe(strings().stack.startFailed);
     expect(state.output).toEqual([
       "app Pulled",
       "computer Pulled",
@@ -784,8 +787,7 @@ describe("LocalStackController", () => {
       });
       expect(await stack.start()).toMatchObject({
         phase: "failed",
-        message:
-          "Docker has no free network address pools. Remove unused Docker networks or expand Docker’s address pools, then retry.",
+        message: strings().stack.addressPoolExhausted,
       });
       expect(phases).not.toContain("waiting-healthy");
       expect(calls.every((call) => call.args[0] === "compose" || call.args[0] === "info")).toBe(
@@ -806,7 +808,7 @@ describe("LocalStackController", () => {
     });
     const state = await stack.start();
     expect(state.phase).toBe("failed");
-    expect(state.message).toContain("did not answer");
+    expect(state.message).toBe(strings().stack.webNoAnswer);
     expect(probes).toBeGreaterThan(1);
   });
 
@@ -823,7 +825,7 @@ describe("LocalStackController", () => {
     expect(stack.start()).toBe(first);
     const failed = await first;
     expect(failed).toMatchObject({ phase: "failed" });
-    expect(failed.message).toContain("registry");
+    expect(failed.message).toBe(strings().stack.network);
 
     const second = await stack.start();
     expect(second.phase).toBe("ready");
@@ -854,7 +856,7 @@ describe("LocalStackController", () => {
     const state = await stack.stop();
     expect(state).toMatchObject({
       phase: "failed",
-      message: expect.stringContaining("Could not stop"),
+      message: strings().stack.stopFailed,
     });
     expect(calls.at(-1)?.args.slice(7)).not.toEqual(["stop"]);
   });
@@ -870,7 +872,7 @@ describe("LocalStackController", () => {
     const state = await stack.stop();
     expect(state).toMatchObject({
       phase: "failed",
-      message: "Could not stop the local stack. Check that Docker is running, then try again.",
+      message: strings().stack.stopFailed,
       imageTag: "v1.2.3",
     });
     expect(state.message).not.toContain("/Users/me");
@@ -929,7 +931,7 @@ describe("LocalStackController", () => {
     expect(stack.start()).toBe(second);
     releaseStop();
     await stopping;
-    expect((await first).message).toBe("The start was interrupted. Retry to continue.");
+    expect((await first).message).toBe(strings().stack.interrupted);
     expect((await second).phase).toBe("ready");
     const order = calls.map((call) => call.args[7] ?? call.args[0]);
     expect(order.indexOf("stop")).toBeLessThan(order.lastIndexOf("up"));
@@ -969,7 +971,7 @@ describe("LocalStackController", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     const stopped = await stack.stop();
     expect(stopped).toEqual(initialStackState("v1.2.3"));
-    expect((await started).message).toBe("The start was interrupted. Retry to continue.");
+    expect((await started).message).toBe(strings().stack.interrupted);
   });
 
   it("surfaces a broken resource bundle instead of hanging", async () => {
@@ -979,7 +981,7 @@ describe("LocalStackController", () => {
     const state = await stack.start();
     expect(state).toMatchObject({
       phase: "failed",
-      message: "Could not prepare the local stack. Retry.",
+      message: strings().stack.prepareFailed,
     });
     // copyFile/readFile ENOENT must not leak absolute paths into user-facing state.
     expect(state.message).not.toContain(resourceDir);

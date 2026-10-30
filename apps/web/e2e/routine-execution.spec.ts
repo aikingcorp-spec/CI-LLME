@@ -27,7 +27,7 @@ test("Slack message and GitHub event triggers persist their settings", async ({
     return routines.find((routine) => routine.name === name);
   };
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await page.getByRole("button", { name: "Create Routine" }).click();
   await page.getByPlaceholder("Name this routine").fill("Triage Slack updates");
   await page
@@ -108,7 +108,7 @@ test("routine test-run completes and survives reload", async ({ page }, testInfo
   await completeOnboarding(page);
   const botId = activeBotId(page);
 
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await expect(page.getByRole("button", { name: "Test run" })).toHaveCount(0);
   await page.getByRole("button", { name: "Create Routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Daily verification");
@@ -140,7 +140,7 @@ test("routine test-run completes and survives reload", async ({ page }, testInfo
 
   await page.reload();
   await expect(page.getByText(/routine-run-now-ok/i).first()).toBeVisible();
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await expect(page.getByRole("button", { name: /Daily verification/ })).toContainText(
     "Weekdays at 9:00 AM",
   );
@@ -199,7 +199,7 @@ test("an unchanged routine completes without adding a chat reply", async ({ page
   const transcript = page.getByTestId("transcript");
   await expect(transcript.getByText("NO_RESPONSE", { exact: false })).toHaveCount(0);
   await expect(transcript.getByText("Checking for changes.", { exact: false })).toHaveCount(0);
-  await page.getByRole("button", { name: "Agent computer", exact: true }).click();
+  await page.getByRole("button", { name: "Bot computer", exact: true }).click();
   await page.getByRole("button", { name: /Quiet release check/ }).click();
   await expect(page.getByTestId("routine-run-history").getByTestId("routine-run-row")).toHaveCount(
     1,
