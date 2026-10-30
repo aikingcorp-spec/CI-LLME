@@ -2,7 +2,14 @@ import { mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promise
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { clearSetup, readSetup, setupFilePath, writeSetup } from "./setup-store.js";
+import {
+  clearSetup,
+  readSetup,
+  readVerifiedEmail,
+  setupFilePath,
+  writeSetup,
+  writeVerifiedEmail,
+} from "./setup-store.js";
 
 let userData: string;
 
@@ -12,6 +19,31 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await rm(userData, { recursive: true, force: true });
+});
+
+describe("verified email", () => {
+  it("keeps only the address across launches", async () => {
+    await expect(readVerifiedEmail(userData)).resolves.toBeNull();
+    await writeVerifiedEmail(userData, "lan@vnbot.vn");
+    await expect(readVerifiedEmail(userData)).resolves.toBe("lan@vnbot.vn");
+    expect(JSON.parse(await readFile(path.join(userData, "account.json"), "utf8"))).toEqual({
+      email: "lan@vnbot.vn",
+    });
+    expect((await stat(path.join(userData, "account.json"))).mode & 0o077).toBe(0);
+  });
+
+  it("treats an unusable file as nobody verified", async () => {
+    await writeFile(path.join(userData, "account.json"), "not json");
+    await expect(readVerifiedEmail(userData)).resolves.toBeNull();
+    await writeFile(path.join(userData, "account.json"), JSON.stringify({ email: 1 }));
+    await expect(readVerifiedEmail(userData)).resolves.toBeNull();
+  });
+
+  it("survives clearing the saved server", async () => {
+    await writeVerifiedEmail(userData, "lan@vnbot.vn");
+    await clearSetup(userData);
+    await expect(readVerifiedEmail(userData)).resolves.toBe("lan@vnbot.vn");
+  });
 });
 
 describe("setup store", () => {

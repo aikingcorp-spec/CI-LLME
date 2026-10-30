@@ -5,6 +5,7 @@ import type {
   ConnectorCall,
 } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
+import type { HostCommandRisk } from "@rakazo/core";
 import {
   applyJudgeDecision,
   approvalModeFromPreference,
@@ -46,6 +47,7 @@ import {
 } from "./auto-review.js";
 import { reviewWithBackups } from "./auto-review-backups.js";
 import type { ExecutorDeps } from "./executor-deps.js";
+import { hostCommandsElevatedRefusal, hostShellRisks } from "./host-shell-gate.js";
 import { findConnectedModelCredential } from "./model-selection.js";
 import { paidRequestEffect } from "./paid-request.js";
 import { autoReviewCheckerProvider } from "./run-auto-review.js";
@@ -129,6 +131,20 @@ export async function gateToolCall(
   const { replayEffectToolName } = request;
   let { args, effectRequest } = request;
   const viaConnector = !BUILTIN_AGENT_TOOL_NAMES.has(name);
+  const elevatedRefusal = ctx.computer.hostCommands ? hostCommandsElevatedRefusal(name) : undefined;
+  if (elevatedRefusal) return { result: { error: elevatedRefusal } };
+  // A command on the user's own computer that deletes outside the bot's workspace, asks for
+  // administrator rights, reads credentials or runs a downloaded script needs a person first,
+  // in every mode but Never ask (see planActionGate), and whatever the rules or reviewer say.
+  const hostRisks =
+    name === "shell" && ctx.computer.hostCommands
+      ? hostShellRisks({
+          command: String(args.command ?? args.cmd ?? ""),
+          cwd: args.cwd ? String(args.cwd) : undefined,
+          environment: ctx.computer.hostEnvironment,
+        })
+      : [];
+  const riskyHostShell = hostRisks.length > 0;
   // Declared effect of the operation this call dispatches (installed API method and
   // flag). Install config is immutable per route resource, so it cannot drift before
   // execute; a catalog call uses the tool it was just resolved to.
@@ -209,6 +225,7 @@ export async function gateToolCall(
     (await ctx.trust.routineNamesNewSite(String(args.prompt ?? "")));
   const requiresApprovalByDefault =
     commandWatch ||
+    riskyHostShell ||
     requiresUnattendedApproval ||
     siteGate === "new" ||
     unidentifiedAction ||
@@ -219,6 +236,7 @@ export async function gateToolCall(
   const gated = requiresApprovalByDefault || connectorReadGated;
   const requiresMandatoryApproval =
     commandWatch ||
+    riskyHostShell ||
     scheduleNamesNewSite ||
     requiresUnattendedApproval ||
     toolRequiresExplicitApproval(name);
@@ -412,7 +430,7 @@ export async function gateToolCall(
     nextApprovedTool,
     bypassApproval: gateDecision === "allow" && gated,
   });
-  const card = { reviewReason, summary: request.fleetSummary };
+  const card = { reviewReason, summary: request.fleetSummary, hostShellRisks: hostRisks };
 
   if (applied?.duplicate) {
     const gate = resolveDuplicateEffectGate(applied.effect, name);
@@ -560,12 +578,14 @@ async function settleToolUncertainty(
   return settleUncertainEffect(ctx.deps.prisma, effectId, toolName, call.args);
 }
 
+type ApprovalCard = {
+  reviewReason: string | undefined;
+  summary: FleetCardSummary | undefined;
+  hostShellRisks: HostCommandRisk[];
+};
+
 /** Ask the owner through an approval card. Parallel calls share the first call's pause. */
-function requestApproval(
-  ctx: RunContext,
-  call: ToolCall,
-  card: { reviewReason: string | undefined; summary: FleetCardSummary | undefined },
-) {
+function requestApproval(ctx: RunContext, call: ToolCall, card: ApprovalCard) {
   const { approval } = ctx.state;
   // Parallel calls can need approval at once. Only the first saves the turn and shows
   // its card; the others wait for that pause. Otherwise a later call's save could make
@@ -575,11 +595,7 @@ function requestApproval(
   return approval.request;
 }
 
-async function showApprovalCard(
-  ctx: RunContext,
-  call: ToolCall,
-  card: { reviewReason: string | undefined; summary: FleetCardSummary | undefined },
-) {
+async function showApprovalCard(ctx: RunContext, call: ToolCall, card: ApprovalCard) {
   const { deps, run, runId, bot, thread } = ctx;
   const { name, args, executionId, applied } = call;
   if (!(await renewRunLease(deps, runId, ctx.workerId, ctx.fence))) {

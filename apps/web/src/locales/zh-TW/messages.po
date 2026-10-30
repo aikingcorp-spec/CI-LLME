@@ -1326,6 +1326,10 @@ msgstr "選擇機器人"
 msgid "Choose a bot shape, color, or upload an image"
 msgstr "選擇機器人形狀和顏色，或上傳圖片"
 
+#: src/pages/Auth.tsx
+msgid "Choose a machine"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Choose a model"
@@ -1488,6 +1492,7 @@ msgstr "第 {index} 欄"
 msgid "Comfortable"
 msgstr "寬鬆"
 
+#: src/components/MachinePicker.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Coming soon"
 msgstr "即將推出"
@@ -1737,6 +1742,7 @@ msgstr "上下文長度限制"
 
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/MachinePicker.tsx
 #: src/components/SignupSurvey.tsx
 #: src/pages/Auth.tsx
 #: src/pages/Onboarding.tsx
@@ -2773,6 +2779,10 @@ msgstr "請輸入有效的電子郵件地址"
 msgid "Enter a valid email address."
 msgstr ""
 
+#: src/components/MachinePicker.tsx
+msgid "Enter a valid http:// or https:// address."
+msgstr ""
+
 #: src/pages/model-settings/use-model-settings.ts
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to {MAX_MODEL_CONTEXT_WINDOW} for the context limit."
@@ -3649,6 +3659,10 @@ msgstr "低"
 #: src/components/VaultSettings.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr "使用小寫英文字母、數字、連字號與底線，並以字母開頭。"
+
+#: src/components/MachinePicker.tsx
+msgid "Machine"
+msgstr ""
 
 #: src/lib/user-error.ts
 msgid "main model"
@@ -5479,6 +5493,10 @@ msgstr "Sentry 警示"
 msgid "Serenity endpoint is required."
 msgstr "請填寫 Serenity 端點。"
 
+#: src/components/MachinePicker.tsx
+msgid "Server address"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Server found. Enter a model name."
 msgstr ""
@@ -6072,6 +6090,10 @@ msgstr ""
 msgid "this computer"
 msgstr "這臺電腦"
 
+#: src/components/MachinePicker.tsx
+msgid "This computer"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This connection's request limit is too small. Choose another model."
@@ -6559,6 +6581,10 @@ msgstr ""
 msgid "VNBot"
 msgstr "VNBot"
 
+#: src/components/MachinePicker.tsx
+msgid "VNBot Cloud"
+msgstr ""
+
 #: src/lib/user-error.ts
 #: src/pages/Auth.tsx
 msgid "VNBot is in limited preview"
@@ -6799,6 +6825,10 @@ msgstr "你的 OpenAI"
 #: src/lib/run-error.ts
 msgid "Your OpenRouter"
 msgstr "你的 OpenRouter"
+
+#: src/components/MachinePicker.tsx
+msgid "Your own machine (VPS, Mac mini, any server)"
+msgstr ""
 
 #: src/components/integrations/skills-dialog.tsx
 msgid "Your skills"

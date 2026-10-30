@@ -246,11 +246,13 @@ export class DesktopSandboxProvider implements SandboxProvider {
     return this.boxes.get(computer.id)?.running ?? false;
   }
 
-  async environment() {
+  async environment(computer?: ComputerRef) {
     return {
       platform: process.platform,
       home: homedir(),
       shell: process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "/bin/sh",
+      // The bot's own folder; the approval gate treats everything else on the machine as the user's.
+      workspace: computer ? this.boxFor(computer)?.home : undefined,
     };
   }
 

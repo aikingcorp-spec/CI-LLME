@@ -11,6 +11,8 @@ export interface UpdaterEnvironment {
   packaged: boolean;
   version: string;
   disabled?: boolean;
+  msi?: boolean;
+  feedUrl?: string;
 }
 
 export function updaterSupport(env: UpdaterEnvironment): { supported: boolean; reason: string } {
@@ -19,6 +21,9 @@ export function updaterSupport(env: UpdaterEnvironment): { supported: boolean; r
   }
   if (!env.packaged) {
     return { supported: false, reason: strings().updater.notInstalled };
+  }
+  if (env.msi === true) {
+    return { supported: false, reason: strings().updater.msiUnsupported };
   }
   return { supported: true, reason: "" };
 }
@@ -216,6 +221,7 @@ export interface ElectronAutoUpdater {
   allowDowngrade: boolean;
   allowPrerelease: boolean;
   disableWebInstaller: boolean;
+  setFeedURL?: (options: { provider: "generic"; url: string }) => void;
   on: (event: string, listener: (payload: unknown) => void) => unknown;
   checkForUpdates: () => Promise<unknown>;
   downloadUpdate: () => Promise<unknown>;
@@ -287,6 +293,9 @@ export class DesktopUpdateController {
 
     const loading = this.loadUpdater()
       .then((updater) => {
+        if (this.environment.feedUrl !== undefined && updater.setFeedURL !== undefined) {
+          updater.setFeedURL({ provider: "generic", url: this.environment.feedUrl });
+        }
         updater.autoDownload = false;
         updater.autoInstallOnAppQuit = true;
         updater.allowPrerelease = false;

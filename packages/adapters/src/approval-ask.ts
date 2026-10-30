@@ -1,8 +1,10 @@
 import type { MessageBlock } from "@rakazo/contracts";
 import { BOT_INSTRUCTIONS_MAX_LENGTH } from "@rakazo/contracts";
+import type { HostCommandRisk } from "@rakazo/core";
 import {
   CARD_TITLE_ESCAPED_CHARACTERS,
   composioBatchActions,
+  HOST_COMMAND_RISK_TEXT,
   instructionUpdateDiff,
   messagingProviderName,
   redactSecrets,
@@ -36,7 +38,12 @@ export function buildApprovalAskBlock(
   toolName: string,
   args: Record<string, unknown>,
   secrets: string[],
-  options?: { reviewReason?: string; summary?: FleetCardSummary },
+  options?: {
+    reviewReason?: string;
+    summary?: FleetCardSummary;
+    /** Why a shell command on the user's own computer needs a person first. */
+    hostShellRisks?: HostCommandRisk[];
+  },
 ): MessageBlock {
   if (options?.summary) {
     // Built from what was resolved before the effect was recorded, not from what the model typed.
@@ -100,6 +107,28 @@ export function buildApprovalAskBlock(
       actions: [
         { id: "allow", label: "Apply" },
         { id: "deny", label: "Dismiss" },
+      ],
+    };
+  }
+  if (toolName === "shell" && options?.hostShellRisks?.length) {
+    const cwd = typeof args.cwd === "string" && args.cwd.trim() ? `cd ${args.cwd.trim()}\n` : "";
+    const reasons = options.hostShellRisks.map((risk) => `# ${HOST_COMMAND_RISK_TEXT[risk]}`);
+    return {
+      kind: "ask",
+      approvalEffectId: effectId,
+      text: "Run this command on your computer?",
+      detail: truncate(
+        redactSecrets(
+          `${reasons.join("\n")}\n${cwd}${String(args.command ?? args.cmd ?? "")}`,
+          secrets,
+        ),
+        MAX_APPROVAL_DETAIL_LENGTH,
+      ),
+      detailFormat: "code",
+      status: "pending",
+      actions: [
+        { id: "allow", label: "Allow once" },
+        { id: "deny", label: "Deny" },
       ],
     };
   }

@@ -18,25 +18,60 @@
 
     <main class="shell">
       <h1 class="heading" data-text="heading">Chào mừng đến với VNBot</h1>
-      <p class="subheading" data-text="subheading">Chọn máy chủ mà ứng dụng này sẽ sử dụng.</p>
+      <p id="subheading" class="subheading" data-text="subheadingEmail">Nhập email để nhận mã đăng nhập.</p>
 
-      <form id="setup" novalidate>
+      <form id="step-email" novalidate>
+        <label class="field-label" for="account-email" data-text="emailLabel">Email</label>
+        <input
+          id="account-email"
+          class="field"
+          type="email"
+          spellcheck="false"
+          autocomplete="email"
+        />
+        <div class="actions">
+          <button id="send-code" class="button button-primary" type="submit" data-text="sendCode">Gửi mã</button>
+        </div>
+      </form>
+
+      <form id="step-code" novalidate hidden>
+        <label class="field-label" for="account-code" data-text="codeLabel">Mã 6 chữ số</label>
+        <input
+          id="account-code"
+          class="field"
+          type="text"
+          inputmode="numeric"
+          maxlength="6"
+          spellcheck="false"
+          autocomplete="one-time-code"
+        />
+        <div class="actions">
+          <button id="change-email" class="button button-secondary" type="button" data-text="changeEmail">Đổi email</button>
+          <button id="resend-code" class="button button-secondary" type="button" data-text="resendCode">Gửi lại mã</button>
+          <button id="verify-code" class="button button-primary" type="submit" data-text="verifyCode">Xác nhận</button>
+        </div>
+      </form>
+
+      <p id="account-status" class="status" role="status" aria-live="polite"></p>
+
+      <form id="setup" novalidate hidden>
         <fieldset class="choices">
-          <legend class="sr-only" data-text="legend">Máy chủ</legend>
-
-          <label class="choice" for="mode-cloud">
-            <input id="mode-cloud" type="radio" name="mode" value="cloud" checked />
-            <span class="choice-title" data-text="modeCloud">VNBot Cloud</span>
-          </label>
+          <legend class="sr-only" data-text="legend">Máy</legend>
 
           <label class="choice" for="mode-new">
-            <input id="mode-new" type="radio" name="mode" value="new" />
+            <input id="mode-new" type="radio" name="mode" value="new" checked />
             <span class="choice-title" data-text="modeNew">Máy tính này</span>
           </label>
 
           <label class="choice" for="mode-existing">
             <input id="mode-existing" type="radio" name="mode" value="existing" />
-            <span class="choice-title" data-text="modeExisting">Máy chủ có sẵn</span>
+            <span class="choice-title" data-text="modeExisting">Máy của bạn (VPS, Mac mini, máy chủ riêng…)</span>
+          </label>
+
+          <label class="choice" for="mode-cloud">
+            <input id="mode-cloud" type="radio" name="mode" value="cloud" disabled />
+            <span class="choice-title" data-text="modeCloud">VNBot Cloud</span>
+            <span class="choice-badge" data-text="comingSoon">Sắp có</span>
           </label>
         </fieldset>
 

@@ -1127,6 +1127,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             get: getRunComputer,
             checkpoint: workspaceCheckpoint,
             hostEnvironment,
+            hostCommands: computerKind === "desktop",
             graphical,
             graphicalToolsAllowed,
             pageBrowserAllowed,

@@ -106,6 +106,8 @@ export interface DesktopSetupState {
   /** Hosted Rakazo origin, saved as an `existing` server when chosen. */
   cloudUrl: string;
   saved: DesktopSetup | null;
+  /** Who already passed the sign-in code on this computer; null shows the email step first. */
+  verifiedEmail: string | null;
   /** Present when a saved or newly selected server could not be reopened. */
   error?: string;
 }
@@ -166,6 +168,14 @@ export interface RakazoSetup {
   test: (url: string) => Promise<DesktopReachability>;
   save: (setup: DesktopSetup) => Promise<{ ok: boolean; error?: string }>;
   quit: () => Promise<void>;
+  /** Email-code sign-in. The main process calls the account server; the error text is localized. */
+  account: {
+    sendCode: (email: string) => Promise<{ ok: boolean; error?: string }>;
+    verifyCode: (
+      email: string,
+      code: string,
+    ) => Promise<{ ok: boolean; email?: string; error?: string; kind?: string }>;
+  };
   /** Opens one of the Docker install pages in the system browser. */
   openLink: (link: DesktopSetupLink) => Promise<void>;
   /** The Docker Compose stack this app installs and runs for mode `new`. */

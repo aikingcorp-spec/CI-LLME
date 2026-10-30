@@ -11,7 +11,49 @@ import {
   smokeStageReporter,
 } from "./native-smoke.js";
 
+/** The local node's HTTP surface as the smoke sees it, with one switch per check. */
+function fakeNode(
+  options: { health?: number; capabilities?: Response; page?: Response } = {},
+): typeof fetch {
+  return (async (url: string) => {
+    const pathname = new URL(url).pathname;
+    if (pathname === "/health") return new Response("ok", { status: options.health ?? 200 });
+    if (pathname === "/api/auth/capabilities")
+      return options.capabilities ?? Response.json({ emailCode: false, passwordAuth: true });
+    if (pathname === "/sign-in")
+      return (
+        options.page ??
+        new Response("<!doctype html>", { headers: { "content-type": "text/html; charset=utf-8" } })
+      );
+    return new Response("", { status: 404 });
+  }) as unknown as typeof fetch;
+}
+
 describe("native smoke", () => {
+  it.each([
+    ["capabilities", { capabilities: new Response("", { status: 500 }) }],
+    ["capabilities", { capabilities: Response.json({ passwordAuth: true }) }],
+    ["sign-in-page", { page: new Response("", { status: 404 }) }],
+    ["sign-in-page", { page: Response.json({}) }],
+  ])("fails at %s when the sign-in surface is not usable", async (check, options) => {
+    const dir = await mkdtemp(path.join(tmpdir(), "rakazo-smoke-"));
+    try {
+      const print = vi.fn();
+      const code = await runNativeSmoke({
+        stack: { start: async () => ({ webUrl: "http://127.0.0.1:43123" }), stop: async () => {} },
+        userDataDir: dir,
+        fetch: fakeNode(options),
+        print,
+        printError: vi.fn(),
+        readPostgresLog: async () => "",
+      });
+      expect(code).toBe(1);
+      expect(print).toHaveBeenCalledExactlyOnceWith(`RAKAZO_DESKTOP_SMOKE fail ${check}`);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("finds the Windows port file under APPDATA with injected platform and paths", () => {
     expect(
       nativeWebUrlFile({
@@ -45,9 +87,7 @@ describe("native smoke", () => {
         }),
       };
       const print = vi.fn();
-      const fetchImpl = vi.fn(async () => ({
-        status: typeof outcome === "number" ? outcome : 200,
-      })) as unknown as typeof fetch;
+      const fetchImpl = fakeNode({ health: typeof outcome === "number" ? outcome : 200 });
       try {
         expect(await runNativeSmoke({ stack, userDataDir: dir, fetch: fetchImpl, print })).toBe(
           outcome === 200 ? 0 : 1,
@@ -86,11 +126,11 @@ describe("native smoke", () => {
       await runNativeSmoke({
         stack: { start: async () => ({ webUrl: "http://127.0.0.1:43123" }), stop: async () => {} },
         userDataDir: dir,
-        fetch: (async () => ({ status: 200 })) as unknown as typeof fetch,
+        fetch: fakeNode(),
         print: vi.fn(),
         onStage,
       });
-      expect(onStage).toHaveBeenCalledExactlyOnceWith("health");
+      expect(onStage.mock.calls.map(([stage]) => stage)).toEqual(["health", "sign-in"]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -130,7 +170,7 @@ describe("native smoke", () => {
             stop: async () => {},
           },
           userDataDir: dir,
-          fetch: (async () => ({ status: 200 })) as unknown as typeof fetch,
+          fetch: fakeNode(),
           print: vi.fn(),
           printError,
           readPostgresLog: async () => log,

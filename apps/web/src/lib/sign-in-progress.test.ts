@@ -35,3 +35,8 @@ it("computes the remaining resend seconds", () => {
   expect(resendSecondsLeft(0, 60, 61_000)).toBe(0);
   expect(resendSecondsLeft(undefined, 60)).toBe(0);
 });
+
+it("keeps the machine step without a timestamp", () => {
+  writeSignInProgress({ email: "a@b.vn", step: "machine" });
+  expect(readSignInProgress()).toEqual({ email: "a@b.vn", step: "machine" });
+});

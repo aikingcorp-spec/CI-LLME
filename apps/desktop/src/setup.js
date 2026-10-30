@@ -19,6 +19,16 @@
   const format = (template, values) =>
     template.replace(/\{(\w+)\}/g, (match, key) => (key in values ? String(values[key]) : match));
 
+  const emailForm = document.getElementById("step-email");
+  const codeForm = document.getElementById("step-code");
+  const accountEmail = document.getElementById("account-email");
+  const accountCode = document.getElementById("account-code");
+  const accountStatus = document.getElementById("account-status");
+  const sendCodeButton = document.getElementById("send-code");
+  const verifyCodeButton = document.getElementById("verify-code");
+  const resendCodeButton = document.getElementById("resend-code");
+  const changeEmailButton = document.getElementById("change-email");
+  const subheading = document.getElementById("subheading");
   const form = document.getElementById("setup");
   const serverUrl = document.getElementById("server-url");
   const panelNew = document.getElementById("panel-new");
@@ -65,7 +75,6 @@
   const PULL_SCALE_BYTES = 1.2e9;
 
   let defaultLocalUrl = "";
-  let cloudUrl = "";
   /** Bumped on user edits, mode switches, and new async runs; a run left behind is stale. */
   let requestGeneration = 0;
   /** Generation of the check in flight; an edit or mode switch retires it and releases its lock. */
@@ -81,7 +90,7 @@
 
   function selectedMode() {
     const checked = form.querySelector('input[name="mode"]:checked');
-    return checked === null ? "cloud" : checked.value;
+    return checked === null ? "new" : checked.value;
   }
 
   function setStatus(message, tone) {
@@ -97,7 +106,10 @@
 
   /** A save in flight cannot be cancelled, so the choice it commits must not change under it. */
   function lockMode(locked) {
-    for (const input of form.querySelectorAll('input[name="mode"]')) input.disabled = locked;
+    for (const input of form.querySelectorAll('input[name="mode"]')) {
+      // VNBot Cloud is not available yet, so an unlock must not enable it.
+      input.disabled = locked || input.value === "cloud";
+    }
   }
 
   function syncPanels() {
@@ -370,14 +382,118 @@
     event.preventDefault();
     const mode = selectedMode();
     if (mode === "new") void runStack();
-    // Cloud is an existing server at a fixed address.
-    else void save("existing", mode === "cloud" ? cloudUrl : serverUrl.value);
+    else void save("existing", serverUrl.value);
+  });
+
+  function showStep(step) {
+    emailForm.hidden = step !== "email";
+    codeForm.hidden = step !== "code";
+    form.hidden = step !== "machine";
+    accountStatus.hidden = step === "machine";
+    setAccountStatus("");
+    if (step === "email") {
+      subheading.textContent = text.subheadingEmail;
+      accountEmail.focus();
+    } else if (step === "code") {
+      subheading.textContent = format(text.subheadingCode, { email: accountEmail.value.trim() });
+      accountCode.value = "";
+      accountCode.focus();
+    } else {
+      subheading.textContent = text.subheading;
+    }
+  }
+
+  function setAccountStatus(message, tone) {
+    accountStatus.textContent = message;
+    if (tone === undefined) accountStatus.removeAttribute("data-tone");
+    else accountStatus.setAttribute("data-tone", tone);
+  }
+
+  function setAccountBusy(busy) {
+    sendCodeButton.disabled = busy;
+    verifyCodeButton.disabled = busy;
+    resendCodeButton.disabled = busy;
+    changeEmailButton.disabled = busy;
+  }
+
+  /** Runs one account request with the buttons held; a dead bridge reads as a failed request. */
+  async function accountRequest(pendingText, request) {
+    setAccountBusy(true);
+    setAccountStatus(pendingText);
+    try {
+      return await request();
+    } catch {
+      return { ok: false, error: text.otpFailed };
+    } finally {
+      setAccountBusy(false);
+    }
+  }
+
+  async function sendCode(isResend) {
+    const email = accountEmail.value.trim();
+    if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+      setAccountStatus(text.enterEmail, "error");
+      return;
+    }
+    const sent = await accountRequest(text.sendingCode, () => bridge.account.sendCode(email));
+    if (!sent.ok) setAccountStatus(sent.error ?? text.otpFailed, "error");
+    else if (isResend) setAccountStatus(text.codeResent, "ok");
+    else showStep("code");
+  }
+
+  async function verifyCode() {
+    const code = accountCode.value;
+    if (!/^\d{6}$/.test(code)) {
+      setAccountStatus(text.enterCode, "error");
+      return;
+    }
+    const email = accountEmail.value.trim();
+    const verified = await accountRequest(text.verifyingCode, () =>
+      bridge.account.verifyCode(email, code),
+    );
+    if (verified.ok) {
+      showStep("machine");
+      if (selectedMode() === "existing") serverUrl.focus();
+      else continueButton.focus();
+      return;
+    }
+    const message = verified.error ?? text.otpFailed;
+    if (verified.kind === "not-invited") showStep("email");
+    else {
+      accountCode.value = "";
+      accountCode.focus();
+    }
+    setAccountStatus(message, "error");
+  }
+
+  emailForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void sendCode(false);
+  });
+
+  codeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void verifyCode();
+  });
+
+  accountCode.addEventListener("input", () => {
+    accountCode.value = accountCode.value.replace(/\D/g, "");
+  });
+
+  resendCodeButton.addEventListener("click", () => {
+    void sendCode(true);
+  });
+
+  changeEmailButton.addEventListener("click", () => {
+    showStep("email");
   });
 
   /** Pushed state keeps progress moving even when the OS throttles this window's timers. */
   function watchStack() {
     bridge.stack.onChange(() => {
       wakePoll?.();
+      // Before sign-in there is no machine choice for a ready stack to save.
+      if (form.hidden) return;
       // A follow that ended on an error restarts here instead of leaving the panel frozen;
       // hold the controls until it has rendered the state it is restarting on.
       if (!stackPolling && selectedMode() === "new") {
@@ -401,10 +517,8 @@
       const state = await bridge.state();
       if (state === null) throw new Error("Setup is not active");
       defaultLocalUrl = state.defaultLocalUrl;
-      cloudUrl = state.cloudUrl;
       if (state.saved !== null) {
-        const savedCloud = state.saved.mode === "existing" && state.saved.serverUrl === cloudUrl;
-        const mode = savedCloud ? "cloud" : state.saved.mode;
+        const { mode } = state.saved;
         const modeInput = document.querySelector(`input[name="mode"][value="${mode}"]`);
         if (modeInput !== null) modeInput.checked = true;
         if (mode === "existing") serverUrl.value = state.saved.serverUrl;
@@ -416,6 +530,13 @@
       if (attached) document.getElementById("mode-new").checked = true;
       syncPanels();
       setBusy(false);
+      // A running start belongs to the machine step, whoever launched it.
+      if (!attached && state.verifiedEmail === null) {
+        showStep("email");
+        if (state.error) setAccountStatus(state.error, "error");
+        return;
+      }
+      showStep("machine");
       if (state.error) setStatus(state.error, "error");
       if (attached) {
         renderStack(stack);

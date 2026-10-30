@@ -74,15 +74,15 @@ describe("graphical computer spec", () => {
     // Explicit "" stands for unset, so exported RAKAZO_COMPUTER_IMAGE* values cannot leak in.
     expect(resolveComputerImage("", "")).toBe("rakazo/computer:local");
     expect(resolveComputerImage("", "edge")).toBe("rakazo/computer:local");
-    expect(resolveComputerImage("ghcr.io/aikingcorp-spec/CI-LLME/computer", "edge")).toBe(
-      "ghcr.io/aikingcorp-spec/CI-LLME/computer:edge",
+    expect(resolveComputerImage("ghcr.io/aikingcorp-spec/vnbot/computer", "edge")).toBe(
+      "ghcr.io/aikingcorp-spec/vnbot/computer:edge",
     );
-    expect(resolveComputerImage("ghcr.io/aikingcorp-spec/CI-LLME/computer", "")).toBe(
-      "ghcr.io/aikingcorp-spec/CI-LLME/computer",
+    expect(resolveComputerImage("ghcr.io/aikingcorp-spec/vnbot/computer", "")).toBe(
+      "ghcr.io/aikingcorp-spec/vnbot/computer",
     );
     // Compose already appends the tag, so a tagged or pinned image is never tagged twice.
-    expect(resolveComputerImage("ghcr.io/aikingcorp-spec/CI-LLME/computer:edge", "edge")).toBe(
-      "ghcr.io/aikingcorp-spec/CI-LLME/computer:edge",
+    expect(resolveComputerImage("ghcr.io/aikingcorp-spec/vnbot/computer:edge", "edge")).toBe(
+      "ghcr.io/aikingcorp-spec/vnbot/computer:edge",
     );
     expect(resolveComputerImage("registry.example.com:5000/rakazo/computer", "v1.2.3")).toBe(
       "registry.example.com:5000/rakazo/computer:v1.2.3",

@@ -134,6 +134,22 @@ html[data-platform="darwin"] .titlebar {
   font-weight: 600;
 }
 
+.choice:has(input:disabled) {
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+
+.choice-badge {
+  margin-inline-start: auto;
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .panel {
   margin-bottom: 4px;
 }

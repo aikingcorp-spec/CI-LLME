@@ -12,7 +12,7 @@ describe("desktop child windows", () => {
     expect(
       shouldOpenInAppPopup(
         appOrigin,
-        "https://github.com/aikingcorp-spec/CI-LLME/pull/395",
+        "https://github.com/aikingcorp-spec/vnbot/pull/395",
         "_blank",
       ),
     ).toBe(false);

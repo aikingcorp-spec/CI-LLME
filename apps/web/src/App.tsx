@@ -10,6 +10,7 @@ import {
   Suspense,
   useEffect,
   useLayoutEffect,
+  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
@@ -44,6 +45,7 @@ import {
   sessionRetryDelayMs,
   showSessionUnavailable,
 } from "./lib/session-gate";
+import { readSignInProgress } from "./lib/sign-in-progress";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
 
 import { IntegrationCallbackPage } from "./pages/IntegrationCallback";
@@ -159,6 +161,7 @@ function SessionApp() {
     () => false,
   );
   const session = authClient.useSession();
+  const [, machineChosen] = useReducer((count: number) => count + 1, 0);
   const { pathname, search } = useLocation();
   const screen = analyticsScreen(pathname);
   const analyticsUserId = session.data?.user.id;
@@ -219,7 +222,13 @@ function SessionApp() {
               <Route path="/" element={user ? <Navigate to="/app" replace /> : <WelcomePage />} />
               <Route
                 path="/sign-in"
-                element={user ? <Navigate to={signInDestination} replace /> : <AuthPage key="in" />}
+                element={
+                  user && readSignInProgress()?.step !== "machine" ? (
+                    <Navigate to={signInDestination} replace />
+                  ) : (
+                    <AuthPage key="in" signedIn={Boolean(user)} onMachineChosen={machineChosen} />
+                  )
+                }
               />
               <Route path="/sign-up" element={<SignUpRedirect signedIn={Boolean(user)} />} />
               <Route path="/forgot-password" element={<Navigate to="/sign-in" replace />} />

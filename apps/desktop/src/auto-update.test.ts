@@ -32,6 +32,7 @@ function fakeUpdater(overrides: Partial<ElectronAutoUpdater> = {}) {
     allowDowngrade: true,
     allowPrerelease: true,
     disableWebInstaller: false,
+    setFeedURL: vi.fn(),
     on: vi.fn((event, listener) => {
       listeners.set(event, listener);
       return updater;
@@ -58,11 +59,15 @@ function deferred() {
 }
 
 describe("updaterSupport", () => {
-  it("only runs in an installed build that explicitly opts in", () => {
+  it("runs by default in an installed build and supports opt-out", () => {
     expect(updaterSupport(packaged).supported).toBe(true);
-    expect(updaterSupport({ packaged: true, version: "0.1.0" }).supported).toBe(false);
+    expect(updaterSupport({ packaged: true, version: "0.1.0", disabled: true }).supported).toBe(
+      false,
+    );
     expect(updaterSupport({ packaged: false, version: "0.1.0" }).supported).toBe(false);
-    expect(updaterSupport({ ...packaged, disabled: true }).supported).toBe(false);
+    expect(updaterSupport({ ...packaged, msi: true }).reason).toBe(
+      strings().updater.msiUnsupported,
+    );
   });
 
   it("starts unsupported builds in a state that explains itself", () => {
@@ -226,6 +231,15 @@ describe("reduceUpdateState", () => {
       message: strings().updater.failed,
     });
   });
+
+  it("treats a SHA-512 mismatch as a failed update", () => {
+    const state = apply([
+      { type: "available", version: "0.3.6" },
+      { type: "failed", error: new Error("sha512 checksum mismatch"), userInitiated: false },
+    ]);
+    expect(state.phase).toBe("error");
+    expect(state.phase).not.toBe("ready");
+  });
 });
 
 describe("shouldCheck", () => {
@@ -280,6 +294,20 @@ describe("DesktopUpdateController", () => {
       allowPrerelease: false,
       allowDowngrade: false,
       disableWebInstaller: true,
+    });
+  });
+
+  it("uses a local generic feed override when configured", async () => {
+    const fake = fakeUpdater();
+    const controller = new DesktopUpdateController(
+      { ...packaged, feedUrl: "http://127.0.0.1:4173/" },
+      async () => fake.updater,
+      clock,
+    );
+    await controller.check(false);
+    expect(fake.updater.setFeedURL).toHaveBeenCalledWith({
+      provider: "generic",
+      url: "http://127.0.0.1:4173/",
     });
   });
 

@@ -8,6 +8,7 @@ import { parseStoredSetup, SETUP_FILE_NAME, serializeSetup } from "./setup-confi
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_NONBLOCK = constants.O_NONBLOCK ?? 0;
 const MAX_SETUP_BYTES = 64 * 1024;
+const VERIFIED_EMAIL_FILE_NAME = "account.json";
 
 export function setupFilePath(userDataDir: string): string {
   return path.join(userDataDir, SETUP_FILE_NAME);
@@ -69,6 +70,27 @@ export async function writePrivateFile(destination: string, contents: string): P
     await file?.close().catch(() => undefined);
     await rm(temporary, { force: true }).catch(() => undefined);
   }
+}
+
+function verifiedEmailPath(userDataDir: string): string {
+  return path.join(userDataDir, VERIFIED_EMAIL_FILE_NAME);
+}
+
+/** Who passed the sign-in code on this computer. No session or token is ever kept with it. */
+export async function readVerifiedEmail(userDataDir: string): Promise<string | null> {
+  const raw = await readPrivateFile(verifiedEmailPath(userDataDir), MAX_SETUP_BYTES);
+  if (raw === null) return null;
+  try {
+    const email: unknown = (JSON.parse(raw) as { email?: unknown } | null)?.email;
+    return typeof email === "string" && email !== "" ? email : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeVerifiedEmail(userDataDir: string, email: string): Promise<void> {
+  await mkdir(userDataDir, { recursive: true });
+  await writePrivateFile(verifiedEmailPath(userDataDir), JSON.stringify({ email }));
 }
 
 /** Removes saved setup so the next launch runs first-run again. */

@@ -17,7 +17,7 @@ const entry = `
 - Files / modules: packages/core/src/run-state.ts
 - Invariants affected: failed runs may still return to queued.
 - ADR: none
-- Pull request: https://github.com/aikingcorp-spec/CI-LLME/pull/1
+- Pull request: https://github.com/aikingcorp-spec/vnbot/pull/1
 `;
 
 function run(files, extra = {}) {

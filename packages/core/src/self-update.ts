@@ -1,6 +1,6 @@
 /** The repository a stock VNBot deployment tracks (PRODUCT.md). It is private, so pulling from it
  * needs the deployment's own git credentials. */
-export const OFFICIAL_REPO_URL = "https://github.com/aikingcorp-spec/CI-LLME";
+export const OFFICIAL_REPO_URL = "https://github.com/aikingcorp-spec/vnbot";
 export const DEFAULT_UPDATE_BRANCH = "main";
 export const DEFAULT_UPDATE_REMOTE = "origin";
 
@@ -81,7 +81,7 @@ function normalizeRepoPath(raw: string): string | null {
   return segments.join("/");
 }
 
-/** `github.com/aikingcorp-spec/CI-LLME` for every spelling of the same remote, for comparison only. */
+/** `github.com/aikingcorp-spec/vnbot` for every spelling of the same remote, for comparison only. */
 export function repoIdentity(url: string): string | null {
   const normalized = normalizeRepoUrl(url);
   if ("error" in normalized) return null;

@@ -9,11 +9,13 @@ import type { ComponentProps } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { LanguageSwitch } from "../components/LanguageSwitch";
+import { MachinePicker } from "../components/MachinePicker";
 import { PasskeySignIn } from "../components/PasskeySignIn";
 import { VnbotWordmark } from "../components/VnbotWordmark";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
+import { desktopBridge } from "../lib/desktop";
 import { getActiveUiLocale } from "../lib/i18n";
 import { clearSpaceSelection } from "../lib/rpc";
 import {
@@ -34,7 +36,7 @@ const EMAIL_ERROR_ID = "auth-email-error";
 const linkClass =
   "font-medium text-link underline underline-offset-4 hover:decoration-2 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
-type Step = "email" | "code";
+type Step = "email" | "code" | "machine";
 
 function Button({
   className,
@@ -57,7 +59,14 @@ function formatResend(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(rest).padStart(2, "0")}`;
 }
 
-export function AuthPage() {
+export function AuthPage({
+  signedIn = false,
+  onMachineChosen,
+}: {
+  /** A session exists, so a reload on the machine step stays there. */
+  signedIn?: boolean;
+  onMachineChosen?: () => void;
+}) {
   const { t } = useLingui();
   const [searchParams] = useSearchParams();
   // F5 on the code step lands back on it (same tab only; see lib/sign-in-progress).
@@ -72,7 +81,9 @@ export function AuthPage() {
     return readSignInProgress();
   });
   const [email, setEmail] = useState(restored?.email ?? "");
-  const [step, setStep] = useState<Step>(restored?.step ?? "email");
+  const [step, setStep] = useState<Step>(
+    restored?.step === "machine" && !signedIn ? "email" : (restored?.step ?? "email"),
+  );
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [notInvited, setNotInvited] = useState(notInvitedFromUrl);
   const [error, setError] = useState<string | null>(() => {
@@ -82,6 +93,8 @@ export function AuthPage() {
   });
   const [pending, setPending] = useState(false);
   const entering = useRef(false);
+  const emailInput = useRef<HTMLInputElement>(null);
+  const codeInput = useRef<HTMLInputElement>(null);
   const [reset, setReset] = useState<AuthCapabilities | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
   const [capabilityAttempt, setCapabilityAttempt] = useState(0);
@@ -119,6 +132,13 @@ export function AuthPage() {
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [step, resendIn]);
+
+  const formShown = Boolean(reset);
+  useEffect(() => {
+    if (!formShown) return;
+    if (step === "email") emailInput.current?.focus();
+    if (step === "code") codeInput.current?.focus();
+  }, [formShown, step]);
 
   const ssoOnly = Boolean(reset?.sso && !reset.passwordAuth && !reset.emailCode);
   const trimmedEmail = email.trim();
@@ -179,6 +199,17 @@ export function AuthPage() {
     setPending(true);
     setError(null);
     setCodeInvalid(false);
+    // The desktop app picked its machine in setup, before it ever loaded this page.
+    const pickMachine = !desktopBridge();
+    const progress = readSignInProgress();
+    const keepCodeStep = () => {
+      if (!pickMachine) return;
+      if (progress) writeSignInProgress(progress);
+      else clearSignInProgress();
+    };
+    // The session arrives with the response and the router leaves this page on it, unless the
+    // machine step is already marked.
+    if (pickMachine) writeSignInProgress({ email: trimmedEmail, step: "machine" });
     try {
       const result = await authClient.signIn.emailOtp({
         email: trimmedEmail,
@@ -186,6 +217,7 @@ export function AuthPage() {
         name: trimmedEmail.split("@")[0] || "User",
       });
       if (result.error) {
+        keepCodeStep();
         const codeName = authErrorCode(result.error);
         if (codeName === EMAIL_NOT_INVITED) {
           setNotInvited(true);
@@ -200,8 +232,10 @@ export function AuthPage() {
         if (codeName === "OTP_EXPIRED" || codeName === "TOO_MANY_ATTEMPTS") setNeedsNewCode(true);
         return;
       }
-      enterApp();
+      if (pickMachine) setStep("machine");
+      else enterApp();
     } catch {
+      keepCodeStep();
       setError(t`Couldn't reach the server. Try again.`);
     } finally {
       if (!entering.current) setPending(false);
@@ -223,6 +257,16 @@ export function AuthPage() {
     setCodeInvalid(false);
     setNeedsNewCode(false);
     setResent(false);
+  }
+
+  function chooseThisComputer() {
+    enterApp();
+    onMachineChosen?.();
+  }
+
+  function chooseOwnMachine(url: string) {
+    clearSignInProgress();
+    window.location.assign(url);
   }
 
   async function signInWithSso() {
@@ -266,6 +310,17 @@ export function AuthPage() {
       return;
     }
     await sendCode(false);
+  }
+
+  if (step === "machine") {
+    return (
+      <AuthFrame
+        onSubmit={(event) => event.preventDefault()}
+        title={<Trans>Choose a machine</Trans>}
+      >
+        <MachinePicker onThisComputer={chooseThisComputer} onOwnMachine={chooseOwnMachine} />
+      </AuthFrame>
+    );
   }
 
   if (!reset && !capabilityError) {
@@ -321,13 +376,13 @@ export function AuthPage() {
           {step === "code" ? (
             <div className="flex w-full justify-center">
               <InputOTP
+                ref={codeInput}
                 aria-label={t`6-digit sign-in code`}
                 aria-invalid={codeInvalid || undefined}
                 maxLength={CODE_LENGTH}
                 pattern={"^\\d+$"}
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                autoFocus
                 disabled={pending}
                 value={code}
                 onChange={(value) => {
@@ -355,6 +410,7 @@ export function AuthPage() {
                 <Trans>Email</Trans>
               </Label>
               <input
+                ref={emailInput}
                 id="email"
                 name="email"
                 autoComplete="username webauthn"

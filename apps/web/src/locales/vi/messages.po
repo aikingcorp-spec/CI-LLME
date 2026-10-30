@@ -1325,6 +1325,10 @@ msgstr "Chọn một bot"
 msgid "Choose a bot shape, color, or upload an image"
 msgstr "Chọn hình dáng, màu sắc hoặc tải ảnh lên cho bot"
 
+#: src/pages/Auth.tsx
+msgid "Choose a machine"
+msgstr "Chọn máy"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Choose a model"
@@ -1487,6 +1491,7 @@ msgstr "cột {index}"
 msgid "Comfortable"
 msgstr "Thoáng"
 
+#: src/components/MachinePicker.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Coming soon"
 msgstr "Sắp có"
@@ -1736,6 +1741,7 @@ msgstr "Giới hạn ngữ cảnh"
 
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/MachinePicker.tsx
 #: src/components/SignupSurvey.tsx
 #: src/pages/Auth.tsx
 #: src/pages/Onboarding.tsx
@@ -2772,6 +2778,10 @@ msgstr "Hãy nhập email hợp lệ"
 msgid "Enter a valid email address."
 msgstr "Hãy nhập một địa chỉ email hợp lệ."
 
+#: src/components/MachinePicker.tsx
+msgid "Enter a valid http:// or https:// address."
+msgstr "Hãy nhập địa chỉ http:// hoặc https:// hợp lệ."
+
 #: src/pages/model-settings/use-model-settings.ts
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to {MAX_MODEL_CONTEXT_WINDOW} for the context limit."
@@ -3648,6 +3658,10 @@ msgstr "Thấp"
 #: src/components/VaultSettings.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr "Chữ thường, số, dấu gạch ngang và gạch dưới, bắt đầu bằng chữ cái."
+
+#: src/components/MachinePicker.tsx
+msgid "Machine"
+msgstr "Máy"
 
 #: src/lib/user-error.ts
 msgid "main model"
@@ -5478,6 +5492,10 @@ msgstr "Cảnh báo Sentry"
 msgid "Serenity endpoint is required."
 msgstr "Cần có điểm cuối Serenity."
 
+#: src/components/MachinePicker.tsx
+msgid "Server address"
+msgstr "Địa chỉ máy chủ"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Server found. Enter a model name."
 msgstr "Đã tìm thấy máy chủ. Hãy nhập tên mô hình."
@@ -6071,6 +6089,10 @@ msgstr "Mã đã hết hạn. Hãy gửi mã mới để tiếp tục."
 msgid "this computer"
 msgstr "máy tính này"
 
+#: src/components/MachinePicker.tsx
+msgid "This computer"
+msgstr "Máy tính này"
+
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This connection's request limit is too small. Choose another model."
@@ -6558,6 +6580,10 @@ msgstr "Xem mã nguồn"
 msgid "VNBot"
 msgstr "VNBot"
 
+#: src/components/MachinePicker.tsx
+msgid "VNBot Cloud"
+msgstr "VNBot Cloud"
+
 #: src/lib/user-error.ts
 #: src/pages/Auth.tsx
 msgid "VNBot is in limited preview"
@@ -6798,6 +6824,10 @@ msgstr "OpenAI của bạn"
 #: src/lib/run-error.ts
 msgid "Your OpenRouter"
 msgstr "OpenRouter của bạn"
+
+#: src/components/MachinePicker.tsx
+msgid "Your own machine (VPS, Mac mini, any server)"
+msgstr "Máy của bạn (VPS, Mac mini, máy chủ riêng…)"
 
 #: src/components/integrations/skills-dialog.tsx
 msgid "Your skills"

@@ -32,10 +32,21 @@ describe("host command environment", () => {
       LANG: "C",
       LC_CTYPE: "UTF-8",
       https_proxy: "http://proxy.invalid:3128",
-      SSH_AUTH_SOCK: "/fake-tmp/agent.sock",
       NODE_EXTRA_CA_CERTS: "/fake-home/ca.pem",
       BOT_TOKEN: "fake-bot-token",
     });
+  });
+
+  it("never passes the SSH agent socket, whatever its case", () => {
+    expect(
+      hostCommandEnvironment(
+        { env: {} },
+        { PATH: "/usr/bin", SSH_AUTH_SOCK: "/tmp/agent.sock", ssh_auth_sock: "/tmp/agent2.sock" },
+      ),
+    ).toEqual({ PATH: "/usr/bin" });
+    expect(
+      hostCommandEnvironment({ env: {} }, { SSH_AGENT_PID: "1", GPG_AGENT_INFO: "x" }),
+    ).toEqual({});
   });
 
   it("keeps Windows system variables whatever their case", () => {

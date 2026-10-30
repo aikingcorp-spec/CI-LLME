@@ -69,6 +69,25 @@ export function postgresLogTail(text: string, lines = SMOKE_LOG_LINES): string[]
     .map(redactLogLine);
 }
 
+/**
+ * A healthy API is not yet a usable node: the sign-in screen must be served and the auth server
+ * must say which sign-in it offers. Names the failing check, never a server message.
+ */
+async function signInSurfaceFailure(
+  webUrl: string,
+  call: typeof fetch,
+): Promise<"capabilities" | "sign-in-page" | null> {
+  const signal = () => AbortSignal.timeout(10_000);
+  const capabilities = await call(`${webUrl}/api/auth/capabilities`, { signal: signal() });
+  if (!capabilities.ok) return "capabilities";
+  const body = (await capabilities.json()) as { emailCode?: unknown } | null;
+  if (typeof body?.emailCode !== "boolean") return "capabilities";
+  const page = await call(`${webUrl}/sign-in`, { signal: signal() });
+  if (page.status !== 200 || !page.headers.get("content-type")?.includes("text/html"))
+    return "sign-in-page";
+  return null;
+}
+
 /** Fixed failure text prevents child errors, credentials and local paths reaching logs. */
 export async function runNativeSmoke(input: {
   stack: { start(): Promise<{ webUrl?: string }>; stop(): Promise<void> };
@@ -87,12 +106,17 @@ export async function runNativeSmoke(input: {
     if (!webUrl) throw new Error("Missing web address");
     input.onStage?.("health");
     await writeNativeWebUrl(input.userDataDir, webUrl);
-    const response = await (input.fetch ?? fetch)(`${webUrl}/health`, {
+    const call = input.fetch ?? fetch;
+    const response = await call(`${webUrl}/health`, {
       signal: AbortSignal.timeout(10_000),
     });
     if (response.status === 200) {
-      result = 0;
-      message = `RAKAZO_DESKTOP_SMOKE ok ${webUrl}`;
+      input.onStage?.("sign-in");
+      const failure = await signInSurfaceFailure(webUrl, call);
+      if (failure === null) {
+        result = 0;
+        message = `RAKAZO_DESKTOP_SMOKE ok ${webUrl}`;
+      } else message = `RAKAZO_DESKTOP_SMOKE fail ${failure}`;
     } else message = "RAKAZO_DESKTOP_SMOKE fail health";
   } catch {
     /* Sanitized failure above. */

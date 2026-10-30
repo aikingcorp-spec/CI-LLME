@@ -62,10 +62,10 @@ describe("the images compose file", () => {
       "worker",
     ]);
     for (const service of appServices) {
-      expect(compose.services[service]?.image).toContain("ghcr.io/aikingcorp-spec/CI-LLME/app");
+      expect(compose.services[service]?.image).toContain("ghcr.io/aikingcorp-spec/vnbot/app");
       expect(compose.services[service]?.image).toContain("RAKAZO_IMAGE_TAG");
     }
-    expect(compose.services.computer?.image).toContain("ghcr.io/aikingcorp-spec/CI-LLME/computer");
+    expect(compose.services.computer?.image).toContain("ghcr.io/aikingcorp-spec/vnbot/computer");
     expect(compose.services.computer?.image).toContain("RAKAZO_COMPUTER_IMAGE_TAG");
     expect(compose.services.postgres?.image).toMatch(
       /^\$\{POSTGRES_IMAGE:-postgres:16@sha256:[0-9a-f]{64}\}$/,
@@ -77,7 +77,7 @@ describe("the images compose file", () => {
     expect(firstPartyImageNames(null)).toEqual([]);
     expect(firstPartyImageNames(true)).toEqual([]);
     expect(firstPartyImageNames(7091)).toEqual([]);
-    expect(firstPartyImageNames("ghcr.io/aikingcorp-spec/CI-LLME/computer:edge")).toEqual([
+    expect(firstPartyImageNames("ghcr.io/aikingcorp-spec/vnbot/computer:edge")).toEqual([
       "computer",
     ]);
   });

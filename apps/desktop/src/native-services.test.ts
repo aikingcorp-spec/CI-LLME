@@ -7,19 +7,20 @@ import { readPrivateFile } from "./setup-store.js";
 
 describe("native services", () => {
   it("starts utility processes with desktop sandbox and serves the web", async () => {
-    const forks: Array<{ entry: string; env: NodeJS.ProcessEnv }> = [];
+    const forks: Array<{ entry: string; env: NodeJS.ProcessEnv; cwd?: string }> = [];
     const children = () => ({ once: vi.fn().mockReturnThis(), kill: vi.fn() });
     const root = await mkdtemp(path.join(tmpdir(), "rakazo-native-test-"));
     const services = createNativeServices({
       userDataDir: root,
       appPath: "/repo/apps/desktop",
+      elevated: () => false,
       allocatePort: vi
         .fn()
         .mockResolvedValueOnce(43101)
         .mockResolvedValueOnce(43102)
         .mockResolvedValueOnce(43103),
       fork: (entry, _args, options) => {
-        forks.push({ entry, env: options.env });
+        forks.push({ entry, env: options.env, cwd: options.cwd });
         return children();
       },
       fetch: vi.fn().mockResolvedValue({ ok: true }),
@@ -31,6 +32,10 @@ describe("native services", () => {
       expect(result.webUrl).toBe("http://127.0.0.1:43103");
       expect(forks).toHaveLength(2);
       expect(forks[0]!.env.SANDBOX_PROVIDER).toBe("desktop");
+      expect(forks[0]!.env.RAKAZO_HOST_COMMANDS_ELEVATED).toBeUndefined();
+      // The job runner reads ./crontab; it must not depend on the launch directory.
+      expect(forks.map((f) => f.cwd)).toEqual([root, root]);
+      expect(await readPrivateFile(path.join(root, "crontab"), 1024)).toMatch(/^#/);
       expect(forks[0]!.entry).toBe(
         path.resolve("/repo/apps/desktop", "..", "..", "apps", "api", "dist", "index.js"),
       );
@@ -132,6 +137,192 @@ it("kills the API if forking the worker fails without exposing child details", a
   try {
     await expect(services.start()).rejects.toThrow("Native services could not start.");
     expect(kill).toHaveBeenCalledOnce();
+  } finally {
+    await services.stop();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+describe("native web port", () => {
+  async function freshRoot() {
+    return mkdtemp(path.join(tmpdir(), "rakazo-web-port-"));
+  }
+
+  it("keeps its file next to the API port file, with Windows paths", async () => {
+    const { nativeWebPortFilePath } = await import("./native-services.js");
+    expect(nativeWebPortFilePath("C:\\Profiles\\test\\Roaming\\VNBot", path.win32)).toBe(
+      "C:\\Profiles\\test\\Roaming\\VNBot\\native-web-port",
+    );
+  });
+
+  it("allocates and saves a port on the first launch", async () => {
+    const { chooseNativeWebPort, nativeWebPortFilePath } = await import("./native-services.js");
+    const root = await freshRoot();
+    try {
+      const port = await chooseNativeWebPort({
+        userDataDir: root,
+        reserved: [],
+        allocatePort: async () => 43555,
+        isFree: async () => true,
+      });
+      expect(port).toBe(43555);
+      expect(await readPrivateFile(nativeWebPortFilePath(root), 32)).toBe("43555");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reuses the saved port on the next launch without allocating", async () => {
+    const { chooseNativeWebPort } = await import("./native-services.js");
+    const root = await freshRoot();
+    try {
+      const options = { userDataDir: root, reserved: [], isFree: async () => true };
+      await chooseNativeWebPort({ ...options, allocatePort: async () => 43556 });
+      const allocatePort = vi.fn(async () => 49999);
+      expect(await chooseNativeWebPort({ ...options, allocatePort })).toBe(43556);
+      expect(allocatePort).not.toHaveBeenCalled();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to a new port when the saved one is busy, and saves that one", async () => {
+    const { chooseNativeWebPort, nativeWebPortFilePath } = await import("./native-services.js");
+    const root = await freshRoot();
+    try {
+      await chooseNativeWebPort({
+        userDataDir: root,
+        reserved: [],
+        allocatePort: async () => 43557,
+        isFree: async () => true,
+      });
+      const next = await chooseNativeWebPort({
+        userDataDir: root,
+        reserved: [],
+        allocatePort: async () => 43558,
+        isFree: async (port) => port !== 43557,
+      });
+      expect(next).toBe(43558);
+      expect(await readPrivateFile(nativeWebPortFilePath(root), 32)).toBe("43558");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not reuse a saved port that the API or worker now holds", async () => {
+    const { chooseNativeWebPort } = await import("./native-services.js");
+    const root = await freshRoot();
+    try {
+      await chooseNativeWebPort({
+        userDataDir: root,
+        reserved: [],
+        allocatePort: async () => 43559,
+        isFree: async () => true,
+      });
+      expect(
+        await chooseNativeWebPort({
+          userDataDir: root,
+          reserved: [43559],
+          allocatePort: async () => 43560,
+          isFree: async () => true,
+        }),
+      ).toBe(43560);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores a corrupt or out-of-range saved port", async () => {
+    const { chooseNativeWebPort, nativeWebPortFilePath } = await import("./native-services.js");
+    const { writePrivateFile } = await import("./setup-store.js");
+    const root = await freshRoot();
+    try {
+      for (const bad of ["not a port", "80", "70000", ""]) {
+        await writePrivateFile(nativeWebPortFilePath(root), bad);
+        expect(
+          await chooseNativeWebPort({
+            userDataDir: root,
+            reserved: [],
+            allocatePort: async () => 43561,
+            isFree: async () => true,
+          }),
+        ).toBe(43561);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("actually detects a busy loopback port by default", async () => {
+    const { chooseNativeWebPort, nativeWebPortFilePath } = await import("./native-services.js");
+    const { writePrivateFile } = await import("./setup-store.js");
+    const { createServer } = await import("node:http");
+    const root = await freshRoot();
+    const holder = createServer();
+    await new Promise<void>((resolve) => holder.listen(0, "127.0.0.1", resolve));
+    const busy = (holder.address() as { port: number }).port;
+    try {
+      await writePrivateFile(nativeWebPortFilePath(root), String(busy));
+      const port = await chooseNativeWebPort({
+        userDataDir: root,
+        reserved: [],
+        allocatePort: async () => 43562,
+      });
+      expect(port).toBe(43562);
+    } finally {
+      await new Promise<void>((resolve) => holder.close(() => resolve()));
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("serves the same web origin across two launches", async () => {
+    const root = await freshRoot();
+    const make = (apiPort: number) =>
+      createNativeServices({
+        userDataDir: root,
+        appPath: "/repo/apps/desktop",
+        serveWeb: false,
+        allocatePort: vi
+          .fn()
+          .mockResolvedValueOnce(apiPort)
+          .mockResolvedValueOnce(apiPort + 1)
+          .mockResolvedValue(43570),
+        isPortFree: async () => true,
+        fork: () => ({ once: vi.fn().mockReturnThis(), kill: vi.fn() }),
+        fetch: vi.fn().mockResolvedValue({ ok: true }),
+      });
+    try {
+      const first = make(43580);
+      const a = await first.start();
+      await first.stop();
+      const second = make(43590);
+      const b = await second.start();
+      await second.stop();
+      expect(a.webUrl).toBe("http://127.0.0.1:43570");
+      expect(b.webUrl).toBe(a.webUrl);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
+it("tells the backend when the app runs as an administrator", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "rakazo-services-elevated-"));
+  const envs: NodeJS.ProcessEnv[] = [];
+  const services = createNativeServices({
+    userDataDir: root,
+    serveWeb: false,
+    elevated: () => true,
+    allocatePort: async () => 43130,
+    fork: (_entry, _args, options) => {
+      envs.push(options.env);
+      return { once: vi.fn().mockReturnThis(), kill: vi.fn() };
+    },
+    fetch: vi.fn().mockResolvedValue({ ok: true }),
+  });
+  try {
+    await services.start();
+    expect(envs.map((env) => env.RAKAZO_HOST_COMMANDS_ELEVATED)).toEqual(["1", "1"]);
   } finally {
     await services.stop();
     await rm(root, { recursive: true, force: true });

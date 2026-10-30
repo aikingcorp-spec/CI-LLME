@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld("rakazoSetup", {
   state: () => ipcRenderer.invoke("desktop.setup.state"),
   test: (url) => ipcRenderer.invoke("desktop.setup.test", url),
   save: (setup) => ipcRenderer.invoke("desktop.setup.save", setup),
+  account: {
+    sendCode: (email) => ipcRenderer.invoke("desktop.setup.account.sendCode", email),
+    verifyCode: (email, code) =>
+      ipcRenderer.invoke("desktop.setup.account.verifyCode", email, code),
+  },
   quit: () => ipcRenderer.invoke("desktop.setup.quit"),
   openLink: (link) => ipcRenderer.invoke("desktop.setup.openLink", link),
   stack: {

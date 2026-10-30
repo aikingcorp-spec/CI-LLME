@@ -118,6 +118,7 @@ describe("setup preload bridge", () => {
     expect(globalName).toBe("rakazoSetup");
     expect(bridge.platform).toBe("linux");
     expect(Object.keys(bridge).sort()).toEqual([
+      "account",
       "openLink",
       "platform",
       "quit",
@@ -131,6 +132,8 @@ describe("setup preload bridge", () => {
     await bridge.state();
     await bridge.test("http://127.0.0.1:5173");
     await bridge.save({ mode: "new", serverUrl: "http://127.0.0.1:5173" });
+    await bridge.account.sendCode("lan@vnbot.vn");
+    await bridge.account.verifyCode("lan@vnbot.vn", "123456");
     await bridge.quit();
     await bridge.openLink("orbstack");
     await bridge.stack.state();
@@ -139,12 +142,19 @@ describe("setup preload bridge", () => {
       "desktop.setup.state",
       "desktop.setup.test",
       "desktop.setup.save",
+      "desktop.setup.account.sendCode",
+      "desktop.setup.account.verifyCode",
       "desktop.setup.quit",
       "desktop.setup.openLink",
       "desktop.setup.stack.state",
       "desktop.setup.stack.start",
     ]);
     expect(invoke).toHaveBeenCalledWith("desktop.setup.openLink", "orbstack");
+    expect(invoke).toHaveBeenCalledWith(
+      "desktop.setup.account.verifyCode",
+      "lan@vnbot.vn",
+      "123456",
+    );
 
     const listener = vi.fn();
     bridge.stack.onChange(listener);

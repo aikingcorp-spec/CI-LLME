@@ -7,9 +7,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        For **security vulnerabilities**, email [security@rakazo.com](mailto:security@rakazo.com). See [SECURITY.md](https://github.com/aikingcorp-spec/CI-LLME/blob/main/SECURITY.md).
+        For **security vulnerabilities**, email [security@rakazo.com](mailto:security@rakazo.com). See [SECURITY.md](https://github.com/aikingcorp-spec/vnbot/blob/main/SECURITY.md).
 
-        Setup steps are in [README.md](https://github.com/aikingcorp-spec/CI-LLME/blob/main/README.md). Do not paste `.env` contents or API keys.
+        Setup steps are in [README.md](https://github.com/aikingcorp-spec/vnbot/blob/main/README.md). Do not paste `.env` contents or API keys.
 
   - type: dropdown
     id: step

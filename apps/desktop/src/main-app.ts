@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile, stat, writeFile } from "node:fs/promises";
@@ -16,6 +17,13 @@ import {
   session,
   shell,
 } from "electron";
+import {
+  AccountOtpError,
+  accountBaseUrl,
+  accountOtpErrorText,
+  createAccountOtpClient,
+  isPlausibleEmail,
+} from "./account-otp.js";
 import type { AppDocumentState } from "./app-document-state.js";
 import { APP_DOCUMENT_STATE_SCRIPT } from "./app-document-state.js";
 import { createAppOpener } from "./app-opener.js";
@@ -77,9 +85,15 @@ import {
   servesBundledRenderer,
   sessionPartitionForServerUrl,
 } from "./setup-config.js";
-import { clearSetup, readSetup, writeSetup } from "./setup-store.js";
+import {
+  clearSetup,
+  readSetup,
+  readVerifiedEmail,
+  writeSetup,
+  writeVerifiedEmail,
+} from "./setup-store.js";
 import { chooseRuntime } from "./stack-runtime.js";
-import { currentLocale, format, setLocale, strings } from "./strings.js";
+import { currentLocale, format, localeFromSavedChoice, setLocale, strings } from "./strings.js";
 import { configureUserDataName } from "./user-data-name.js";
 import type { UserDeviceAccess } from "./user-device.js";
 import { createUserDeviceAccess, deviceName } from "./user-device.js";
@@ -112,6 +126,7 @@ const appWindowTargets = new WeakMap<BrowserWindow, string>();
 let setupWindow: BrowserWindow | null = null;
 const bundledRendererInstallations = new Set<string>();
 let currentSetup: DesktopSetup | null = null;
+let verifiedEmail: string | null = null;
 let currentTargetUrl: string | null = null;
 let monitoringSession: Session | undefined;
 let monitoringTargetUrl: string | undefined;
@@ -129,10 +144,37 @@ let warmWindowTimer: NodeJS.Timeout | undefined;
 let liveProbeWindows = 0;
 const WARM_WINDOW_TTL_MS = warmWindowTtlMs(process.env.RAKAZO_WARM_WINDOW_TTL_MS);
 
+/** MSI records mark the uninstall entry with WindowsInstaller=1; NSIS entries do not. */
+function isMsiInstall(): boolean {
+  if (process.env.RAKAZO_MSI_INSTALL === "1") return true;
+  if (process.platform !== "win32") return false;
+  try {
+    const query = (hive: string) =>
+      execFileSync(
+        "reg.exe",
+        [
+          "query",
+          `${hive}\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall`,
+          "/s",
+          "/f",
+          app.getName(),
+          "/d",
+        ],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      );
+    const output = `${query("HKCU")}${query("HKLM")}`;
+    return /WindowsInstaller\s+REG_DWORD\s+0x1/i.test(output);
+  } catch {
+    return false;
+  }
+}
+
 const updaterEnvironment = {
   packaged: app.isPackaged,
   version: app.getVersion(),
-  disabled: process.env.RAKAZO_DISABLE_AUTO_UPDATE !== "0",
+  disabled: process.env.RAKAZO_DISABLE_AUTO_UPDATE === "1",
+  msi: isMsiInstall(),
+  feedUrl: process.env.VNBOT_UPDATE_FEED_URL?.trim() || undefined,
 };
 let desktopUpdater: DesktopUpdateController;
 let launchUpdateCheckScheduled = false;
@@ -385,6 +427,9 @@ function createWindow(url: string, partition: string | null) {
   win.once("ready-to-show", () => markOnce("rk:main:ready-to-show"));
   win.webContents.once("dom-ready", () => markOnce("rk:main:dom-ready"));
   win.webContents.once("did-finish-load", () => markOnce("rk:main:did-finish-load"));
+  // The menu language follows the app's own language choice; a switch shows by the next focus.
+  win.webContents.on("did-finish-load", () => void syncMenuLocale(win));
+  win.on("focus", () => void syncMenuLocale(win));
   const screenshotFile = process.env.RAKAZO_DESKTOP_SCREENSHOT?.trim();
   if (screenshotFile) {
     win.webContents.once("did-finish-load", () => {
@@ -710,6 +755,19 @@ async function installUpdate() {
   return state;
 }
 
+async function syncMenuLocale(win: BrowserWindow) {
+  if (win.isDestroyed() || mainWindow !== win) return;
+  const saved: unknown = await win.webContents
+    .executeJavaScript(
+      `(() => { try { return localStorage.getItem("rakazo.uiLocale"); } catch { return null; } })()`,
+    )
+    .catch(() => null);
+  const next = localeFromSavedChoice(saved);
+  if (next === currentLocale()) return;
+  setLocale(next);
+  installApplicationMenu();
+}
+
 function installApplicationMenu() {
   const computerAccess: Electron.MenuItemConstructorOptions = {
     label: strings().menu.computerAccess,
@@ -749,18 +807,45 @@ function installApplicationMenu() {
       }
     },
   };
-  const viewMenu: Electron.MenuItemConstructorOptions = {
-    label: strings().menu.view,
+  const text = strings().menu;
+  // Electron's built-in role labels are English off macOS, so each carries its own label.
+  const editMenu: Electron.MenuItemConstructorOptions = {
+    label: text.edit,
     submenu: [
-      { role: "resetZoom" },
-      { role: "zoomIn" },
+      { role: "undo", label: text.undo },
+      { role: "redo", label: text.redo },
+      { type: "separator" },
+      { role: "cut", label: text.cut },
+      { role: "copy", label: text.copy },
+      { role: "paste", label: text.paste },
+      { role: "selectAll", label: text.selectAll },
+    ],
+  };
+  const quit: Electron.MenuItemConstructorOptions = { role: "quit", label: text.quit };
+  const viewMenu: Electron.MenuItemConstructorOptions = {
+    label: text.view,
+    submenu: [
+      { role: "resetZoom", label: text.resetZoom },
+      { role: "zoomIn", label: text.zoomIn },
       // zoomIn's default accelerator is Cmd/Ctrl+Plus, which needs Shift on US layouts.
-      { role: "zoomIn", accelerator: "CommandOrControl+=", visible: false },
-      { role: "zoomOut" },
+      { role: "zoomIn", label: text.zoomIn, accelerator: "CommandOrControl+=", visible: false },
+      { role: "zoomOut", label: text.zoomOut },
       // macOS adds its own Enter Full Screen item to a menu named View.
       ...(process.platform === "darwin"
         ? []
-        : ([{ type: "separator" }, { role: "togglefullscreen" }] as const)),
+        : ([{ type: "separator" }, { role: "togglefullscreen", label: text.fullScreen }] as const)),
+    ],
+  };
+  const windowMenu: Electron.MenuItemConstructorOptions = {
+    label: text.window,
+    role: "window",
+    submenu: [
+      { role: "minimize", label: text.minimize },
+      ...(process.platform === "darwin" ? ([{ role: "zoom" }] as const) : []),
+      { role: "close", label: text.close },
+      ...(process.platform === "darwin"
+        ? ([{ type: "separator" }, { role: "front" }] as const)
+        : []),
     ],
   };
   const template: Electron.MenuItemConstructorOptions[] =
@@ -781,26 +866,16 @@ function installApplicationMenu() {
               { role: "hideOthers" },
               { role: "unhide" },
               { type: "separator" },
-              { role: "quit" },
+              quit,
             ],
           },
-          { role: "editMenu" },
+          editMenu,
           viewMenu,
-          {
-            label: strings().menu.window,
-            role: "window",
-            submenu: [
-              { role: "minimize" },
-              { role: "zoom" },
-              { role: "close" },
-              { type: "separator" },
-              { role: "front" },
-            ],
-          },
+          windowMenu,
         ]
       : [
           {
-            label: strings().menu.file,
+            label: text.file,
             submenu: [
               computerAccess,
               revokeComputerAccess,
@@ -809,12 +884,12 @@ function installApplicationMenu() {
               { type: "separator" },
               checkForUpdates,
               { type: "separator" },
-              { role: "quit" },
+              quit,
             ],
           },
-          { role: "editMenu" },
+          editMenu,
           viewMenu,
-          { role: "windowMenu" },
+          windowMenu,
         ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -1159,7 +1234,8 @@ if (!hasSingleInstanceLock) {
 
 app.whenReady().then(async () => {
   if (!hasSingleInstanceLock) return;
-  setLocale(app.getLocale());
+  // Vietnamese until the person picks a language in the app (see syncMenuLocale).
+  setLocale(undefined);
   desktopUpdater = new DesktopUpdateController(
     updaterEnvironment,
     // Loaded only when a packaged build actually checks for updates.
@@ -1292,6 +1368,7 @@ app.whenReady().then(async () => {
     });
   }
   currentSetup = await readSetup(userDataDir);
+  verifiedEmail = await readVerifiedEmail(userDataDir);
   const target = resolveStartupTarget({
     envUrl: process.env.RAKAZO_WEB_URL,
     saved: currentSetup,
@@ -1499,9 +1576,46 @@ app.whenReady().then(async () => {
       defaultLocalUrl: localStack.webUrl(),
       cloudUrl: RAKAZO_CLOUD_URL,
       saved: currentSetup,
+      verifiedEmail,
       error: setupError ?? undefined,
     };
   });
+
+  const accountOtp = createAccountOtpClient({
+    baseUrl: accountBaseUrl(process.env.VNBOT_ACCOUNT_URL),
+    fetch: (input, init) => net.fetch(input instanceof URL ? input.href : input, init),
+  });
+  ipcMain.handle("desktop.setup.account.sendCode", async (event, email: unknown) => {
+    if (!fromSetupWindow(event)) return { ok: false, error: strings().setupIpc.inactive };
+    if (!isPlausibleEmail(email)) return { ok: false, error: strings().setup.enterEmail };
+    try {
+      await accountOtp.sendCode(email, currentLocale());
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: accountOtpErrorText(error, strings().setup) };
+    }
+  });
+  ipcMain.handle(
+    "desktop.setup.account.verifyCode",
+    async (event, email: unknown, code: unknown) => {
+      if (!fromSetupWindow(event)) return { ok: false, error: strings().setupIpc.inactive };
+      if (!isPlausibleEmail(email)) return { ok: false, error: strings().setup.enterEmail };
+      if (typeof code !== "string" || !/^\d{6}$/.test(code))
+        return { ok: false, error: strings().setup.enterCode };
+      try {
+        verifiedEmail = await accountOtp.verifyCode(email, code);
+      } catch (error) {
+        return {
+          ok: false,
+          error: accountOtpErrorText(error, strings().setup),
+          kind: error instanceof AccountOtpError ? error.kind : "failed",
+        };
+      }
+      // Not saved means the code is asked again next launch; this run still goes on.
+      await writeVerifiedEmail(userDataDir, verifiedEmail).catch(() => undefined);
+      return { ok: true, email: verifiedEmail };
+    },
+  );
 
   ipcMain.handle("desktop.setup.test", async (event, url: unknown) => {
     if (!fromSetupWindow(event)) return { ok: false, error: strings().setupIpc.inactive };
@@ -1636,7 +1750,10 @@ app.whenReady().then(async () => {
   if (
     runtime === "native" &&
     process.env.RAKAZO_FORCE_SETUP !== "1" &&
-    (target.kind === "setup" || (target.source === "saved" && currentSetup?.mode === "new"))
+    // A fresh install goes through sign-in and the machine choice first.
+    target.kind === "app" &&
+    target.source === "saved" &&
+    currentSetup?.mode === "new"
   ) {
     const state = await localStack.start();
     if (state.phase === "ready") {

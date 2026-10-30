@@ -1325,6 +1325,10 @@ msgstr "Choose a bot"
 msgid "Choose a bot shape, color, or upload an image"
 msgstr "Choose a bot shape, color, or upload an image"
 
+#: src/pages/Auth.tsx
+msgid "Choose a machine"
+msgstr "Choose a machine"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Choose a model"
@@ -1487,6 +1491,7 @@ msgstr "column {index}"
 msgid "Comfortable"
 msgstr "Comfortable"
 
+#: src/components/MachinePicker.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Coming soon"
 msgstr "Coming soon"
@@ -1736,6 +1741,7 @@ msgstr "Context limit"
 
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/MachinePicker.tsx
 #: src/components/SignupSurvey.tsx
 #: src/pages/Auth.tsx
 #: src/pages/Onboarding.tsx
@@ -2772,6 +2778,10 @@ msgstr "Enter a valid email"
 msgid "Enter a valid email address."
 msgstr "Enter a valid email address."
 
+#: src/components/MachinePicker.tsx
+msgid "Enter a valid http:// or https:// address."
+msgstr "Enter a valid http:// or https:// address."
+
 #: src/pages/model-settings/use-model-settings.ts
 #: src/pages/Onboarding.tsx
 msgid "Enter a whole number from 1 to {MAX_MODEL_CONTEXT_WINDOW} for the context limit."
@@ -3648,6 +3658,10 @@ msgstr "Low"
 #: src/components/VaultSettings.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
+
+#: src/components/MachinePicker.tsx
+msgid "Machine"
+msgstr "Machine"
 
 #: src/lib/user-error.ts
 msgid "main model"
@@ -5478,6 +5492,10 @@ msgstr "Sentry alert"
 msgid "Serenity endpoint is required."
 msgstr "Serenity endpoint is required."
 
+#: src/components/MachinePicker.tsx
+msgid "Server address"
+msgstr "Server address"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Server found. Enter a model name."
 msgstr "Server found. Enter a model name."
@@ -6071,6 +6089,10 @@ msgstr "This code has expired. Send a new one to continue."
 msgid "this computer"
 msgstr "this computer"
 
+#: src/components/MachinePicker.tsx
+msgid "This computer"
+msgstr "This computer"
+
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
 msgid "This connection's request limit is too small. Choose another model."
@@ -6558,6 +6580,10 @@ msgstr "View source"
 msgid "VNBot"
 msgstr "VNBot"
 
+#: src/components/MachinePicker.tsx
+msgid "VNBot Cloud"
+msgstr "VNBot Cloud"
+
 #: src/lib/user-error.ts
 #: src/pages/Auth.tsx
 msgid "VNBot is in limited preview"
@@ -6798,6 +6824,10 @@ msgstr "Your OpenAI"
 #: src/lib/run-error.ts
 msgid "Your OpenRouter"
 msgstr "Your OpenRouter"
+
+#: src/components/MachinePicker.tsx
+msgid "Your own machine (VPS, Mac mini, any server)"
+msgstr "Your own machine (VPS, Mac mini, any server)"
 
 #: src/components/integrations/skills-dialog.tsx
 msgid "Your skills"

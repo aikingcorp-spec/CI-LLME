@@ -8,7 +8,8 @@ const MAX_AGE_MS = 10 * 60 * 1000;
 
 export type SignInProgress = {
   email: string;
-  step: "email" | "code";
+  /** "machine" marks a verified code whose machine is not picked yet; the router keeps this page. */
+  step: "email" | "code" | "machine";
   /** Epoch ms when the last code was sent; drives the resend countdown. */
   sentAt?: number;
 };
@@ -29,6 +30,7 @@ export function readSignInProgress(now = Date.now()): SignInProgress | null {
     if (!raw) return null;
     const value = JSON.parse(raw) as Partial<SignInProgress>;
     if (typeof value.email !== "string") return null;
+    if (value.step === "machine") return { email: value.email, step: "machine" };
     if (value.step === "code") {
       const sentAt = typeof value.sentAt === "number" ? value.sentAt : NaN;
       if (!value.email || !(now - sentAt >= 0 && now - sentAt < MAX_AGE_MS)) {

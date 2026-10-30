@@ -47,8 +47,8 @@ const HOST_COMMAND_ENV = new Set(
     "HTTPS_PROXY",
     "NO_PROXY",
     "ALL_PROXY",
-    // The user's SSH agent and CA bundles, so git, ssh and HTTPS tools work as in their shell.
-    "SSH_AUTH_SOCK",
+    // CA bundles, so git and HTTPS tools work as in the user's shell. Not the SSH agent socket:
+    // it would let a command sign in to the user's servers with keys it never reads.
     "SSL_CERT_FILE",
     "SSL_CERT_DIR",
     "NODE_EXTRA_CA_CERTS",

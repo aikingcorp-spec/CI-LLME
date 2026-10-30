@@ -51,6 +51,7 @@ export default defineConfig({
       "apps/api/src/**/*.test.ts",
       "apps/worker/src/**/*.test.ts",
       "scripts/check-banned-brand.test.ts",
+      "scripts/check-icons.test.ts",
     ],
     testTimeout: 30_000,
     hookTimeout: 60_000,

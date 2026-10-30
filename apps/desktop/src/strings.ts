@@ -3,13 +3,27 @@ export type Locale = "vi" | "en";
 const vi = {
   menu: {
     computerAccess: "Quyền truy cập máy tính…",
-    revokeComputerAccess: "Thu hồi quyền truy cập máy tính cục bộ",
+    revokeComputerAccess: "Thu hồi quyền dùng máy tính này",
     checkForUpdates: "Kiểm tra cập nhật…",
     changeServer: "Đổi máy chủ VNBot…",
-    stopLocalStack: "Dừng dịch vụ cục bộ",
+    stopLocalStack: "Dừng VNBot trên máy này",
     view: "Xem",
     window: "Cửa sổ",
     file: "Tệp",
+    edit: "Chỉnh sửa",
+    undo: "Hoàn tác",
+    redo: "Làm lại",
+    cut: "Cắt",
+    copy: "Sao chép",
+    paste: "Dán",
+    selectAll: "Chọn tất cả",
+    resetZoom: "Cỡ chữ mặc định",
+    zoomIn: "Phóng to",
+    zoomOut: "Thu nhỏ",
+    fullScreen: "Toàn màn hình",
+    minimize: "Thu nhỏ cửa sổ",
+    close: "Đóng cửa sổ",
+    quit: "Thoát VNBot",
   },
   computerAccess: {
     title: "Cho phép truy cập máy tính cục bộ?",
@@ -37,6 +51,7 @@ const vi = {
   updater: {
     disabled: "Tính năng tự động cập nhật đã bị tắt cho bản cài đặt này.",
     notInstalled: "Tự động cập nhật chỉ hoạt động trên bản đã cài đặt.",
+    msiUnsupported: "Bản cài đặt MSI nhận cập nhật bằng cách cài đặt lại VNBot.",
     noReleases: "Chưa có bản cập nhật máy tính nào được phát hành cho phiên bản này.",
     unverified:
       "Không thể xác minh bản cập nhật này. Hãy cài đặt lại VNBot từ nguồn tải đáng tin cậy.",
@@ -114,11 +129,31 @@ const vi = {
     quit: "Thoát",
     quitTitle: "Thoát VNBot",
     heading: "Chào mừng đến với VNBot",
-    subheading: "Chọn máy chủ mà ứng dụng này sẽ sử dụng.",
-    legend: "Máy chủ",
+    subheading: "Chọn nơi VNBot sẽ chạy.",
+    subheadingEmail: "Nhập email để nhận mã đăng nhập.",
+    subheadingCode: "Nhập mã 6 chữ số đã gửi đến {email}.",
+    emailLabel: "Email",
+    sendCode: "Gửi mã",
+    codeLabel: "Mã 6 chữ số",
+    verifyCode: "Xác nhận",
+    resendCode: "Gửi lại mã",
+    changeEmail: "Đổi email",
+    sendingCode: "Đang gửi mã…",
+    verifyingCode: "Đang xác nhận…",
+    codeResent: "Đã gửi mã mới.",
+    enterEmail: "Hãy nhập email hợp lệ.",
+    enterCode: "Hãy nhập đủ 6 chữ số.",
+    otpInvalid: "Mã không đúng. Hãy kiểm tra email rồi thử lại.",
+    otpExpired: "Mã đã hết hạn. Hãy gửi mã mới.",
+    otpNotInvited: "Email này chưa được mời dùng VNBot.",
+    otpRateLimited: "Thử quá nhiều lần. Hãy đợi một lát rồi thử lại.",
+    otpNetwork: "Không thể kết nối đến máy chủ tài khoản. Hãy kiểm tra Internet rồi thử lại.",
+    otpFailed: "Không thể đăng nhập. Hãy thử lại.",
+    comingSoon: "Sắp có",
+    legend: "Máy",
     modeCloud: "VNBot Cloud",
     modeNew: "Máy tính này",
-    modeExisting: "Máy chủ có sẵn",
+    modeExisting: "Máy của bạn (VPS, Mac mini, máy chủ riêng…)",
     technicalDetails: "Chi tiết kỹ thuật",
     progress: "Tiến trình thiết lập",
     serverAddress: "Địa chỉ máy chủ",
@@ -160,6 +195,20 @@ const en: Strings = {
     view: "View",
     window: "Window",
     file: "File",
+    edit: "Edit",
+    undo: "Undo",
+    redo: "Redo",
+    cut: "Cut",
+    copy: "Copy",
+    paste: "Paste",
+    selectAll: "Select All",
+    resetZoom: "Actual Size",
+    zoomIn: "Zoom In",
+    zoomOut: "Zoom Out",
+    fullScreen: "Toggle Full Screen",
+    minimize: "Minimize",
+    close: "Close Window",
+    quit: "Quit VNBot",
   },
   computerAccess: {
     title: "Allow local computer access?",
@@ -186,6 +235,7 @@ const en: Strings = {
   updater: {
     disabled: "Automatic updates are turned off for this install.",
     notInstalled: "Automatic updates only run in an installed build.",
+    msiUnsupported: "MSI installs receive updates by reinstalling VNBot.",
     noReleases: "No desktop releases are published for this build yet.",
     unverified: "This update could not be verified. Reinstall VNBot from a trusted download.",
     failed: "The update could not be completed. Try again later.",
@@ -257,11 +307,31 @@ const en: Strings = {
     quit: "Quit",
     quitTitle: "Quit VNBot",
     heading: "Welcome to VNBot",
-    subheading: "Choose which server this app should use.",
-    legend: "Instance",
+    subheading: "Choose where VNBot runs.",
+    subheadingEmail: "Enter your email to get a sign-in code.",
+    subheadingCode: "Enter the 6-digit code sent to {email}.",
+    emailLabel: "Email",
+    sendCode: "Send code",
+    codeLabel: "6-digit code",
+    verifyCode: "Confirm",
+    resendCode: "Resend code",
+    changeEmail: "Change email",
+    sendingCode: "Sending code…",
+    verifyingCode: "Verifying…",
+    codeResent: "New code sent.",
+    enterEmail: "Enter a valid email address.",
+    enterCode: "Enter all 6 digits.",
+    otpInvalid: "That code isn't right. Check your email and try again.",
+    otpExpired: "This code has expired. Send a new one.",
+    otpNotInvited: "This email is not invited to VNBot yet.",
+    otpRateLimited: "Too many attempts. Wait a moment and try again.",
+    otpNetwork: "Could not reach the account server. Check your internet connection and try again.",
+    otpFailed: "Could not sign in. Try again.",
+    comingSoon: "Coming soon",
+    legend: "Machine",
     modeCloud: "VNBot Cloud",
     modeNew: "This computer",
-    modeExisting: "Existing instance",
+    modeExisting: "Your own machine (VPS, Mac mini, any server)",
     technicalDetails: "Technical details",
     progress: "Setup progress",
     serverAddress: "Server address",
@@ -298,6 +368,19 @@ let active: Locale = "vi";
 export function resolveLocale(appLocale: string | undefined): Locale {
   if (appLocale === undefined || appLocale.trim() === "") return "vi";
   return appLocale.trim().toLowerCase().startsWith("vi") ? "vi" : "en";
+}
+
+/**
+ * The menu follows the language chosen in the app (`rakazo.uiLocale` in web localStorage), and
+ * Vietnamese until one is saved, like the web resolver. The operating system language never
+ * decides it, so an English Windows or Linux does not get an English menu around a Vietnamese app.
+ */
+export function localeFromSavedChoice(saved: unknown): Locale {
+  if (typeof saved !== "string" || saved.trim() === "") return "vi";
+  const tag = saved.trim().toLowerCase();
+  // The web app moves these retired catalogs to Vietnamese.
+  if (/^(vi|ja|ko|zh)(-|$)/.test(tag)) return "vi";
+  return "en";
 }
 
 export function setLocale(appLocale: string | undefined): Locale {

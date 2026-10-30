@@ -6,8 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Sign-in is now email, then a one-time code, then choosing where to work: this computer, your own machine (VPS, Mac mini, any server), or VNBot Cloud (coming soon). This includes the first launch of the desktop app.
+- Password sign-in for fresh desktop installs is removed.
+- A fresh desktop install on Linux or Windows now opens sign-in and the machine choice instead of starting the local services straight away.
+- The app icon, favicons, and mobile icons now use the bé Nón logo everywhere.
+- The old placeholder logo is gone.
+
 ### Added
 
+- Desktop builds check for updates by default and install them after verifying the download checksum.
 - `MASTER_KEY_PROVIDER=aws-kms` wraps content keys with an AWS KMS key, so the master key no longer sits on the server. `content-encryption rotate` moves existing keys over ([content encryption](docs/content-encryption.md#external-key-management)).
 - Ollama Cloud preset in Models settings on web and mobile, using an OpenAI-compatible connection with model discovery and no deployment configuration.
 
@@ -40,6 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Windows update signature verification stays off until releases are code-signed; MSI installs receive updates by reinstalling.
 - Compose runs database migrations in a one-shot `migrate` container, the only one given the database owner login. Code running in the API or worker can no longer read that login from the container and bypass row-level security. Railway restarts its start script without the login after migrating.
 - Mobile routine and connector mention suggestions load only when requested, with bounded routine-request concurrency.
 - MCP result truncation no longer allocates an encoded copy of the full oversized result.

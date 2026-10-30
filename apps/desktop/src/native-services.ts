@@ -5,6 +5,7 @@ import { createServer, request } from "node:http";
 import path from "node:path";
 import type { Duplex } from "node:stream";
 import { utilityProcess } from "electron";
+import { isElevatedProcess } from "./elevation.js";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
 
 export interface UtilityChild {
@@ -14,7 +15,7 @@ export interface UtilityChild {
 export type UtilityFork = (
   entry: string,
   args: string[],
-  options: { env: NodeJS.ProcessEnv },
+  options: { env: NodeJS.ProcessEnv; cwd?: string },
 ) => UtilityChild;
 
 export interface NativeServicesDeps {
@@ -28,11 +29,14 @@ export interface NativeServicesDeps {
   fork?: UtilityFork;
   fetch?: typeof fetch;
   allocatePort?: () => Promise<number>;
+  isPortFree?: (port: number) => Promise<boolean>;
   sleep?: (ms: number) => Promise<void>;
   healthTimeoutMs?: number;
   maxRestarts?: number;
   webDir?: string;
   serveWeb?: boolean;
+  /** Replaced in tests; the real check asks the operating system. */
+  elevated?: () => boolean;
 }
 
 export interface NativeServices {
@@ -92,6 +96,49 @@ export function nativePortFilePath(userDataDir: string, pathModule: typeof path 
   return pathModule.join(userDataDir, "native-api-port");
 }
 
+/**
+ * The web origin is the browser's storage key (language, drafts, mode), so the port stays the
+ * same from one launch to the next.
+ */
+export function nativeWebPortFilePath(userDataDir: string, pathModule: typeof path = path) {
+  return pathModule.join(userDataDir, "native-web-port");
+}
+
+function parsePort(raw: string | null): number | null {
+  if (raw === null || !/^\d{4,5}$/.test(raw.trim())) return null;
+  const port = Number(raw.trim());
+  return port >= 1024 && port <= 65535 ? port : null;
+}
+
+function portIsFree(port: number) {
+  return new Promise<boolean>((resolve) => {
+    const server = createServer();
+    server.once("error", () => resolve(false));
+    server.listen(port, "127.0.0.1", () => server.close(() => resolve(true)));
+  });
+}
+
+/** Reuses the saved web port while it is free; a busy one is replaced, and the new one saved. */
+export async function chooseNativeWebPort(input: {
+  userDataDir: string;
+  reserved: number[];
+  allocatePort: () => Promise<number>;
+  isFree?: (port: number) => Promise<boolean>;
+  pathModule?: typeof path;
+}): Promise<number> {
+  const file = nativeWebPortFilePath(input.userDataDir, input.pathModule);
+  const saved = parsePort(await readPrivateFile(file, 32).catch(() => null));
+  if (
+    saved !== null &&
+    !input.reserved.includes(saved) &&
+    (await (input.isFree ?? portIsFree)(saved))
+  )
+    return saved;
+  const port = await input.allocatePort();
+  await writePrivateFile(file, String(port));
+  return port;
+}
+
 function defaultPort() {
   return new Promise<number>((resolve, reject) => {
     const server = createServer();
@@ -125,7 +172,12 @@ export function createNativeServices(input: NativeServicesDeps): NativeServices 
       const env = await loadEnv(input.userDataDir, extra, envBase);
       const apiPort = await allocatePort();
       const workerPort = await allocatePort();
-      const webPort = await allocatePort();
+      const webPort = await chooseNativeWebPort({
+        userDataDir: input.userDataDir,
+        reserved: [apiPort, workerPort],
+        allocatePort,
+        isFree: input.isPortFree,
+      });
       const webUrl = `http://127.0.0.1:${webPort}`;
       const runtimeEnv: NodeJS.ProcessEnv = {
         ...env,
@@ -135,13 +187,21 @@ export function createNativeServices(input: NativeServicesDeps): NativeServices 
         WORKER_PORT: String(workerPort),
         API_HOST: "127.0.0.1",
         SANDBOX_PROVIDER: "desktop",
+        // Bot commands never run with administrator or root rights; the backend refuses them
+        // while the app itself runs that way.
+        ...((input.elevated ?? isElevatedProcess)() ? { RAKAZO_HOST_COMMANDS_ELEVATED: "1" } : {}),
         WEB_ORIGIN: webUrl,
         BETTER_AUTH_URL: webUrl,
       };
       delete runtimeEnv.DATABASE_MIGRATION_URL;
-      const api = fork(resolveNativeEntryPath(input, "api"), [], { env: runtimeEnv });
+      // Relative paths in the services (the job runner's crontab, ./data) resolve under the
+      // user's data folder, not wherever the app was launched from.
+      const childOptions = { env: runtimeEnv, cwd: input.userDataDir };
+      // No recurring tasks are built in; an empty file keeps the runner from warning about a missing one.
+      await writePrivateFile(path.join(input.userDataDir, "crontab"), "# No recurring tasks.\n");
+      const api = fork(resolveNativeEntryPath(input, "api"), [], childOptions);
       children.push(api);
-      const worker = fork(resolveNativeEntryPath(input, "worker"), [], { env: runtimeEnv });
+      const worker = fork(resolveNativeEntryPath(input, "worker"), [], childOptions);
       children.push(worker);
       let startupFailed = false;
       let startupDetail = "Native service exited during startup.";
@@ -160,7 +220,7 @@ export function createNativeServices(input: NativeServicesDeps): NativeServices 
           }
           if (attempts >= (input.maxRestarts ?? 2)) return;
           try {
-            const replacement = fork(resolveNativeEntryPath(input, name), [], { env: runtimeEnv });
+            const replacement = fork(resolveNativeEntryPath(input, name), [], childOptions);
             children.push(replacement);
             watch(replacement, name, attempts + 1);
           } catch {

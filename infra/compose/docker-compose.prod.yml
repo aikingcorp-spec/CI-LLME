@@ -294,7 +294,7 @@ services:
   # container gets the owner login: the API and worker connect as rakazo_app, which row-level
   # security binds, so code running in either cannot find a login that bypasses it.
   migrate:
-    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/CI-LLME/app}:${RAKAZO_IMAGE_TAG:-local}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -326,7 +326,7 @@ services:
     # The default tag is `local`, which no registry serves, so a fresh install builds from the
     # checkout via `up -d --build` instead of failing on a `pull` of an image that does not exist
     # yet. Once a release is published, pin RAKAZO_IMAGE_TAG to it and the pull path takes over.
-    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/CI-LLME/app}:${RAKAZO_IMAGE_TAG:-local}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -422,7 +422,7 @@ services:
       start_interval: 1s
 
   worker:
-    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/CI-LLME/app}:${RAKAZO_IMAGE_TAG:-local}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -461,7 +461,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/CI-LLME/app}:${RAKAZO_IMAGE_TAG:-local}
+    image: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}:${RAKAZO_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -523,7 +523,7 @@ services:
     profiles: [updater]
     # Pinned separately from the application image: the updater does not recreate itself, so moving
     # its own version is an operator action, not something an update can do underneath itself.
-    image: ${RAKAZO_UPDATER_IMAGE:-ghcr.io/aikingcorp-spec/CI-LLME/updater}:${RAKAZO_UPDATER_IMAGE_TAG:-local}
+    image: ${RAKAZO_UPDATER_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/updater}:${RAKAZO_UPDATER_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/updater/Dockerfile
@@ -545,7 +545,7 @@ services:
       RAKAZO_UPDATER_HOST: "0.0.0.0"
       RAKAZO_UPDATER_PORT: "7092"
       RAKAZO_DISABLE_AUTO_UPDATE: ${RAKAZO_DISABLE_AUTO_UPDATE:-1}
-      RAKAZO_IMAGE: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/CI-LLME/app}
+      RAKAZO_IMAGE: ${RAKAZO_IMAGE:-ghcr.io/aikingcorp-spec/vnbot/app}
       # `-p` is available to Compose interpolation but is not injected into containers unless it is
       # declared here. The sidecar must target the project the operator actually started.
       COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-rakazo-prod}

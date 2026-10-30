@@ -176,6 +176,8 @@ export interface RunComputerContext {
   get: (reason: "tool" | "takeover" | "script", tool?: string) => Promise<ComputerRef>;
   checkpoint: ReturnType<typeof createRunWorkspaceCheckpoint>;
   hostEnvironment: Awaited<ReturnType<NonNullable<SandboxProvider["environment"]>>> | undefined;
+  /** Commands run on the user's own computer, not in an isolated one. */
+  hostCommands: boolean;
   graphical: boolean;
   graphicalToolsAllowed: boolean;
   pageBrowserAllowed: boolean;

@@ -19,6 +19,7 @@ let closedUrl: string;
 let userData: string;
 let app: ElectronApplication | undefined;
 let monitoringRequests = 0;
+let accountRequests: Array<{ url: string | undefined; origin: string | undefined }> = [];
 
 /** A port nothing listens on, so a connection attempt is refused rather than blocked. */
 async function reserveClosedPort() {
@@ -39,6 +40,21 @@ test.beforeAll(async () => {
       monitoringRequests++;
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ dsn: null }));
+      return;
+    }
+    if (request.url === "/api/auth/email-otp/send-verification-otp") {
+      accountRequests.push({ url: request.url, origin: request.headers.origin });
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ success: true }));
+      return;
+    }
+    if (request.url === "/api/auth/sign-in/email-otp") {
+      accountRequests.push({ url: request.url, origin: request.headers.origin });
+      response.writeHead(200, {
+        "content-type": "application/json",
+        "set-cookie": "account-session=secret; Path=/; HttpOnly",
+      });
+      response.end(JSON.stringify({ token: "secret", user: { email: "e2e@example.com" } }));
       return;
     }
     if (request.url === "/rpc/health" && request.method === "POST") {
@@ -66,6 +82,11 @@ test.afterAll(async () => {
 
 test.beforeEach(async () => {
   userData = await mkdtemp(path.join(tmpdir(), "rakazo-desktop-e2e-"));
+  // Sign-in has its own test; everything else starts on the machine step.
+  await writeFile(
+    path.join(userData, "account.json"),
+    JSON.stringify({ email: "e2e@example.com" }),
+  );
 });
 
 test.afterEach(async () => {
@@ -88,7 +109,44 @@ function launch(extraEnv: Record<string, string> = {}) {
   });
 }
 
-test("first run offers VNBot Cloud first, with local and existing instances", async () => {
+test("first run signs in by email code before offering machines", async () => {
+  await rm(path.join(userData, "account.json"));
+  app = await launch();
+  const setup = await app.firstWindow();
+  await expect(setup.getByText("Nhập email để nhận mã đăng nhập.")).toBeVisible();
+  await expect(setup.getByRole("button", { name: "Gửi mã" })).toBeVisible();
+  await expect(setup.locator("#setup")).toBeHidden();
+  await expect(setup.locator('input[type="password"]')).toHaveCount(0);
+  await setup.screenshot({
+    path: path.join(import.meta.dirname, "screenshots", "00-setup-email.png"),
+  });
+});
+
+test("the email code goes through the main process and keeps only the address", async () => {
+  await rm(path.join(userData, "account.json"));
+  accountRequests = [];
+  app = await launch({ VNBOT_ACCOUNT_URL: serverUrl });
+  const setup = await app.firstWindow();
+
+  await setup.locator("#account-email").fill("e2e@example.com");
+  await setup.getByRole("button", { name: "Gửi mã" }).click();
+  await expect(setup.getByText("Nhập mã 6 chữ số đã gửi đến e2e@example.com.")).toBeVisible();
+  await setup.locator("#account-code").fill("123456");
+  await setup.getByRole("button", { name: "Xác nhận" }).click();
+  await expect(setup.getByRole("radio", { name: /Máy tính này/ })).toBeChecked();
+
+  expect(accountRequests).toEqual([
+    { url: "/api/auth/email-otp/send-verification-otp", origin: serverUrl },
+    { url: "/api/auth/sign-in/email-otp", origin: serverUrl },
+  ]);
+  expect(JSON.parse(await readFile(path.join(userData, "account.json"), "utf8"))).toEqual({
+    email: "e2e@example.com",
+  });
+  const cookies = await app.evaluate(({ session }) => session.defaultSession.cookies.get({}));
+  expect(cookies.map((cookie) => cookie.name)).not.toContain("account-session");
+});
+
+test("machine step offers this computer, the person's own machine, and cloud disabled", async () => {
   app = await launch();
   if (process.env.RAKAZO_E2E_EXECUTABLE) {
     expect(await app.evaluate(({ app }) => app.isPackaged)).toBe(true);
@@ -96,21 +154,18 @@ test("first run offers VNBot Cloud first, with local and existing instances", as
   const setup = await app.firstWindow();
 
   await expect(setup.getByRole("heading", { name: "Chào mừng đến với VNBot" })).toBeVisible();
-  await expect(setup.getByText("Chọn máy chủ mà ứng dụng này sẽ sử dụng.")).toBeVisible();
-  await expect(setup.getByText("VNBot Cloud")).toBeVisible();
+  await expect(setup.getByText("Chọn nơi VNBot sẽ chạy.")).toBeVisible();
   await expect(setup.getByText("Máy tính này")).toBeVisible();
-  await expect(setup.getByText("Máy chủ có sẵn")).toBeVisible();
+  await expect(setup.getByText("Máy của bạn")).toBeVisible();
+  await expect(setup.getByText("VNBot Cloud")).toBeVisible();
+  await expect(setup.getByText("Sắp có")).toBeVisible();
   await expect(setup.locator(".card")).toHaveCount(0);
 
-  // Cloud is the default: one click opens the hosted app, with nothing to fill in.
-  await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeChecked();
-  await expect(setup.locator("#panel-new")).toBeHidden();
+  await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeDisabled();
+  await expect(setup.getByRole("radio", { name: /Máy tính này/ })).toBeChecked();
   await expect(setup.locator("#panel-existing")).toBeHidden();
   await expect(setup.getByRole("button", { name: "Kiểm tra kết nối" })).toBeHidden();
   await expect(setup.getByRole("button", { name: "Tiếp tục" })).toBeEnabled();
-  await setup.screenshot({
-    path: path.join(import.meta.dirname, "screenshots", "00-setup-cloud.png"),
-  });
 
   // This computer runs the stack itself at the local address.
   await setup.getByRole("radio", { name: /Máy tính này/ }).check();
@@ -153,56 +208,11 @@ test("first run offers VNBot Cloud first, with local and existing instances", as
   }
 });
 
-test("VNBot Cloud saves the hosted address and is reselected when saved", async () => {
-  app = await launch();
-  const setup = await app.firstWindow();
-  await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeChecked();
-  await expect(setup.getByRole("button", { name: "Tiếp tục" })).toBeEnabled();
-
-  // Capture the request instead of reaching the hosted server, so CI stays offline.
-  const { cloudUrl } = await setup.evaluate(() =>
-    (
-      window as typeof window & { rakazoSetup: { state: () => Promise<{ cloudUrl: string }> } }
-    ).rakazoSetup.state(),
-  );
-  expect(cloudUrl).toMatch(/^https:\/\//);
-  await app.evaluate(({ ipcMain }) => {
-    const state = globalThis as typeof globalThis & { cloudSaves?: unknown[] };
-    state.cloudSaves = [];
-    ipcMain.removeHandler("desktop.setup.save");
-    ipcMain.handle("desktop.setup.save", (_event, payload: unknown) => {
-      state.cloudSaves?.push(payload);
-      return { ok: false, error: "Captured." };
-    });
-  });
-  await setup.getByRole("button", { name: "Tiếp tục" }).click();
-  await expect(setup.locator("#status")).toHaveText("Captured.");
-  expect(
-    await app.evaluate(
-      () => (globalThis as typeof globalThis & { cloudSaves?: unknown[] }).cloudSaves,
-    ),
-  ).toEqual([{ mode: "existing", serverUrl: cloudUrl }]);
-  expect(await readFile(path.join(userData, "setup.json"), "utf8").catch(() => null)).toBeNull();
-
-  // A saved Cloud setup reopens with Cloud chosen, not as a typed existing address.
-  await app.evaluate(({ ipcMain }, url) => {
-    ipcMain.removeHandler("desktop.setup.state");
-    ipcMain.handle("desktop.setup.state", () => ({
-      defaultLocalUrl: "http://127.0.0.1:45173",
-      cloudUrl: url,
-      saved: { mode: "existing", serverUrl: url },
-    }));
-  }, cloudUrl);
-  await setup.reload();
-  await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeChecked();
-  await expect(setup.locator("#panel-existing")).toBeHidden();
-});
-
 test("connecting to an existing instance verifies, saves, and opens it", async () => {
   app = await launch();
   const setup = await app.firstWindow();
 
-  await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+  await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
   await expect(setup.locator("#panel-new")).toBeHidden();
 
   await setup.locator("#server-url").fill(serverUrl);
@@ -239,7 +249,7 @@ test("connecting to an existing instance verifies, saves, and opens it", async (
 test("Continue verifies and remembers the instance so setup does not run again", async () => {
   app = await launch();
   const setup = await app.firstWindow();
-  await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+  await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
   await setup.locator("#server-url").fill(serverUrl);
   const firstRun = await Promise.all([
     app.waitForEvent("window"),
@@ -268,7 +278,7 @@ test("an unreachable address is reported instead of being saved", async () => {
   app = await launch();
   const setup = await app.firstWindow();
 
-  await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+  await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
   await setup.locator("#server-url").fill(closedUrl);
   await setup.getByRole("button", { name: "Kiểm tra kết nối" }).click();
 
@@ -305,7 +315,7 @@ test("an HTTP error document is not accepted after a healthy probe", async () =>
   try {
     app = await launch();
     const setup = await app.firstWindow();
-    await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+    await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Tiếp tục" }).click();
 
@@ -341,7 +351,7 @@ test("a session-pending shell skeleton is not accepted as a ready app", async ()
   try {
     app = await launch();
     const setup = await app.firstWindow();
-    await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+    await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Tiếp tục" }).click();
 
@@ -393,7 +403,7 @@ for (const { name, surface } of [
     try {
       app = await launch();
       const setup = await app.firstWindow();
-      await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+      await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
       await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
       const appWindow = await Promise.all([
         app.waitForEvent("window"),
@@ -442,7 +452,7 @@ test("a shell mount before workspace bootstrap is not accepted", async () => {
   try {
     app = await launch();
     const setup = await app.firstWindow();
-    await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+    await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Tiếp tục" }).click();
 
@@ -480,7 +490,7 @@ test("a session-ready marker without a route surface is not accepted", async () 
   try {
     app = await launch();
     const setup = await app.firstWindow();
-    await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+    await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Tiếp tục" }).click();
 
@@ -501,7 +511,7 @@ test("a malformed address is rejected before anything is written", async () => {
   app = await launch();
   const setup = await app.firstWindow();
 
-  await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+  await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
   await setup.locator("#server-url").fill("not a server");
   await setup.getByRole("button", { name: "Tiếp tục" }).click();
 
@@ -523,7 +533,7 @@ test("a generic web page is not accepted as a VNBot server", async () => {
   try {
     app = await launch();
     const setup = await app.firstWindow();
-    await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+    await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Tiếp tục" }).click();
 
@@ -554,7 +564,7 @@ test("the setup probe refuses redirects instead of following them", async () => 
   try {
     app = await launch();
     const setup = await app.firstWindow();
-    await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+    await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Tiếp tục" }).click();
 
@@ -582,7 +592,7 @@ test("an unreachable saved server falls back to setup with a recovery message", 
   const setup = await app.firstWindow();
 
   await expect(setup.getByRole("heading", { name: "Chào mừng đến với VNBot" })).toBeVisible();
-  await expect(setup.getByRole("radio", { name: /Máy chủ có sẵn/ })).toBeChecked();
+  await expect(setup.getByRole("radio", { name: /Máy của bạn/ })).toBeChecked();
   await expect(setup.locator("#server-url")).toHaveValue(closedUrl);
   await expect(setup.locator("#status")).toContainText("Không thể kết nối lại với máy chủ đã lưu.");
   await setup.screenshot({
@@ -716,7 +726,7 @@ for (const failure of ["load", "save"] as const) {
         item.click();
       });
       const setup = await setupPromise;
-      await setup.getByRole("radio", { name: /Máy chủ có sẵn/ }).check();
+      await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
       await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
       if (failure === "save") {
         await rm(path.join(userData, "setup.json"));
@@ -741,3 +751,107 @@ for (const failure of ["load", "save"] as const) {
     }
   });
 }
+
+// Evidence capture, not a regression test: run with VNBOT_D1_SCREENSHOTS=1.
+test.describe("D1 sign-in screenshots", () => {
+  test.skip(!process.env.VNBOT_D1_SCREENSHOTS, "Set VNBOT_D1_SCREENSHOTS=1 to capture these");
+
+  const shotPath = (name: string) =>
+    path.join(
+      process.env.VNBOT_D1_SCREENSHOTS_DIR ?? path.join(import.meta.dirname, "screenshots"),
+      `${name}.png`,
+    );
+
+  test("desktop sign-in steps in Vietnamese", async () => {
+    await rm(path.join(userData, "account.json"));
+    app = await launch({ VNBOT_ACCOUNT_URL: serverUrl });
+    const setup = await app.firstWindow();
+
+    await expect(setup.getByRole("button", { name: "Gửi mã" })).toBeVisible();
+    await setup.locator("#account-email").fill("e2e@example.com");
+    await setup.screenshot({ path: shotPath("11-desktop-email") });
+
+    await setup.getByRole("button", { name: "Gửi mã" }).click();
+    await expect(setup.getByText("Nhập mã 6 chữ số đã gửi đến e2e@example.com.")).toBeVisible();
+    await setup.locator("#account-code").fill("123456");
+    await setup.screenshot({ path: shotPath("12-desktop-code") });
+
+    await setup.getByRole("button", { name: "Xác nhận" }).click();
+    await expect(setup.getByRole("radio", { name: /Máy tính này/ })).toBeChecked();
+    await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeDisabled();
+    await expect(setup.getByText("Sắp có")).toBeVisible();
+    await setup.screenshot({ path: shotPath("13-desktop-machine") });
+
+    await setup.getByRole("radio", { name: /Máy của bạn/ }).check();
+    await setup.locator("#server-url").fill("https://vnbot.example.com");
+    await expect(setup.locator("#panel-existing")).toBeVisible();
+    await setup.screenshot({ path: shotPath("14-desktop-own-machine") });
+  });
+
+  test("desktop rejects a wrong code", async () => {
+    const rejecting = createServer((request, response) => {
+      const rejected = request.url === "/api/auth/sign-in/email-otp";
+      response.writeHead(rejected ? 400 : 200, { "content-type": "application/json" });
+      response.end(JSON.stringify(rejected ? { code: "INVALID_OTP" } : { success: true }));
+    });
+    await new Promise<void>((resolve) => rejecting.listen(0, "127.0.0.1", resolve));
+    const address = rejecting.address();
+    if (address === null || typeof address === "string") {
+      throw new Error("rejecting server has no port");
+    }
+
+    try {
+      await rm(path.join(userData, "account.json"));
+      app = await launch({ VNBOT_ACCOUNT_URL: `http://127.0.0.1:${address.port}` });
+      const setup = await app.firstWindow();
+      await setup.locator("#account-email").fill("e2e@example.com");
+      await setup.getByRole("button", { name: "Gửi mã" }).click();
+      await setup.locator("#account-code").fill("000000");
+      await setup.getByRole("button", { name: "Xác nhận" }).click();
+      await expect(setup.locator("#account-status")).toHaveText(
+        "Mã không đúng. Hãy kiểm tra email rồi thử lại.",
+      );
+      await expect(setup.locator("#account-status")).toHaveAttribute("data-tone", "error");
+      await expect(setup.locator("#setup")).toBeHidden();
+      await setup.screenshot({ path: shotPath("15-desktop-bad-code") });
+    } finally {
+      await app?.close();
+      app = undefined;
+      await new Promise<void>((resolve, reject) => {
+        rejecting.close((error) => (error ? reject(error) : resolve()));
+      });
+    }
+  });
+
+  test("desktop machine step in English", async () => {
+    // Setup is English only after the person picks it in the app, so go through that path.
+    app = await launch({ RAKAZO_WEB_URL: serverUrl });
+    const appWindow = await app.firstWindow();
+    await expect(appWindow.getByText(APP_MARKER)).toBeVisible();
+    await appWindow.evaluate(() => localStorage.setItem("rakazo.uiLocale", "en"));
+    await appWindow.reload();
+    await expect(appWindow.getByText(APP_MARKER)).toBeVisible();
+
+    // The locale sync runs on did-finish-load, after reload() has already resolved.
+    await expect
+      .poll(() =>
+        app?.evaluate(
+          ({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById("change-rakazo-server")?.label,
+        ),
+      )
+      .toBe("Change VNBot Server…");
+    const setupPromise = app.waitForEvent("window");
+    await app.evaluate(({ Menu }) => {
+      const item = Menu.getApplicationMenu()?.getMenuItemById("change-rakazo-server");
+      if (!item) throw new Error("Change server menu item is missing");
+      item.click();
+    });
+    const setup = await setupPromise;
+
+    await expect(setup.getByRole("heading", { name: "Welcome to VNBot" })).toBeVisible();
+    await expect(setup.getByText("Choose where VNBot runs.")).toBeVisible();
+    await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeDisabled();
+    await expect(setup.getByText("Coming soon")).toBeVisible();
+    await setup.screenshot({ path: shotPath("13-desktop-machine-en") });
+  });
+});

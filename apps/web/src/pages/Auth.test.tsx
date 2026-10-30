@@ -200,8 +200,98 @@ it("sends a code, masks it, and signs in with a name taken from the email", asyn
     otp: "123456",
     name: "person",
   });
+  expect(host.querySelector("h1")!.textContent).toBe("Choose a machine");
+  expect(clearSpaceSelection).not.toHaveBeenCalled();
+});
+
+async function reachMachineStep(onMachineChosen?: () => void) {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+    data: { success: true },
+    error: null,
+  } as never);
+  vi.mocked(authClient.signIn.emailOtp).mockResolvedValue({ data: {}, error: null } as never);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <AuthPage onMachineChosen={onMachineChosen} />
+      </MemoryRouter>,
+    ),
+  );
+  await enter(host.querySelector('input[name="email"]'), "lan@vnbot.vn");
+  await submit();
+  await enter(host.querySelector('input[aria-label="6-digit sign-in code"]'), "123456");
+}
+
+it("offers three machines after the code, with cloud disabled and no password field", async () => {
+  await reachMachineStep();
+  const radios = [...host.querySelectorAll('[role="radio"]')];
+  expect(radios).toHaveLength(3);
+  expect(host.textContent).toContain("This computer");
+  expect(host.textContent).toContain("Your own machine (VPS, Mac mini, any server)");
+  expect(host.textContent).toContain("VNBot Cloud");
+  expect(host.textContent).toContain("Coming soon");
+  expect(radios[0]!.getAttribute("aria-checked")).toBe("true");
+  expect(radios.map((radio) => radio.getAttribute("aria-disabled") === "true")).toEqual([
+    false,
+    false,
+    true,
+  ]);
+  expect(host.querySelector('input[type="password"]')).toBeNull();
+});
+
+it("continues to the app from This computer and forgets the sign-in progress", async () => {
+  const onMachineChosen = vi.fn();
+  await reachMachineStep(onMachineChosen);
+  expect(JSON.parse(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)!)).toMatchObject({
+    step: "machine",
+  });
+  await act(async () => button("Continue").click());
   expect(clearSpaceSelection).toHaveBeenCalled();
-  expect(button("Verifying…").disabled).toBe(true);
+  expect(onMachineChosen).toHaveBeenCalledOnce();
+  expect(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)).toBeNull();
+});
+
+it("keeps the code step in storage when the code is wrong", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+    data: { success: true },
+    error: null,
+  } as never);
+  vi.mocked(authClient.signIn.emailOtp).mockResolvedValue({
+    data: null,
+    error: { code: "INVALID_OTP", message: "Invalid OTP" },
+  } as never);
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "lan@vnbot.vn");
+  await submit();
+  await enter(host.querySelector('input[aria-label="6-digit sign-in code"]'), "123456");
+  expect(host.querySelector('[role="radio"]')).toBeNull();
+  expect(JSON.parse(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)!)).toMatchObject({ step: "code" });
+});
+
+it("drops an old machine step when no session came back", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  sessionStorage.setItem(
+    SIGN_IN_PROGRESS_KEY,
+    JSON.stringify({ email: "lan@vnbot.vn", step: "machine" }),
+  );
+  await render();
+  expect(host.querySelector('[role="radio"]')).toBeNull();
+  expect(host.querySelector('input[name="email"]')).not.toBeNull();
+});
+
+it("skips the picker in the desktop app, which chose its machine in setup", async () => {
+  window.rakazoDesktop = {} as NonNullable<typeof window.rakazoDesktop>;
+  await reachMachineStep();
+  expect(host.querySelector('[role="radio"]')).toBeNull();
+  expect(clearSpaceSelection).toHaveBeenCalled();
+});
+
+it("focuses the email field when the form appears", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  await render();
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
 });
 
 it("shows the not-invited panel for EMAIL_NOT_INVITED and keeps the email", async () => {
@@ -306,7 +396,7 @@ it("renders the language switch outside the form", async () => {
   expect(host.querySelector("form")!.contains(language)).toBe(false);
 });
 
-it("restores the code step and email after a reload, and forgets them on sign-in", async () => {
+it("restores the code step and email after a reload, and moves on to the machine step", async () => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
     data: { success: true },
@@ -333,7 +423,9 @@ it("restores the code step and email after a reload, and forgets them on sign-in
     otp: "123456",
     name: "lan",
   });
-  expect(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)).toBeNull();
+  expect(JSON.parse(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)!)).toMatchObject({
+    step: "machine",
+  });
 });
 
 it("shows the not-invited state for ?error=EMAIL_NOT_INVITED (OIDC callback / revoked session)", async () => {
