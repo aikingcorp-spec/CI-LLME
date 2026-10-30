@@ -10,6 +10,11 @@
       "development": "./src/protocol.ts",
       "default": "./src/protocol.ts"
     },
+    "./pairing": {
+      "types": "./src/pairing.ts",
+      "development": "./src/pairing.ts",
+      "default": "./src/pairing.ts"
+    },
     "./gateway": {
       "types": "./src/gateway.ts",
       "development": "./src/gateway.ts",
