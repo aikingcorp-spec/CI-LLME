@@ -118,9 +118,7 @@ GATEWAY_URL=http://127.0.0.1:8787 SESSION_TOKEN="$SESSION_TOKEN" NODE_ID=demo \
   pnpm exec tsx src/bin/transport-demo.ts
 ```
 
-The demo calls `echo` and subscribes to `ticks` through both `HttpClientTransport` and `DataChannelClientTransport`. It prints response status/body, chunk timestamps, and the selected ICE candidate pair. The default node handler emits three `data: tick i\n\n` event-stream chunks. Both paths share the node's handler. `NODE_TARGET` forwards RPC to a local API instead; the demo procedures require the default demo handler.
-
-`HttpClientTransport({ baseUrl, nodeId, sessionToken, fetch? })` POSTs to the gateway HTTP relay, which is plaintext and works only against a gateway started with `unsafeTestOnlyPlaintextHttpRelay` (tests). This v0 relay buffers the entire response: `subscribe` yields one combined chunk after completion, so timestamps do not show individual tick arrival. Abort stops the consumer and sends relay cancellation to the node. True HTTP streaming is a v0 limitation.
+The demo calls `echo` and subscribes to `ticks` through `DataChannelClientTransport`. It prints response status/body, chunk timestamps, and the selected ICE candidate pair. The default node handler emits three `data: tick i\n\n` event-stream chunks. `NODE_TARGET` forwards RPC to a local API instead; the demo procedures require the default demo handler.
 
 `DataChannelClientTransport.connect({ signalUrl, selfId, remoteId, initiator: true, authorization: "Assertion …", assertion, signal? })` uses `connectPeer`. Send only the short-lived gateway assertion through signaling. The data channel exchanges `hello`/`welcome`, then sends the node-issued bearer on every request, chunk, response, and cancellation. The node validates each inbound bearer; local revocation or assertion expiry closes the channel and cancels subscriptions. `close()` releases the peer. `signal` on connection setup cancels connection establishment; each `ClientCall.signal` cancels its request independently.
 

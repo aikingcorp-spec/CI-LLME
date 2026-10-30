@@ -19,45 +19,6 @@ export interface ClientTransport {
   call(request: ClientCall): Promise<ClientResponse>;
   subscribe(request: ClientCall): AsyncIterable<Uint8Array>;
 }
-export class HttpClientTransport implements ClientTransport {
-  constructor(
-    private readonly options: {
-      baseUrl: string;
-      nodeId: string;
-      sessionToken: string;
-      fetch?: typeof fetch;
-    },
-  ) {}
-  async call(req: ClientCall): Promise<ClientResponse> {
-    const headers = new Headers(req.headers);
-    headers.set("authorization", `Bearer ${this.options.sessionToken}`);
-    const response = await (this.options.fetch ?? fetch)(
-      `${this.options.baseUrl.replace(/\/$/, "")}/nodes/${encodeURIComponent(this.options.nodeId)}/rpc/${req.procedure.split("/").map(encodeURIComponent).join("/")}`,
-      {
-        method: "POST",
-        headers,
-        body: req.body,
-        signal: req.signal,
-      },
-    );
-    return {
-      status: response.status,
-      headers: Object.fromEntries(response.headers),
-      body: new Uint8Array(await response.arrayBuffer()),
-    };
-  }
-  /** v0 buffers the full response; true HTTP streaming requires a relay protocol change. */
-  async *subscribe(req: ClientCall): AsyncIterable<Uint8Array> {
-    const response = await this.call({
-      ...req,
-      headers: { ...req.headers, accept: "text/event-stream" },
-    });
-    req.signal.throwIfAborted();
-    if (response.status < 200 || response.status >= 300)
-      throw new Error(`subscribe failed: ${response.status}`);
-    yield response.body;
-  }
-}
 function inbox<T>() {
   const items: T[] = [];
   let ended = false;
