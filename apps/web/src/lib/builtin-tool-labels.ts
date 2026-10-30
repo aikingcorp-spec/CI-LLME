@@ -1,0 +1,97 @@
+import { t } from "@lingui/core/macro";
+import type { BuiltinToolName } from "@rakazo/contracts";
+
+// Lazy so a language change is picked up at render time; the typed keys fail the build when a
+// built-in tool is added without a label.
+const LABELS: Record<BuiltinToolName, () => string> = {
+  computer_observe: () => t`Computer observe`,
+  computer_act: () => t`Computer act`,
+  browser_navigate: () => t`Browser navigate`,
+  browser_snapshot: () => t`Browser snapshot`,
+  browser_act: () => t`Browser act`,
+  list_files: () => t`List files`,
+  read_file: () => t`Read file`,
+  write_file: () => t`Write file`,
+  attach_file: () => t`Attach file`,
+  shell: () => t`Shell`,
+  user_computer_shell: () => t`Shell on your computer`,
+  open_path: () => t`Open path`,
+  launch_app: () => t`Launch app`,
+  request_takeover: () => t`Request takeover`,
+  ask_user: () => t`Ask you`,
+  connect_app: () => t`Connect app`,
+  message_user: () => t`Message you`,
+  request_secret: () => t`Request secret`,
+  generate_secret: () => t`Generate secret`,
+  list_secrets: () => t`List secrets`,
+  secret_request: () => t`Secret request`,
+  forget_secret: () => t`Forget secret`,
+  render_plot: () => t`Render plot`,
+  generate_image: () => t`Generate image`,
+  generate_video: () => t`Generate video`,
+  add_mcp_server: () => t`Add connector`,
+  remember: () => t`Remember`,
+  save_shared_memory: () => t`Save shared memory`,
+  web_search: () => t`Web search`,
+  web_fetch: () => t`Web fetch`,
+  search_history: () => t`Search history`,
+  read_history: () => t`Read history`,
+  save_memory: () => t`Save memory`,
+  recall_memory: () => t`Recall memory`,
+  forget_memory: () => t`Forget memory`,
+  task_catalog: () => t`Task catalog`,
+  scratchpad_list: () => t`List scratchpad`,
+  scratchpad_add: () => t`Add to scratchpad`,
+  scratchpad_update: () => t`Update scratchpad`,
+  scratchpad_complete: () => t`Complete scratchpad item`,
+  scratchpad_remove: () => t`Remove from scratchpad`,
+  board_tickets: () => t`Board tickets`,
+  ticket_get: () => t`Get ticket`,
+  ticket_create: () => t`Create ticket`,
+  ticket_update: () => t`Update ticket`,
+  ticket_comment: () => t`Comment on ticket`,
+  schedule_create: () => t`Create schedule`,
+  schedule_list: () => t`List schedules`,
+  schedule_update: () => t`Update schedule`,
+  schedule_cancel: () => t`Cancel schedule`,
+  end_call: () => t`End call`,
+  call_user: () => t`Call you`,
+  skill_read: () => t`Read skill`,
+  skill_create: () => t`Create skill`,
+  skill_update: () => t`Update skill`,
+  skill_delete: () => t`Delete skill`,
+  run_subagent: () => t`Run subagent`,
+  propose_instructions_update: () => t`Propose instructions update`,
+  create_space: () => t`Create space`,
+  spawn_bot: () => t`Create bot`,
+  update_bot: () => t`Update bot`,
+  list_fleet: () => t`List fleet`,
+  create_group: () => t`Create group`,
+  update_group: () => t`Update group`,
+  organize_bot: () => t`Organize bot`,
+  set_child_instructions: () => t`Set child instructions`,
+  set_child_bot_model: () => t`Set child bot model`,
+  create_child_routine: () => t`Create child routine`,
+  archive_bot: () => t`Archive bot`,
+  message_bot: () => t`Message bot`,
+  handoff_to_bot: () => t`Hand off to bot`,
+  connect_agent: () => t`Connect agent`,
+  respond_agent_connection: () => t`Respond to agent connection`,
+  message_agent: () => t`Message agent`,
+};
+
+function humanize(name: string): string {
+  const words = name.replaceAll("_", " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** The built-in tool ids are a fixed contract list, so the label is local; an unknown id is humanized. */
+export function builtinToolLabel(name: string): string {
+  const label = (LABELS as Record<string, (() => string) | undefined>)[name];
+  return label ? label() : humanize(name);
+}
+
+/** Every built-in tool id that has a label. */
+export function builtinToolNames(): string[] {
+  return Object.keys(LABELS);
+}

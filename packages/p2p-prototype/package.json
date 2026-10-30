@@ -1,0 +1,63 @@
+{
+  "name": "@rakazo/p2p-prototype",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./protocol": {
+      "types": "./src/protocol.ts",
+      "development": "./src/protocol.ts",
+      "default": "./src/protocol.ts"
+    },
+    "./gateway": {
+      "types": "./src/gateway.ts",
+      "development": "./src/gateway.ts",
+      "default": "./src/gateway.ts"
+    },
+    "./node-agent": {
+      "types": "./src/node-agent.ts",
+      "development": "./src/node-agent.ts",
+      "default": "./src/node-agent.ts"
+    },
+    "./webrtc-peer": {
+      "types": "./src/webrtc-peer.ts",
+      "development": "./src/webrtc-peer.ts",
+      "default": "./src/webrtc-peer.ts"
+    },
+    "./client-transport": {
+      "types": "./src/client-transport.ts",
+      "development": "./src/client-transport.ts",
+      "default": "./src/client-transport.ts"
+    },
+    "./channel-protocol": {
+      "types": "./src/channel-protocol.ts",
+      "development": "./src/channel-protocol.ts",
+      "default": "./src/channel-protocol.ts"
+    },
+    "./node-channel-server": {
+      "types": "./src/node-channel-server.ts",
+      "development": "./src/node-channel-server.ts",
+      "default": "./src/node-channel-server.ts"
+    },
+    "./connect-error": {
+      "types": "./src/connect-error.ts",
+      "development": "./src/connect-error.ts",
+      "default": "./src/connect-error.ts"
+    }
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --root ../.. packages/p2p-prototype/src"
+  },
+  "dependencies": {
+    "node-datachannel": "0.32.0",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.2",
+    "typescript": "7.0.2",
+    "vitest": "4.1.12",
+    "werift": "0.25.2"
+  }
+}

@@ -1,0 +1,132 @@
+name: desktop-linux
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "packages/p2p-prototype/**"
+      - "apps/api/**"
+      - "apps/worker/**"
+      - "apps/web/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/desktop-linux.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-linux-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-and-smoke:
+    name: Package and smoke test the Linux installers
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Installers are unsigned: never look for a signing identity.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      RAKAZO_ALLOW_DEV_SECRETS: "1"
+      SMOKE_DIR: ${{ github.workspace }}/smoke-artifacts
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate the database client
+        run: pnpm db:generate
+      - name: Unit tests
+        run: pnpm --filter @rakazo/desktop test
+      - name: Package AppImage and deb
+        run: pnpm --filter @rakazo/desktop run pack:linux
+      - name: Check packaged native resources
+        run: |
+          set -euo pipefail
+          resources=apps/desktop/out/linux-unpacked/resources
+          for file in server/api/dist/index.js server/worker/dist/index.js server/db/dist/database-access.js server/db/package.json server/adapters/package.json web/index.html; do
+            test -f "$resources/$file"
+          done
+          test -n "$(find "$resources/migrations" -mindepth 2 -maxdepth 2 -name migration.sql -print -quit)"
+          test -f "$resources/server/node_modules/pg/package.json"
+          test -f "$resources/server/node_modules/graphile-worker/package.json"
+          for binary in postgres pg_ctl initdb; do
+            test -x "$resources/app.asar.unpacked/node_modules/@embedded-postgres/linux-x64/native/bin/$binary"
+          done
+          test -f "$resources/app.asar.unpacked/node_modules/node-datachannel/build/Release/node_datachannel.node"
+          # The P2P bundles load from inside the archive; the native addon stays unpacked.
+          asar_files="$(npx --yes @electron/asar@3.4.1 list "$resources/app.asar")"
+          for file in /dist/p2p-agent.js /dist/p2p-pairing.js; do
+            grep -Fxq "$file" <<< "$asar_files" || { echo "Missing in app.asar: $file"; exit 1; }
+          done
+          test -n "$(find "$resources/app.asar.unpacked/node_modules/node-datachannel/build/Release" -maxdepth 1 -name '*.node' -print -quit)"
+      - name: Smoke test the AppImage
+        timeout-minutes: 4
+        # Hard cap on the whole step so a hang cannot burn the job.
+        # Outer cap sits above the app's own 180s so its logs are written before the kill.
+        shell: timeout --kill-after=10 240 bash -eo pipefail {0}
+        run: |
+          set -euo pipefail
+          mkdir -p "$SMOKE_DIR"
+          appimage="$(ls apps/desktop/out/*.AppImage | head -n 1)"
+          chmod +x "$appimage"
+          url_file="$HOME/.config/VNBot/stack/.desktop-web-url"
+          rm -f "$url_file"
+          # Smoke mode checks health and shuts the stack down before printing its result.
+          RAKAZO_DESKTOP_SMOKE=1 ELECTRON_ENABLE_LOGGING=1 timeout --kill-after=10s 180s \
+            xvfb-run -a -s "-screen 0 1280x800x24" \
+            "$PWD/$appimage" --appimage-extract-and-run --no-sandbox \
+            > "$SMOKE_DIR/app.out.log" 2> "$SMOKE_DIR/app.err.log"
+          grep -Ex 'RAKAZO_DESKTOP_SMOKE ok http://127\.0\.0\.1:[0-9]{4,5}' "$SMOKE_DIR/app.out.log"
+          if [ -f "$url_file" ]; then
+            cp "$url_file" "$SMOKE_DIR/.desktop-web-url"
+          fi
+      - name: Stop leftover app and postgres processes
+        if: always()
+        run: |
+          # Bundled postgres can outlive a killed Electron: never leave it running.
+          app_pattern='linux-unpacked/vnbot|VNBot.*AppImage|appimage_extracted'
+          pg_pattern='@embedded-postgres/linux-x64/native/bin/postgres'
+          pkill -f "$app_pattern" || true
+          pkill -f "$pg_pattern" || true
+          for _ in $(seq 1 15); do
+            if ! pgrep -f "$app_pattern" > /dev/null && ! pgrep -f "$pg_pattern" > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          # Count what survived SIGTERM before escalating to SIGKILL.
+          echo "leftover app: $(pgrep -f "$app_pattern" | wc -l)"
+          echo "leftover postgres: $(pgrep -f "$pg_pattern" | wc -l)"
+          pkill -KILL -f "$app_pattern" || true
+          pkill -KILL -f "$pg_pattern" || true
+      - name: Collect logs
+        if: always()
+        run: |
+          mkdir -p "$SMOKE_DIR/userdata"
+          # Only log files and the web URL marker: the database directory and keys stay on the runner.
+          if [ -d "$HOME/.config/VNBot" ]; then
+            (cd "$HOME/.config/VNBot" && find . -type f \( -name '*.log' -o -name '.desktop-web-url' \) \
+              -exec cp --parents {} "$SMOKE_DIR/userdata/" \;) || true
+          fi
+      - name: Retain installers and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: |
+            apps/desktop/out/*.AppImage
+            apps/desktop/out/*.deb
+            smoke-artifacts/**
+          include-hidden-files: true
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 7

@@ -1,0 +1,269 @@
+// @vitest-environment jsdom
+import type { ReactNode } from "react";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
+import { expect, it, vi } from "vitest";
+
+interface SessionState {
+  isPending: boolean;
+  data: { user: { id: string } } | null;
+  error: null;
+}
+
+const signedIn: SessionState = { isPending: false, data: { user: { id: "user-1" } }, error: null };
+const capability = vi.hoisted(() => ({
+  enabled: false,
+  locale: "en",
+  boardLoaded: vi.fn(),
+  screen: vi.fn(async () => ({ ok: true })),
+  session: null as SessionState | null,
+  authMounts: 0,
+}));
+vi.mock("@lingui/react", () => ({ Trans: ({ message }: { message: string }) => message }));
+vi.mock("@lingui/react/macro", () => ({
+  Trans: ({ children }: { children: ReactNode }) => children,
+  useLingui: () => ({
+    t: (parts: TemplateStringsArray) => parts.join(""),
+    i18n: { locale: capability.locale },
+  }),
+}));
+vi.mock("./lib/bootstrap", () => ({
+  getTicketBoardEnabled: () => capability.enabled,
+  subscribeTicketBoardEnabled: () => () => {},
+}));
+vi.mock("./lib/auth", () => ({
+  authClient: {
+    useSession: () => ({ ...(capability.session ?? signedIn), refetch: vi.fn() }),
+  },
+}));
+vi.mock("./pages/Auth", async () => {
+  const { useEffect } = await import("react");
+  const { useLocation } = await import("react-router-dom");
+  return {
+    AuthPage: () => {
+      const location = useLocation();
+      useEffect(() => {
+        capability.authMounts += 1;
+      }, []);
+      return (
+        <div>
+          Auth {location.pathname}
+          {location.search}
+        </div>
+      );
+    },
+  };
+});
+vi.mock("./lib/remote-images-preference", () => ({
+  getRemoteImagesEnabled: () => false,
+  subscribeRemoteImages: () => () => {},
+}));
+vi.mock("./lib/performance", () => ({ markOnce: () => {}, markAfterPaint: () => {} }));
+vi.mock("./lib/rpc", () => ({ rpc: { analytics: { screen: capability.screen } } }));
+vi.mock("./components/TooltipScope", () => ({
+  TooltipScope: ({ children }: { children: ReactNode }) => children,
+}));
+vi.mock("./pages/Shell", () => ({ ShellPage: () => <div>Shell</div> }));
+vi.mock("./components/markdown-link-prompt", () => ({
+  MarkdownLinkPrompt: ({ children }: { children: ReactNode }) => children,
+}));
+vi.mock("./pages/Board", () => {
+  capability.boardLoaded();
+  return { BoardPage: () => <div>Board page</div> };
+});
+vi.mock("./pages/IntegrationSetup", () => ({ IntegrationSetupPage: () => null }));
+vi.mock("./pages/McpOAuthCallback", () => ({ McpOAuthCallbackPage: () => null }));
+
+import { App } from "./App";
+
+it.each([
+  signedIn,
+  { isPending: true, data: null, error: null },
+  { isPending: false, data: null, error: null },
+])(
+  "closes the integration callback without loading the app or requiring a web session (%j)",
+  async (session) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const close = vi.spyOn(window, "close").mockImplementation(() => {});
+    window.history.replaceState(null, "", "/integrations/callback?status=success");
+    capability.session = session;
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      await act(async () =>
+        root.render(
+          <MemoryRouter>
+            <App />
+          </MemoryRouter>,
+        ),
+      );
+      expect(close).toHaveBeenCalledOnce();
+      expect(container.textContent).toBe("You can close this window.");
+      expect(container.querySelector("[data-rakazo-app-state]")).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      close.mockRestore();
+      capability.session = null;
+      window.history.replaceState(null, "", "/");
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
+it("loads the board chunk only after bootstrap enables the route", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  const render = () => (
+    <MemoryRouter initialEntries={["/app/board"]}>
+      <App />
+    </MemoryRouter>
+  );
+  try {
+    await act(async () => root.render(render()));
+    expect(container.textContent).toBe("Shell");
+    expect(capability.screen).toHaveBeenCalledExactlyOnceWith({ screen: "board", surface: "web" });
+    expect(capability.boardLoaded).not.toHaveBeenCalled();
+    capability.enabled = true;
+    await act(async () => {
+      root.render(render());
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(capability.boardLoaded).toHaveBeenCalledOnce();
+    expect(container.textContent).toBe("Board page");
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps the sign-in page mounted while a signed-out session refetches", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  const render = async (session: SessionState) => {
+    capability.session = session;
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/sign-in"]}>
+          <App />
+        </MemoryRouter>,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  };
+  try {
+    capability.authMounts = 0;
+    await render({ isPending: false, data: null, error: null });
+    expect(container.textContent).toContain("Auth /sign-in");
+    // Better Auth refetches a null session when the tab regains focus.
+    await render({ isPending: true, data: null, error: null });
+    expect(container.textContent).toContain("Auth /sign-in");
+    await render({ isPending: false, data: null, error: null });
+    expect(container.textContent).toContain("Auth /sign-in");
+    expect(capability.authMounts).toBe(1);
+  } finally {
+    capability.session = null;
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+it("redirects /sign-up to /sign-in and keeps next", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    capability.session = { isPending: false, data: null, error: null };
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/sign-up?next=/onboarding"]}>
+          <App />
+        </MemoryRouter>,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(container.textContent).toContain("Auth /sign-in?next=%2Fonboarding");
+  } finally {
+    capability.session = null;
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+it.each(["throw", "reject"])(
+  "keeps screen reporting failures out of the app error boundary (%s)",
+  async (mode) => {
+    if (mode === "throw")
+      capability.screen.mockImplementationOnce(() => {
+        throw new Error("analytics unavailable");
+      });
+    else capability.screen.mockRejectedValueOnce(new Error("analytics unavailable"));
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      await act(async () =>
+        root.render(
+          <MemoryRouter initialEntries={["/app"]}>
+            <App />
+          </MemoryRouter>,
+        ),
+      );
+      expect(container.textContent).toBe("Shell");
+    } finally {
+      await act(async () => root.unmount());
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
+it.each(["/settings", "/bots", "/integrations", "/missing?tab=one"])(
+  "redirects anonymous %s to sign-in and preserves the path",
+  async (path) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    capability.session = { isPending: false, data: null, error: null };
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      await act(async () =>
+        root.render(
+          <MemoryRouter initialEntries={[path]}>
+            <App />
+          </MemoryRouter>,
+        ),
+      );
+      expect(container.textContent).toContain(`Auth /sign-in?next=${encodeURIComponent(path)}`);
+    } finally {
+      await act(async () => root.unmount());
+      capability.session = null;
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
+it.each([
+  ["en", "Page not found", "Go home"],
+  ["vi", "Không tìm thấy trang", "Về trang chủ"],
+])("shows signed-in users a small 404 in %s with a home link", async (locale, heading, home) => {
+  capability.locale = locale;
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={["/missing"]}>
+          <App />
+        </MemoryRouter>,
+      ),
+    );
+    expect(container.textContent).toContain(heading);
+    expect(container.querySelector('a[href="/app"]')?.textContent).toBe(home);
+  } finally {
+    capability.locale = "en";
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});

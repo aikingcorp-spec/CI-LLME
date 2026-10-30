@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" class="vnbot-icon vnbot-sen">
+  <defs>
+    <symbol id="eye" viewBox="0 0 12 22"><rect width="12" height="22" rx="6" fill="#000"/></symbol>
+  </defs>
+  <ellipse id="shadow" cx="128" cy="216" rx="70" ry="7" fill="#000" fill-opacity=".08"/>
+  <g id="body">
+    <g id="feet" fill="var(--body,#F2A0B8)"><rect x="84" y="196" width="30" height="20" rx="10"/><rect x="142" y="196" width="30" height="20" rx="10"/>
+      <rect x="84" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/><rect x="142" y="196" width="30" height="20" rx="10" fill="#000" fill-opacity=".14"/></g>
+    <path fill="var(--body,#F2A0B8)" d="M128 40 C150 62 178 78 196 120 C210 160 196 206 128 206 C60 206 46 160 60 120 C78 78 106 62 128 40 Z"/>
+  </g>
+    <g id="acc-sen-petals" fill="var(--body,#F2A0B8)" stroke="#000" stroke-opacity=".16" stroke-width="3" stroke-linejoin="round">
+    <path d="M128 72 C160 94 176 130 168 168 C160 196 96 196 88 168 C80 130 96 94 128 72 Z"/>
+    <path d="M60 120 C80 140 96 172 100 204 C70 200 52 184 52 158 C52 142 55 130 60 120 Z"/>
+    <path d="M196 120 C176 140 160 172 156 204 C186 200 204 184 204 158 C204 142 201 130 196 120 Z"/>
+  </g>
+  <g id="eyes"><use href="#eye" xlink:href="#eye" x="104" y="136" width="12" height="22"/><use href="#eye" xlink:href="#eye" x="140" y="136" width="12" height="22"/></g>
+</svg>

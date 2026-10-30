@@ -1,0 +1,220 @@
+{
+  "name": "@rakazo/desktop",
+  "productName": "VNBot",
+  "version": "0.3.5",
+  "author": {
+    "name": "VNBot"
+  },
+  "homepage": "https://vnbot.run",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "pnpm build && electron .",
+    "build": "pnpm check && node scripts/build.mjs && node scripts/build-p2p-agent.mjs dist && node scripts/copy-static.mjs",
+    "build:native": "pnpm check && node scripts/build.mjs --native && node scripts/build-p2p-agent.mjs dist && node scripts/copy-static.mjs",
+    "pack": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --mac --win --linux",
+    "pack:win": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --win --x64",
+    "pack:linux": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --linux --x64",
+    "pack:dir": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --dir",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --root ../.. apps/desktop/src",
+    "test:e2e": "pnpm build && playwright test --config e2e/playwright.config.ts",
+    "release": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --publish never"
+  },
+  "dependencies": {
+    "@rakazo/contracts": "workspace:*",
+    "@rakazo/logging": "workspace:*",
+    "@sentry/electron": "8.3.0",
+    "electron-updater": "6.8.11",
+    "koffi": "3.3.4",
+    "node-datachannel": "0.32.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@rakazo/adapters": "workspace:*",
+    "@rakazo/ui-tokens": "workspace:*",
+    "electron": "45.0.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2",
+    "vitest": "4.1.12"
+  },
+  "optionalDependencies": {
+    "@embedded-postgres/linux-x64": "16.14.0-beta.17",
+    "@embedded-postgres/windows-x64": "16.14.0-beta.17"
+  },
+  "build": {
+    "appId": "run.vnbot.desktop",
+    "directories": {
+      "output": "out",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/**/*",
+      "!**/*.map",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/node-datachannel/**",
+      "**/node_modules/@embedded-postgres/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web",
+        "filter": [
+          "**/*",
+          "!**/*.map"
+        ]
+      }
+    ],
+    "extraMetadata": {
+      "name": "vnbot",
+      "main": "dist/main.js"
+    },
+    "mac": {
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity",
+      "x64ArchFiles": "{**/node_modules/@koromix/koffi-darwin-*/darwin_*/koffi.node,**/node_modules/@oxc-parser/binding-darwin-*/parser.darwin-*.node}",
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "VNBot dùng micro để đọc chính tả và gọi thoại với các bot của bạn."
+      },
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "notarize": true,
+      "extraResources": [
+        {
+          "from": "../../infra/compose/docker-compose.images.yml",
+          "to": "stack/docker-compose.images.yml"
+        },
+        {
+          "from": "../../infra/compose/.env.images.example",
+          "to": "stack/.env.images.example"
+        }
+      ]
+    },
+    "dmg": {
+      "title": "${productName}",
+      "iconSize": 100,
+      "window": {
+        "width": 660,
+        "height": 400
+      },
+      "contents": [
+        {
+          "x": 170,
+          "y": 175,
+          "type": "file"
+        },
+        {
+          "x": 490,
+          "y": 175,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": "x64"
+        },
+        {
+          "target": "msi",
+          "arch": "x64"
+        }
+      ],
+      "verifyUpdateCodeSignature": true,
+      "extraResources": [
+        {
+          "from": "native/server",
+          "to": "server",
+          "filter": [
+            "**/*",
+            "!**/*.map"
+          ]
+        },
+        {
+          "from": "native/server/node_modules",
+          "to": "server/node_modules",
+          "filter": [
+            "**/*",
+            "!**/*.map"
+          ]
+        },
+        {
+          "from": "../../packages/db/prisma/migrations",
+          "to": "migrations",
+          "filter": [
+            "*/migration.sql"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "executableName": "vnbot",
+      "icon": "assets/icon.png",
+      "extraResources": [
+        {
+          "from": "native/server",
+          "to": "server",
+          "filter": [
+            "**/*",
+            "!**/*.map"
+          ]
+        },
+        {
+          "from": "native/server/node_modules",
+          "to": "server/node_modules",
+          "filter": [
+            "**/*",
+            "!**/*.map"
+          ]
+        },
+        {
+          "from": "../../packages/db/prisma/migrations",
+          "to": "migrations",
+          "filter": [
+            "*/migration.sql"
+          ]
+        }
+      ],
+      "maintainer": "VNBot <hello@vnbot.run>",
+      "vendor": "VNBot",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": "x64"
+        },
+        {
+          "target": "deb",
+          "arch": "x64"
+        }
+      ],
+      "desktop": {
+        "entry": {
+          "Name": "VNBot",
+          "StartupWMClass": "VNBot"
+        }
+      }
+    },
+    "publish": null,
+    "artifactName": "VNBot-${version}-${os}-${arch}.${ext}",
+    "msi": {
+      "oneClick": false,
+      "perMachine": false
+    },
+    "nsis": {
+      "artifactName": "VNBot-Setup-${version}-${arch}.${ext}",
+      "shortcutName": "VNBot",
+      "uninstallDisplayName": "VNBot"
+    }
+  }
+}
