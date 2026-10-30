@@ -1,0 +1,68 @@
+(new URLSearchParams(location.search).get('flags')||'').split(',').filter(Boolean).forEach(k=>{const V=window.VNBOT_FEATURES;if(V.platforms[k])V.platforms[k].available=true;else if(V.features[k])V.features[k].available=true;else V[k]=true});
+window.VNBOT_FEATURES.platforms.web.available=window.VNBOT_FEATURES.webAppLive;
+const F=window.VNBOT_FEATURES,CONFIG=F;
+const PLATFORMS=['mac','windows','linux','android','ios'].map(id=>({id,...F.platforms[id],live:F.platforms[id].available}));
+const isOn=k=>k.split(',').every(x=>(F.features[x]||F.platforms[x]||{}).available);
+const EN={n6:'How it works',hw_h:'How it works',hw_sub:'The machine that runs VNBot is called your node. Your bot team runs and keeps its data there.',hw1:'Your machine is the node',hw1d:'Install VNBot on a Mac mini, an office PC or your own VPS. Bots run, remember and store data on that machine.',hw2:'Use the web via app.vnbot.run',hw2d:'Open app.vnbot.run in a browser to connect to your node, hand out work and watch bots do it.',hw3:'Use it anywhere via vnbot.run',hw3d:'From your phone or another computer, open vnbot.run. A P2P connection goes straight to your node.',a7b:'Open your team from a phone or another computer via vnbot.run, over a P2P connection straight to your node.',n1:'Features',n2:'Data',n3:'Free',n4:'Use & download',n5:'FAQ',cta:'Download VNBot',contact:'Contact',
+h_eb:'',h1:'Your own team of AI employees',
+h_sub:'Each bot has memory, its own computer, and works on a schedule. Use the AI model you already have. Your data stays yours.<span data-free> Free.</span>',
+h_micro:'In beta. Sign in with email and a code, for approved accounts only.',
+t_h:'Your bots work together.',t_sub:'Hand over one task. The bots ask each other, split the work and check each other. Add a bot when you need more done.',
+r1:'· Sales',r2:'· Accounting',r3:'· Customer care',m1:'12 new orders since yesterday. Minh, can you sum them up?',m2:'Done, it is in the sheet. Hà, can you draft a thank-you message to the customers?',m3:'Done, sent to you for approval.',
+t_note:'Example. Group chat and handing work between bots are already in the app.',t_cap:'A group chat in the VNBot app.',
+f_h:'What VNBot does',f1:'One job per bot',f1d:'Each bot has its own name, instructions, memory and history.',f2:'Its own computer',f2d:'Bots open a browser, use a terminal, read and edit files on its own computer.',
+f3:'Runs on a schedule',f3d:'Set it once. Every morning the bot writes the report, checks orders, sends messages.',f4:'Connects to your tools',f4d:'Add apps, MCP or APIs so bots work inside your systems.',f4m:'and hundreds more apps via MCP',
+f5:'Talk by voice',f5d:'Dictate to a bot, hear it answer, call it.',f5d:'Dictate to a bot, hear it answer, call it. Voice uses your own provider and key.',pk:'You can add a passkey after signing in.',d4:'API keys and connection keys are encrypted.',contact2:'Contact',
+d_h:'Your model. Your data.',d_sub:'VNBot does not provide AI models. Connect your own API key, or sign in with a provider that supports it. VNBot does not receive or pay for those connections.',
+d1:'Use the AI plan you already pay for.',d2:'Switch models any time; bots keep their memory and work.',d3:'No lock-in to one provider.',d_cap:'Settings, Models.',
+z_h:'Every current feature is free, forever.',z_b:'No hidden fees. You only pay for your own AI plan, directly to the provider.',
+b_h:'Built for Vietnamese businesses.',b_sub:'The interface and the bots use Vietnamese. Works for shops, offices, spas and classes.',b1:'Sales & customer care',b2:'Reports & bookkeeping',b3:'Content & marketing',b4:'Repetitive office work',b1d:'Reply to customer messages and collect new orders every morning.',b2d:'Sum orders into a spreadsheet and send an end-of-day report.',b3d:'Write posts and schedule them for the week.',b4d:'Read email, send meeting reminders, fill in forms.',b_cta:'To roll VNBot out to your whole company, contact AIKING.',
+dl_h:'Download VNBot.',dl_sub:'The desktop app runs VNBot on your machine. Chats, running work, files and data live on that machine. Download buttons open as soon as the installers are released.',d_node:'Chats and data live on your machine, not on VNBot\'s servers.',d5:'Delete a single bot or your whole account whenever you want.',q7:'Where does VNBot run?',a7:'On a machine you choose (your node), such as a Mac mini, an office PC or your own VPS. Chats, running work, files and data live on that machine.',s1:'Install the app on the machine that will run your bots (Mac mini, office PC or your own VPS)',s2:'Sign in with email and a code',s3:'Connect your model and give your first bot a job',
+q_h:'Questions',q1:'Does VNBot cost anything?',a1:'No. Every current feature is free, forever. You only pay for your own AI plan, directly to the provider.',q2:'Which AI model do I need?',a2:'Any model you already use. Connect your own API key, or sign in with a provider that supports it.',
+q3:'Where is my data, and does VNBot see it?',a3:'Chats and data live on your machine, not on VNBot\'s servers. API keys and connection keys are encrypted. You can delete a single bot or your whole account. What you send to an AI model goes to the provider you chose, under their terms.',q4:'Who can use it?',a4:'In beta, approved emails only. Sign in with email and a code; you can add a passkey. No access yet? Click "Contact us for an invite".',
+q5:'Is it on phones?',a5:'Android yes; iOS coming soon.',q6:'Is there English?',a6:'Yes, switch VI/EN any time.',hd1:'Lan → Minh',hd2:'Minh → Hà'};
+const EN_A={nav:'Main navigation',home:'VNbot, back to top',lang:'Switch to Vietnamese',a_hero:'Screenshot of the VNBot app: bot list on the left, a conversation on the right',a_chat:'Example of a bot group chat',a_group:'Screenshot of a real group chat in the VNBot app, three bots answering one request',a_f1:'One job per bot: VNBot app screenshot',a_f2:'Its own computer: VNBot app screenshot',a_f3:'Runs on a schedule: VNBot app screenshot',a_f4:'Connects to your tools: VNBot app screenshot',a_f5:'Talk by voice: VNBot app screenshot',a_models:'Screenshot of Settings → Models in VNBot: a provider connected with the user\'s own key',foot:'Footer'};
+const T={vi:{dlShort:'Tải VNBot',web:'Dùng ngay trên web',webSoon:'app.vnbot.run · sắp có',webNote:'Web client app.vnbot.run nối tới node của bạn',instFor:n=>'Bản cài '+(n?n+' ':'')+'· sắp có',invite:'Liên hệ để nhận lời mời',dlNote:'Bản cài sắp có',cLive:'Giao việc đầu tiên cho đội bot của bạn.',cSoon:'Giao việc đầu tiên cho đội bot của bạn.',soon:'Sắp có',later:'Sắp có',dlFor:n=>'Tải VNBot cho '+n,iosSoon:'iOS · sắp có',newtab:' (mở tab mới)',title:'VNBot: Đội nhân viên AI của riêng bạn'},
+ en:{dlShort:'Download VNBot',web:'Use it now on the web',webSoon:'app.vnbot.run · coming soon',webNote:'Web client app.vnbot.run connects to your own node',instFor:n=>(n?n+' installer':'Installers')+' · coming soon',invite:'Contact us for an invite',dlNote:'Installers coming soon',cLive:'Give your bot team its first job.',cSoon:'Give your bot team its first job.',soon:'Coming soon',later:'Coming soon',dlFor:n=>'Download VNBot for '+n,iosSoon:'iOS · coming soon',newtab:' (opens in a new tab)',title:'VNBot: Your own team of AI employees'}};
+const VI={},VI_A={};document.querySelectorAll('[data-i]').forEach(e=>{VI[e.dataset.i]??=e.innerHTML});document.querySelectorAll('[data-ia]').forEach(e=>{VI_A[e.dataset.ia]??=(e.getAttribute('aria-label')||e.getAttribute('alt'))});
+const metaVI='Mỗi bot có trí nhớ, máy tính riêng và tự làm việc theo lịch. Dùng mô hình AI bạn đã có. Dữ liệu là của bạn. Miễn phí.',metaEN=EN.h_sub;
+function detectOS(){const q=new URLSearchParams(location.search).get('os');if(q)return q;const u=navigator.userAgent;
+ if(/iPhone|iPad|iPod/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1))return 'ios';if(/Android/.test(u))return 'android';if(/Windows/.test(u))return 'windows';if(/Mac/.test(u))return 'mac';if(/Linux|X11/.test(u))return 'linux';return 'unknown'}
+let lang=new URLSearchParams(location.search).get('lang')||document.documentElement.dataset.lang||localStorage.getItem('vnbot-lang')||'vi';
+function setBtn(a,p,t){const ok=CONFIG.releasesLive&&p.live;a.removeAttribute('href');a.removeAttribute('aria-disabled');
+ if(ok){a.href=CONFIG.downloadBase+p.id}else{a.setAttribute('aria-disabled','true');a.setAttribute('role','link')}}
+var render=function(){const t=T[lang],L=lang==='en';document.documentElement.lang=lang;document.title=t.title;
+ document.querySelector('meta[name=description]').content=L?metaEN:metaVI;
+ document.querySelectorAll('[data-i]').forEach(e=>e.innerHTML=L?(EN[e.dataset.i]??VI[e.dataset.i]):VI[e.dataset.i]);
+ document.querySelectorAll('[data-ia]').forEach(e=>{const v=L?EN_A[e.dataset.ia]:VI_A[e.dataset.ia];e.hasAttribute('alt')?e.alt=v:e.setAttribute('aria-label',v)});
+ document.querySelectorAll('[data-img]').forEach(e=>e.src='/landing/img/'+e.dataset.img+'-'+lang+'.webp');
+ document.querySelectorAll('.lang').forEach(b=>b.textContent=L?'VI':'EN');
+ document.querySelectorAll('.contact').forEach(a=>{a.href=CONFIG.CONTACT_URL;a.target='_blank';a.rel='noopener noreferrer';a.setAttribute('aria-label',a.textContent+t.newtab)});
+}
+function soonBadge(t){return `<span class="badge soon">${t.later}</span>`}
+function applyCTA(){const t=T[lang],L=lang==='en',live=F.releasesLive,os=detectOS(),pre='/landing/';
+ document.getElementById('c_h').textContent=t.cLive;
+ document.querySelectorAll('[data-free]').forEach(e=>e.hidden=!F.showFree);
+ document.querySelectorAll('[data-feat]').forEach(e=>{e.querySelectorAll(':scope>.soon').forEach(x=>x.remove());if(!isOn(e.dataset.feat))e.insertAdjacentHTML('beforeend',' '+soonBadge(t))});
+ const ORD=['mac','windows','linux','android','web','ios'],isLive=k=>k==='web'?F.webAppLive:(live&&F.platforms[k].available),nm=k=>F.platforms[k].name;
+ const liveK=ORD.filter(isLive),soonK=ORD.filter(k=>!isLive(k));
+ document.getElementById('eb').textContent=liveK.length?liveK.map(nm).join(' · ')+(soonK.length?'. '+soonK.map(nm).join(L?' and ':' và ').replace(/ (và|and) (?=.* (và|and) )/g,', ')+' '+t.later.toLowerCase():''):(L?'Coming soon for ':'Sắp có cho ')+ORD.map(nm).join(' · ');
+ document.getElementById('devline').textContent=liveK.length?(L?'Platforms: ':'Nền tảng: ')+liveK.map(nm).join(', ')+(soonK.length?'. '+(L?'Coming soon: ':'Sắp có: ')+soonK.map(nm).join(', '):'')+'.':(L?'Platforms (coming soon): ':'Nền tảng (sắp có): ')+ORD.map(nm).join(', ')+'.';
+ {const d=document.getElementById('dlsub'),b=L?'The desktop app runs VNBot on your machine. Chats, running work, files and data live on that machine. ':'App máy tính chạy VNBot trên máy của bạn. Chat, việc đang chạy, file và dữ liệu nằm trên máy đó. ';d.textContent=b+(live?(L?'Choose your platform to download.':'Chọn nền tảng của bạn để tải.'):(L?'Download buttons open as soon as the installers are released.':'Nút tải sẽ mở ngay khi bản cài phát hành.'))}
+ document.getElementById('a5dyn').textContent=['android','ios'].map(k=>nm(k)+': '+(isLive(k)?(L?'app available':'có app'):t.later.toLowerCase())+'.').join(' ')+' '+(L?'Opening your bot team on a phone via vnbot.run: ':'Mở đội bot trên điện thoại qua vnbot.run: ')+(F.features.remoteAccess.available?(L?'available.':'có.'):t.later.toLowerCase()+'.');
+ if(new URLSearchParams(location.search).get('open'))document.querySelectorAll('details').forEach(d=>d.open=true);
+ document.querySelectorAll('.main-contact').forEach(a=>{a.textContent=t.invite;a.setAttribute('aria-label',t.invite+t.newtab)});
+ const webUp=F.webAppLive;
+ const soonT=(a,txt)=>{a.className=a.className.split(' ').filter(c=>/^(web-main|dl-main|cta-dl)$/.test(c)).concat('soon-t').join(' ');a.textContent=txt;['href','target','role','aria-disabled'].forEach(x=>a.removeAttribute(x))};
+ document.querySelectorAll('.web-main').forEach(a=>{if(webUp){a.hidden=false;a.className='btn p web-main';a.textContent=t.web;a.href=F.WEB_APP_URL;a.removeAttribute('target')}else{soonT(a,t.webSoon);if(a.id==='web-hero')a.hidden=true}});
+ document.querySelectorAll('.main-contact').forEach(a=>a.classList.toggle('p',!webUp));
+ document.querySelectorAll('.nav-cta').forEach(a=>{a.className='btn p nav-cta';if(webUp){a.textContent=t.web;a.href=F.WEB_APP_URL;a.removeAttribute('target')}else{a.textContent=t.invite;a.href=F.CONTACT_URL;a.target='_blank';a.rel='noopener noreferrer'}});
+ const p=PLATFORMS.find(x=>x.id===os&&x.live);
+ document.querySelectorAll('.dl-main').forEach(h=>{if(os==='ios'&&!F.platforms.ios.available)soonT(h,t.iosSoon);else if(live&&p){h.className='btn dl-main';h.textContent=t.dlFor(p.name);h.href=F.downloadBase+p.id}else soonT(h,t.instFor(p?p.name:''))});
+ document.querySelectorAll('.cta-dl').forEach(a=>{if(live){a.className='btn cta-dl';a.textContent=t.dlShort;a.href='#download'}else{soonT(a,t.instFor(''));if(a.closest('#free'))a.hidden=true}});
+ const tile=(name,icon,ext,ok,href,lbl)=>`<div class="dl"><div class="hd">${icon?`<img src="${pre}icons/${icon}" alt="">`:''}${name}</div><div class="ext">${ext||'&nbsp;'}</div>${ok?`<a class="btn p" href="${href}">${lbl}</a>`:soonBadge(t)}</div>`;
+ document.getElementById('dlgrid').innerHTML=(webUp?tile('Web','',t.webNote,true,F.WEB_APP_URL,t.web):`<div class="dl"><div class="hd">Web</div><div class="ext">${t.webNote}</div><span class="soon-t">${t.webSoon}</span></div>`)+PLATFORMS.map(p=>tile(p.name,p.icon,p.ext,live&&p.live,F.downloadBase+p.id,t.dlFor(p.name))).join('')}
+document.addEventListener('click',e=>{if(e.target.closest('.lang')){lang=lang==='vi'?'en':'vi';localStorage.setItem('vnbot-lang',lang);render()}
+ const d=e.target.closest('[aria-disabled=true]');if(d)e.preventDefault()});
+
+const _r=render;render=function(){_r();applyCTA()};render();

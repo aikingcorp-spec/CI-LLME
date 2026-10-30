@@ -326,3 +326,13 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `packages/core/src/model-control-text.ts`, `apps/api/src/thread-message-pages.ts`, `packages/db/src/preview-messages.ts`, `packages/adapters/src/fleet-tools.ts`, tests.
 - Invariants affected: read-only; no DB rows are rewritten, no migrations. User and system messages are returned as stored. Paging cursors use raw rows.
 - ADR: none.
+
+## 2026-10-30 — vnbot.run site is two landing pages; login-code wordmark size
+
+- Date: 2026-10-30
+- Pull request: #12 (fix round).
+- What changed versus baseline: `apps/www` builds only the Vietnamese landing at `/`, the English landing at `/en/`, a Vietnamese 404 page, `robots.txt`, `llms.txt` and a sitemap with `vi-VN` and `en-US` alternates. The baseline marketing routes, locales, blog, docs, per-route markdown, edge middleware and download redirect are removed, and the built output carries no baseline product name. The login-code email wordmark `<img>` is 107x32 to match the v4 wordmark image (440x131).
+- Why: the public site is the approved VNBot landing only; the old image size would stretch the new wordmark.
+- Modules and files: `apps/www` (pages, `astro.config.mjs`, `vercel.json`, e2e, removed content), `packages/auth/src/sign-in-code-templates.ts`, `packages/auth/src/index.test.ts`, `packages/ui-tokens` (brand export no longer writes a marketing mark).
+- Invariants affected: sign-in code generation, verification and delivery are unchanged; only email markup dimensions differ. The signed-in product, API and database are unchanged.
+- ADR: none.

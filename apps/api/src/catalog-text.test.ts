@@ -4,6 +4,7 @@ import { pluginPreviewDto, previewPluginInstall } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { isExcludedCatalogText } from "@rakazo/core/banned-brand";
 import { describe, expect, it, vi } from "vitest";
+import type * as catalogDescriptions from "./catalog-descriptions-vi.js";
 import {
   isCatalogContentAllowed,
   sanitizeAgentSkill,
@@ -13,6 +14,17 @@ import {
 } from "./catalog-text.js";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
+
+vi.mock("./catalog-descriptions-vi.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof catalogDescriptions>();
+  return {
+    ...actual,
+    CATALOG_DESCRIPTIONS_VI_BY_NAME: {
+      ...actual.CATALOG_DESCRIPTIONS_VI_BY_NAME,
+      acmenet: "Kết nối bot với các máy chủ MCP trong mạng Acmenet riêng của bạn.",
+    },
+  };
+});
 
 const actor: Actor = {
   spaceId: "space-fixture",
@@ -560,15 +572,16 @@ describe("brand filter keeps ordinary products", () => {
     }) as unknown as Parameters<typeof sanitizePluginCatalog>[0];
 
   it("shows our Vietnamese copy for a description the brand filter blanks", () => {
-    const tailscale = {
-      ...entry("Tailscale", "https://github.com/cursor/plugins#third_party/tailscale"),
-      description:
-        "Let Grok Bot reach MCP servers on your private Tailscale network: connect your own tailnet, or your team's company tailnets turned on by a team admin, with each member using their own device.",
+    const acmenet = {
+      ...entry("Acmenet", "https://github.com/cursor/plugins#third_party/acmenet"),
+      description: "Let Grok Bot reach MCP servers on your private Acmenet network.",
     };
-    const vi = sanitizePluginCatalog(catalog([tailscale])).entries[0]?.description ?? "";
-    expect(vi).toMatch(/^Kết nối bot với các máy chủ MCP/);
-    expect(isExcludedCatalogText(vi)).toBe(false);
-    const en = withCatalogLocale("en", () => sanitizePluginCatalog(catalog([tailscale])));
+    const vietnamese = withCatalogLocale("vi", () => sanitizePluginCatalog(catalog([acmenet])));
+    expect(vietnamese.entries[0]?.description).toBe(
+      "Kết nối bot với các máy chủ MCP trong mạng Acmenet riêng của bạn.",
+    );
+    expect(isExcludedCatalogText(vietnamese.entries[0]!.description)).toBe(false);
+    const en = withCatalogLocale("en", () => sanitizePluginCatalog(catalog([acmenet])));
     expect(en.entries[0]?.description).toBe("");
   });
 

@@ -243,9 +243,8 @@ Português (Brasil), 简体中文, 繁體中文, Español, Русский, Fran�
 Nederlands, and 日本語 catalogs, and **Account → Language** lists all seven. A device language or
 `EXPO_PUBLIC_DEFAULT_UI_LOCALE` still selects the starting catalog before a saved choice.
 The marketing
-homepage (`apps/www`) is available in en/de/ko/zh/ja via footer language links (`/`, `/de/`,
-`/ko/`, `/zh/`, `/ja/`); other marketing pages stay English. The Russian marketing homepage and
-native Electron setup/menu remain separate follow-up work.
+site (`apps/www`) is a Vietnamese landing at `/` and an English one at `/en/`. Native Electron
+setup/menu localization remains separate follow-up work.
 
 ## Development
 

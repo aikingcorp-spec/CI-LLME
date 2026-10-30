@@ -213,6 +213,7 @@ describe("signInCodeEmail", () => {
     expect(message.text).toContain("042517");
     expect(message.html).toContain("042517");
     expect(message.html).toContain("https://app.example.test/email/vnbot-wordmark-light@2x.png");
+    expect(message.html).toContain('width="107" height="32"');
     expect(message.text).not.toMatch(/https?:/);
     expect(message.html).not.toContain("<a ");
   });

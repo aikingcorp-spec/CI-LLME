@@ -1,9 +1,5 @@
-import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
-import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
-import { isIndexedPath } from "./src/blog/indexability.ts";
-import { LOCALE_HREFLANG, LOCALES } from "./src/i18n/locales.ts";
 import { resolveWwwPort } from "./www-port.mjs";
 
 const wwwPort = resolveWwwPort();
@@ -12,25 +8,20 @@ export default defineConfig({
   site: "https://vnbot.run",
   output: "static",
   i18n: {
-    defaultLocale: "en",
-    locales: [...LOCALES],
+    defaultLocale: "vi",
+    locales: ["vi", "en"],
     routing: {
       prefixDefaultLocale: false,
     },
   },
   integrations: [
-    react(),
     sitemap({
-      filter: (page) => isIndexedPath(new URL(page).pathname),
       i18n: {
-        defaultLocale: "en",
-        locales: LOCALE_HREFLANG,
+        defaultLocale: "vi",
+        locales: { vi: "vi-VN", en: "en-US" },
       },
     }),
   ],
-  vite: {
-    plugins: [tailwindcss()],
-  },
   server: {
     host: "127.0.0.1",
     port: wwwPort,
