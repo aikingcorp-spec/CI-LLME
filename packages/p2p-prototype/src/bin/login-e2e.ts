@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { cleanup } from "node-datachannel";
 import type { ClientTransport } from "../client-transport.js";
-import { DataChannelClientTransport, HttpClientTransport } from "../client-transport.js";
+import { DataChannelClientTransport } from "../client-transport.js";
 import { completePairing, openSession, unpairNode } from "../gateway-client.js";
 import type { NodeAgent } from "../node-agent.js";
 import { startNodeAgent } from "../node-agent.js";
@@ -84,7 +84,13 @@ try {
     },
   });
   await waitFor(() => agent?.connected() === true);
-  await call("HTTP relay", new HttpClientTransport({ baseUrl: gatewayUrl, nodeId, sessionToken }));
+  const relay = await fetch(`${gatewayUrl}/nodes/${encodeURIComponent(nodeId)}/rpc/echo`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${sessionToken}` },
+    body: "login-e2e",
+  });
+  if (relay.status !== 404) throw new Error(`plaintext HTTP relay answered ${relay.status}`);
+  console.log("HTTP relay: refused (404)");
   const peerId = randomUUID();
   const { assertion } = await openSession(gatewayUrl, sessionToken, nodeId, peerId);
   channel = await DataChannelClientTransport.connect({

@@ -3,7 +3,7 @@ import { cleanup } from "node-datachannel";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { decodeChannelFrame } from "./channel-protocol.js";
 import type { ClientCall, ClientTransport } from "./client-transport.js";
-import { DataChannelClientTransport, HttpClientTransport } from "./client-transport.js";
+import { DataChannelClientTransport } from "./client-transport.js";
 import { startFakeAuthServer } from "./fake-auth-server.js";
 import type { Gateway } from "./gateway.js";
 import { startGateway } from "./gateway.js";
@@ -57,7 +57,6 @@ describe("ClientTransport over a real gateway and node agent", () => {
   let gateway: Gateway;
   let agent: NodeAgent;
   let activeSubscriptions = 0;
-  let startedSubscriptions = 0;
   const peers: DataPeer[] = [];
   const clients: DataChannelClientTransport[] = [];
   beforeEach(async () => {
@@ -74,7 +73,6 @@ describe("ClientTransport over a real gateway and node agent", () => {
       call: demo.call,
       async *subscribe(...args: Parameters<typeof demo.subscribe>) {
         activeSubscriptions++;
-        startedSubscriptions++;
         try {
           yield* demo.subscribe(...args);
         } finally {
@@ -83,7 +81,6 @@ describe("ClientTransport over a real gateway and node agent", () => {
       },
     };
     activeSubscriptions = 0;
-    startedSubscriptions = 0;
     agent = startNodeAgent({
       gatewayUrl: gateway.url,
       nodeId: "node",
@@ -115,13 +112,7 @@ describe("ClientTransport over a real gateway and node agent", () => {
     await peer.open;
     return { peer, session };
   }
-  async function transport(kind: string): Promise<ClientTransport> {
-    if (kind === "http")
-      return new HttpClientTransport({
-        baseUrl: gateway.url,
-        nodeId: "node",
-        sessionToken: "token",
-      });
+  async function transport(): Promise<ClientTransport> {
     const { peer, session } = await peerConnection();
     const client = new DataChannelClientTransport(peer, session.assertion);
     clients.push(client);
@@ -129,60 +120,52 @@ describe("ClientTransport over a real gateway and node agent", () => {
     expect(client.selectedPair()).not.toBeNull();
     return client;
   }
-  for (const kind of ["http", "data-channel"]) {
-    it(`${kind}: echo round-trip preserves bytes and headers`, async () => {
-      const client = await transport(kind);
-      const req = request();
-      req.body = new Uint8Array([0, 255, 1, 2]);
-      const response = await client.call(req);
-      expect(response.status).toBe(200);
-      expect(response.headers["content-type"]).toBe("text/plain");
-      expect(response.body).toEqual(req.body);
-    });
-    it(`${kind}: subscription yields ordered event-stream bytes`, async () => {
-      const client = await transport(kind);
-      const chunks: string[] = [];
-      for await (const chunk of client.subscribe(
-        request("ticks", JSON.stringify({ count: 3, intervalMs: 2 })),
-      ))
-        chunks.push(decode(chunk));
-      expect(chunks.join("")).toBe("data: tick 0\n\ndata: tick 1\n\ndata: tick 2\n\n");
-      expect(chunks).toHaveLength(kind === "http" ? 1 : 3);
-    });
-    it(`${kind}: abort stops consumption and node subscription work`, async () => {
-      const client = await transport(kind);
-      const controller = new AbortController();
-      const stream = client
-        .subscribe(
-          request("ticks", JSON.stringify({ count: 100, intervalMs: 20 }), controller.signal),
-        )
-        [Symbol.asyncIterator]();
-      const next = stream.next();
-      if (kind === "data-channel") {
-        expect(decode((await next).value as Uint8Array)).toBe("data: tick 0\n\n");
-      } else {
-        // Buffered relay has no first chunk until completion.
-        void next.catch(() => {});
-        await waitFor(() => startedSubscriptions > 0);
-      }
-      controller.abort();
-      await expect(kind === "http" ? next : stream.next()).rejects.toThrow();
-      await waitFor(() => activeSubscriptions === 0);
-      expect((await client.call(request())).status).toBe(200);
-    });
-    it(`${kind}: pre-aborted requests reject`, async () => {
-      const client = await transport(kind);
-      const controller = new AbortController();
-      controller.abort();
-      await expect(client.call(request("echo", "", controller.signal))).rejects.toThrow();
-      await expect(
-        client
-          .subscribe(request("ticks", "", controller.signal))
-          [Symbol.asyncIterator]()
-          .next(),
-      ).rejects.toThrow();
-    });
-  }
+  it("echo round-trip preserves bytes and headers", async () => {
+    const client = await transport();
+    const req = request();
+    req.body = new Uint8Array([0, 255, 1, 2]);
+    const response = await client.call(req);
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toBe("text/plain");
+    expect(response.body).toEqual(req.body);
+  });
+  it("subscription yields ordered event-stream bytes", async () => {
+    const client = await transport();
+    const chunks: string[] = [];
+    for await (const chunk of client.subscribe(
+      request("ticks", JSON.stringify({ count: 3, intervalMs: 2 })),
+    ))
+      chunks.push(decode(chunk));
+    expect(chunks.join("")).toBe("data: tick 0\n\ndata: tick 1\n\ndata: tick 2\n\n");
+    expect(chunks).toHaveLength(3);
+  });
+  it("abort stops consumption and node subscription work", async () => {
+    const client = await transport();
+    const controller = new AbortController();
+    const stream = client
+      .subscribe(
+        request("ticks", JSON.stringify({ count: 100, intervalMs: 20 }), controller.signal),
+      )
+      [Symbol.asyncIterator]();
+    const next = stream.next();
+    expect(decode((await next).value as Uint8Array)).toBe("data: tick 0\n\n");
+    controller.abort();
+    await expect(stream.next()).rejects.toThrow();
+    await waitFor(() => activeSubscriptions === 0);
+    expect((await client.call(request())).status).toBe(200);
+  });
+  it("pre-aborted requests reject", async () => {
+    const client = await transport();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(client.call(request("echo", "", controller.signal))).rejects.toThrow();
+    await expect(
+      client
+        .subscribe(request("ticks", "", controller.signal))
+        [Symbol.asyncIterator]()
+        .next(),
+    ).rejects.toThrow();
+  });
   it.each(["bad", "expired"])("denies a %s assertion on the data channel", async (mode) => {
     const { peer } = await peerConnection();
     const assertion =
@@ -222,7 +205,7 @@ describe("ClientTransport over a real gateway and node agent", () => {
     ).toThrow();
   });
   it("rejects pending subscriptions and subsequent calls after revocation", async () => {
-    const client = await transport("data-channel");
+    const client = await transport();
     const stream = client
       .subscribe(request("ticks", JSON.stringify({ count: 100, intervalMs: 10 })))
       [Symbol.asyncIterator]();
@@ -233,8 +216,8 @@ describe("ClientTransport over a real gateway and node agent", () => {
     await waitFor(() => activeSubscriptions === 0);
   });
   it("multiplexes clients and concurrent calls independently", async () => {
-    const a = await transport("data-channel");
-    const b = await transport("data-channel");
+    const a = await transport();
+    const b = await transport();
     const results = await Promise.all([
       a.call(request("echo", "a")),
       b.call(request("echo", "b")),

@@ -44,6 +44,7 @@ describe("gateway and node agent", () => {
       port: 0,
       ...options(),
       requestTimeoutMs: 300,
+      unsafeTestOnlyPlaintextHttpRelay: true,
     });
   });
 
@@ -78,6 +79,26 @@ describe("gateway and node agent", () => {
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("POST hello");
     expect(res.headers.get("x-seen-path")).toBe("/some/path?q=1");
+  });
+
+  it("refuses the plaintext HTTP relay on a default gateway without reading the body or reaching the node", async () => {
+    await gateway.close();
+    const seen = vi.fn(echoHandler);
+    const log = vi.spyOn(console, "log");
+    gateway = await startGateway({ port: 0, ...options() });
+    await connectAgent(seen);
+    for (const init of [
+      { method: "POST", body: "secret-body", headers },
+      { method: "GET", headers },
+      { method: "GET" },
+    ]) {
+      const res = await fetch(`${gateway.url}/nodes/n1/private-path?q=secret`, init);
+      expect(res.status).toBe(404);
+    }
+    expect(seen).not.toHaveBeenCalled();
+    const lines = log.mock.calls.map((call) => call.join(" ")).join("\n");
+    expect(lines).toContain("/nodes/*");
+    expect(lines).not.toMatch(/private-path|secret|n1/);
   });
 
   it("returns 502 when the node is offline", async () => {

@@ -8,12 +8,12 @@ Duration  19.44s
 ## nat-probe-B.json
 {"localPort": 36571, "mapped": {"3478": "10.78.3.12:62883", "3480": "10.78.3.12:35136"}, "mapping": "endpoint-dependent", "server": "10.78.3.10"}
 ## selected ICE pair per session (local <-> remote); channel_open carried the same pair
-close-client s1 01:27:37.774 relay <coturn-host>:49689 (raddr 0.0.0.0:0) <-> relay <coturn-host>:49245 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
-close-node s1 01:27:37.541 relay <coturn-host>:49245 (raddr 0.0.0.0:0) <-> relay <coturn-host>:49689 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
-restart-client s1 01:27:25.443 relay <coturn-host>:49559 (raddr 0.0.0.0:0) <-> relay <coturn-host>:49502 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
-restart-client s2 01:27:32.097 relay <coturn-host>:49307 (raddr 0.0.0.0:0) <-> relay <coturn-host>:49769 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
-restart-node-1 s1 01:27:25.210 relay <coturn-host>:49502 (raddr 0.0.0.0:0) <-> relay <coturn-host>:49559 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
-restart-node-2 s1 01:27:31.864 relay <coturn-host>:49769 (raddr 0.0.0.0:0) <-> relay <coturn-host>:49307 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+close-client s1 01:27:37.774 relay 72.62.255.70:49689 (raddr 0.0.0.0:0) <-> relay 72.62.255.70:49245 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+close-node s1 01:27:37.541 relay 72.62.255.70:49245 (raddr 0.0.0.0:0) <-> relay 72.62.255.70:49689 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+restart-client s1 01:27:25.443 relay 72.62.255.70:49559 (raddr 0.0.0.0:0) <-> relay 72.62.255.70:49502 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+restart-client s2 01:27:32.097 relay 72.62.255.70:49307 (raddr 0.0.0.0:0) <-> relay 72.62.255.70:49769 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+restart-node-1 s1 01:27:25.210 relay 72.62.255.70:49502 (raddr 0.0.0.0:0) <-> relay 72.62.255.70:49559 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+restart-node-2 s1 01:27:31.864 relay 72.62.255.70:49769 (raddr 0.0.0.0:0) <-> relay 72.62.255.70:49307 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
 ## other (failure events and event counts per process log)
 close-client event counts: {"bye_ack_sent": 1, "bye_received": 1, "channel_open": 1, "connecting": 1, "exit": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}
 close-node event counts: {"bye_ack_received": 1, "bye_sent": 1, "channel_open": 1, "exit": 1, "listening": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}

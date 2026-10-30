@@ -4,7 +4,7 @@ import { P2PConnectError } from "./connect-error.js";
 import type { PeerChannel, PeerTransport } from "./webrtc-peer.js";
 
 const USER_MESSAGE =
-  "Mạng của bạn đang chặn kết nối trực tiếp, hãy thử mạng khác (4G hoặc wifi nhà).";
+  "Không kết nối được tới máy của bạn. Mạng này có thể đang chặn UDP, hãy thử mạng khác.";
 
 /** A PeerTransport whose channel never opens; `fire` drives the connection state. */
 function stuckTransport() {

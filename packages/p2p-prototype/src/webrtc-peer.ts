@@ -1,14 +1,48 @@
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { setTimeout } from "node:timers/promises";
-import type { DataChannel, IceServer } from "node-datachannel";
+import type { IceServer } from "node-datachannel";
 import { PeerConnection } from "node-datachannel";
 import type { RawData } from "ws";
 import { WebSocket } from "ws";
+import { P2PConnectError } from "./connect-error.js";
 import type { SignalPayload } from "./protocol.js";
 import { decodeGatewayFrame, encodeFrame, toWsUrl } from "./protocol.js";
 
 export type CloseHandshakeEvent = "bye-sent" | "bye-received" | "bye-ack-sent" | "bye-ack-received";
+
+/** The slice of a node-datachannel DataChannel that connectPeer uses. */
+export interface PeerChannel {
+  onMessage(cb: (msg: string | Buffer | ArrayBuffer) => void): void;
+  onClosed(cb: () => void): void;
+  onOpen(cb: () => void): void;
+  isOpen(): boolean;
+  sendMessage(msg: string): boolean;
+  sendMessageBinary(buffer: Uint8Array): boolean;
+  close(): void;
+}
+/** The slice of a node-datachannel PeerConnection that connectPeer uses. */
+export interface PeerTransport {
+  onStateChange(cb: (state: string) => void): void;
+  onIceStateChange(cb: (state: string) => void): void;
+  onGatheringStateChange(cb: (state: string) => void): void;
+  onSignalingStateChange(cb: (state: string) => void): void;
+  onLocalDescription(cb: (sdp: string, type: string) => void): void;
+  onLocalCandidate(cb: (candidate: string, mid: string) => void): void;
+  onDataChannel(cb: (channel: PeerChannel) => void): void;
+  setRemoteDescription(sdp: string, type: "offer" | "answer"): void;
+  addRemoteCandidate(candidate: string, mid: string): void;
+  createDataChannel(label: string): PeerChannel;
+  getSelectedCandidatePair(): {
+    local: { candidate: string };
+    remote: { candidate: string };
+  } | null;
+  close(): void;
+}
+export interface PeerTransportConfig {
+  iceServers: Array<string | IceServer>;
+  iceTransportPolicy?: "all" | "relay";
+}
 
 export interface PeerOptions {
   signalUrl: string;
@@ -25,10 +59,14 @@ export interface PeerOptions {
   authorization?: string;
   iceServers?: Array<string | IceServer>;
   iceTransportPolicy?: "all" | "relay";
+  /** Rejects `open` with a `timeout` P2PConnectError when the channel is not open in time. Off by default. */
+  connectTimeoutMs?: number;
   /** Fallback for a remote that never acknowledges BYE. Default 5000 ms. */
   closeAckTimeoutMs?: number;
   onCloseHandshake?: (event: CloseHandshakeEvent) => void;
   attemptId?: string;
+  /** Swaps the ICE/DTLS/SCTP stack. Defaults to node-datachannel; tests use it for TURN over TCP/TLS. */
+  createPeerConnection?: (name: string, config: PeerTransportConfig) => PeerTransport;
 }
 export interface DataPeer {
   send(text: string): void;
@@ -88,14 +126,23 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     : new WebSocket(`${toWsUrl(o.signalUrl)}?peer=${encodeURIComponent(o.selfId)}`, {
         headers: o.authorization === undefined ? {} : { authorization: o.authorization },
       });
-  const pc = new PeerConnection(o.selfId, {
+  const pcConfig: PeerTransportConfig = {
     iceServers: o.iceServers ?? [],
     iceTransportPolicy: o.iceTransportPolicy,
-  });
+  };
+  const pc: PeerTransport = o.createPeerConnection
+    ? o.createPeerConnection(o.selfId, pcConfig)
+    : new PeerConnection(o.selfId, pcConfig);
   pc.onStateChange((state) => {
     debug(`onStateChange ${state}`);
     if (state === "closed" || state === "failed") {
-      rejectOpen(new Error(`peer ${state}`));
+      rejectOpen(
+        state === "failed"
+          ? new P2PConnectError("ice_failed", "peer failed")
+          : opened
+            ? new Error("peer closed")
+            : new P2PConnectError("no_candidate_pair", "peer closed"),
+      );
       queue.end();
       // A failed PeerConnection still holds its TURN allocations until close() is called.
       if (state === "failed") queueMicrotask(() => close(false));
@@ -105,7 +152,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   pc.onGatheringStateChange((state) => debug(`onGatheringStateChange ${state}`));
   pc.onSignalingStateChange((state) => debug(`onSignalingStateChange ${state}`));
   const queue = createMessageQueue();
-  let channel: DataChannel | undefined;
+  let channel: PeerChannel | undefined;
   let channelClosed = false;
   let byeAcked = false;
   let byeReceived = false;
@@ -120,12 +167,24 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     rejectOpen = reject;
   });
   void open.catch(() => {});
+  const connectTimer =
+    o.connectTimeoutMs === undefined
+      ? undefined
+      : globalThis.setTimeout(() => {
+          if (opened) return;
+          rejectOpen(new P2PConnectError("timeout", "connect timed out"));
+          close();
+        }, o.connectTimeoutMs);
+  void open.then(
+    () => clearTimeout(connectTimer),
+    () => clearTimeout(connectTimer),
+  );
   ws?.on("error", (error: Error) => {
     rejectOpen(error);
     if (!opened) queueMicrotask(() => close(false));
   });
 
-  const attach = (dc: DataChannel): void => {
+  const attach = (dc: PeerChannel): void => {
     channel = dc;
     dc.onMessage((msg) => {
       const control = typeof msg === "string" ? undefined : new Uint8Array(msg as ArrayBufferLike);
