@@ -41,6 +41,7 @@ import {
   refreshDesktopMonitoringUser,
   reportDesktopError,
 } from "./monitoring.js";
+import { logNativeFailure } from "./native-diagnostics.js";
 import { NativeLocalStackController } from "./native-local-stack.js";
 import { nativeMigrationsDir } from "./native-migrate.js";
 import { NativePostgres } from "./native-postgres.js";
@@ -1196,6 +1197,13 @@ app.whenReady().then(async () => {
         : path.resolve(app.getAppPath(), "..", "..", "packages", "db"),
       migrationsDir: nativeMigrationsDir(layout),
       services: createNativeServices({ ...layout, userDataDir }),
+      onFailure: (stage, error) =>
+        void logNativeFailure({
+          userDataDir,
+          stage,
+          error,
+          debug: process.env.RAKAZO_DESKTOP_DEBUG === "1",
+        }),
     });
     localStack = new NativeLocalStackController({
       stack: nativeStack,

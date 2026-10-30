@@ -27,7 +27,11 @@ export interface NativeStackOptions {
   run?: RunProcess;
   migrationsDir?: string;
   migrationEntry?: string;
+  /** Receives the failing stage and the real error; the thrown error stays generic. */
+  onFailure?: (stage: NativeStackStage, error: unknown) => void;
 }
+
+export type NativeStackStage = "cleanup" | "postgres" | "migrate" | "services" | "stopped";
 
 /** Load Electron only when migrating, so lifecycle tests and tooling work in plain Node. */
 const runUtilityMigration: RunProcess = async (file, args, options) => {
@@ -126,14 +130,17 @@ export class NativeStack {
     const checkStopped = () => {
       if (generation !== this.generation) throw new Error("Local stack startup was stopped.");
     };
+    let stage: NativeStackStage = "cleanup";
     try {
       // Retry any failed cleanup before creating more processes.
       await this.cleanup();
       checkStopped();
+      stage = "postgres";
       this.current = "starting";
       this.postgresStarted = true;
       const pg = await this.options.postgres.start();
       checkStopped();
+      stage = "migrate";
       this.current = "migrating";
       const command = this.options.migrationCommand ?? {
         file: this.options.migrationEntry ?? path.join(import.meta.dirname, "main.js"),
@@ -153,8 +160,12 @@ export class NativeStack {
         timeoutMs: 120_000,
         signal: controller.signal,
       });
-      if (result.code !== 0 || result.timedOut) throw new Error("Migration failed.");
+      if (result.code !== 0 || result.timedOut)
+        throw new Error(
+          result.timedOut ? "Migration timed out." : `Migration exited with code ${result.code}.`,
+        );
       checkStopped();
+      stage = "services";
       let webUrl: string | undefined;
       if (this.options.services) {
         this.servicesStarted = true;
@@ -171,7 +182,8 @@ export class NativeStack {
       };
       this.current = "running";
       return { ...this.endpoints };
-    } catch {
+    } catch (error) {
+      if (generation === this.generation) this.options.onFailure?.(stage, error);
       this.endpoints = null;
       await this.cleanup().catch(() => undefined);
       this.current = "failed";

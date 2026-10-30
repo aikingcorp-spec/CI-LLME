@@ -142,13 +142,18 @@ export function createNativeServices(input: NativeServicesDeps): NativeServices 
       const worker = fork(resolveNativeEntryPath(input, "worker"), [], { env: runtimeEnv });
       children.push(worker);
       let startupFailed = false;
+      let startupDetail = "Native service exited during startup.";
       const watch = (child: UtilityChild, name: "api" | "worker", attempts = 0) => {
         child.once("error", () => {
-          if (!started) startupFailed = true;
-        });
-        child.once("exit", () => {
           if (!started) {
             startupFailed = true;
+            startupDetail = `Native ${name} process reported an error.`;
+          }
+        });
+        child.once("exit", (code) => {
+          if (!started) {
+            startupFailed = true;
+            startupDetail = `Native ${name} process exited with code ${String(code)}.`;
             return;
           }
           if (attempts >= (input.maxRestarts ?? 2)) return;
@@ -277,7 +282,7 @@ export function createNativeServices(input: NativeServicesDeps): NativeServices 
       const url = `http://127.0.0.1:${apiPort}`;
       const deadline = Date.now() + (input.healthTimeoutMs ?? 30_000);
       while (Date.now() < deadline) {
-        if (startupFailed) throw new Error("Native service exited during startup.");
+        if (startupFailed) throw new Error(startupDetail);
         try {
           if (
             (await fetchImpl(`${url}/health`, { signal: AbortSignal.timeout(2000) })).ok &&
@@ -290,11 +295,10 @@ export function createNativeServices(input: NativeServicesDeps): NativeServices 
         } catch {}
         await sleep(100);
       }
-      await stop();
       throw new Error("Native API health check timed out.");
-    } catch {
+    } catch (error) {
       await stop();
-      throw new Error("Native services could not start.");
+      throw new Error("Native services could not start.", { cause: error });
     }
   }
   let currentUrl: string | undefined;
