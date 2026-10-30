@@ -2,6 +2,8 @@
 
 > **PROTOTYPE. Not for real user data.** It has not been tested behind real NAT on two real machines (see [What was tested](#what-was-tested)).
 
+> **Relay transport.** Production relays over UDP only (node-datachannel, which uses libjuice). TURN over TCP and TURNS over TLS work only in tests, through werift. Migrating production to werift is planned for stage 2. See [TURN over TCP and TLS](#turn-over-tcp-and-tls).
+
 Throwaway prototype for [ADR 0001](../../docs/architecture/vnbot/adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md): a loopback gateway, an outbound node agent, and a WebRTC data channel. It touches no app and no other package.
 
 ## Run it
