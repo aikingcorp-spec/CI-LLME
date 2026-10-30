@@ -1,0 +1,22 @@
+# run-12
+## vitest
+Test Files  1 passed (1)
+Tests  3 passed (3)
+Duration  5.20s
+## nat-probe-A.json
+{"localPort": 58161, "mapped": {"3478": "10.78.3.11:58161", "3480": "10.78.3.11:58161"}, "mapping": "endpoint-independent", "server": "10.78.3.10"}
+## nat-probe-B.json
+{"localPort": 47261, "mapped": {"3478": "10.78.3.12:47261", "3480": "10.78.3.12:47261"}, "mapping": "endpoint-independent", "server": "10.78.3.10"}
+## selected ICE pair per session (local <-> remote); channel_open carried the same pair
+close-client s1 01:21:24.629 srflx 10.78.3.11:51623 (raddr 0.0.0.0:0) <-> srflx 10.78.3.12:38158 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+close-node s1 01:21:24.630 srflx 10.78.3.12:38158 (raddr 0.0.0.0:0) <-> srflx 10.78.3.11:51623 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+restart-client s1 01:21:21.593 srflx 10.78.3.11:56408 (raddr 0.0.0.0:0) <-> srflx 10.78.3.12:41247 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+restart-client s2 01:21:24.085 srflx 10.78.3.11:54689 (raddr 0.0.0.0:0) <-> srflx 10.78.3.12:47273 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+restart-node-1 s1 01:21:21.593 srflx 10.78.3.12:41247 (raddr 0.0.0.0:0) <-> srflx 10.78.3.11:56408 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+restart-node-2 s1 01:21:24.085 srflx 10.78.3.12:47273 (raddr 0.0.0.0:0) <-> srflx 10.78.3.11:54689 (raddr 0.0.0.0:0) turnTransport=n/a channel_open=same
+## other (failure events and event counts per process log)
+close-client event counts: {"bye_ack_sent": 1, "bye_received": 1, "channel_open": 1, "connecting": 1, "exit": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}
+close-node event counts: {"bye_ack_received": 1, "bye_sent": 1, "channel_open": 1, "exit": 1, "listening": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}
+restart-client event counts: {"bye_ack_received": 1, "bye_sent": 1, "channel_open": 2, "connecting": 2, "exit": 1, "request_received": 2, "request_sent": 2, "response_received": 2, "response_sent": 2, "selected_pair": 2, "session_end": 2, "shutdown": 1, "started": 1}
+restart-node-1 event counts: {"channel_open": 1, "listening": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "started": 1}
+restart-node-2 event counts: {"bye_ack_sent": 1, "bye_received": 1, "channel_open": 1, "exit": 1, "listening": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}

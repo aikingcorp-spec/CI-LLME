@@ -1,0 +1,21 @@
+run-01 PASS 08:20:11 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-02 PASS 08:20:17 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-03 PASS 08:20:23 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-04 PASS 08:20:31 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-05 PASS 08:20:37 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-06 PASS 08:20:44 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-07 PASS 08:20:52 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-08 PASS 08:20:58 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-09 PASS 08:21:05 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-10 PASS 08:21:13 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-11 PASS 08:21:19 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-12 PASS 08:21:25 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-13 PASS 08:21:31 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-14 PASS 08:21:36 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-15 PASS 08:21:43 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-16 PASS 08:21:49 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-17 PASS 08:21:55 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-18 PASS 08:22:03 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-19 PASS 08:22:09 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+run-20 PASS 08:22:16 pairs=6 candTypes=[ 12 srflx] hostPairs=0 natProbe=endpoint-independent/endpoint-independent
+PASS 20/20
