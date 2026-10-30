@@ -111,7 +111,7 @@ test("copy button shows copy icon, hides text at 390px with aria-label, and is d
   await page.goto("/?os=windows");
   const copyBtn = page.locator("#download .dl-copy");
   await expect(copyBtn).toBeVisible();
-  await expect(copyBtn).toHaveAttribute("aria-label", "Sao chép");
+  await expect(copyBtn).toHaveAttribute("aria-label", "Sao chép mã SHA-256");
   await expect(copyBtn).toHaveAttribute("aria-disabled", "true");
   await expect(copyBtn.locator('svg[data-icon="copy"]')).toBeVisible();
   await expect(copyBtn.locator(".dl-copy-text")).toBeHidden();
@@ -119,6 +119,9 @@ test("copy button shows copy icon, hides text at 390px with aria-label, and is d
   await copyBtn.click({ force: true });
   await expect(copyBtn).not.toContainText("Đã chép");
   await expect(page.locator("#dl-live")).toHaveText("");
+
+  await page.goto("/en/?os=windows");
+  await expect(copyBtn).toHaveAttribute("aria-label", "Copy SHA-256");
 });
 
 test("unsupported OS state renders plain text links without button-like spans", async ({ page }) => {
@@ -140,12 +143,22 @@ test("standalone #requirements is removed and install steps match origin/main", 
   await page.goto("/?os=windows");
   await expect(page.locator("#requirements")).toHaveCount(0);
   await expect(page.locator('#download a[href="#requirements"]')).toHaveCount(0);
-  await expect(page.locator('[data-i="s1"]')).toContainText("Mac mini, PC văn phòng hoặc VPS riêng");
+  await expect(page.locator("#download").getByText("Yêu cầu hệ thống")).toHaveCount(0);
+  await expect(page.locator("#download")).not.toContainText("Yêu cầu hệ thống");
+  await expect(page.locator("#download ol.steps.install")).toBeVisible();
+  await expect(page.locator('[data-i="s1"]')).toHaveText(
+    "Cài app trên máy sẽ chạy VNBot (Mac mini, PC văn phòng hoặc VPS riêng)",
+  );
   await expect(page.locator('[data-i="s2"]')).toHaveText("Đăng nhập bằng email và mã");
-  await expect(page.locator('[data-i="s3"]')).toContainText("Kết nối mô hình và giao việc đầu tiên");
+  await expect(page.locator('[data-i="s3"]')).toHaveText(
+    "Kết nối mô hình của bạn và giao việc cho bot đầu tiên",
+  );
 
   await page.goto("/en/?os=windows");
   await expect(page.locator("#requirements")).toHaveCount(0);
+  await expect(page.locator("#download").getByText("System requirements")).toHaveCount(0);
+  await expect(page.locator("#download")).not.toContainText("System requirements");
+  await expect(page.locator("#download ol.steps.install")).toBeVisible();
   await expect(page.locator('[data-i="s1"]')).toHaveText(
     "Install the app on the machine that will run your bots (Mac mini, office PC or your own VPS)",
   );
@@ -153,13 +166,37 @@ test("standalone #requirements is removed and install steps match origin/main", 
   await expect(page.locator('[data-i="s3"]')).toHaveText("Connect your model and give your first bot a job");
 });
 
-test("release notes is non-link text when gated and a link when enabled", async ({ page }) => {
+test("release notes is omitted when gated and a link when enabled", async ({ page }) => {
   await page.goto("/?os=windows");
-  await expect(page.locator("#download .dl-links")).toContainText("Ghi chú phát hành");
+  await expect(page.locator("#download .dl-links").getByText("Ghi chú phát hành")).toHaveCount(0);
   await expect(page.locator("#download .dl-links a", { hasText: "Ghi chú phát hành" })).toHaveCount(0);
 
   await page.goto("/?os=windows&flags=windows");
   await expect(page.locator("#download .dl-links a", { hasText: "Ghi chú phát hành" })).toHaveCount(1);
+});
+
+test("Windows icon in .dl-other is monochrome and matches Linux icon colour", async ({ page }) => {
+  await page.goto("/?os=windows");
+  const winIcon = page.locator('#dlother .platform-icon[data-icon="windows"]').first();
+  const linuxIcon = page.locator('#dlother .platform-icon[data-icon="linux"]').first();
+  await expect(winIcon).toBeVisible();
+  await expect(linuxIcon).toBeVisible();
+
+  const winMarkup = await winIcon.evaluate((el) => el.outerHTML);
+  expect(winMarkup).not.toMatch(/#[0-9a-f]{3,8}/i);
+
+  const [winColors, linuxColors] = await Promise.all([
+    winIcon.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { fill: cs.fill, color: cs.color };
+    }),
+    linuxIcon.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { fill: cs.fill, color: cs.color };
+    }),
+  ]);
+  expect(winColors.fill).toBe(linuxColors.fill);
+  expect(winColors.color).toBe(linuxColors.color);
 });
 
 test("MSI click shows .msi filename in SmartScreen step 2, checksum panel, and retry link, and close restores focus", async ({
