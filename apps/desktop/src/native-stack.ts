@@ -33,6 +33,8 @@ export interface NativeStackOptions {
   migrationsDir?: string;
   /** Receives the failing stage and the real error; the thrown error stays generic. */
   onFailure?: (stage: NativeStackStage, error: unknown) => void;
+  /** Progress marker for diagnostics; never carries paths or secrets. */
+  onStage?: (stage: "migrate" | "server") => void;
 }
 
 export type NativeStackStage = "cleanup" | "postgres" | "migrate" | "services" | "stopped";
@@ -145,6 +147,7 @@ export class NativeStack {
       checkStopped();
       stage = "migrate";
       this.current = "migrating";
+      this.options.onStage?.("migrate");
       const result = await (this.options.run ?? runInProcessMigration)("migrate", [], {
         cwd: this.options.dbDir,
         env: {
@@ -167,6 +170,7 @@ export class NativeStack {
         );
       checkStopped();
       stage = "services";
+      this.options.onStage?.("server");
       let webUrl: string | undefined;
       if (this.options.services) {
         this.servicesStarted = true;

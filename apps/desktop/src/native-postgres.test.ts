@@ -259,7 +259,13 @@ describe("bootstrapThroughClient", () => {
 describe("NativePostgres lifecycle", () => {
   let userData: string;
   let binDir: string;
-  let calls: Array<{ file: string; args: string[]; stdin?: string; env: NodeJS.ProcessEnv }>;
+  let calls: Array<{
+    file: string;
+    args: string[];
+    stdin?: string;
+    env: NodeJS.ProcessEnv;
+    discardOutput?: boolean;
+  }>;
 
   beforeEach(async () => {
     userData = await mkdtemp(path.join(tmpdir(), "rakazo-pg-"));
@@ -276,7 +282,13 @@ describe("NativePostgres lifecycle", () => {
     let running = false;
     const startResults = [...(overrides.start ?? [])];
     return async (file, args, options) => {
-      calls.push({ file, args, stdin: options.stdin, env: options.env });
+      calls.push({
+        file,
+        args,
+        stdin: options.stdin,
+        env: options.env,
+        discardOutput: options.discardOutput,
+      });
       const tool = path.basename(file);
       if (tool.startsWith("initdb")) {
         const scratch = args[args.indexOf("-D") + 1] as string;
@@ -392,6 +404,11 @@ describe("NativePostgres lifecycle", () => {
     expect(order).toEqual(["status", "stop", "start"]);
   });
 
+  it("keeps piped output for pg_ctl start on linux", async () => {
+    await create().start();
+    expect(calls.find((call) => call.args[0] === "start")?.discardOutput).toBeFalsy();
+  });
+
   it("runs initdb and the server directly on linux", async () => {
     await create().start();
     const names = calls.map((call) => path.basename(call.file));
@@ -420,6 +437,15 @@ describe("NativePostgres lifecycle", () => {
       expect(init?.args[3]).toBe("-o");
       expect(init?.args[4]).toContain(`--pwfile="${path.join(userData, "pg", ".owner-password")}"`);
       expect(init?.args[4]).toContain("--auth=scram-sha-256");
+    });
+
+    it("starts the server without pipes so it cannot hold the caller's handles", async () => {
+      await win().start();
+      const start = calls.find((call) => call.args[0] === "start");
+      expect(start?.discardOutput).toBe(true);
+      for (const call of calls.filter((c) => c.args[0] !== "start")) {
+        expect(call.discardOutput).toBeFalsy();
+      }
     });
 
     it("never puts a password in a command line", async () => {

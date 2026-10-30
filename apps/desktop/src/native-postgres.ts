@@ -22,6 +22,8 @@ const PG_START_TIMEOUT_S = 60;
 const PG_STOP_TIMEOUT_S = 60;
 const INITDB_TIMEOUT_MS = 120_000;
 const PG_CTL_MARGIN_MS = 15_000;
+const OUTPUT_DRAIN_MS = 500;
+const KILL_GRACE_MS = 2_000;
 const START_ATTEMPTS = 3;
 const MAX_SECRET_BYTES = 256;
 const MAX_CAPTURE_BYTES = 64 * 1024;
@@ -60,6 +62,8 @@ export interface RunProcessOptions {
   stdin?: string;
   shell?: boolean;
   onLine?: (line: string) => void;
+  /** No pipes to the child, for a call that leaves a long-lived server behind. */
+  discardOutput?: boolean;
 }
 
 export interface RunProcessResult {
@@ -81,52 +85,82 @@ function appendCapped(current: string, chunk: string): string {
   return next.length > MAX_CAPTURE_BYTES ? next.slice(-MAX_CAPTURE_BYTES) : next;
 }
 
-/** Fixed argv, no shell unless asked, bounded capture, killed on timeout or abort. */
-export const runProcess: RunProcess = (file, args, options) =>
-  new Promise((resolve, reject) => {
-    const child = spawn(file, args, {
-      cwd: options.cwd,
-      env: options.env,
-      shell: options.shell ?? false,
-      windowsHide: true,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    let timedOut = false;
-    const partial = { stdout: "", stderr: "" };
-    const feed = (name: "stdout" | "stderr", chunk: string) => {
-      if (name === "stdout") stdout = appendCapped(stdout, chunk);
-      else stderr = appendCapped(stderr, chunk);
-      if (!options.onLine) return;
-      const lines = (partial[name] + chunk).split(/\r?\n/);
-      partial[name] = lines.pop() ?? "";
-      for (const line of lines) if (line.trim() !== "") options.onLine(line);
-    };
-    child.stdout.setEncoding("utf8").on("data", (chunk: string) => feed("stdout", chunk));
-    child.stderr.setEncoding("utf8").on("data", (chunk: string) => feed("stderr", chunk));
-    const kill = () => child.kill("SIGKILL");
-    const timer = setTimeout(() => {
-      timedOut = true;
-      kill();
-    }, options.timeoutMs);
-    options.signal?.addEventListener("abort", kill, { once: true });
-    if (options.signal?.aborted) kill();
-    child.once("error", (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
-    child.once("close", (code) => {
-      clearTimeout(timer);
-      options.signal?.removeEventListener("abort", kill);
-      for (const name of ["stdout", "stderr"] as const) {
-        if (partial[name].trim() !== "") options.onLine?.(partial[name]);
+/**
+ * Fixed argv, no shell unless asked, bounded capture, killed on timeout or abort.
+ *
+ * A server started by the child (Windows `pg_ctl start`) inherits its pipes, so `close` may
+ * never fire after the child is gone. The result is settled on `exit` after a short drain, and
+ * a kill that is never followed by `exit` settles too.
+ */
+export function createRunProcess(spawnProcess: typeof spawn = spawn): RunProcess {
+  return (file, args, options) =>
+    new Promise((resolve, reject) => {
+      const child = spawnProcess(file, args, {
+        cwd: options.cwd,
+        env: options.env,
+        shell: options.shell ?? false,
+        windowsHide: true,
+        stdio: options.discardOutput ? ["ignore", "ignore", "ignore"] : ["pipe", "pipe", "pipe"],
+      });
+      let stdout = "";
+      let stderr = "";
+      let timedOut = false;
+      let settled = false;
+      const timers = new Set<NodeJS.Timeout>();
+      const partial = { stdout: "", stderr: "" };
+      const feed = (name: "stdout" | "stderr", chunk: string) => {
+        if (name === "stdout") stdout = appendCapped(stdout, chunk);
+        else stderr = appendCapped(stderr, chunk);
+        if (!options.onLine) return;
+        const lines = (partial[name] + chunk).split(/\r?\n/);
+        partial[name] = lines.pop() ?? "";
+        for (const line of lines) if (line.trim() !== "") options.onLine(line);
+      };
+      const later = (ms: number, run: () => void) => {
+        const timer = setTimeout(run, ms);
+        timers.add(timer);
+        return timer;
+      };
+      const finish = (code: number | null) => {
+        if (settled) return;
+        settled = true;
+        for (const timer of timers) clearTimeout(timer);
+        options.signal?.removeEventListener("abort", kill);
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        for (const name of ["stdout", "stderr"] as const) {
+          if (partial[name].trim() !== "") options.onLine?.(partial[name]);
+        }
+        resolve({ code, stdout, stderr, timedOut });
+      };
+      function kill() {
+        child.kill("SIGKILL");
+        // A killed child normally reports `exit`; if it does not, the caller still gets an answer.
+        later(KILL_GRACE_MS, () => finish(null));
       }
-      resolve({ code, stdout, stderr, timedOut });
+      child.stdout?.setEncoding("utf8").on("data", (chunk: string) => feed("stdout", chunk));
+      child.stderr?.setEncoding("utf8").on("data", (chunk: string) => feed("stderr", chunk));
+      later(options.timeoutMs, () => {
+        timedOut = true;
+        kill();
+      });
+      options.signal?.addEventListener("abort", kill, { once: true });
+      if (options.signal?.aborted) kill();
+      child.once("error", (error) => {
+        if (settled) return;
+        settled = true;
+        for (const timer of timers) clearTimeout(timer);
+        options.signal?.removeEventListener("abort", kill);
+        reject(error);
+      });
+      child.once("exit", (code) => later(OUTPUT_DRAIN_MS, () => finish(code)));
+      child.once("close", (code) => finish(code));
+      child.stdin?.on("error", () => undefined);
+      child.stdin?.end(options.stdin ?? "");
     });
-    child.stdin.on("error", () => undefined);
-    child.stdin.end(options.stdin ?? "");
-  });
+}
+
+export const runProcess: RunProcess = createRunProcess();
 
 /** Synchronous variant for `process.on("exit")`, where nothing async can finish. */
 export type RunProcessSync = (
@@ -435,6 +469,8 @@ export interface NativePostgresOptions {
   isPostgresProcess?: (pid: number) => boolean;
   allocatePort?: () => Promise<number>;
   randomHex?: (bytes: number) => string;
+  /** Progress marker for diagnostics; never carries paths or secrets. */
+  onStage?: (stage: "postgres-init" | "postgres-start") => void;
 }
 
 /**
@@ -580,9 +616,11 @@ export class NativePostgres {
       const secrets = await this.ensureSecrets(paths);
       if (!(await this.isInitialized(paths))) {
         this.current = "initializing";
+        this.options.onStage?.("postgres-init");
         await this.initialize(paths, secrets);
       }
       this.current = "starting";
+      this.options.onStage?.("postgres-start");
       const port = await this.startOnFreePort(paths);
       if (this.platform === "win32") await this.bootstrapAfterStart(paths, secrets, port);
       await writePrivateFile(paths.portFile, `${port}\n`);
@@ -729,10 +767,12 @@ export class NativePostgres {
     let lastFailure: unknown;
     for (let attempt = 0; attempt < START_ATTEMPTS; attempt += 1) {
       const port = await allocate();
+      // On Windows the server inherits the child's handles; its output is in the `-l` file anyway.
       const started = await this.ctl(
         paths,
         startArgs({ dataDir: paths.dataDir, logFile: paths.logFile, port }),
         PG_START_TIMEOUT_S * 1000 + PG_CTL_MARGIN_MS,
+        this.platform === "win32",
       );
       if (started.code === 0) return port;
       const tail = await this.logTail(paths);
@@ -783,8 +823,12 @@ export class NativePostgres {
     return status.code === 0;
   }
 
-  private ctl(paths: PostgresPaths, args: string[], timeoutMs = 90_000) {
-    return this.run(paths.pgCtl, args, { env: this.childEnv(), timeoutMs });
+  private ctl(paths: PostgresPaths, args: string[], timeoutMs = 90_000, discardOutput = false) {
+    return this.run(paths.pgCtl, args, {
+      env: this.childEnv(),
+      timeoutMs,
+      ...(discardOutput ? { discardOutput } : {}),
+    });
   }
 
   private childEnv() {

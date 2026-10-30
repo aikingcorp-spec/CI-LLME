@@ -47,7 +47,7 @@ import { nativeMigrationsDir } from "./native-migrate.js";
 import { NativePostgres } from "./native-postgres.js";
 import { createNativeServices } from "./native-services.js";
 import { installNativeShutdown } from "./native-shutdown.js";
-import { runNativeSmoke } from "./native-smoke.js";
+import { runNativeSmoke, smokeStageReporter } from "./native-smoke.js";
 import { NativeStack } from "./native-stack.js";
 import { oauthCallbackFrom } from "./oauth-callback.js";
 import { P2PNode } from "./p2p-node.js";
@@ -1212,8 +1212,10 @@ app.whenReady().then(async () => {
     const dbDir = app.isPackaged
       ? path.join(process.resourcesPath, "server", "db")
       : path.resolve(app.getAppPath(), "..", "..", "packages", "db");
+    const smokeStage = smokeStageReporter(process.env);
     nativeStack = new NativeStack({
-      postgres: new NativePostgres({ userDataDir, dbDir }),
+      postgres: new NativePostgres({ userDataDir, dbDir, onStage: smokeStage }),
+      onStage: smokeStage,
       dbDir,
       migrationsDir: nativeMigrationsDir(layout),
       services: createNativeServices({ ...layout, userDataDir }),
@@ -1251,7 +1253,11 @@ app.whenReady().then(async () => {
       log: (message) => console.warn(message),
     });
     if (process.env.RAKAZO_DESKTOP_SMOKE === "1") {
-      const code = await runNativeSmoke({ stack: nativeStack, userDataDir });
+      const code = await runNativeSmoke({
+        stack: nativeStack,
+        userDataDir,
+        onStage: smokeStageReporter(process.env),
+      });
       app.exit(code);
       return;
     }
