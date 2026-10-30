@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
 - Added a separately configured, workers.dev-only P2P gateway test environment for owner-approved validation.
+- Added local WebSocket offer/answer smoke coverage for the P2P gateway, including node pairing and client target restrictions.
 
 Notable product changes in Rakazo. See GitHub Releases for tagged builds.
 
