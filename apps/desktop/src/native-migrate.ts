@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { createRequire as createModuleRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -12,7 +12,7 @@ export interface MigrationClient {
 }
 
 export function createMigrationClient(databaseUrl: string, dbDir: string): MigrationClient {
-  const { Client } = createRequire(path.join(dbDir, "package.json"))("pg");
+  const { Client } = createModuleRequire(path.join(dbDir, "package.json"))("pg");
   return new Client({ connectionString: databaseUrl, connectionTimeoutMillis: 10_000 });
 }
 
@@ -171,9 +171,9 @@ export async function migrateNativeDatabase(input: {
 
 /** Uses the existing queue dependency at its composition boundary, without loading providers. */
 export async function migrateNativeJobQueue(databaseUrl: string, dbDir: string): Promise<void> {
-  const { makeWorkerUtils } = createRequire(path.resolve(dbDir, "..", "adapters", "package.json"))(
-    "graphile-worker",
-  );
+  const { makeWorkerUtils } = createModuleRequire(
+    path.resolve(dbDir, "..", "adapters", "package.json"),
+  )("graphile-worker");
   const utils = await makeWorkerUtils({ connectionString: databaseUrl });
   try {
     await utils.migrate();

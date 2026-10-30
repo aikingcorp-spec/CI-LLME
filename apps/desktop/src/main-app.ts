@@ -80,6 +80,7 @@ import {
 import { clearSetup, readSetup, writeSetup } from "./setup-store.js";
 import { chooseRuntime } from "./stack-runtime.js";
 import { currentLocale, format, setLocale, strings } from "./strings.js";
+import { configureUserDataName } from "./user-data-name.js";
 import type { UserDeviceAccess } from "./user-device.js";
 import { createUserDeviceAccess, deviceName } from "./user-device.js";
 import { oauthPopupSessionPreferences, shouldOpenInAppPopup } from "./window-open.js";
@@ -89,6 +90,12 @@ import {
   setupWindowOptions,
   warmWindowTtlMs,
 } from "./window-options.js";
+
+configureUserDataName({
+  app,
+  platform: process.platform,
+  userDataDir: app.commandLine.getSwitchValue("user-data-dir") || undefined,
+});
 
 process.setSourceMapsEnabled(true);
 installDesktopEarlyErrorReporting();
