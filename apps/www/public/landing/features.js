@@ -6,9 +6,14 @@ window.VNBOT_FEATURES={
   showFree:true,               // hero "Miễn phí" wording + 0đ section + free nav/FAQ
   CONTACT_URL:'https://aikingx.com',
   downloads:{                  // the ONLY platforms shown in the download grid; enabled:false => "Sắp có", true => real download button
-    windows:{enabled:false,url:'https://vnbot.run/download/VNBot-Setup.exe',label:'Windows'},
+    windows:{enabled:false,url:'https://vnbot.run/download/VNBot-Setup.exe',label:'Windows',msi:{url:'/download/VNBot-Setup.msi',label:'MSI (doanh nghiệp)'}},
     linux:{enabled:false,url:'https://vnbot.run/download/VNBot.AppImage',label:'Linux'}
   },
+  pausedPlatforms:[            // paused, not dropped: listed as "Sắp có" in platform lines only, never in the download grid
+    {id:'mac',name:'macOS'},
+    {id:'android',name:'Android'},
+    {id:'ios',name:'iOS'}
+  ],
   platforms:{
     web:{name:'Web'}                     // availability derives from webAppLive (web client app.vnbot.run -> your node)
   },
