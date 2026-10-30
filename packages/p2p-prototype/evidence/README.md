@@ -32,6 +32,7 @@ Notes:
   routers' `10.78.3.x` addresses. Cone runs select `srflx` to `srflx`; symmetric runs select `relay` to
   `relay` on the TURN host. TURN over the box's real uplink was reached through the L4 forwarder.
 - `turn-tcp/`, `turn-tcp-under-load/`, `turn-tls/`: routed topology (no NAT) with the test-only werift peer
+  `turn-tls/` run-04 timed out on its first attempt and passed on reconnect; `runs/run-04.txt` records `close-client {"ts": "2026-10-30T01:25:08.076Z", "event": "connect_failed", "error": "timed out"}`, followed by reconnect `channel_open` events.
   connection. `turn-tcp-under-load/` is an earlier TURN/TCP batch run while the box was heavily loaded; its
   failed runs are kept as failures and were not retried or replaced. `turn-tcp/` is the clean rerun of the
   same batch.

@@ -939,7 +939,7 @@ function InlineProfileField({
     <button
       type="button"
       aria-label={editLabel}
-      className={`min-w-0 max-w-full cursor-text break-words rounded px-2 outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+      className={`min-w-0 max-w-full cursor-text break-words rounded px-2 max-md:min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
       onClick={() => {
         cancelled.current = false;
         setDraft(value);

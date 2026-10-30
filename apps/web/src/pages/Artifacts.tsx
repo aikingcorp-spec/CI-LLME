@@ -252,7 +252,7 @@ export function ArtifactsPage() {
                   <ToggleGroupItem
                     value="grid"
                     aria-label={t`Card view`}
-                    className="size-7 min-w-7 rounded-md px-0 text-muted-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+                    className="size-7 max-md:size-11 rounded-md px-0 text-muted-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground"
                   >
                     <LayoutGrid size={15} strokeWidth={1.9} />
                   </ToggleGroupItem>
@@ -261,7 +261,7 @@ export function ArtifactsPage() {
                   <ToggleGroupItem
                     value="list"
                     aria-label={t`List view`}
-                    className="size-7 min-w-7 rounded-md px-0 text-muted-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+                    className="size-7 max-md:size-11 rounded-md px-0 text-muted-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground"
                   >
                     <List size={15} strokeWidth={1.9} />
                   </ToggleGroupItem>

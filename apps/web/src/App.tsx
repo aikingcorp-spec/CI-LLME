@@ -372,7 +372,10 @@ function NotFoundPage() {
           message={vietnamese ? "Không tìm thấy trang" : "Page not found"}
         />
       </h1>
-      <Link to="/app" className="text-link underline">
+      <Link
+        to="/app"
+        className="text-link underline max-md:inline-flex max-md:min-h-11 max-md:items-center"
+      >
         <LocalizedText id="Go home" message={vietnamese ? "Về trang chủ" : "Go home"} />
       </Link>
     </main>

@@ -45,7 +45,7 @@ export function MessageHoverActions({
   }
 
   const iconButtonClass =
-    "grid h-11 w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7";
+    "grid h-11 w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground md:[@media(hover:hover)_and_(pointer:fine)]:h-7 md:[@media(hover:hover)_and_(pointer:fine)]:w-7";
 
   return (
     <MessageHoverMetadata pinned={moreOpen || reactionsOpen} side={side}>

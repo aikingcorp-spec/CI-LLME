@@ -550,7 +550,7 @@ export function McpServersOverlay({
                 <Disclosure
                   className="group rounded-xl border border-border"
                   summary={<Trans>Advanced</Trans>}
-                  summaryClassName="w-full flex items-center justify-between px-3 py-2.5 text-sm text-foreground"
+                  summaryClassName="w-full flex max-md:min-h-11 items-center justify-between px-3 py-2.5 text-sm text-foreground"
                 >
                   <div className="space-y-4 border-t border-border p-3">
                     <Field>

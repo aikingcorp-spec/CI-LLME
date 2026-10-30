@@ -232,7 +232,7 @@ export function HoldToTalkControls({
           size="icon"
           aria-label={t`Discard recording`}
           onClick={talk.cancel}
-          className="size-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+          className="size-8 max-md:size-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
         >
           <Trash2 size={16} strokeWidth={1.8} />
         </Button>
@@ -241,7 +241,7 @@ export function HoldToTalkControls({
           aria-label={t`Send recording`}
           disabled={talk.transcribing}
           onClick={talk.submit}
-          className="size-8 shrink-0 rounded-full shadow-sm"
+          className="size-8 max-md:size-11 shrink-0 rounded-full shadow-sm"
         >
           <ArrowUp size={16} strokeWidth={2.2} />
         </Button>

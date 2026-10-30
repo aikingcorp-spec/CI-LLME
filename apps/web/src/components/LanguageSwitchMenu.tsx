@@ -67,7 +67,7 @@ export default function LanguageSwitchMenu({ className }: { className: string })
               value={option}
               lang={option}
               closeOnClick
-              className="h-9 rounded-lg px-2.5 text-[14px] data-highlighted:bg-accent data-checked:font-medium [&_[data-slot=dropdown-menu-radio-item-indicator]_svg]:text-primary"
+              className="h-9 max-md:h-11 rounded-lg px-2.5 text-[14px] data-highlighted:bg-accent data-checked:font-medium [&_[data-slot=dropdown-menu-radio-item-indicator]_svg]:text-primary"
             >
               {UI_LOCALE_LABELS[option]}
             </DropdownMenuRadioItem>

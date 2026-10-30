@@ -186,7 +186,7 @@ export function BotLookPicker({
             <Trans>Color</Trans>
           </div>
         )}
-        <div className="grid grid-cols-6 place-items-center gap-2">
+        <div className="grid grid-cols-5 place-items-center gap-1 md:grid-cols-6 md:gap-2">
           {BOT_AVATAR_COLORS.map((color) => {
             const selected = currentColor.toLowerCase() === color.toLowerCase() && !parsed.isImage;
             return (
@@ -196,7 +196,7 @@ export function BotLookPicker({
                 onClick={() => selectColor(color)}
                 aria-label={t`Color ${color}`}
                 aria-pressed={selected}
-                className={`size-6 rounded-full border transition-transform hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring ${
+                className={`size-6 max-md:size-11 rounded-full border transition-transform hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring ${
                   selected
                     ? "scale-105 border-transparent ring-2 ring-foreground ring-offset-2 ring-offset-popover"
                     : "border-border"

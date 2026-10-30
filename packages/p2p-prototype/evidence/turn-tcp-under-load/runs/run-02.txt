@@ -6,8 +6,8 @@ Duration  65.97s
 ## forwarder wire counters (final)
 stats {"tcp:3479": {"bytes_down": 14332, "bytes_up": 15604, "dgrams_down": 0, "dgrams_up": 0, "open": 0, "opened": 4}}
 ## selected ICE pair per session (local <-> remote); channel_open carried the same pair
-close-client s1 02:25:55.059 relay 72.62.255.70:49733 (raddr <box-public-ip>:57382) <-> relay 72.62.255.70:49702 (raddr <box-public-ip>:23388) turnTransport=tcp channel_open=same
-close-node s1 02:25:54.825 relay 72.62.255.70:49702 (raddr <box-public-ip>:23388) <-> relay 72.62.255.70:49733 (raddr <box-public-ip>:57382) turnTransport=tcp channel_open=same
+close-client s1 02:25:55.059 relay <coturn-host>:49733 (raddr <box-public-ip>:57382) <-> relay <coturn-host>:49702 (raddr <box-public-ip>:23388) turnTransport=tcp channel_open=same
+close-node s1 02:25:54.825 relay <coturn-host>:49702 (raddr <box-public-ip>:23388) <-> relay <coturn-host>:49733 (raddr <box-public-ip>:57382) turnTransport=tcp channel_open=same
 ## other (failure events and event counts per process log)
 close-client event counts: {"bye_ack_sent": 1, "bye_received": 1, "channel_open": 1, "connecting": 1, "exit": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}
 close-node event counts: {"bye_ack_received": 1, "bye_sent": 1, "channel_open": 1, "exit": 1, "listening": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}

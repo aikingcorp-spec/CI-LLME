@@ -55,7 +55,7 @@ export function BotCreatePicker({
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t`Search`}
             aria-label={t`Search`}
-            className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 bg-transparent text-[14px] max-md:h-11 text-foreground outline-none placeholder:text-muted-foreground"
           />
         </label>
         <CommandList className="flex min-h-0 max-h-none flex-col overflow-hidden p-1 [&>[cmdk-list-sizer]]:flex [&>[cmdk-list-sizer]]:min-h-0 [&>[cmdk-list-sizer]]:flex-col">

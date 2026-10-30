@@ -460,7 +460,7 @@ export function AuthPage() {
             <button
               type="button"
               disabled={pending}
-              className={`mt-6 ${linkClass}`}
+              className={`mt-6 max-md:inline-flex max-md:min-h-11 max-md:items-center ${linkClass}`}
               onClick={leaveCodeStep}
             >
               <Trans>Use a different email</Trans>
@@ -518,14 +518,19 @@ export function AuthFrame({
           {children}
         </form>
         <p className="mt-8 flex gap-4 text-sm text-muted-foreground">
-          <a href={VNBOT_TERMS_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
+          <a
+            href={VNBOT_TERMS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`max-md:inline-flex max-md:min-h-11 max-md:items-center ${linkClass}`}
+          >
             <Trans>Terms</Trans>
           </a>
           <a
             href={VNBOT_PRIVACY_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className={linkClass}
+            className={`max-md:inline-flex max-md:min-h-11 max-md:items-center ${linkClass}`}
           >
             <Trans>Privacy</Trans>
           </a>
@@ -533,7 +538,7 @@ export function AuthFrame({
             href={VNBOT_CONTACT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className={linkClass}
+            className={`max-md:inline-flex max-md:min-h-11 max-md:items-center ${linkClass}`}
           >
             <Trans>Contact</Trans>
           </a>

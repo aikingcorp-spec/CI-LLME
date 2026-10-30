@@ -107,7 +107,7 @@ function MemberPicker({
               <button
                 type="button"
                 onClick={() => onOpenBot?.(bot.id)}
-                className="flex min-w-0 flex-1 items-center gap-3 text-start"
+                className="flex min-w-0 flex-1 items-center gap-3 text-start max-md:min-h-11"
               >
                 <BotAvatar
                   avatarSet={bot.avatarSet}

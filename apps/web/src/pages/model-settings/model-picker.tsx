@@ -86,7 +86,7 @@ export function ModelPicker({
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-describedby={selected?.images === false ? imagesHintId : undefined}
-          className="flex h-10 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 text-start text-[15px] text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+          className="flex h-10 max-md:min-h-11 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 text-start text-[15px] text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
           onKeyDown={(event) => {
             if (event.key === "ArrowUp" || event.key === "ArrowDown") {
               event.preventDefault();

@@ -4,7 +4,7 @@
 
 | | Text |
 |---|---|
-| English `msgid` | `Couldn't connect to your machine. This network may be blocking UDP, try another network.` |
-| Vietnamese `msgstr` | `Không kết nối được tới máy của bạn. Mạng này có thể đang chặn UDP, hãy thử mạng khác.` |
+| English `msgid` | `Your network is blocking direct connections, try another network (4G or home wifi).` |
+| Vietnamese `msgstr` | `Mạng của bạn đang chặn kết nối trực tiếp, hãy thử mạng khác (4G hoặc wifi nhà).` |
 
 Show it for any `P2PConnectError` (`code` is `ice_failed`, `no_candidate_pair` or `timeout`); the code is for logs, not for the person.

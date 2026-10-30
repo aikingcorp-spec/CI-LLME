@@ -117,7 +117,7 @@ export function PluginRow({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 items-center gap-3 text-start focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-center gap-3 text-start max-md:min-h-11 focus-visible:outline-none"
       >
         <PluginLogo name={name} logo={logo} site={site} />
         <span className="min-w-0 flex-1">
@@ -426,7 +426,7 @@ export function PluginDetail({
             target="_blank"
             rel="noreferrer"
             title={detail ? `${selection.installedSource}@${detail.resolvedSha}` : undefined}
-            className="inline-flex items-center gap-1 text-[13.5px] text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-[13.5px] text-muted-foreground hover:text-foreground max-md:min-h-11"
           >
             <Trans>View source</Trans>
             <ArrowUpRight size={14} />

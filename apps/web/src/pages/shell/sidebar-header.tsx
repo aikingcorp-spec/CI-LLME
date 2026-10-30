@@ -34,7 +34,7 @@ function SidebarBrand({ mini }: { mini: boolean }) {
   return (
     <Link
       to="/app"
-      className="app-no-drag flex items-center gap-2 rounded-md text-body1 font-semibold text-sidebar-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="app-no-drag flex max-md:min-h-11 items-center gap-2 rounded-md text-body1 font-semibold text-sidebar-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <VnbotWordmark
         variant={mini ? "leaf" : "wordmark"}
@@ -140,7 +140,7 @@ export function SidebarHeader({
         <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
           <IconTooltip label={t`Create`}>
             <PopoverTrigger
-              className="app-no-drag flex size-7 items-center justify-center rounded-full text-muted-foreground/70 outline-none hover:text-foreground/75 focus-visible:ring-2 focus-visible:ring-ring"
+              className="app-no-drag flex size-7 max-md:size-11 items-center justify-center rounded-full text-muted-foreground/70 outline-none hover:text-foreground/75 focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={t`Create`}
               data-testid="create-menu-trigger"
             >

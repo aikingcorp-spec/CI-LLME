@@ -6,12 +6,12 @@ Duration  21.28s
 ## forwarder wire counters (final)
 stats {"tcp:3479": {"bytes_down": 25340, "bytes_up": 30520, "dgrams_down": 0, "dgrams_up": 0, "open": 0, "opened": 6}}
 ## selected ICE pair per session (local <-> remote); channel_open carried the same pair
-close-client s1 02:49:33.093 relay 72.62.255.70:49755 (raddr <box-public-ip>:64621) <-> relay 72.62.255.70:49833 (raddr <box-public-ip>:11789) turnTransport=tcp channel_open=same
-close-node s1 02:49:32.859 relay 72.62.255.70:49833 (raddr <box-public-ip>:11789) <-> relay 72.62.255.70:49755 (raddr <box-public-ip>:64621) turnTransport=tcp channel_open=same
-restart-client s1 02:49:19.128 relay 72.62.255.70:49394 (raddr <box-public-ip>:26318) <-> relay 72.62.255.70:49313 (raddr <box-public-ip>:32627) turnTransport=tcp channel_open=same
-restart-client s2 02:49:26.730 relay 72.62.255.70:49429 (raddr <box-public-ip>:64242) <-> relay 72.62.255.70:49861 (raddr <box-public-ip>:16177) turnTransport=tcp channel_open=same
-restart-node-1 s1 02:49:18.894 relay 72.62.255.70:49313 (raddr <box-public-ip>:32627) <-> relay 72.62.255.70:49394 (raddr <box-public-ip>:26318) turnTransport=tcp channel_open=same
-restart-node-2 s1 02:49:26.495 relay 72.62.255.70:49861 (raddr <box-public-ip>:16177) <-> relay 72.62.255.70:49429 (raddr <box-public-ip>:64242) turnTransport=tcp channel_open=same
+close-client s1 02:49:33.093 relay <coturn-host>:49755 (raddr <box-public-ip>:64621) <-> relay <coturn-host>:49833 (raddr <box-public-ip>:11789) turnTransport=tcp channel_open=same
+close-node s1 02:49:32.859 relay <coturn-host>:49833 (raddr <box-public-ip>:11789) <-> relay <coturn-host>:49755 (raddr <box-public-ip>:64621) turnTransport=tcp channel_open=same
+restart-client s1 02:49:19.128 relay <coturn-host>:49394 (raddr <box-public-ip>:26318) <-> relay <coturn-host>:49313 (raddr <box-public-ip>:32627) turnTransport=tcp channel_open=same
+restart-client s2 02:49:26.730 relay <coturn-host>:49429 (raddr <box-public-ip>:64242) <-> relay <coturn-host>:49861 (raddr <box-public-ip>:16177) turnTransport=tcp channel_open=same
+restart-node-1 s1 02:49:18.894 relay <coturn-host>:49313 (raddr <box-public-ip>:32627) <-> relay <coturn-host>:49394 (raddr <box-public-ip>:26318) turnTransport=tcp channel_open=same
+restart-node-2 s1 02:49:26.495 relay <coturn-host>:49861 (raddr <box-public-ip>:16177) <-> relay <coturn-host>:49429 (raddr <box-public-ip>:64242) turnTransport=tcp channel_open=same
 ## other (failure events and event counts per process log)
 close-client event counts: {"bye_ack_sent": 1, "bye_received": 1, "channel_open": 1, "connecting": 1, "exit": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}
 close-node event counts: {"bye_ack_received": 1, "bye_sent": 1, "channel_open": 1, "exit": 1, "listening": 1, "request_received": 1, "request_sent": 1, "response_received": 1, "response_sent": 1, "selected_pair": 1, "session_end": 1, "shutdown": 1, "started": 1}

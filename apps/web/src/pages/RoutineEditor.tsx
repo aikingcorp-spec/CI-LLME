@@ -278,7 +278,7 @@ export function RoutineListRow({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 items-center gap-3 text-start"
+        className="flex min-w-0 flex-1 items-center gap-3 text-start max-md:min-h-11"
       >
         <span className="grid h-5 w-5 place-items-center">
           {routine.active ? (

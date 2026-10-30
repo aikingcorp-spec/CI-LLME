@@ -11,7 +11,7 @@ const LanguageSwitchMenu = lazy(loadMenu);
 const preloadMenu = () => void loadMenu().catch(() => undefined);
 
 const triggerClass =
-  "app-no-drag inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-background ps-3 pe-2.5 text-[14px] font-medium text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+  "app-no-drag inline-flex h-9 max-md:h-11 items-center gap-1.5 rounded-full border border-border bg-background ps-3 pe-2.5 text-[14px] font-medium text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 /**
  * Compact vi/en picker for Welcome and AuthFrame (email-otp spec §6).
