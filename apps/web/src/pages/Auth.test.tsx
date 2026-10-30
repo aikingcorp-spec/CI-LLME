@@ -2,8 +2,8 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
@@ -13,6 +13,7 @@ import { SIGN_IN_PROGRESS_KEY } from "../lib/sign-in-progress";
 import { EMAIL_NOT_INVITED } from "../lib/user-error";
 import { VNBOT_CONTACT_URL } from "../lib/vnbot-links";
 import { AuthPage } from "./Auth";
+import { WelcomePage } from "./Welcome";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
@@ -93,6 +94,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   sessionStorage.clear();
+  window.history.replaceState(null, "", "/");
   vi.restoreAllMocks();
   delete window.rakazoDesktop;
 });
@@ -261,24 +263,105 @@ it("rejects a bad code without leaving the digits on the page, and offers a new 
   expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
 });
 
-it("focuses email after a browser history transition back to the email step and on arrival", async () => {
-  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
-  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
-    data: { success: true },
-    error: null,
-  } as never);
-  await render();
-  await enter(host.querySelector('input[name="email"]'), "history@example.com");
-  await submit();
-  await act(async () => button("Use a different email").click());
-  window.dispatchEvent(new PopStateEvent("popstate"));
-  await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
-  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
+describe("focus across real browser navigation", () => {
+  const emailInput = () => host.querySelector('input[name="email"]');
+  const codeInput = () => host.querySelector('input[aria-label="6-digit sign-in code"]');
 
-  await act(async () => root.unmount());
-  root = createRoot(host);
-  await render();
-  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
+  // The routes App.tsx declares for a signed-out visitor, on the router main.tsx uses.
+  async function renderFromLanding() {
+    window.history.replaceState(null, "", "/");
+    await act(async () =>
+      root.render(
+        <BrowserRouter useTransitions={false}>
+          <Routes>
+            <Route path="/" element={<WelcomePage />} />
+            <Route path="/sign-in" element={<AuthPage key="in" />} />
+          </Routes>
+        </BrowserRouter>,
+      ),
+    );
+  }
+  async function followSignInLink() {
+    await act(async () => host.querySelector<HTMLAnchorElement>('a[href="/sign-in"]')!.click());
+  }
+  async function traverse(delta: number) {
+    await act(async () => {
+      const landed = new Promise((resolve) =>
+        window.addEventListener("popstate", resolve, { once: true }),
+      );
+      window.history.go(delta);
+      await landed;
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+  }
+
+  beforeEach(() => {
+    vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+    vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+      data: { success: true },
+      error: null,
+    } as never);
+  });
+
+  it("focuses email after following the landing page's sign-in link", async () => {
+    await renderFromLanding();
+    expect(emailInput()).toBeNull();
+    await followSignInLink();
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("focuses email again after going back to the landing page and forward", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/");
+    expect(emailInput()).toBeNull();
+    await traverse(1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  // The step lives in sessionStorage, not history: back from the code step leaves the page.
+  it("restores and focuses the code step on forward, then email on a different email", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    expect(document.activeElement).toBe(codeInput());
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/");
+    expect(codeInput()).toBeNull();
+    await traverse(1);
+    expect(document.activeElement).toBe(codeInput());
+    await act(async () => button("Use a different email").click());
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("refocuses email when history moves within the mounted sign-in page", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    await act(async () => button("Use a different email").click());
+    window.history.pushState(null, "", "/sign-in?next=%2Fapp");
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    await traverse(-1);
+    expect(window.location.search).toBe("");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("refocuses the code field when history moves within the mounted sign-in page", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    window.history.pushState(null, "", "/sign-in?next=%2Fapp");
+    (document.activeElement as HTMLElement).blur();
+    await traverse(-1);
+    expect(document.activeElement).toBe(codeInput());
+  });
 });
 
 it("does not submit an unfinished code", async () => {
