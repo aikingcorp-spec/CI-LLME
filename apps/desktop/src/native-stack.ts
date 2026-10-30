@@ -1,4 +1,10 @@
 import path from "node:path";
+import { describeFailure } from "./native-diagnostics.js";
+import {
+  migrateNativeDatabase,
+  migrateNativeJobQueue,
+  provisionNativeRuntimeRole,
+} from "./native-migrate.js";
 import type { NativePostgres, RunProcess } from "./native-postgres.js";
 import type { NativeServices } from "./native-services.js";
 
@@ -22,49 +28,41 @@ export interface NativeStackOptions {
   dbDir: string;
   services?: NativeServices;
   env?: NodeJS.ProcessEnv;
-  /** A JavaScript entry for utilityProcess.fork; an injected runner may use any executable. */
-  migrationCommand?: { file: string; args: string[] };
+  /** Replaces the in-process migration, for tests of the lifecycle. */
   run?: RunProcess;
   migrationsDir?: string;
-  migrationEntry?: string;
   /** Receives the failing stage and the real error; the thrown error stays generic. */
   onFailure?: (stage: NativeStackStage, error: unknown) => void;
 }
 
 export type NativeStackStage = "cleanup" | "postgres" | "migrate" | "services" | "stopped";
 
-/** Load Electron only when migrating, so lifecycle tests and tooling work in plain Node. */
-const runUtilityMigration: RunProcess = async (file, args, options) => {
-  const { utilityProcess } = await import("electron");
-  return new Promise((resolve, reject) => {
-    const child = utilityProcess.fork(file, args, {
-      cwd: options.cwd,
-      env: options.env,
-      stdio: "ignore",
+/**
+ * The desktop bundle is one ESM file that imports Electron's window APIs, which a utility
+ * process cannot load, so migrations run in the main process. They are async database I/O
+ * and the app has no window to keep responsive until the stack is up.
+ */
+const runInProcessMigration: RunProcess = async (_file, _args, options) => {
+  const url = options.env.DATABASE_MIGRATION_URL!;
+  const dbDir = options.env.RAKAZO_NATIVE_DB_DIR!;
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+  }, options.timeoutMs);
+  try {
+    await migrateNativeDatabase({
+      databaseUrl: url,
+      dbDir,
+      migrationsDir: options.env.RAKAZO_NATIVE_MIGRATIONS_DIR!,
     });
-    let timedOut = false;
-    const kill = () => {
-      child.kill();
-    };
-    const timer = setTimeout(() => {
-      timedOut = true;
-      kill();
-    }, options.timeoutMs);
-    options.signal?.addEventListener("abort", kill, { once: true });
-    if (options.signal?.aborted) kill();
-    const clear = () => {
-      clearTimeout(timer);
-      options.signal?.removeEventListener("abort", kill);
-    };
-    child.once("error", () => {
-      clear();
-      reject(new Error("The local database migration could not start."));
-    });
-    child.once("exit", (code) => {
-      clear();
-      resolve({ code, timedOut, stdout: "", stderr: "" });
-    });
-  });
+    await migrateNativeJobQueue(url, dbDir);
+    await provisionNativeRuntimeRole(url, options.env.RAKAZO_NATIVE_RUNTIME_URL!, dbDir);
+    return { code: timedOut ? null : 0, timedOut, stdout: "", stderr: "" };
+  } catch (error) {
+    return { code: 1, timedOut, stdout: "", stderr: describeFailure("migrate", error) };
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 /** Migration always finishes before runtime services receive the restricted database login. */
@@ -142,11 +140,7 @@ export class NativeStack {
       checkStopped();
       stage = "migrate";
       this.current = "migrating";
-      const command = this.options.migrationCommand ?? {
-        file: this.options.migrationEntry ?? path.join(import.meta.dirname, "main.js"),
-        args: ["--rakazo-native-migrate"],
-      };
-      const result = await (this.options.run ?? runUtilityMigration)(command.file, command.args, {
+      const result = await (this.options.run ?? runInProcessMigration)("migrate", [], {
         cwd: this.options.dbDir,
         env: {
           ...(this.options.env ?? process.env),
@@ -162,7 +156,9 @@ export class NativeStack {
       });
       if (result.code !== 0 || result.timedOut)
         throw new Error(
-          result.timedOut ? "Migration timed out." : `Migration exited with code ${result.code}.`,
+          result.timedOut
+            ? "Migration timed out."
+            : `Migration exited with code ${result.code}. ${result.stderr}`,
         );
       checkStopped();
       stage = "services";

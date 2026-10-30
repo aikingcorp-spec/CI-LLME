@@ -1,21 +1,12 @@
-import { EventEmitter } from "node:events";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import {
-  createMigrationClient,
-  migrateNativeDatabase,
-  migrateNativeJobQueue,
-  provisionNativeRuntimeRole,
-} from "./native-migrate.js";
+import { createMigrationClient } from "./native-migrate.js";
 import type { RunProcessResult } from "./native-postgres.js";
 import { NativePostgres, PG_BIN_DIR_ENV, runProcess } from "./native-postgres.js";
 import { NativeStack } from "./native-stack.js";
-
-const utility = vi.hoisted(() => ({ fork: vi.fn() }));
-vi.mock("electron", () => ({ utilityProcess: utility }));
 
 const ok: RunProcessResult = { code: 0, timedOut: false, stdout: "", stderr: "" };
 const endpoints = {
@@ -53,7 +44,6 @@ function fixture(withServices = true) {
     services: withServices ? services : undefined,
     dbDir: "/repo/packages/db",
     env: { DATABASE_URL: "stale", DATABASE_MIGRATION_URL: "stale-owner" },
-    migrationCommand: { file: "/prisma/build/index.js", args: ["migrate", "deploy"] },
     run,
   });
   return { stack, postgres, services, run, calls };
@@ -70,8 +60,8 @@ describe("NativeStack", () => {
     });
     expect(f.calls).toEqual(["pg.start", "migrate", "services.start"]);
     expect(f.run).toHaveBeenCalledWith(
-      "/prisma/build/index.js",
-      ["migrate", "deploy"],
+      "migrate",
+      [],
       expect.objectContaining({
         cwd: "/repo/packages/db",
         env: expect.objectContaining({
@@ -198,61 +188,29 @@ describe("NativeStack", () => {
   });
 });
 
-describe("utility process migration", () => {
-  function fixture() {
-    const child = new EventEmitter();
-    const kill = vi.fn(() => {
-      child.emit("exit", 1);
+describe("in-process migration", () => {
+  it("reports a failed migration with a redacted cause and cleans up", async () => {
+    const postgres = {
+      start: vi.fn(async () => ({
+        ...endpoints,
+        migrationUrl: "postgres://owner:fakepw@127.0.0.1:1/rakazo",
+      })),
+      stop: vi.fn(async () => {}),
+    };
+    const onFailure = vi.fn();
+    const stack = new NativeStack({
+      postgres,
+      dbDir: path.resolve("packages/db"),
+      env: {},
+      onFailure,
     });
-    utility.fork.mockReset().mockReturnValue(Object.assign(child, { kill }));
-    const postgres = { start: vi.fn(async () => endpoints), stop: vi.fn(async () => {}) };
-    const dbDir = path.resolve("packages/db");
-    const stack = new NativeStack({ postgres, dbDir, env: {} });
-    return { child, kill, postgres, dbDir, stack };
-  }
-
-  it("forks the in-app runner with private output and waits for its exit", async () => {
-    const f = fixture();
-    const starting = f.stack.start();
-    await vi.waitFor(() => expect(utility.fork).toHaveBeenCalledOnce());
-    expect(utility.fork).toHaveBeenCalledWith(
-      path.join(import.meta.dirname, "main.js"),
-      ["--rakazo-native-migrate"],
-      {
-        cwd: f.dbDir,
-        env: expect.objectContaining({
-          DATABASE_URL: endpoints.migrationUrl,
-          DATABASE_MIGRATION_URL: endpoints.migrationUrl,
-        }),
-        stdio: "ignore",
-      },
-    );
-    expect(f.stack.status()).toBe("migrating");
-    f.child.emit("exit", 0);
-    await starting;
-    await f.stack.stop();
-  });
-
-  it("kills the migration on stop and releases postgres after the utility child exits", async () => {
-    const f = fixture();
-    const starting = f.stack.start();
-    const rejected = expect(starting).rejects.toThrow("The local stack could not start.");
-    await vi.waitFor(() => expect(utility.fork).toHaveBeenCalledOnce());
-    await f.stack.stop();
-    await rejected;
-    expect(f.kill).toHaveBeenCalledOnce();
-    expect(f.postgres.stop).toHaveBeenCalledOnce();
-    expect(f.stack.status()).toBe("stopped");
-  });
-
-  it("cleans up a utility process startup error without exposing its output", async () => {
-    const f = fixture();
-    const starting = f.stack.start();
-    const rejected = expect(starting).rejects.toThrow("The local stack could not start.");
-    await vi.waitFor(() => expect(utility.fork).toHaveBeenCalledOnce());
-    f.child.emit("error", new Error("private child details"));
-    await rejected;
-    expect(f.postgres.stop).toHaveBeenCalledOnce();
+    await expect(stack.start()).rejects.toThrow("The local stack could not start.");
+    expect(postgres.stop).toHaveBeenCalledOnce();
+    expect(stack.status()).toBe("failed");
+    const [stage, error] = onFailure.mock.calls[0]!;
+    expect(stage).toBe("migrate");
+    expect(String((error as Error).message)).toMatch(/Migration exited with code 1\. stage=migrate/);
+    expect(String((error as Error).message)).not.toContain("fakepw");
   });
 });
 
@@ -267,20 +225,6 @@ it.runIf(
     const stack = new NativeStack({
       postgres,
       dbDir,
-      run: async (_file, _args, options) => {
-        await migrateNativeDatabase({
-          databaseUrl: options.env.DATABASE_MIGRATION_URL!,
-          dbDir,
-          migrationsDir: path.join(dbDir, "prisma", "migrations"),
-        });
-        await migrateNativeJobQueue(options.env.DATABASE_MIGRATION_URL!, dbDir);
-        await provisionNativeRuntimeRole(
-          options.env.DATABASE_MIGRATION_URL!,
-          options.env.RAKAZO_NATIVE_RUNTIME_URL!,
-          dbDir,
-        );
-        return ok;
-      },
     });
     try {
       await stack.start();

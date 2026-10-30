@@ -45,6 +45,8 @@ const SECRET_BYTES: Record<string, number> = {
   POSTGRES_APP_PASSWORD: 16,
   BETTER_AUTH_SECRET: 32,
   ENCRYPTION_KEY: 32,
+  SCREEN_PROXY_SECRET: 32,
+  SANDBOX_SUPERVISOR_TOKEN: 32,
 };
 const ENV_FILE = "native-stack-env";
 
