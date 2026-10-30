@@ -346,3 +346,13 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Invariants affected: production gateway bindings and routes remain unchanged; room topology remains node-hub with no client relay.
 - ADR: none.
 
+
+## 2026-10-30 — Native desktop local node orchestration
+
+- Date: 2026-10-30
+- Pull request: none (working tree handoff).
+- What changed versus baseline: Linux and Windows select the native local PostgreSQL and utility-process server stack, bypass Docker setup for local startup, write the private web URL, and stop native processes before exit. The migration utility applies SQL without Prisma CLI and preserves Prisma history compatibility. macOS retains Docker. Release resource packaging is pending.
+- Why: a local desktop node must run without a separate Docker installation on Linux and Windows.
+- Modules and files: `apps/desktop/src/main.ts`, `main-app.ts`, `native-postgres.test.ts`, `native-stack.ts`, `native-services.ts`, `native-migrate.ts`, `native-smoke.ts`, `native-local-stack.ts`, related tests, and `apps/desktop/NOTES-FOR-KAI.md`.
+- Invariants affected: data stays on the customer node; migration owner credentials remain separate from the runtime role; RLS, shared UI and existing host-command permissions are retained. Loopback endpoints and private files remain local. Original SQL files and baseline documentation are unchanged.
+- ADR: [0009](adr/0009-native-desktop-local-runtime.md).
