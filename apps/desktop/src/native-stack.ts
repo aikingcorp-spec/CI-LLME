@@ -23,7 +23,7 @@ export type NativeStackStatus =
   | "failed";
 
 export interface NativeStackOptions {
-  postgres: Pick<NativePostgres, "start" | "stop">;
+  postgres: Pick<NativePostgres, "start" | "stop"> & Partial<Pick<NativePostgres, "stopSync">>;
   /** Absolute path to the shared DB package and its existing pg dependency. */
   dbDir: string;
   services?: NativeServices;
@@ -96,6 +96,11 @@ export class NativeStack {
       });
     this.starting = attempt;
     return attempt;
+  }
+
+  /** Last resort when the process is exiting and nothing async can finish. */
+  stopSync(): void {
+    this.options.postgres.stopSync?.();
   }
 
   stop(): Promise<void> {

@@ -2,16 +2,18 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RunProcess, RunProcessResult } from "./native-postgres.js";
 import {
   bootstrapSql,
   databaseUrl,
   defaultUserDataDir,
   initdbArgs,
+  isPostgresProcess,
   NativePostgres,
   NativePostgresError,
   PG_BIN_DIR_ENV,
+  parsePostmasterPid,
   postgresEnv,
   postgresPackageName,
   postgresPaths,
@@ -407,8 +409,88 @@ describe("NativePostgres lifecycle", () => {
     await pg.stop();
   });
 
+  it("removes a postmaster.pid whose process is gone before asking pg_ctl", async () => {
+    await create().start();
+    const pidFile = path.join(userData, "pg", "data", "postmaster.pid");
+    await writeFile(pidFile, "4242\n/data\n");
+    calls.length = 0;
+    await create({ isPostgresProcess: () => false }).start();
+    await expect(stat(pidFile)).rejects.toBeDefined();
+    expect(calls.map((call) => call.args[0]).slice(0, 2)).toEqual(["status", "start"]);
+  });
+
+  it("keeps a postmaster.pid whose process is a live PostgreSQL server", async () => {
+    await create().start();
+    const pidFile = path.join(userData, "pg", "data", "postmaster.pid");
+    await writeFile(pidFile, "4242\n/data\n");
+    await create({ isPostgresProcess: (pid) => pid === 4242 }).start();
+    await expect(stat(pidFile)).resolves.toBeDefined();
+  });
+
+  it("stopSync runs a fast pg_ctl stop only when a live postmaster.pid exists", async () => {
+    const syncCalls: Array<{ file: string; args: string[] }> = [];
+    const runSync = (file: string, args: string[]) => {
+      syncCalls.push({ file, args });
+      return { code: 0 };
+    };
+    const pg = create({ runSync, isPostgresProcess: () => true });
+    await pg.start();
+    pg.stopSync();
+    expect(syncCalls).toEqual([]);
+    await writeFile(path.join(userData, "pg", "data", "postmaster.pid"), "4242\n");
+    pg.stopSync();
+    expect(syncCalls).toHaveLength(1);
+    expect(path.basename(syncCalls[0]!.file)).toBe("pg_ctl");
+    expect(syncCalls[0]!.args).toEqual(expect.arrayContaining(["stop", "-m", "fast"]));
+    expect(pg.phase()).toBe("stopped");
+  });
+
+  it("stopSync skips a stale postmaster.pid and tolerates missing binaries", async () => {
+    const runSync = vi.fn(() => ({ code: 0 }));
+    await create().start();
+    await writeFile(path.join(userData, "pg", "data", "postmaster.pid"), "4242\n");
+    create({ runSync, isPostgresProcess: () => false }).stopSync();
+    create({ runSync, exists: () => false }).stopSync();
+    expect(runSync).not.toHaveBeenCalled();
+  });
+
   it("treats stop as a no-op when the binaries were never found", async () => {
     await expect(create({ exists: () => false }).stop()).resolves.toBeUndefined();
+  });
+});
+
+describe("postmaster.pid helpers", () => {
+  it("reads the process id from the first line", () => {
+    expect(parsePostmasterPid("1234\n/data/dir\n1700000000\n")).toBe(1234);
+    expect(parsePostmasterPid("1234\r\n/data\r\n")).toBe(1234);
+    expect(parsePostmasterPid("")).toBeNull();
+    expect(parsePostmasterPid("abc\n")).toBeNull();
+    expect(parsePostmasterPid("0\n")).toBeNull();
+  });
+
+  it("treats a missing process as stale and EPERM as alive", () => {
+    const gone = () => {
+      throw Object.assign(new Error("x"), { code: "ESRCH" });
+    };
+    const denied = () => {
+      throw Object.assign(new Error("x"), { code: "EPERM" });
+    };
+    expect(isPostgresProcess(1, { platform: "win32", kill: gone })).toBe(false);
+    expect(isPostgresProcess(1, { platform: "win32", kill: denied })).toBe(true);
+    expect(isPostgresProcess(1, { platform: "win32", kill: () => undefined })).toBe(true);
+  });
+
+  it("on Linux, a reused id belonging to another program is stale", () => {
+    const alive = () => undefined;
+    expect(
+      isPostgresProcess(7, { platform: "linux", kill: alive, readComm: () => "postgres\n" }),
+    ).toBe(true);
+    expect(
+      isPostgresProcess(7, { platform: "linux", kill: alive, readComm: () => "firefox\n" }),
+    ).toBe(false);
+    expect(isPostgresProcess(7, { platform: "linux", kill: alive, readComm: () => null })).toBe(
+      true,
+    );
   });
 });
 

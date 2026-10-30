@@ -1,6 +1,6 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, rename, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -10,6 +10,7 @@ import { readPrivateFile, writePrivateFile } from "./setup-store.js";
 export const PG_BIN_DIR_ENV = "RAKAZO_PG_BIN_DIR";
 export const PG_DIR_NAME = "pg";
 export const PG_DATA_DIR_NAME = "data";
+const PID_FILE_NAME = "postmaster.pid";
 export const PG_OWNER_ROLE = "rakazo";
 export const PG_APP_ROLE = "rakazo_app";
 export const PG_DATABASE = "rakazo";
@@ -124,6 +125,62 @@ export const runProcess: RunProcess = (file, args, options) =>
     child.stdin.on("error", () => undefined);
     child.stdin.end(options.stdin ?? "");
   });
+
+/** Synchronous variant for `process.on("exit")`, where nothing async can finish. */
+export type RunProcessSync = (
+  file: string,
+  args: string[],
+  options: { env: NodeJS.ProcessEnv; timeoutMs: number },
+) => { code: number | null };
+
+export const runProcessSync: RunProcessSync = (file, args, options) => {
+  const result = spawnSync(file, args, {
+    env: options.env,
+    timeout: options.timeoutMs,
+    windowsHide: true,
+    stdio: "ignore",
+  });
+  return { code: result.status };
+};
+
+/** First line of `postmaster.pid` is the server's process id. */
+export function parsePostmasterPid(text: string): number | null {
+  const pid = Number.parseInt(text.split(/\r?\n/, 1)[0] ?? "", 10);
+  return Number.isInteger(pid) && pid > 0 ? pid : null;
+}
+
+/**
+ * Whether `pid` is still a PostgreSQL server. A reused id that now belongs to another
+ * program must not be signalled by `pg_ctl`, so Linux checks the process name.
+ */
+export function isPostgresProcess(
+  pid: number,
+  input: {
+    platform: string;
+    kill?: (pid: number, signal: 0) => void;
+    readComm?: (pid: number) => string | null;
+  } = { platform: process.platform },
+): boolean {
+  const kill = input.kill ?? ((target, signal) => process.kill(target, signal));
+  try {
+    kill(pid, 0);
+  } catch (error) {
+    // EPERM still means the process exists.
+    if ((error as NodeJS.ErrnoException).code !== "EPERM") return false;
+  }
+  if (input.platform !== "linux") return true;
+  const readComm =
+    input.readComm ??
+    ((target) => {
+      try {
+        return readFileSync(`/proc/${target}/comm`, "utf8");
+      } catch {
+        return null;
+      }
+    });
+  const name = readComm(pid);
+  return name === null || name.trim().startsWith("postgres");
+}
 
 /** `@embedded-postgres/<os>-<arch>` names Windows `windows`, everything else as Node does. */
 export function postgresPackageName(platform: string, arch: string): string {
@@ -314,6 +371,9 @@ export interface NativePostgresOptions {
   resolveModule?: (name: string) => string;
   exists?: (file: string) => boolean;
   run?: RunProcess;
+  runSync?: RunProcessSync;
+  /** Whether a process id from `postmaster.pid` still belongs to a PostgreSQL server. */
+  isPostgresProcess?: (pid: number) => boolean;
   allocatePort?: () => Promise<number>;
   randomHex?: (bytes: number) => string;
 }
@@ -381,6 +441,26 @@ export class NativePostgres {
     if (stopped.code !== 0 && (await this.isServerRunning(paths))) {
       throw new NativePostgresError("stop-failed", "The local database did not stop.");
     }
+    this.settle("stopped");
+  }
+
+  /**
+   * Last-resort shutdown for `process.on("exit")`: same fast stop, but synchronous. It does
+   * nothing when no `postmaster.pid` exists, so it is cheap after a normal stop.
+   */
+  stopSync(): void {
+    let paths: PostgresPaths;
+    try {
+      paths = this.resolvePaths();
+    } catch {
+      return;
+    }
+    const pidFile = this.pathModule.join(paths.dataDir, PID_FILE_NAME);
+    if (!this.pidIsLive(pidFile)) return;
+    (this.options.runSync ?? runProcessSync)(paths.pgCtl, stopArgs(paths.dataDir), {
+      env: this.childEnv(),
+      timeoutMs: PG_STOP_TIMEOUT_S * 1000,
+    });
     this.settle("stopped");
   }
 
@@ -547,8 +627,35 @@ export class NativePostgres {
     return text.slice(-LOG_TAIL_BYTES);
   }
 
+  private pidIsLive(pidFile: string): boolean {
+    let text: string;
+    try {
+      text = readFileSync(pidFile, "utf8");
+    } catch {
+      return false;
+    }
+    const pid = parsePostmasterPid(text);
+    if (pid === null) return false;
+    return (
+      this.options.isPostgresProcess ??
+      ((target) => isPostgresProcess(target, { platform: this.platform }))
+    )(pid);
+  }
+
+  /**
+   * A killed session leaves `postmaster.pid` behind. PostgreSQL ignores one whose process
+   * is gone, but not always one whose id was reused, and `pg_ctl` would then signal that
+   * unrelated program. Remove the file when its process is not a PostgreSQL server.
+   */
+  private async clearStalePidFile(paths: PostgresPaths) {
+    const pidFile = this.pathModule.join(paths.dataDir, PID_FILE_NAME);
+    if (!existsSync(pidFile)) return;
+    if (!this.pidIsLive(pidFile)) await rm(pidFile, { force: true });
+  }
+
   /** `pg_ctl status` exits 0 for a running server and 3 for a stopped one. */
   private async isServerRunning(paths: PostgresPaths): Promise<boolean> {
+    await this.clearStalePidFile(paths);
     const status = await this.ctl(paths, ["status", "-D", paths.dataDir]);
     return status.code === 0;
   }

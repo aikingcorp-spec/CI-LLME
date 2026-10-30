@@ -46,6 +46,7 @@ import { NativeLocalStackController } from "./native-local-stack.js";
 import { nativeMigrationsDir } from "./native-migrate.js";
 import { NativePostgres } from "./native-postgres.js";
 import { createNativeServices } from "./native-services.js";
+import { installNativeShutdown } from "./native-shutdown.js";
 import { runNativeSmoke } from "./native-smoke.js";
 import { NativeStack } from "./native-stack.js";
 import { oauthCallbackFrom } from "./oauth-callback.js";
@@ -1214,6 +1215,12 @@ app.whenReady().then(async () => {
           debug: process.env.RAKAZO_DESKTOP_DEBUG === "1",
         }),
     });
+    installNativeShutdown({
+      proc: process,
+      stop: () => nativeStack!.stop(),
+      stopSync: () => nativeStack!.stopSync(),
+      exit: (code) => app.exit(code),
+    });
     localStack = new NativeLocalStackController({
       stack: nativeStack,
       userDataDir,
@@ -1660,19 +1667,26 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+/** Holds a quit until the bundled database has stopped; it must not outlive the app. */
+function holdQuitForNativeStack(event: { preventDefault(): void }) {
+  if (!nativeStack || nativeQuitComplete) return;
+  event.preventDefault();
+  void nativeStack
+    .stop()
+    .then(() => {
+      nativeQuitComplete = true;
+      app.quit();
+    })
+    .catch(() => {
+      nativeStack?.stopSync();
+      app.exit(1);
+    });
+}
+
+app.on("will-quit", holdQuitForNativeStack);
+
 app.on("before-quit", (event) => {
-  if (nativeStack && !nativeQuitComplete) {
-    event.preventDefault();
-    void nativeStack
-      .stop()
-      .then(() => {
-        nativeQuitComplete = true;
-        app.quit();
-      })
-      .catch(() => {
-        app.exit(1);
-      });
-  }
+  holdQuitForNativeStack(event);
   quitting = true;
   clearTimeout(warmWindowTimer);
   // Containers keep running; only an in-flight pull/up is cut short.
