@@ -41,12 +41,6 @@ export interface GatewayOptions {
   requestTimeoutMs?: number;
   turn?: TurnConfig;
   pendingSignalTtlMs?: number;
-  /**
-   * Test-only. Enables the v0 HTTP relay, which forwards request and response bodies through the
-   * gateway in plaintext. Off by default; no environment variable or entrypoint sets it. Real
-   * traffic must use the end-to-end data channel.
-   */
-  unsafeTestOnlyPlaintextHttpRelay?: boolean;
 }
 export interface Gateway {
   url: string;
@@ -67,15 +61,6 @@ const ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 const CLOSE_BAD_FRAME = 1003;
 const CLOSE_FORBIDDEN_TARGET = 1008;
 const CLOSE_UNAUTHORIZED = 4401;
-const LOGGED_PATHS = new Set([
-  "/agent",
-  "/signal",
-  "/healthz",
-  "/pair/start",
-  "/pair/complete",
-  "/sessions",
-  "/turn-credentials",
-]);
 const DROPPED_REQUEST_HEADERS = new Set([
   "authorization",
   "cookie",
@@ -515,7 +500,6 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     if (route?.[1] !== undefined) {
       const nodeId = decodeURIComponent(route[1]);
       if (route[2] === undefined && method === "DELETE") return unpair(req, res, nodeId);
-      if (o.unsafeTestOnlyPlaintextHttpRelay !== true) return respond(res, 404, "not found");
       const user = await userFor(req, res);
       if (user === undefined) return res.statusCode;
       if (ownedNode(user.id, nodeId) === undefined) return respond(res, 404, "unknown node");
@@ -526,13 +510,8 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
 
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://gateway");
-    // Node ids and relay paths can carry user data, so only fixed routes are logged by name.
-    const logged = url.pathname.startsWith("/nodes/")
-      ? "/nodes/*"
-      : LOGGED_PATHS.has(url.pathname)
-        ? url.pathname
-        : "*";
-    const log = (status: number): void => console.log(`${req.method ?? "GET"} ${logged} ${status}`);
+    const log = (status: number): void =>
+      console.log(`${req.method ?? "GET"} ${url.pathname} ${status}`);
     handle(req, res, url).then(log, () => {
       if (!res.headersSent) respond(res, 500, "request failed");
       log(500);

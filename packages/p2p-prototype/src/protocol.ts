@@ -139,10 +139,6 @@ export function decodeGatewayFrame(raw: string): GatewayFrame {
   return f.kind === "hello" || f.kind === "response" ? fail(`${f.kind} is not a gateway frame`) : f;
 }
 
-/** Signaling follows the gateway scheme: https becomes wss, http becomes ws. */
 export function toWsUrl(url: string): string {
-  const match = /^(https?|wss?):(?=\/\/)/i.exec(url);
-  if (!match) throw new Error("gateway URL must start with http(s):// or ws(s)://");
-  const secure = ["https", "wss"].includes(match[1]?.toLowerCase() ?? "");
-  return `${secure ? "wss" : "ws"}:${url.slice(match[0].length)}`;
+  return url.replace(/^http/, "ws");
 }

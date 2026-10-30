@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { cleanup } from "node-datachannel";
 import type { ClientCall, ClientTransport } from "../client-transport.js";
-import { DataChannelClientTransport } from "../client-transport.js";
+import { DataChannelClientTransport, HttpClientTransport } from "../client-transport.js";
 import { openSession } from "../gateway-client.js";
 
 function required(name: string): string {
@@ -32,6 +32,7 @@ async function run(name: string, transport: ClientTransport): Promise<void> {
   }
 }
 try {
+  await run("http", new HttpClientTransport({ baseUrl, sessionToken, nodeId }));
   const peerId = randomUUID();
   const { assertion } = await openSession(baseUrl, sessionToken, nodeId, peerId);
   channel = await DataChannelClientTransport.connect({

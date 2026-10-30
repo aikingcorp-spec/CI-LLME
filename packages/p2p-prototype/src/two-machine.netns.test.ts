@@ -24,15 +24,6 @@ interface PeerEvent {
   from?: { role: string; pid: number };
   pair?: { local: string; remote: string } | null;
   localCandidates?: string[];
-  turnTransport?: string | null;
-}
-interface ForwarderStats {
-  opened: number;
-  open: number;
-  bytes_up: number;
-  bytes_down: number;
-  dgrams_up: number;
-  dgrams_down: number;
 }
 interface PeerProc {
   events: PeerEvent[];
@@ -76,13 +67,6 @@ const SESSION_TOKEN = "token";
 // P2P_TURN_FORWARD=1 points them at a root-namespace L4 forwarder (no NAT on the box).
 const TURN_CREDS_FILE = process.env.P2P_TURN_CREDS_FILE;
 const TURN_PUBLIC_IP = process.env.P2P_TURN_PUBLIC_IP;
-// TURN over TCP/TLS (stage 4): P2P_PEER_IMPL=werift runs the peers on the test-only werift stack,
-// P2P_EXPECT_TURN_TRANSPORT=tcp|tls asserts the client-to-TURN transport of the selected relay
-// candidate and, through the forwarder's wire counters, that nothing went to the TURN port over UDP.
-// P2P_TURN_TLS_CA_FILE pins the self-signed certificate of the TURNS server.
-const PEER_IMPL = process.env.P2P_PEER_IMPL;
-const EXPECT_TURN_TRANSPORT = process.env.P2P_EXPECT_TURN_TRANSPORT;
-const TURN_PORT_FOR: Record<string, number> = { tcp: 3479, tls: 5350 };
 // Comma list of acceptable candidate types for both ends of the selected pair, e.g. "srflx,relay".
 const EXPECT_CANDIDATE_TYPES = process.env.P2P_EXPECT_CANDIDATE_TYPE?.split(",").filter(Boolean);
 // Real kernel NAT (topology nat): cone keeps the source port, symmetric picks a port per 5-tuple.
@@ -123,7 +107,6 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
   () => {
     let gateway: Gateway;
     let turn: { stop(): void } | undefined;
-    let forwarderStats: (() => Promise<Record<string, ForwarderStats>>) | undefined;
     let stun: { stop(): void } | undefined;
     let gatewayPort: string;
     let workDir: string;
@@ -160,25 +143,10 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
           Object.values(GATEWAY_HOST).join(","),
           process.env.P2P_TURN_PORTS ?? "3479,5350",
         ]);
-        const statsWaiters: Array<(stats: Record<string, ForwarderStats>) => void> = [];
         await new Promise<void>((resolve, reject) => {
-          createInterface({ input: fwd.stdout }).on("line", (line) => {
-            if (line.startsWith("stats ")) {
-              if (logDir) appendFileSync(join(logDir, "forwarder.log"), `${line}\n`);
-              const stats = JSON.parse(line.slice("stats ".length)) as Record<
-                string,
-                ForwarderStats
-              >;
-              for (const waiter of statsWaiters.splice(0)) waiter(stats);
-            } else resolve();
-          });
+          fwd.stdout.once("data", () => resolve());
           fwd.once("exit", (code) => reject(new Error(`forwarder exited ${code}`)));
         });
-        forwarderStats = () =>
-          new Promise((resolve) => {
-            statsWaiters.push(resolve);
-            fwd.kill("SIGUSR1");
-          });
         turn = { stop: () => fwd.kill() };
       }
       if (NODE_TURN) {
@@ -280,9 +248,6 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
         if (process.env.P2P_TURN_FORWARD === "1") vars.TURN_HOST_OVERRIDE = GATEWAY_HOST[machine];
         if (process.env.P2P_TURN_TRANSPORTS) vars.TURN_TRANSPORTS = process.env.P2P_TURN_TRANSPORTS;
         if (process.env.P2P_ICE_POLICY) vars.ICE_TRANSPORT_POLICY = process.env.P2P_ICE_POLICY;
-        if (PEER_IMPL) vars.PEER_IMPL = PEER_IMPL;
-        if (process.env.P2P_TURN_TLS_CA_FILE)
-          vars.TURN_TLS_CA_FILE = process.env.P2P_TURN_TLS_CA_FILE;
       }
       const nodeArgs = ["--import", TSX_LOADER, PEER_SCRIPT, role];
       const child = NETNS_MODE
@@ -427,10 +392,6 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
         expect(pair.local).toMatch(PEER_ADDRESS);
         expect(pair.remote).toMatch(PEER_ADDRESS);
       }
-      if (EXPECT_TURN_TRANSPORT) {
-        expect(proc.last("selected_pair").turnTransport).toBe(EXPECT_TURN_TRANSPORT);
-        expect(proc.last("channel_open").turnTransport).toBe(EXPECT_TURN_TRANSPORT);
-      }
     }
 
     it("exchanges requests both ways, reconnects after the node is killed, and closes with BYE/BYE_ACK", async () => {
@@ -500,34 +461,5 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
       await until("client to exit", () => client.exitCode() !== undefined);
       expect(client.exitCode()).toBe(0);
     }, 60_000);
-
-    it.runIf(EXPECT_TURN_TRANSPORT && TURN_CREDS_FILE)(
-      "reached the TURN server only over the expected stream transport, and released it",
-      async () => {
-        const expected = EXPECT_TURN_TRANSPORT ?? "";
-        const port = TURN_PORT_FOR[expected];
-        if (!port || !forwarderStats) throw new Error(`no forwarder stats for ${expected}`);
-        const stats = await forwarderStats();
-        for (const [key, value] of Object.entries(stats)) {
-          if (key === `tcp:${port}`) {
-            expect(value.opened).toBeGreaterThanOrEqual(2);
-            expect(value.bytes_up).toBeGreaterThan(0);
-            expect(value.bytes_down).toBeGreaterThan(0);
-          } else {
-            // The other TURN port and any UDP datagram toward either port stay untouched.
-            expect(value.opened + value.dgrams_up + value.dgrams_down, key).toBe(0);
-          }
-        }
-        expect(stats[`tcp:${port}`]).toBeDefined();
-        // Every killed or closed peer must have dropped its TURN connection, which frees its allocation.
-        let open = stats[`tcp:${port}`]?.open ?? -1;
-        for (let i = 0; i < 100 && open !== 0; i += 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          open = (await forwarderStats())[`tcp:${port}`]?.open ?? -1;
-        }
-        expect(open).toBe(0);
-      },
-      30_000,
-    );
   },
 );

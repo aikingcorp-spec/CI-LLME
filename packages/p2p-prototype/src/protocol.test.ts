@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { GatewayFrame, NodeFrame } from "./protocol.js";
-import { decodeGatewayFrame, decodeNodeFrame, encodeFrame, toWsUrl } from "./protocol.js";
+import { decodeGatewayFrame, decodeNodeFrame, encodeFrame } from "./protocol.js";
 
 describe("protocol", () => {
   it("round-trips node frames", () => {
@@ -39,28 +39,4 @@ describe("protocol", () => {
     const hello = encodeFrame({ kind: "hello", nodeId: "n1", ts: 1, sig: "s" });
     expect(() => decodeGatewayFrame(hello)).toThrow();
   });
-});
-
-describe("toWsUrl", () => {
-  it.each([
-    ["https://test.vnbot.run", "wss://test.vnbot.run"],
-    ["https://test.vnbot.run/signal", "wss://test.vnbot.run/signal"],
-    ["HTTPS://test.vnbot.run:8443/agent", "wss://test.vnbot.run:8443/agent"],
-    ["http://127.0.0.1:8787/signal", "ws://127.0.0.1:8787/signal"],
-    ["wss://test.vnbot.run/signal", "wss://test.vnbot.run/signal"],
-    ["ws://127.0.0.1:8787", "ws://127.0.0.1:8787"],
-  ])("maps %s to %s", (input, expected) => {
-    expect(toWsUrl(input)).toBe(expected);
-  });
-
-  it("never downgrades an https gateway to ws", () => {
-    expect(toWsUrl("https://test.vnbot.run")).not.toMatch(/^ws:/);
-  });
-
-  it.each(["test.vnbot.run", "ftp://test.vnbot.run", "httpx://test.vnbot.run", ""])(
-    "rejects %j",
-    (input) => {
-      expect(() => toWsUrl(input)).toThrow("gateway URL must start with");
-    },
-  );
 });

@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ChannelFrame } from "./channel-protocol.js";
 import { decodeBytes, decodeChannelFrame, encodeBytes } from "./channel-protocol.js";
-import { P2PConnectError } from "./connect-error.js";
 import type { DataPeer, PeerOptions } from "./webrtc-peer.js";
 import { connectPeer } from "./webrtc-peer.js";
 
@@ -19,6 +18,45 @@ export interface ClientResponse {
 export interface ClientTransport {
   call(request: ClientCall): Promise<ClientResponse>;
   subscribe(request: ClientCall): AsyncIterable<Uint8Array>;
+}
+export class HttpClientTransport implements ClientTransport {
+  constructor(
+    private readonly options: {
+      baseUrl: string;
+      nodeId: string;
+      sessionToken: string;
+      fetch?: typeof fetch;
+    },
+  ) {}
+  async call(req: ClientCall): Promise<ClientResponse> {
+    const headers = new Headers(req.headers);
+    headers.set("authorization", `Bearer ${this.options.sessionToken}`);
+    const response = await (this.options.fetch ?? fetch)(
+      `${this.options.baseUrl.replace(/\/$/, "")}/nodes/${encodeURIComponent(this.options.nodeId)}/rpc/${req.procedure.split("/").map(encodeURIComponent).join("/")}`,
+      {
+        method: "POST",
+        headers,
+        body: req.body,
+        signal: req.signal,
+      },
+    );
+    return {
+      status: response.status,
+      headers: Object.fromEntries(response.headers),
+      body: new Uint8Array(await response.arrayBuffer()),
+    };
+  }
+  /** v0 buffers the full response; true HTTP streaming requires a relay protocol change. */
+  async *subscribe(req: ClientCall): AsyncIterable<Uint8Array> {
+    const response = await this.call({
+      ...req,
+      headers: { ...req.headers, accept: "text/event-stream" },
+    });
+    req.signal.throwIfAborted();
+    if (response.status < 200 || response.status >= 300)
+      throw new Error(`subscribe failed: ${response.status}`);
+    yield response.body;
+  }
 }
 function inbox<T>() {
   const items: T[] = [];
@@ -90,7 +128,7 @@ export class DataChannelClientTransport implements ClientTransport {
       return client;
     } catch (error) {
       client.close();
-      throw error instanceof Error && error.cause instanceof P2PConnectError ? error.cause : error;
+      throw error;
     }
   }
   selectedPair(): ReturnType<DataPeer["selectedPair"]> {

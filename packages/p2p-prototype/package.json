@@ -10,11 +10,6 @@
       "development": "./src/protocol.ts",
       "default": "./src/protocol.ts"
     },
-    "./pairing": {
-      "types": "./src/pairing.ts",
-      "development": "./src/pairing.ts",
-      "default": "./src/pairing.ts"
-    },
     "./gateway": {
       "types": "./src/gateway.ts",
       "development": "./src/gateway.ts",
@@ -44,11 +39,6 @@
       "types": "./src/node-channel-server.ts",
       "development": "./src/node-channel-server.ts",
       "default": "./src/node-channel-server.ts"
-    },
-    "./connect-error": {
-      "types": "./src/connect-error.ts",
-      "development": "./src/connect-error.ts",
-      "default": "./src/connect-error.ts"
     }
   },
   "scripts": {
@@ -62,7 +52,6 @@
   "devDependencies": {
     "@types/ws": "8.18.2",
     "typescript": "7.0.2",
-    "vitest": "4.1.12",
-    "werift": "0.25.2"
+    "vitest": "4.1.12"
   }
 }
