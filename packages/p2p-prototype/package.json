@@ -44,6 +44,11 @@
       "types": "./src/connect-error.ts",
       "development": "./src/connect-error.ts",
       "default": "./src/connect-error.ts"
+    },
+    "./pairing": {
+      "types": "./src/pairing.ts",
+      "development": "./src/pairing.ts",
+      "default": "./src/pairing.ts"
     }
   },
   "scripts": {

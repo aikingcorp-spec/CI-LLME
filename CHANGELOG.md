@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- Added a separately configured, workers.dev-only P2P gateway test environment for owner-approved validation.
+
 Notable product changes in Rakazo. See GitHub Releases for tagged builds.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).

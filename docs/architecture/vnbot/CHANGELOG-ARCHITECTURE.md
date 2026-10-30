@@ -336,3 +336,13 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/www` (pages, `astro.config.mjs`, `vercel.json`, e2e, removed content), `packages/auth/src/sign-in-code-templates.ts`, `packages/auth/src/index.test.ts`, `packages/ui-tokens` (brand export no longer writes a marketing mark).
 - Invariants affected: sign-in code generation, verification and delivery are unchanged; only email markup dimensions differ. The signed-in product, API and database are unchanged.
 - ADR: none.
+## 2026-10-30 — Add isolated P2P gateway test environment
+
+- Date: 2026-10-30
+- Pull request: pending (VNB-014).
+- What changed versus baseline: added a workers.dev-only `p2p-test` Wrangler environment with separate D1 and NodeRoom Durable Object bindings.
+- Why: provide an isolated deployment target for owner-approved P2P validation without changing existing gateway routes.
+- Modules and files: `apps/p2p-gateway/wrangler.toml`, `packages/p2p-prototype/package.json`.
+- Invariants affected: production gateway bindings and routes remain unchanged; room topology remains node-hub with no client relay.
+- ADR: none.
+

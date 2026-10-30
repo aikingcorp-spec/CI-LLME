@@ -29,3 +29,28 @@ class_name = "NodeRoom"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["NodeRoom"]
+
+[env.p2p-test]
+name = "vnbot-p2p-test"
+workers_dev = true
+
+[env.p2p-test.vars]
+GATEWAY_PUBLIC_KEY = "REPLACE_WITH_BASE64URL_ED25519_PUBLIC_KEY"
+GATEWAY_KEY_ID = "gw-2026-10-test"
+APP_TOKEN_PUBLIC_KEYS = "{}"
+APP_TOKEN_ISSUER = "https://app.vnbot.run"
+APP_TOKEN_AUDIENCE = "p2p.vnbot.run"
+ALLOWED_ORIGINS = "http://localhost:8787"
+
+[[env.p2p-test.d1_databases]]
+binding = "DB"
+database_name = "vnbot-p2p-test-d1"
+database_id = "00000000-0000-4000-8000-000000000000"
+
+[[env.p2p-test.durable_objects.bindings]]
+name = "NODE_ROOM"
+class_name = "NodeRoom"
+
+[[env.p2p-test.migrations]]
+tag = "v1"
+new_sqlite_classes = ["NodeRoom"]
