@@ -1209,11 +1209,12 @@ app.whenReady().then(async () => {
       resourcesPath: process.resourcesPath,
       appPath: app.getAppPath(),
     };
+    const dbDir = app.isPackaged
+      ? path.join(process.resourcesPath, "server", "db")
+      : path.resolve(app.getAppPath(), "..", "..", "packages", "db");
     nativeStack = new NativeStack({
-      postgres: new NativePostgres({ userDataDir }),
-      dbDir: app.isPackaged
-        ? path.join(process.resourcesPath, "server", "db")
-        : path.resolve(app.getAppPath(), "..", "..", "packages", "db"),
+      postgres: new NativePostgres({ userDataDir, dbDir }),
+      dbDir,
       migrationsDir: nativeMigrationsDir(layout),
       services: createNativeServices({ ...layout, userDataDir }),
       onFailure: (stage, error) =>

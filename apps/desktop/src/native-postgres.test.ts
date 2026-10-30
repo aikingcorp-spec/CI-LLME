@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RunProcess, RunProcessResult } from "./native-postgres.js";
 import {
   bootstrapSql,
+  bootstrapThroughClient,
   databaseUrl,
   defaultUserDataDir,
   initdbArgs,
@@ -14,6 +15,7 @@ import {
   NativePostgresError,
   PG_BIN_DIR_ENV,
   parsePostmasterPid,
+  pgCtlInitdbArgs,
   postgresEnv,
   postgresPackageName,
   postgresPaths,
@@ -174,6 +176,29 @@ describe("command lines", () => {
     expect(args[args.indexOf("-l") + 1]).toBe("/l");
   });
 
+  it("hands initdb to pg_ctl as one quoted -o string with the password file by path", () => {
+    const args = pgCtlInitdbArgs({
+      scratchDir: "C:\\Users\\a b\\VNBot\\pg\\data.initializing",
+      ownerPasswordFile: "C:\\Users\\a b\\VNBot\\pg\\.owner-password",
+    });
+    expect(args.slice(0, 4)).toEqual([
+      "initdb",
+      "-D",
+      "C:\\Users\\a b\\VNBot\\pg\\data.initializing",
+      "-o",
+    ]);
+    expect(args).toHaveLength(5);
+    expect(args[4]).toBe(
+      '--username=rakazo --pwfile="C:\\Users\\a b\\VNBot\\pg\\.owner-password" ' +
+        "--auth=scram-sha-256 --encoding=UTF8 --locale=C --no-instructions",
+    );
+    expect(args.join(" ")).not.toMatch(/password=/i);
+  });
+
+  it("refuses a password file path that cannot be quoted", () => {
+    expect(() => pgCtlInitdbArgs({ scratchDir: "/d", ownerPasswordFile: '/p"w' })).toThrow();
+  });
+
   it("stops fast and waits", () => {
     expect(stopArgs("/d")).toEqual(["stop", "-D", "/d", "-m", "fast", "-w", "-t", "60"]);
   });
@@ -187,6 +212,47 @@ describe("command lines", () => {
   it("only embeds a hex password in the bootstrap statements", () => {
     expect(bootstrapSql("a".repeat(48))).toContain("CREATE ROLE rakazo_app LOGIN PASSWORD");
     expect(() => bootstrapSql("x'; DROP DATABASE rakazo; --")).toThrow();
+  });
+});
+
+describe("bootstrapThroughClient", () => {
+  function fakeClient(existing: { database?: boolean; role?: boolean } = {}) {
+    const queries: Array<{ sql: string; values?: unknown[] }> = [];
+    return {
+      queries,
+      query: async (sql: string, values?: unknown[]) => {
+        queries.push({ sql, values });
+        const found =
+          (sql.includes("pg_database") && existing.database) ||
+          (sql.includes("pg_roles") && existing.role);
+        return { rows: found ? [{ "?column?": 1 }] : [] };
+      },
+    };
+  }
+  const creates = (client: { queries: Array<{ sql: string }> }) =>
+    client.queries.map((q) => q.sql).filter((sql) => sql.startsWith("CREATE"));
+
+  it("creates the database and the login with the single-user statements", async () => {
+    const client = fakeClient();
+    await bootstrapThroughClient(client, "ab".repeat(24));
+    const [database, role] = creates(client);
+    expect(database).toBe("CREATE DATABASE rakazo OWNER rakazo;");
+    expect(role).toContain("CREATE ROLE rakazo_app LOGIN PASSWORD");
+    expect(bootstrapSql("ab".repeat(24))).toContain(role as string);
+  });
+
+  it("creates only what is missing, so a repeat is a no-op", async () => {
+    const both = fakeClient({ database: true, role: true });
+    await bootstrapThroughClient(both, "ab".repeat(24));
+    expect(creates(both)).toEqual([]);
+    const half = fakeClient({ database: true });
+    await bootstrapThroughClient(half, "ab".repeat(24));
+    expect(creates(half)).toHaveLength(1);
+    expect(creates(half)[0]).toContain("CREATE ROLE");
+  });
+
+  it("refuses a password that is not hex before running a statement that holds it", async () => {
+    await expect(bootstrapThroughClient(fakeClient(), "x'; --")).rejects.toThrow();
   });
 });
 
@@ -219,6 +285,12 @@ describe("NativePostgres lifecycle", () => {
         return OK;
       }
       if (tool.startsWith("pg_ctl")) {
+        if (args[0] === "initdb") {
+          const scratch = args[args.indexOf("-D") + 1] as string;
+          await mkdir(scratch, { recursive: true });
+          await writeFile(path.join(scratch, "PG_VERSION"), "16\n");
+          return OK;
+        }
         if (args[0] === "status") return { ...OK, code: running ? 0 : 3 };
         if (args[0] === "start") {
           const result = startResults.shift() ?? OK;
@@ -318,11 +390,162 @@ describe("NativePostgres lifecycle", () => {
     expect(order).toEqual(["status", "stop", "start"]);
   });
 
-  it("uses the Windows executable names when the platform is win32", async () => {
-    const pg = create({ platform: "win32" });
-    await pg.start();
-    const files = [...new Set(calls.map((call) => path.basename(call.file)))].sort();
-    expect(files).toEqual(["initdb.exe", "pg_ctl.exe", "postgres.exe"]);
+  it("runs initdb and the server directly on linux", async () => {
+    await create().start();
+    const names = calls.map((call) => path.basename(call.file));
+    expect(names[0]).toBe("initdb");
+    expect(calls[0]?.args[0]).toBe("-D");
+    expect(calls[0]?.args).toContain(`--pwfile=${path.join(userData, "pg", ".owner-password")}`);
+    expect(calls.some((call) => call.args[0] === "initdb")).toBe(false);
+    expect(names).toContain("postgres");
+    const start = calls.find((call) => call.args[0] === "start");
+    expect(path.basename(start?.file ?? "")).toBe("pg_ctl");
+  });
+
+  describe("on win32", () => {
+    const win = () => create({ platform: "win32", createClient: fakeClient().factory });
+
+    it("initializes through pg_ctl and never launches initdb itself", async () => {
+      await win().start();
+      expect(calls.some((call) => path.basename(call.file) === "initdb.exe")).toBe(false);
+      const init = calls[0];
+      expect(path.basename(init?.file ?? "")).toBe("pg_ctl.exe");
+      expect(init?.args.slice(0, 3)).toEqual([
+        "initdb",
+        "-D",
+        path.join(userData, "pg", "data.initializing"),
+      ]);
+      expect(init?.args[3]).toBe("-o");
+      expect(init?.args[4]).toContain(`--pwfile="${path.join(userData, "pg", ".owner-password")}"`);
+      expect(init?.args[4]).toContain("--auth=scram-sha-256");
+    });
+
+    it("never puts a password in a command line", async () => {
+      await win().start();
+      for (const call of calls) expect(call.args.join(" ")).not.toContain("ab".repeat(24));
+    });
+
+    it("starts and stops the server through pg_ctl", async () => {
+      const pg = win();
+      await pg.start();
+      const start = calls.find((call) => call.args[0] === "start");
+      expect(path.basename(start?.file ?? "")).toBe("pg_ctl.exe");
+      expect(start?.args).toEqual(
+        expect.arrayContaining(["-w", "-D", path.join(userData, "pg", "data")]),
+      );
+      expect(start?.args[start.args.indexOf("-l") + 1]).toBe(
+        path.join(userData, "pg", "postgres.log"),
+      );
+      expect(start?.args.at(-1)).toMatch(/^-c listen_addresses=127\.0\.0\.1 -c port=40000 /);
+      calls.length = 0;
+      await pg.stop();
+      expect(calls.map((call) => path.basename(call.file))).toEqual(["pg_ctl.exe", "pg_ctl.exe"]);
+      expect(calls[1]?.args).toContain("stop");
+    });
+
+    function fakeClient(options: { failAt?: "connect" | "query" } = {}) {
+      const log: string[] = [];
+      const urls: string[] = [];
+      const factory = (url: string) => {
+        urls.push(url);
+        return {
+          connect: async () => {
+            log.push("connect");
+            if (options.failAt === "connect") throw new Error("connection refused");
+          },
+          query: async (sql: string) => {
+            log.push(sql.startsWith("CREATE") ? sql.split(" ").slice(0, 3).join(" ") : "select");
+            if (options.failAt === "query") throw new Error("permission denied");
+            return { rows: [] };
+          },
+          end: async () => {
+            log.push("end");
+          },
+        };
+      };
+      return { log, urls, factory };
+    }
+
+    it("never spawns postgres directly and bootstraps through the client after start", async () => {
+      const client = fakeClient();
+      const order: string[] = [];
+      const run = fakeRun();
+      const traced: RunProcess = async (file, args, options) => {
+        order.push(args[0] === "start" ? "start" : "other");
+        return run(file, args, options);
+      };
+      const connecting = client.factory;
+      const pg = create({
+        platform: "win32",
+        run: traced,
+        createClient: (url) => {
+          order.push("client");
+          return connecting(url);
+        },
+      });
+      const endpoints = await pg.start();
+      expect(calls.some((call) => path.basename(call.file) === "postgres.exe")).toBe(false);
+      expect(calls.some((call) => call.args.includes("--single"))).toBe(false);
+      expect(order.indexOf("start")).toBeGreaterThanOrEqual(0);
+      expect(order.indexOf("client")).toBeGreaterThan(order.indexOf("start"));
+      expect(client.log).toEqual([
+        "connect",
+        "select",
+        "CREATE DATABASE rakazo",
+        "select",
+        "CREATE ROLE rakazo_app",
+        "end",
+      ]);
+      expect(client.urls).toEqual([
+        `postgres://rakazo:${"ab".repeat(24)}@127.0.0.1:40000/postgres`,
+      ]);
+      expect(endpoints.port).toBe(40000);
+      await stat(path.join(userData, "pg", "data", "PG_VERSION"));
+    });
+
+    it("bootstraps again on a later start of an existing cluster, which the client makes a no-op", async () => {
+      const first = fakeClient();
+      await create({ platform: "win32", createClient: first.factory }).start();
+      const second = fakeClient();
+      calls.length = 0;
+      await create({ platform: "win32", createClient: second.factory }).start();
+      expect(calls.some((call) => call.args[0] === "initdb")).toBe(false);
+      expect(second.log[0]).toBe("connect");
+    });
+
+    it.each(["connect", "query"] as const)(
+      "reports a %s failure as init-failed, stops the server and leaks nothing",
+      async (failAt) => {
+        const client = fakeClient({ failAt });
+        const error = await create({ platform: "win32", createClient: client.factory })
+          .start()
+          .catch((caught: unknown) => caught as NativePostgresError);
+        expect(error.code).toBe("init-failed");
+        expect(error.message).toBe("The local database could not be created.");
+        expect(client.log.at(-1)).toBe("end");
+        expect(calls.at(-1)?.args[0]).toBe("stop");
+        expect(String((error.cause as Error).message)).not.toContain("ab".repeat(24));
+      },
+    );
+
+    it("reports a missing client as init-failed", async () => {
+      const error = await create({ platform: "win32" })
+        .start()
+        .catch((caught: unknown) => caught as NativePostgresError);
+      expect(error.code).toBe("init-failed");
+    });
+
+    it("reports a failed initdb as init-failed without leaking its output", async () => {
+      const run: RunProcess = async (_file, args) =>
+        args[0] === "initdb"
+          ? { code: 1, stdout: "", stderr: "C:\\Users\\a b\\secret", timedOut: false }
+          : OK;
+      const error = await create({ platform: "win32", run })
+        .start()
+        .catch((caught: unknown) => caught as NativePostgresError);
+      expect(error.code).toBe("init-failed");
+      expect(error.message).toBe("The local database could not be created.");
+    });
   });
 
   it("retries on a port that was taken in between, and only then", async () => {
@@ -367,7 +590,14 @@ describe("NativePostgres lifecycle", () => {
   });
 
   it("does not apply the root check on Windows", async () => {
-    await expect(create({ platform: "win32", getuid: () => 0 }).start()).resolves.toBeDefined();
+    const noopClient = {
+      connect: async () => undefined,
+      query: async () => ({ rows: [] }),
+      end: async () => undefined,
+    };
+    await expect(
+      create({ platform: "win32", getuid: () => 0, createClient: () => noopClient }).start(),
+    ).resolves.toBeDefined();
   });
 
   it("reports missing binaries without starting anything", async () => {
