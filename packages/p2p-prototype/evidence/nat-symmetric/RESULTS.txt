@@ -1,0 +1,21 @@
+run-01 PASS 08:22:40 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-02 PASS 08:23:01 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-03 PASS 08:23:21 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-04 PASS 08:23:40 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-05 PASS 08:24:00 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-06 PASS 08:24:20 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-07 PASS 08:24:39 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-08 PASS 08:24:59 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-09 PASS 08:25:19 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-10 PASS 08:25:39 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-11 PASS 08:25:59 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-12 PASS 08:26:18 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-13 PASS 08:26:39 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-14 PASS 08:26:58 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-15 PASS 08:27:18 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-16 PASS 08:27:38 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-17 PASS 08:27:58 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-18 PASS 08:28:18 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-19 PASS 08:28:37 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+run-20 PASS 08:28:56 pairs=6 candTypes=[ 12 relay] hostPairs=0 natProbe=endpoint-dependent/endpoint-dependent
+PASS 20/20
