@@ -47,6 +47,7 @@
   },
   "build": {
     "appId": "run.vnbot.desktop",
+    "afterPack": "scripts/after-pack.cjs",
     "directories": {
       "output": "out",
       "buildResources": "assets"

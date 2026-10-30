@@ -24,6 +24,8 @@ Merged into main on 2026-10-31: VNB-001 (sign-in focus), VNB-018 (adapter tests 
 
 ### Fixed
 
+- Packaged Linux desktop builds restore PostgreSQL's bundled library links so local database setup can start.
+
 - Sign-in focuses the email field on arrival and when returning to the email step, and focuses the one-time-code field when the code step appears, without relying on `autoFocus`.
 - The P2P gateway now has tests proving each web client's offer and answer reach only its own node, that clients cannot signal each other, and that pairing is saved to the database.
 - The P2P gateway Worker now type-checks cleanly and answers its health check when run locally.
