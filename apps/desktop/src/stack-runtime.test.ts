@@ -8,6 +8,8 @@ describe("chooseRuntime", () => {
   });
   it("uses Docker on macOS unless overridden", () => {
     expect(chooseRuntime({ platform: "darwin" })).toBe("docker");
-    expect(chooseRuntime({ platform: "darwin", env: { RAKAZO_DESKTOP_RUNTIME: "native" } })).toBe("native");
+    expect(chooseRuntime({ platform: "darwin", env: { RAKAZO_DESKTOP_RUNTIME: "native" } })).toBe(
+      "native",
+    );
   });
 });

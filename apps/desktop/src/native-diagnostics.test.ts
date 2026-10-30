@@ -21,9 +21,10 @@ describe("redactDiagnostic", () => {
   });
 
   it("hides the user data directory and bounds the length", () => {
-    const text = redactDiagnostic(`ENOENT /home/someone/.config/VNBot/pg/data ${"x ".repeat(500)}`, [
-      "/home/someone/.config/VNBot",
-    ]);
+    const text = redactDiagnostic(
+      `ENOENT /home/someone/.config/VNBot/pg/data ${"x ".repeat(500)}`,
+      ["/home/someone/.config/VNBot"],
+    );
     expect(text).toContain("<userData>/pg/data");
     expect(text).not.toContain("someone");
     expect(text.length).toBeLessThanOrEqual(401);

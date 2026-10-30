@@ -21,7 +21,6 @@ const INITDB_TIMEOUT_MS = 120_000;
 const PG_CTL_MARGIN_MS = 15_000;
 const START_ATTEMPTS = 3;
 const MAX_SECRET_BYTES = 256;
-const MAX_PORT_BYTES = 16;
 const MAX_CAPTURE_BYTES = 64 * 1024;
 const LOG_TAIL_BYTES = 4096;
 const SECRET = /^[a-f0-9]{32,}$/;
@@ -140,12 +139,18 @@ export function defaultUserDataDir(input: {
 }): string {
   const { platform, env, homedir } = input;
   if (platform === "win32") {
-    return input.path.join(env.APPDATA || input.path.join(homedir, "AppData", "Roaming"), PG_PRODUCT_DIR);
+    return input.path.join(
+      env.APPDATA || input.path.join(homedir, "AppData", "Roaming"),
+      PG_PRODUCT_DIR,
+    );
   }
   if (platform === "darwin") {
     return input.path.join(homedir, "Library", "Application Support", PG_PRODUCT_DIR);
   }
-  return input.path.join(env.XDG_CONFIG_HOME || input.path.join(homedir, ".config"), PG_PRODUCT_DIR);
+  return input.path.join(
+    env.XDG_CONFIG_HOME || input.path.join(homedir, ".config"),
+    PG_PRODUCT_DIR,
+  );
 }
 
 export interface PostgresPaths {
@@ -209,7 +214,9 @@ export function resolvePostgresBinDir(input: BinDirInput): string | null {
   const resolveModule = input.resolveModule ?? createRequire(import.meta.url).resolve;
   try {
     const entry = resolveModule(postgresPackageName(input.platform, input.arch));
-    return unpackedPath(input.path.join(input.path.dirname(input.path.dirname(entry)), "native", "bin"));
+    return unpackedPath(
+      input.path.join(input.path.dirname(input.path.dirname(entry)), "native", "bin"),
+    );
   } catch {
     return null;
   }
@@ -474,7 +481,10 @@ export class NativePostgres {
       await writePrivateFile(file, `${secret}\n`);
       return secret;
     };
-    return { owner: await ensure(paths.ownerPasswordFile), app: await ensure(paths.appPasswordFile) };
+    return {
+      owner: await ensure(paths.ownerPasswordFile),
+      app: await ensure(paths.appPasswordFile),
+    };
   }
 
   private async isInitialized(paths: PostgresPaths): Promise<boolean> {
@@ -519,7 +529,7 @@ export class NativePostgres {
       const started = await this.ctl(
         paths,
         startArgs({ dataDir: paths.dataDir, logFile: paths.logFile, port }),
-        (PG_START_TIMEOUT_S * 1000) + PG_CTL_MARGIN_MS,
+        PG_START_TIMEOUT_S * 1000 + PG_CTL_MARGIN_MS,
       );
       if (started.code === 0) return port;
       const tail = await this.logTail(paths);

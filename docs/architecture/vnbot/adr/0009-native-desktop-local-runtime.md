@@ -9,7 +9,7 @@ A desktop local node must start without requiring a separately installed Docker 
 
 ## Decision
 
-Linux and Windows default to an app-owned PostgreSQL 16 cluster and Electron utility processes for migrations, API, and worker. macOS keeps the Docker path; the runtime override remains available. Migrations execute ordered original SQL files in per-file transactions with Prisma-compatible history and original SHA-256 checksums. Concurrent indexes build synchronously before application clients start. Top-level transaction wrappers are removed without changing quoted or procedural bodies. A utility process uses the shared role provisioning code and existing Graphile migration dependency after schema migrations.
+Linux and Windows default to an app-owned PostgreSQL 16 cluster and Electron utility processes for API and worker; migrations run in the main process, because the single-file desktop bundle imports Electron window APIs that a utility process cannot load. macOS keeps the Docker path; the runtime override remains available. Migrations execute ordered original SQL files in per-file transactions with Prisma-compatible history and original SHA-256 checksums. Concurrent indexes build synchronously before application clients start. Top-level transaction wrappers are removed without changing quoted or procedural bodies. The migration step uses the shared role provisioning code and existing Graphile migration dependency after schema migrations.
 
 The app serves the shared web build over loopback, proxies API traffic, and stores the private web URL under its user data directory. Native processes stop before app exit. Smoke mode checks API health and reports a fixed sanitized result before stopping. Chat stays on the customer's node.
 

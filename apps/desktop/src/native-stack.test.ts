@@ -209,7 +209,9 @@ describe("in-process migration", () => {
     expect(stack.status()).toBe("failed");
     const [stage, error] = onFailure.mock.calls[0]!;
     expect(stage).toBe("migrate");
-    expect(String((error as Error).message)).toMatch(/Migration exited with code 1\. stage=migrate/);
+    expect(String((error as Error).message)).toMatch(
+      /Migration exited with code 1\. stage=migrate/,
+    );
     expect(String((error as Error).message)).not.toContain("fakepw");
   });
 });

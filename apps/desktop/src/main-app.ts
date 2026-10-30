@@ -56,6 +56,7 @@ import {
   forwardedRendererRequestInit,
   isRendererAssetMiss,
 } from "./renderer-assets.js";
+import { captureWhenReady } from "./screenshot-hook.js";
 import { revealSecondInstanceWindow, secondInstanceWindow } from "./second-instance.js";
 import { installSessionPermissions } from "./session-permissions.js";
 import {
@@ -374,6 +375,14 @@ function createWindow(url: string, partition: string | null) {
   win.once("ready-to-show", () => markOnce("rk:main:ready-to-show"));
   win.webContents.once("dom-ready", () => markOnce("rk:main:dom-ready"));
   win.webContents.once("did-finish-load", () => markOnce("rk:main:did-finish-load"));
+  const screenshotFile = process.env.RAKAZO_DESKTOP_SCREENSHOT?.trim();
+  if (screenshotFile) {
+    win.webContents.once("did-finish-load", () => {
+      void captureWhenReady({ target: win.webContents, file: screenshotFile }).then((saved) =>
+        console.log(saved ? "RAKAZO_DESKTOP_SCREENSHOT saved" : "RAKAZO_DESKTOP_SCREENSHOT missed"),
+      );
+    });
+  }
   win.webContents.once("did-stop-loading", () => markOnce("rk:main:did-stop-loading"));
   markOnce("rk:main:load-url-start");
   const loaded = loadAppUrl(win, url).then(

@@ -356,3 +356,13 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/desktop/src/main.ts`, `main-app.ts`, `native-postgres.test.ts`, `native-stack.ts`, `native-services.ts`, `native-migrate.ts`, `native-smoke.ts`, `native-local-stack.ts`, related tests, and `apps/desktop/NOTES-FOR-KAI.md`.
 - Invariants affected: data stays on the customer node; migration owner credentials remain separate from the runtime role; RLS, shared UI and existing host-command permissions are retained. Loopback endpoints and private files remain local. Original SQL files and baseline documentation are unchanged.
 - ADR: [0009](adr/0009-native-desktop-local-runtime.md).
+
+## 2026-10-30 — Native desktop stack starts on Linux
+
+- Date: 2026-10-30
+- Pull request: none (working tree handoff).
+- What changed versus baseline: the native stack migrates in the Electron main process instead of a utility process, because the single-file desktop bundle imports Electron window APIs a utility process cannot load. The private native env file also generates `SCREEN_PROXY_SECRET` and `SANDBOX_SUPERVISOR_TOKEN`, which the API requires. Startup failures write the stage and a redacted cause chain to `<userData>/logs/native-stack.log` (owner-only; also stderr with `RAKAZO_DESKTOP_DEBUG=1`). `RAKAZO_DESKTOP_SCREENSHOT=<path>` saves a PNG of the sign-in screen for evidence runs.
+- Why: the built Linux app failed at migration with no usable diagnostic.
+- Modules and files: `apps/desktop/src/native-stack.ts`, `native-services.ts`, `native-diagnostics.ts`, `screenshot-hook.ts`, `main-app.ts`, related tests, ADR 0009 and `apps/desktop/NOTES-FOR-KAI.md`.
+- Invariants affected: migration owner credentials stay separate from the runtime role; logs never contain URLs, passwords or tokens. No API, worker, database or migration changes.
+- ADR: [0009](adr/0009-native-desktop-local-runtime.md).
