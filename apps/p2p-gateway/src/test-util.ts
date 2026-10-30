@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
+import { URL as NodeURL, fileURLToPath } from "node:url";
 import type { KeyPair } from "@rakazo/p2p-prototype/pairing";
 import type { AppTokenClaims } from "./app-token.js";
 import { TOKEN_TYP } from "./app-token.js";
@@ -7,7 +8,7 @@ import type { Deps, RoomStub } from "./app.js";
 import type { Config } from "./config.js";
 import { sign, toBase64Url, utf8 } from "./crypto.js";
 
-const MIGRATION = new URL("../migrations/0001_init.sql", import.meta.url);
+const MIGRATION = fileURLToPath(new NodeURL("../migrations/0001_init.sql", import.meta.url));
 type SqlValue = null | number | bigint | string;
 
 /** A D1 look-alike over a real in-memory SQLite database with the shipped migration applied. */
