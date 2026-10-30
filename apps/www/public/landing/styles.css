@@ -80,6 +80,7 @@ h1,h2,.zero{font-weight:800}h1,h2{line-height:1.3;padding-top:.06em}
 nav.top .logo,nav.top a:first-child{white-space:nowrap}nav.top .btn{white-space:nowrap}
 .btns .web-main{order:2}.btns .main-contact{order:1}.btns .tlink{order:3}
 @media(max-width:480px){nav.top .nav-cta{display:none}}
+@media(max-width:600px){nav.top .nav-login{margin-left:auto;padding:6px 10px;font-size:12px}nav.top .nav-login+.lang{margin-left:0}}
 .soon-t{font-size:13px;color:#888;text-decoration:none;cursor:default;padding:4px 2px}
 .btns .dl-main,.btns .cta-dl{order:3}.btns .web-main.p{order:0}
 
@@ -99,3 +100,20 @@ footer img.wmimg.ft{height:22px;width:auto;vertical-align:middle}
 .usecases{display:grid;grid-template-columns:repeat(2,1fr);gap:28px 48px;margin:28px 0}
 .uc{border-left:3px solid #6D7C3D;padding-left:14px}.uc h3{margin:0 0 4px;font-size:16px}.uc p{margin:0;color:#555;font-size:14px}
 @media(max-width:600px){.usecases{grid-template-columns:1fr;gap:20px}}
+.links a,nav.top .lang,nav.top .nav-login,nav.top .nav-cta{white-space:nowrap}
+@media(min-width:601px){nav.top .w{gap:16px}.links{gap:14px;font-size:13px}nav.top .btn{padding:7px 11px;font-size:13px}}
+@media(max-width:1100px){.links a.opt:nth-child(-n+2){display:none}}
+
+/* Nav fit: brand never shrinks and keeps a gap before the links; compact login on phones */
+nav.top .brand{flex-shrink:0;margin-right:12px}
+nav.top .brand img.wmimg{flex-shrink:0;min-width:max-content}
+nav.top .links{flex-shrink:0;white-space:nowrap}
+nav.top .btn,nav.top .lang{flex-shrink:0}
+@media(min-width:601px){nav.top .brand{margin-right:8px}}
+@media(max-width:600px){nav.top .brand{margin-right:0}nav.top .nav-login{padding:5px 8px;font-size:12px;flex-shrink:0}nav.top .lang{padding:5px 8px;font-size:12px;flex-shrink:0}}
+@media(max-width:400px){nav.top .w{gap:6px}nav.top .brand img.wmimg{height:22px}nav.top .nav-login{padding:5px 7px;font-size:11px}nav.top .lang{padding:5px 7px;font-size:11px}}
+
+/* Nav items must never overlap or run off-screen: drop the optional links, then the nav CTA, then all links as width shrinks */
+@media(max-width:1050px){.links a.opt{display:none}}
+@media(min-width:601px) and (max-width:920px){nav.top .nav-cta{display:none}}
+@media(min-width:601px) and (max-width:640px){nav.top .links{display:none}nav.top .nav-login{margin-left:auto}}

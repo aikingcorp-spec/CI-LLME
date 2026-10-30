@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đăng nhập VNBot</title>
+<meta name="description" content="Đăng nhập web app VNBot tại app.vnbot.run. Sắp có.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://app.vnbot.run/">
+<link rel="icon" type="image/x-icon" href="/landing/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/landing/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/landing/favicon-16.png"><link rel="apple-touch-icon" href="/landing/apple-touch-icon.png">
+<link rel="stylesheet" href="/landing/styles.css">
+<style>
+.signin{max-width:440px;margin:0 auto;padding:72px 24px 96px;text-align:center}
+.signin .badge{display:inline-block;margin-bottom:16px;font-weight:600;color:#1a1a1a;border-color:#1a1a1a}
+.signin h1{font-size:clamp(28px,5vw,40px);margin-bottom:24px}
+.signin form{display:flex;flex-direction:column;gap:12px;text-align:left;margin-bottom:20px}
+.signin label{font-size:14px;font-weight:600}
+.signin input{width:100%;padding:12px 14px;border:1px solid #ccc;border-radius:10px;font:inherit;font-size:15px;background:#f1f1ee;color:#777}
+.signin input:disabled,.signin .btn:disabled{cursor:not-allowed}
+.signin .btn:disabled{justify-content:center;opacity:.55}
+.signin .notice{background:#fff;border:1px solid #ececea;border-radius:12px;padding:16px 18px;font-size:14px;color:#444;text-align:left;margin:0 0 24px}
+.signin .links2{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 20px}
+</style>
+</head>
+<body>
+<nav class="top" aria-label="Điều hướng chính"><div class="w">
+ <a class="brand" href="https://vnbot.run" aria-label="VNbot, về trang chủ"><img src="/landing/img/non.webp" alt=""><img class="wmimg" src="/landing/img/vnbot-wordmark-v4-light.svg" alt="VNbot"></a>
+</div></nav>
+<main class="signin">
+ <span class="badge">Sắp có</span>
+ <h1>Đăng nhập VNBot</h1>
+ <form aria-label="Đăng nhập bằng email">
+  <label for="email">Email</label>
+  <input id="email" type="email" name="email" placeholder="ban@congty.vn" autocomplete="email" disabled>
+  <button class="btn p" type="button" disabled>Gửi mã đăng nhập</button>
+ </form>
+ <p class="notice" role="note">Web app app.vnbot.run đang được hoàn thiện. Web client sẽ nối tới node của bạn qua P2P; dữ liệu không nằm trên máy chủ VNBot. Đang beta, chỉ email được duyệt.</p>
+ <div class="links2">
+  <a class="tlink" href="https://vnbot.run/#faq">Liên hệ để nhận lời mời</a>
+  <a class="tlink" href="https://vnbot.run">Về trang chủ vnbot.run</a>
+ </div>
+</main>
+</body>
+</html>

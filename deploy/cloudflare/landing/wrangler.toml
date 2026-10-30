@@ -1,0 +1,16 @@
+name = "vnbot-landing"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+routes = [
+  { pattern = "vnbot.run", custom_domain = true },
+  { pattern = "www.vnbot.run", custom_domain = true },
+]
+
+[assets]
+directory = "../.out/landing"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+# Worker chạy cho mọi request để www.vnbot.run được 301 về vnbot.run.
+run_worker_first = true

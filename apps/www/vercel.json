@@ -11,11 +11,6 @@
       "has": [{ "type": "host", "value": { "eq": "www.vnbot.run" } }],
       "destination": "https://vnbot.run/:path*",
       "statusCode": 301
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/sitemap-index.xml",
-      "statusCode": 301
     }
   ]
 }
