@@ -53,6 +53,7 @@ if (process.env.TURN_CREDS_FILE) {
     }),
   );
 }
+if (process.env.STUN_URL) iceServers.push(process.env.STUN_URL);
 const iceTransportPolicy = process.env.ICE_TRANSPORT_POLICY as "all" | "relay" | undefined;
 
 const log = (event: string, fields: Record<string, unknown> = {}): void => {
