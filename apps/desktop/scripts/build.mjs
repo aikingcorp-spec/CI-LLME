@@ -155,11 +155,15 @@ if (process.argv.includes("--native") || process.env.DESKTOP_NATIVE === "1") {
         return { contents, loader: "js" };
       });
       // Keep synchronous XHR working with one separately bundled worker asset.
+      // Do not introduce import.meta here: it makes esbuild treat this CommonJS
+      // file as ESM and leaves its `exports.` references unbound. The banner's
+      // require is created from the bundle URL, and the concatenated specifier
+      // keeps esbuild from resolving the sibling asset at build time.
       builder.onLoad({ filter: /jsdom[/\\].*[/\\]XMLHttpRequest-impl\.js$/ }, async (args) => {
         const source = await readFile(args.path, "utf8");
         const contents = source.replace(
           'require.resolve("./xhr-sync-worker.js")',
-          'require("node:url").fileURLToPath(new URL("./xhr-sync-worker.mjs", import.meta.url))',
+          'require.resolve("./xhr-sync-worker" + ".mjs")',
         );
         if (contents === source) throw new Error("jsdom worker lookup changed");
         return { contents, loader: "js" };

@@ -64,7 +64,7 @@ jobs:
           })
           if ($migrations.Count -eq 0) { throw 'Packaged migrations missing' }
           foreach ($module in @('pg', 'graphile-worker')) {
-            if (-not (Test-Path -LiteralPath (Join-Path $resources "server/node_modules/$module") -PathType Container)) { throw "Missing server dependency: $module" }
+            if (-not (Test-Path -LiteralPath (Join-Path $resources "server/node_modules/$module/package.json") -PathType Leaf)) { throw "Missing server dependency: $module" }
           }
       - name: Silent install, smoke test, uninstall
         run: |

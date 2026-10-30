@@ -56,14 +56,16 @@ jobs:
             test -f "$resources/$file"
           done
           test -n "$(find "$resources/migrations" -mindepth 2 -maxdepth 2 -name migration.sql -print -quit)"
-          test -d "$resources/server/node_modules/pg"
-          test -d "$resources/server/node_modules/graphile-worker"
+          test -f "$resources/server/node_modules/pg/package.json"
+          test -f "$resources/server/node_modules/graphile-worker/package.json"
           for binary in postgres pg_ctl initdb; do
             test -x "$resources/app.asar.unpacked/node_modules/@embedded-postgres/linux-x64/native/bin/$binary"
           done
           test -f "$resources/app.asar.unpacked/node_modules/node-datachannel/build/Release/node_datachannel.node"
       - name: Smoke test the AppImage
         timeout-minutes: 4
+        # Hard cap on the whole step so a hang cannot burn the job.
+        shell: timeout --kill-after=10 180 bash -eo pipefail {0}
         run: |
           set -euo pipefail
           mkdir -p "$SMOKE_DIR"
@@ -80,6 +82,25 @@ jobs:
           if [ -f "$url_file" ]; then
             cp "$url_file" "$SMOKE_DIR/.desktop-web-url"
           fi
+      - name: Stop leftover app and postgres processes
+        if: always()
+        run: |
+          # Bundled postgres can outlive a killed Electron: never leave it running.
+          app_pattern='linux-unpacked/vnbot|VNBot.*AppImage|appimage_extracted'
+          pg_pattern='@embedded-postgres/linux-x64/native/bin/postgres'
+          pkill -f "$app_pattern" || true
+          pkill -f "$pg_pattern" || true
+          for _ in $(seq 1 15); do
+            if ! pgrep -f "$app_pattern" > /dev/null && ! pgrep -f "$pg_pattern" > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          # Count what survived SIGTERM before escalating to SIGKILL.
+          echo "leftover app: $(pgrep -f "$app_pattern" | wc -l)"
+          echo "leftover postgres: $(pgrep -f "$pg_pattern" | wc -l)"
+          pkill -KILL -f "$app_pattern" || true
+          pkill -KILL -f "$pg_pattern" || true
       - name: Collect logs
         if: always()
         run: |
