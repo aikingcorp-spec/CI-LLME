@@ -6,9 +6,11 @@ window.VNBOT_FEATURES={
   showFree:true,               // hero "Miễn phí" wording + 0đ section + free nav/FAQ
   CONTACT_URL:'https://aikingx.com',
   downloads:{                  // the ONLY platforms shown in the download grid; enabled:false => "Sắp có", true => real download button
-    windows:{enabled:false,url:'https://vnbot.run/download/VNBot-Setup.exe',label:'Windows',msi:{url:'/download/VNBot-Setup.msi',label:'MSI (doanh nghiệp)'}},
-    linux:{enabled:false,url:'https://vnbot.run/download/VNBot.AppImage',label:'Linux'}
+    windows:{enabled:false,version:'0.3.6',file:'VNBot-Setup-0.3.6-x64.exe',url:'https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe',sizeMB:176,sha256:null,notesUrl:null,req:'Windows 10/11 64-bit',label:'Windows',msi:{file:'VNBot-0.3.6-win-x64.msi',url:'https://dl.vnbot.run/desktop/VNBot-0.3.6-win-x64.msi',sizeMB:192,sha256:null,notesUrl:null,req:'Windows 10/11 64-bit'}},
+    linux:{enabled:false,version:'0.3.6',file:'VNBot-0.3.6-linux-x86_64.AppImage',url:'https://dl.vnbot.run/desktop/VNBot-0.3.6-linux-x86_64.AppImage',sizeMB:200,sha256:null,notesUrl:null,req:'Linux x86_64',label:'Linux'}
   },
+  // TODO(VNB-006): replace placeholder metadata when 0.3.6 is uploaded.
+  sumsUrl:'https://dl.vnbot.run/desktop/SHA256SUMS.txt',
   pausedPlatforms:[            // paused, not dropped: listed as "Sắp có" in platform lines only, never in the download grid
     {id:'mac',name:'macOS'},
     {id:'android',name:'Android'},
