@@ -7,6 +7,12 @@ import { loadRootEnv } from "@rakazo/core/node/load-root-env";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { createModelConnectionFixtureFetch } from "../model-connection-fixture.js";
 import { PluginMarketplaceFixture } from "../plugin-marketplace-fixture.js";
+import {
+  DEFAULT_LOCAL_DB_PREFIX,
+  LocalDatabases,
+  localDatabaseName,
+  withDatabase,
+} from "./local-database.js";
 import { runProcess } from "./process.js";
 
 loadRootEnv();
@@ -17,11 +23,13 @@ const sandboxArg = process.argv.find((arg) => arg.startsWith("--sandbox="));
 const specArg = process.argv.find((arg) => arg.startsWith("--spec="));
 const grepArg = process.argv.find((arg) => arg.startsWith("--grep="));
 const shardArg = process.argv.find((arg) => arg.startsWith("--shard="));
+const workersArg = process.argv.find((arg) => arg.startsWith("--workers="));
 const runtimeArg = process.argv.find((arg) => arg.startsWith("--runtime="));
 const sandboxProvider = sandboxArg?.slice("--sandbox=".length) ?? "fake";
 const e2eSpec = specArg?.slice("--spec=".length);
 const e2eGrep = grepArg?.slice("--grep=".length);
 const e2eShard = shardArg?.slice("--shard=".length);
+const e2eWorkers = workersArg?.slice("--workers=".length);
 const agentRuntime = runtimeArg?.slice("--runtime=".length) ?? "scripted";
 
 if (Number(integration) + Number(e2e) !== 1) {
@@ -53,12 +61,21 @@ async function main() {
   const mode = integration ? "integration" : "e2e";
   const reportDir = path.resolve("test-report", mode);
   await mkdir(reportDir, { recursive: true });
-  const container = await new PostgreSqlContainer("postgres:18-alpine").start();
+  const database = await startDatabase();
+  const stopOnSignal = (signal: NodeJS.Signals) => {
+    // Still drop what this run created when it is interrupted.
+    void database
+      .stop()
+      .catch(() => undefined)
+      .finally(() => process.exit(signal === "SIGINT" ? 130 : 143));
+  };
+  process.once("SIGINT", stopOnSignal);
+  process.once("SIGTERM", stopOnSignal);
   try {
-    // Migrations run as the container superuser and the e2e API connects as the
+    // Migrations run as the database owner and the e2e API connects as the
     // runtime login, so row-level security is enforced as in a deployment.
     // Test code that seeds or inspects rows directly connects as the owner.
-    const migrationUrl = container.getConnectionUri();
+    const migrationUrl = database.migrationUrl;
     const runtimeUrl = new URL(migrationUrl);
     runtimeUrl.username = "rakazo_app";
     runtimeUrl.password = "rakazo-test-runtime";
@@ -126,43 +143,21 @@ async function main() {
         "packages/testkit/src/connections.test.ts",
         "packages/testkit/src/bot-secrets.test.ts",
       ];
-      // Each app reconciles all durable work in its database, including intentionally
-      // unfinished fixture runs. Clone the pristine migrated schema so one suite
-      // cannot execute another suite's backlog or wait for it during shutdown.
-      const template = container.getDatabase().replaceAll('"', '""');
-      const databaseCommand = async (statement: string) => {
-        const result = await container.exec([
-          "psql",
-          "-U",
-          container.getUsername(),
-          "-d",
-          "postgres",
-          "-v",
-          "ON_ERROR_STOP=1",
-          "-c",
-          statement,
-        ]);
-        if (result.exitCode !== 0)
-          throw new Error("Isolated integration database operation failed");
-      };
       // Run every suite, then fail with the full list, so one run shows every break.
       const failed: string[] = [];
       // --spec=<part of a path> runs only the matching suites.
       const selected = e2eSpec ? suites.filter((suite) => suite.includes(e2eSpec)) : suites;
       if (!selected.length) throw new Error(`No integration suite matches ${e2eSpec}`);
       for (const [index, suite] of selected.entries()) {
-        const database = `integration_${index}`;
-        await databaseCommand(`CREATE DATABASE "${database}" TEMPLATE "${template}"`);
-        const suiteMigrationUrl = new URL(migrationUrl);
-        suiteMigrationUrl.pathname = `/${database}`;
-        const suiteUrl = new URL(databaseUrl);
-        suiteUrl.pathname = `/${database}`;
+        const clone = await database.clone(index);
+        const suiteMigrationUrl = withDatabase(migrationUrl, clone);
+        const suiteUrl = withDatabase(databaseUrl, clone);
         try {
           await runProcess("pnpm", ["exec", "vitest", "run", suite], {
             ...process.env,
-            DATABASE_URL: suiteUrl.toString(),
-            DATABASE_MIGRATION_URL: suiteMigrationUrl.toString(),
-            REALTIME_DATABASE_URL: suiteUrl.toString(),
+            DATABASE_URL: suiteUrl,
+            DATABASE_MIGRATION_URL: suiteMigrationUrl,
+            REALTIME_DATABASE_URL: suiteUrl,
             OPENROUTER_API_KEY: "",
             MODEL_API_KEY: "",
             // A developer .env may say development, which changes defaults such as encryption.
@@ -171,7 +166,7 @@ async function main() {
         } catch {
           failed.push(suite);
         } finally {
-          await databaseCommand(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
+          await database.dropClone(clone);
         }
       }
       if (failed.length) throw new Error(`Integration suites failed:\n${failed.join("\n")}`);
@@ -276,6 +271,7 @@ async function main() {
             ...(e2eSpec ? [e2eSpec] : []),
             ...(e2eGrep ? ["--grep", e2eGrep] : []),
             ...(e2eShard ? ["--shard", e2eShard] : []),
+            ...(e2eWorkers ? ["--workers", e2eWorkers] : []),
           ],
           {
             ...process.env,
@@ -351,8 +347,79 @@ async function main() {
       }
     }
   } finally {
-    await container.stop().catch(() => undefined);
+    await database.stop().catch(() => undefined);
   }
+}
+
+interface TestDatabase {
+  /** Owner URL of the migrated database. */
+  migrationUrl: string;
+  /** Clones the migrated database for one integration suite and returns the clone's name. */
+  clone(index: number): Promise<string>;
+  dropClone(name: string): Promise<void>;
+  /** Releases the database. A local run drops only what it created; safe to call twice. */
+  stop(): Promise<void>;
+}
+
+// E2E_LOCAL_PG_ADMIN_URL runs against an existing Postgres server without Docker.
+function startDatabase(): Promise<TestDatabase> {
+  const adminUrl = process.env.E2E_LOCAL_PG_ADMIN_URL;
+  return adminUrl ? startLocalDatabase(adminUrl) : startContainerDatabase();
+}
+
+async function startContainerDatabase(): Promise<TestDatabase> {
+  const container = await new PostgreSqlContainer("postgres:18-alpine").start();
+  // Each app reconciles all durable work in its database, including intentionally
+  // unfinished fixture runs. Clone the pristine migrated schema so one suite
+  // cannot execute another suite's backlog or wait for it during shutdown.
+  const template = container.getDatabase().replaceAll('"', '""');
+  const databaseCommand = async (statement: string) => {
+    const result = await container.exec([
+      "psql",
+      "-U",
+      container.getUsername(),
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      statement,
+    ]);
+    if (result.exitCode !== 0) throw new Error("Isolated integration database operation failed");
+  };
+  return {
+    migrationUrl: container.getConnectionUri(),
+    clone: async (index) => {
+      const name = `integration_${index}`;
+      await databaseCommand(`CREATE DATABASE "${name}" TEMPLATE "${template}"`);
+      return name;
+    },
+    dropClone: (name) => databaseCommand(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`),
+    stop: () => container.stop().then(() => undefined),
+  };
+}
+
+async function startLocalDatabase(adminUrl: string): Promise<TestDatabase> {
+  const name = localDatabaseName(
+    process.env.E2E_LOCAL_DB_PREFIX || DEFAULT_LOCAL_DB_PREFIX,
+    new Date(),
+    process.pid,
+  );
+  const databases = new LocalDatabases((statement) =>
+    runProcess("psql", [adminUrl, "-v", "ON_ERROR_STOP=1", "-q", "-c", statement], process.env),
+  );
+  await databases.create(name);
+  console.log(`Local e2e database: ${name}`);
+  return {
+    migrationUrl: withDatabase(adminUrl, name),
+    clone: async (index) => {
+      const clone = `${name}_s${index}`;
+      await databases.create(clone, name);
+      return clone;
+    },
+    dropClone: (clone) => databases.drop(clone),
+    stop: () => databases.dropAll(),
+  };
 }
 
 type AppHandles = Awaited<ReturnType<typeof createApp>>;

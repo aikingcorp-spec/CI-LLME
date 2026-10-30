@@ -462,8 +462,13 @@ test("sign-in, spawn, and stop work in the shell", async ({ page }, testInfo) =>
   });
   await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
 
+  // The open shell keeps polling spaces.list (use-space-roster.ts). Once the cookies are gone
+  // that call answers 401 UNAUTHORIZED and redirectOnUnauthorized (lib/rpc.ts) runs
+  // window.location.assign("/sign-in?next=..."), so a test-issued page.goto("/sign-in") races the
+  // app's own navigation and intermittently fails with net::ERR_ABORTED. Do not navigate: wait for
+  // the app's own redirect (at most one 3s poll away), which is the behavior under test.
   await page.context().clearCookies();
-  await page.goto("/sign-in");
+  await page.waitForURL(/\/sign-in(\?|$)/, { timeout: 20_000 });
   await signInWithEmailCode(page, email);
   await page.waitForURL(/\/app/, { timeout: 20_000 });
   await expect(sidebarBotButton(page, /^Chief/)).toBeVisible();

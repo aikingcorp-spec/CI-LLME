@@ -191,8 +191,9 @@ test("messaging settings show linked chat apps, channels, connections, and team 
   await captureScreenshot(page, testInfo, "messaging-team-conversation-settings");
   await settings.getByTestId("settings-nav-general").click();
   await settings.getByTestId("ui-locale-select").click();
-  await page.getByRole("option", { name: "한국어", exact: true }).click();
-  await expect(settings.getByTestId("settings-nav-messaging")).toHaveText("메시징");
+  // The picker offers only Vietnamese and English; the harness pins English.
+  await page.getByRole("option", { name: "Tiếng Việt", exact: true }).click();
+  await expect(settings.getByTestId("settings-nav-messaging")).toHaveText("Nhắn tin");
   await settings.getByTestId("settings-nav-messaging").click();
 
   await expect(messagingSettings).toBeVisible();
@@ -200,14 +201,14 @@ test("messaging settings show linked chat apps, channels, connections, and team 
   await expect(messagingSettings.getByText("424242, Lead")).toBeVisible();
   await expect(messagingSettings.getByText("Family")).toBeVisible();
   await expect(messagingSettings.getByText("Dana's Assistant")).toBeVisible();
-  // Scoped to the panel: the settings nav has its own 승인 (Approvals).
-  await expect(messagingSettings.getByRole("button", { name: "승인" })).toHaveCount(2);
+  // Scoped to the panel: the settings nav has its own "Phê duyệt" (Approvals).
+  await expect(messagingSettings.getByRole("button", { name: "Phê duyệt" })).toHaveCount(2);
 
-  await messagingSettings.getByRole("button", { name: "채팅 앱 연결" }).click();
+  await messagingSettings.getByRole("button", { name: "Kết nối ứng dụng trò chuyện" }).click();
   await page.getByRole("menuitem", { name: "iMessage", exact: true }).click();
   await expect(page.getByTestId("messaging-link-code")).toContainText("ABCD-2345");
   await expect(page.getByTestId("messaging-link-code")).toContainText("+15550001111");
-  await captureScreenshot(page, testInfo, "messaging-settings-ko");
+  await captureScreenshot(page, testInfo, "messaging-settings-vi");
 });
 
 test("Slack setup has one Connect action that opens workspace authorization", async ({
