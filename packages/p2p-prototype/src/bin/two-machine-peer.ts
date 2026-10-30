@@ -54,6 +54,7 @@ if (process.env.TURN_CREDS_FILE) {
     }),
   );
 }
+if (process.env.STUN_URL) iceServers.push(process.env.STUN_URL);
 const iceTransportPolicy = process.env.ICE_TRANSPORT_POLICY as "all" | "relay" | undefined;
 // PEER_IMPL=werift swaps in the test-only stack that can reach TURN over TCP/TLS (libjuice cannot).
 let weriftCurrent: WeriftPeerConnection | undefined;

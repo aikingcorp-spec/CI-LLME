@@ -47,14 +47,24 @@ interface PeerProc {
 const NETNS_MODE = process.env.P2P_NETNS === "1";
 const TOPOLOGY_SCRIPT = fileURLToPath(new URL("../scripts/netns-two-machines.sh", import.meta.url));
 const FORWARDER_SCRIPT = fileURLToPath(new URL("../scripts/turn-forwarder.py", import.meta.url));
+const STUN_SCRIPT = fileURLToPath(new URL("../scripts/stun-server.py", import.meta.url));
+const NAT_PROBE_SCRIPT = fileURLToPath(new URL("../scripts/nat-probe.py", import.meta.url));
 const PEER_SCRIPT = fileURLToPath(new URL("./bin/two-machine-peer.ts", import.meta.url));
 const TSX_LOADER = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
-const NAMESPACE: Record<Machine, string> = { A: "p2pA", B: "p2pB" };
-const GATEWAY_HOST: Record<Machine, string> = { A: "10.77.1.1", B: "10.77.2.1" };
+const STUN_PORTS = [3478, 3480];
 const ROUTED = process.env.P2P_TOPOLOGY === "routed";
-// NAT topology puts both peers on 10.77.0.x behind their own routers; the routed (no-NAT) topology
-// puts A on 10.77.10.x and B on 10.77.20.x with one router between them.
-const PEER_ADDRESS = ROUTED ? /10\.77\.(10|20)\./ : /10\.77\.0\./;
+// The topologies use disjoint namespace names and subnets (see the script), so one can run while
+// another worktree uses the other. NAT: peers on 10.78.0.x behind their own routers. Routed (no
+// NAT): A on 10.77.10.x and B on 10.77.20.x with one router between them.
+const NAMESPACE: Record<Machine, string> = ROUTED
+  ? { A: "p2pA", B: "p2pB" }
+  : { A: "pnA", B: "pnB" };
+const GATEWAY_HOST: Record<Machine, string> = ROUTED
+  ? { A: "10.77.1.1", B: "10.77.2.1" }
+  : { A: "10.78.1.1", B: "10.78.2.1" };
+const PUBLIC_NAMESPACE = "pnPub";
+const STUN_HOST = "10.78.3.10";
+const PEER_ADDRESS = ROUTED ? /10\.77\.(10|20)\./ : /10\.78\.0\./;
 // Optional TURN relay without NAT: P2P_NODE_TURN=<path to node-turn package>. The relay runs in the
 // root namespace and both peers are forced to iceTransportPolicy=relay.
 const NODE_TURN = process.env.P2P_NODE_TURN;
@@ -66,7 +76,6 @@ const SESSION_TOKEN = "token";
 // P2P_TURN_FORWARD=1 points them at a root-namespace L4 forwarder (no NAT on the box).
 const TURN_CREDS_FILE = process.env.P2P_TURN_CREDS_FILE;
 const TURN_PUBLIC_IP = process.env.P2P_TURN_PUBLIC_IP;
-const EXPECT_CANDIDATE_TYPE = process.env.P2P_EXPECT_CANDIDATE_TYPE;
 // TURN over TCP/TLS (stage 4): P2P_PEER_IMPL=werift runs the peers on the test-only werift stack,
 // P2P_EXPECT_TURN_TRANSPORT=tcp|tls asserts the client-to-TURN transport of the selected relay
 // candidate and, through the forwarder's wire counters, that nothing went to the TURN port over UDP.
@@ -74,11 +83,35 @@ const EXPECT_CANDIDATE_TYPE = process.env.P2P_EXPECT_CANDIDATE_TYPE;
 const PEER_IMPL = process.env.P2P_PEER_IMPL;
 const EXPECT_TURN_TRANSPORT = process.env.P2P_EXPECT_TURN_TRANSPORT;
 const TURN_PORT_FOR: Record<string, number> = { tcp: 3479, tls: 5350 };
+// Comma list of acceptable candidate types for both ends of the selected pair, e.g. "srflx,relay".
+const EXPECT_CANDIDATE_TYPES = process.env.P2P_EXPECT_CANDIDATE_TYPE?.split(",").filter(Boolean);
+// Real kernel NAT (topology nat): cone keeps the source port, symmetric picks a port per 5-tuple.
+const NAT_TYPE = process.env.P2P_NAT_TYPE === "symmetric" ? "symmetric" : "cone";
+const NAT = NETNS_MODE && !ROUTED;
+const STUN_URL =
+  process.env.P2P_STUN_URL ?? (NAT ? `stun:${STUN_HOST}:${STUN_PORTS[0]}` : undefined);
+const candidateType = (candidate: string): string | undefined => /\btyp (\w+)/.exec(candidate)?.[1];
+
+// Runs a command inside a namespace as the invoking user, so killing it needs no root.
+function inNamespace(namespace: string, command: string[]): string[] {
+  return [
+    "-n",
+    "ip",
+    "netns",
+    "exec",
+    namespace,
+    "sudo",
+    "-n",
+    "-u",
+    userInfo().username,
+    ...command,
+  ];
+}
 
 function netnsAvailable(): boolean {
   try {
     execFileSync("sudo", ["-n", "ip", "netns", "list"], { stdio: "ignore" });
-    if (!ROUTED) execFileSync("sudo", ["-n", "iptables", "-V"], { stdio: "ignore" });
+    if (!ROUTED) execFileSync(TOPOLOGY_SCRIPT, ["check"], { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -91,6 +124,7 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
     let gateway: Gateway;
     let turn: { stop(): void } | undefined;
     let forwarderStats: (() => Promise<Record<string, ForwarderStats>>) | undefined;
+    let stun: { stop(): void } | undefined;
     let gatewayPort: string;
     let workDir: string;
     let authServer: Awaited<ReturnType<typeof startFakeAuthServer>>;
@@ -100,6 +134,25 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
     beforeAll(async () => {
       vi.spyOn(console, "log").mockImplementation(() => {});
       if (NETNS_MODE) execFileSync(TOPOLOGY_SCRIPT, ["setup"]);
+      if (NAT) {
+        const server = spawn(
+          "sudo",
+          inNamespace(PUBLIC_NAMESPACE, ["python3", STUN_SCRIPT, STUN_HOST, STUN_PORTS.join(",")]),
+        );
+        const pid = await new Promise<number>((resolve, reject) => {
+          server.stdout.once("data", (chunk: Buffer) =>
+            resolve(Number(/stun ready (\d+)/.exec(String(chunk))?.[1])),
+          );
+          server.once("exit", (code) => reject(new Error(`stun server exited ${code}`)));
+        });
+        stun = {
+          stop: () => {
+            try {
+              process.kill(pid, "SIGTERM");
+            } catch {}
+          },
+        };
+      }
       if (TURN_CREDS_FILE && process.env.P2P_TURN_FORWARD === "1") {
         const fwd = spawn("python3", [
           FORWARDER_SCRIPT,
@@ -154,6 +207,29 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
       if (logDir) mkdirSync(logDir, { recursive: true });
     });
 
+    it.skipIf(!NAT)("maps both peers through the configured kernel NAT", () => {
+      for (const machine of ["A", "B"] as const) {
+        const out = execFileSync(
+          "sudo",
+          inNamespace(NAMESPACE[machine], [
+            "python3",
+            NAT_PROBE_SCRIPT,
+            STUN_HOST,
+            ...STUN_PORTS.map(String),
+          ]),
+          { encoding: "utf8" },
+        );
+        if (logDir) appendFileSync(join(logDir, `nat-probe-${machine}.json`), out);
+        const probe = JSON.parse(out) as { mapped: Record<string, string>; mapping: string };
+        expect(probe.mapping).toBe(
+          NAT_TYPE === "cone" ? "endpoint-independent" : "endpoint-dependent",
+        );
+        const publicIp = machine === "A" ? "10.78.3.11" : "10.78.3.12";
+        for (const mapped of Object.values(probe.mapped))
+          expect(mapped).toMatch(new RegExp(`^${publicIp}:`));
+      }
+    });
+
     afterEach(async () => {
       for (const proc of procs.values()) {
         if (proc.exitCode() === undefined) proc.signal("SIGKILL");
@@ -164,6 +240,7 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
 
     afterAll(async () => {
       turn?.stop();
+      stun?.stop();
       await gateway.close();
       await authServer.close();
       rmSync(workDir, { recursive: true, force: true });
@@ -197,6 +274,7 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
         vars.ICE_SERVERS = `turn:${TURN_USER}:${TURN_PASS}@${host}:${TURN_PORT}?transport=udp`;
         vars.ICE_TRANSPORT_POLICY = "relay";
       }
+      if (STUN_URL) vars.STUN_URL = STUN_URL;
       if (TURN_CREDS_FILE) {
         vars.TURN_CREDS_FILE = TURN_CREDS_FILE;
         if (process.env.P2P_TURN_FORWARD === "1") vars.TURN_HOST_OVERRIDE = GATEWAY_HOST[machine];
@@ -210,21 +288,12 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
       const child = NETNS_MODE
         ? spawn(
             "sudo",
-            [
-              "-n",
-              "ip",
-              "netns",
-              "exec",
-              NAMESPACE[machine],
-              "sudo",
-              "-n",
-              "-u",
-              userInfo().username,
+            inNamespace(NAMESPACE[machine], [
               "env",
               ...Object.entries(vars).map(([k, v]) => `${k}=${v}`),
               process.execPath,
               ...nodeArgs,
-            ],
+            ]),
             { stdio: ["ignore", "pipe", "pipe"] },
           )
         : spawn(process.execPath, nodeArgs, {
@@ -339,13 +408,20 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
       expect(pair).toBeTruthy();
       if (!pair) return;
       if (!NETNS_MODE && !NODE_TURN) return;
-      const expectedType = EXPECT_CANDIDATE_TYPE ?? (NODE_TURN ? "relay" : undefined);
-      if (expectedType) {
-        expect(pair.local).toContain(`typ ${expectedType}`);
-        expect(pair.remote).toContain(`typ ${expectedType}`);
-        if (expectedType === "relay" && TURN_PUBLIC_IP) {
-          expect(pair.local).toContain(` ${TURN_PUBLIC_IP} `);
-          expect(pair.remote).toContain(` ${TURN_PUBLIC_IP} `);
+      const sides = [pair.local, pair.remote];
+      if (NAT) {
+        const types = sides.map(candidateType);
+        expect(types.every((type) => type === "host")).toBe(false);
+      }
+      const expectedTypes =
+        EXPECT_CANDIDATE_TYPES ??
+        (NODE_TURN ? ["relay"] : NAT ? ["srflx", "prflx", "relay"] : undefined);
+      if (expectedTypes) {
+        for (const side of sides) {
+          expect(expectedTypes).toContain(candidateType(side));
+          if (candidateType(side) === "relay" && TURN_PUBLIC_IP) {
+            expect(side).toContain(` ${TURN_PUBLIC_IP} `);
+          }
         }
       } else {
         expect(pair.local).toMatch(PEER_ADDRESS);
