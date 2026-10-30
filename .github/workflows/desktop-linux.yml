@@ -62,10 +62,17 @@ jobs:
             test -x "$resources/app.asar.unpacked/node_modules/@embedded-postgres/linux-x64/native/bin/$binary"
           done
           test -f "$resources/app.asar.unpacked/node_modules/node-datachannel/build/Release/node_datachannel.node"
+          # The P2P bundles load from inside the archive; the native addon stays unpacked.
+          asar_files="$(npx --yes @electron/asar@3.4.1 list "$resources/app.asar")"
+          for file in /dist/p2p-agent.js /dist/p2p-pairing.js; do
+            grep -Fxq "$file" <<< "$asar_files" || { echo "Missing in app.asar: $file"; exit 1; }
+          done
+          test -n "$(find "$resources/app.asar.unpacked/node_modules/node-datachannel/build/Release" -maxdepth 1 -name '*.node' -print -quit)"
       - name: Smoke test the AppImage
         timeout-minutes: 4
         # Hard cap on the whole step so a hang cannot burn the job.
-        shell: timeout --kill-after=10 180 bash -eo pipefail {0}
+        # Outer cap sits above the app's own 180s so its logs are written before the kill.
+        shell: timeout --kill-after=10 240 bash -eo pipefail {0}
         run: |
           set -euo pipefail
           mkdir -p "$SMOKE_DIR"

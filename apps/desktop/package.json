@@ -11,8 +11,8 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "pnpm build && electron .",
-    "build": "pnpm check && node scripts/build.mjs && node scripts/copy-static.mjs",
-    "build:native": "pnpm check && node scripts/build.mjs --native && node scripts/copy-static.mjs",
+    "build": "pnpm check && node scripts/build.mjs && node scripts/build-p2p-agent.mjs dist && node scripts/copy-static.mjs",
+    "build:native": "pnpm check && node scripts/build.mjs --native && node scripts/build-p2p-agent.mjs dist && node scripts/copy-static.mjs",
     "pack": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --mac --win --linux",
     "pack:win": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --win --x64",
     "pack:linux": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --linux --x64",
@@ -25,10 +25,10 @@
   "dependencies": {
     "@rakazo/contracts": "workspace:*",
     "@rakazo/logging": "workspace:*",
-    "@rakazo/p2p-prototype": "workspace:*",
     "@sentry/electron": "8.3.0",
     "electron-updater": "6.8.11",
-    "koffi": "3.3.4"
+    "koffi": "3.3.4",
+    "node-datachannel": "0.32.0"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

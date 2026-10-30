@@ -56,6 +56,16 @@ jobs:
       - name: Check packaged server resources
         run: |
           $resources = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/out/win-unpacked/resources'
+          # The P2P bundles load from inside the archive; the native addon stays unpacked.
+          $archive = Join-Path $resources 'app.asar'
+          $asarFiles = @(npx --yes @electron/asar@3.4.1 list $archive) -replace '\\', '/'
+          if ($LASTEXITCODE -ne 0) { throw 'Listing app.asar failed' }
+          foreach ($file in @('/dist/p2p-agent.js', '/dist/p2p-pairing.js')) {
+            if ($asarFiles -notcontains $file) { throw "Missing in app.asar: $file" }
+          }
+          if (@(Get-ChildItem (Join-Path $modules 'node-datachannel/build/Release') -Filter '*.node' -File).Count -eq 0) {
+            throw 'Missing unpacked node-datachannel .node addon'
+          }
           foreach ($file in @('server/api/dist/index.js', 'server/worker/dist/index.js', 'server/db/dist/database-access.js', 'server/db/package.json', 'server/adapters/package.json', 'web/index.html')) {
             if (-not (Test-Path -LiteralPath (Join-Path $resources $file) -PathType Leaf)) { throw "Missing packaged resource: $file" }
           }

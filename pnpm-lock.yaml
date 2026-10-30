@@ -100,9 +100,6 @@ importers:
       '@rakazo/logging':
         specifier: workspace:*
         version: link:../../packages/logging
-      '@rakazo/p2p-prototype':
-        specifier: workspace:*
-        version: link:../../packages/p2p-prototype
       '@sentry/electron':
         specifier: 8.3.0
         version: 8.3.0
@@ -112,6 +109,9 @@ importers:
       koffi:
         specifier: 3.3.4
         version: 3.3.4
+      node-datachannel:
+        specifier: 0.32.0
+        version: 0.32.0
     optionalDependencies:
       '@embedded-postgres/linux-x64':
         specifier: 16.14.0-beta.17
