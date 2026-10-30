@@ -23,6 +23,7 @@ nav.top .w{display:flex;align-items:center;gap:24px;height:60px}
 .lang{border:1px solid #ccc;border-radius:8px;padding:6px 10px;background:none;font:inherit;font-size:13px;cursor:pointer}
 nav.top .btn{padding:8px 14px;font-size:14px}
 .shot{border:1px solid #ddd;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 1px 2px #0001}
+.shot img{height:auto}
 .cap{font-size:12px;color:#777;margin-top:8px}
 #hero{border-top:0;padding-top:72px}#hero .shot{margin-top:48px}
 .hero-m{display:none}

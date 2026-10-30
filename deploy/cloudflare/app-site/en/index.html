@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in to VNBot</title>
+<meta name="description" content="Sign in to the VNBot web app at app.vnbot.run. Coming soon.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://app.vnbot.run/en/">
+<link rel="alternate" hreflang="vi" href="https://app.vnbot.run/"><link rel="alternate" hreflang="en" href="https://app.vnbot.run/en/">
+<link rel="icon" type="image/x-icon" href="/landing/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/landing/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/landing/favicon-16.png"><link rel="apple-touch-icon" href="/landing/apple-touch-icon.png">
+<link rel="stylesheet" href="/landing/styles.css">
+<style>
+nav.top a.lang{margin-left:auto;color:inherit;text-decoration:none}
+.signin{max-width:440px;margin:0 auto;padding:72px 24px 96px;text-align:center}
+.signin .badge{display:inline-block;margin-bottom:16px;font-weight:600;color:#1a1a1a;border-color:#1a1a1a}
+.signin h1{font-size:clamp(28px,5vw,40px);margin-bottom:24px}
+.signin form{display:flex;flex-direction:column;gap:12px;text-align:left;margin-bottom:20px}
+.signin label{font-size:14px;font-weight:600}
+.signin input{width:100%;padding:12px 14px;border:1px solid #ccc;border-radius:10px;font:inherit;font-size:15px;background:#f1f1ee;color:#777}
+.signin input:disabled,.signin .btn:disabled{cursor:not-allowed}
+.signin .btn:disabled{justify-content:center;opacity:.55}
+.signin .notice{background:#fff;border:1px solid #ececea;border-radius:12px;padding:16px 18px;font-size:14px;color:#444;text-align:left;margin:0 0 24px}
+.signin .links2{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 20px}
+</style>
+</head>
+<body>
+<nav class="top" aria-label="Main navigation"><div class="w">
+ <a class="brand" href="https://vnbot.run/en/" aria-label="VNbot, back to home"><img src="/landing/img/non.svg" alt=""><img class="wmimg" src="/landing/img/vnbot-wordmark-v4-light.svg" alt="VNbot"></a>
+ <a class="lang" href="/" hreflang="vi" lang="vi" aria-label="Switch to Vietnamese">VI</a>
+</div></nav>
+<main class="signin">
+ <span class="badge">Coming soon</span>
+ <h1>Sign in to VNBot</h1>
+ <form aria-label="Sign in with email">
+  <label for="email">Email</label>
+  <input id="email" type="email" name="email" placeholder="you@company.com" autocomplete="email" disabled>
+  <button class="btn p" type="button" disabled>Send sign-in code</button>
+  <p class="micro">You can add a passkey after signing in.</p>
+ </form>
+ <p class="notice" role="note">The app.vnbot.run web app is being finished. The web client will connect to your own node over P2P; your data does not live on VNBot servers. Beta, approved emails only.</p>
+ <div class="links2">
+  <a class="tlink" href="https://aikingx.com" target="_blank" rel="noopener" aria-label="Contact us for an invite (opens in a new tab)">Contact us for an invite</a>
+  <a class="tlink" href="https://vnbot.run/en/">Back to vnbot.run</a>
+ </div>
+</main>
+</body>
+</html>

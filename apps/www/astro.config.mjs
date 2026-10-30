@@ -1,4 +1,3 @@
-import sitemap from "@astrojs/sitemap";
 import { defineConfig } from "astro/config";
 import { resolveWwwPort } from "./www-port.mjs";
 
@@ -14,14 +13,8 @@ export default defineConfig({
       prefixDefaultLocale: false,
     },
   },
-  integrations: [
-    sitemap({
-      i18n: {
-        defaultLocale: "vi",
-        locales: { vi: "vi-VN", en: "en-US" },
-      },
-    }),
-  ],
+  // The static public/sitemap.xml is the sitemap.
+  integrations: [],
   server: {
     host: "127.0.0.1",
     port: wwwPort,

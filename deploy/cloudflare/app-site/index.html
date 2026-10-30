@@ -6,9 +6,11 @@
 <meta name="description" content="Đăng nhập web app VNBot tại app.vnbot.run. Sắp có.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://app.vnbot.run/">
+<link rel="alternate" hreflang="vi" href="https://app.vnbot.run/"><link rel="alternate" hreflang="en" href="https://app.vnbot.run/en/">
 <link rel="icon" type="image/x-icon" href="/landing/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/landing/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/landing/favicon-16.png"><link rel="apple-touch-icon" href="/landing/apple-touch-icon.png">
 <link rel="stylesheet" href="/landing/styles.css">
 <style>
+nav.top a.lang{margin-left:auto;color:inherit;text-decoration:none}
 .signin{max-width:440px;margin:0 auto;padding:72px 24px 96px;text-align:center}
 .signin .badge{display:inline-block;margin-bottom:16px;font-weight:600;color:#1a1a1a;border-color:#1a1a1a}
 .signin h1{font-size:clamp(28px,5vw,40px);margin-bottom:24px}
@@ -23,7 +25,8 @@
 </head>
 <body>
 <nav class="top" aria-label="Điều hướng chính"><div class="w">
- <a class="brand" href="https://vnbot.run" aria-label="VNbot, về trang chủ"><img src="/landing/img/non.webp" alt=""><img class="wmimg" src="/landing/img/vnbot-wordmark-v4-light.svg" alt="VNbot"></a>
+ <a class="brand" href="https://vnbot.run" aria-label="VNbot, về trang chủ"><img src="/landing/img/non.svg" alt=""><img class="wmimg" src="/landing/img/vnbot-wordmark-v4-light.svg" alt="VNbot"></a>
+ <a class="lang" href="/en/" hreflang="en" lang="en" aria-label="Chuyển sang tiếng Anh">EN</a>
 </div></nav>
 <main class="signin">
  <span class="badge">Sắp có</span>
@@ -32,10 +35,11 @@
   <label for="email">Email</label>
   <input id="email" type="email" name="email" placeholder="ban@congty.vn" autocomplete="email" disabled>
   <button class="btn p" type="button" disabled>Gửi mã đăng nhập</button>
+  <p class="micro">Có thể dùng passkey sau khi đăng nhập.</p>
  </form>
  <p class="notice" role="note">Web app app.vnbot.run đang được hoàn thiện. Web client sẽ nối tới node của bạn qua P2P; dữ liệu không nằm trên máy chủ VNBot. Đang beta, chỉ email được duyệt.</p>
  <div class="links2">
-  <a class="tlink" href="https://vnbot.run/#faq">Liên hệ để nhận lời mời</a>
+  <a class="tlink" href="https://aikingx.com" target="_blank" rel="noopener" aria-label="Liên hệ để nhận lời mời (mở tab mới)">Liên hệ để nhận lời mời</a>
   <a class="tlink" href="https://vnbot.run">Về trang chủ vnbot.run</a>
  </div>
 </main>
