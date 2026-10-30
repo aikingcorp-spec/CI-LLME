@@ -20,6 +20,7 @@ apps/**/data
 .DS_Store
 apps/web/dist
 apps/desktop/dist
+apps/desktop/native
 apps/desktop/out
 apps/desktop/e2e/screenshots
 apps/mobile/.expo

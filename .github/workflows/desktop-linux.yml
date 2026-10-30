@@ -1,0 +1,104 @@
+name: desktop-linux
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "packages/p2p-prototype/**"
+      - ".github/workflows/desktop-linux.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-linux-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-and-smoke:
+    name: Package and smoke test the Linux installers
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Installers are unsigned: never look for a signing identity.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      RAKAZO_ALLOW_DEV_SECRETS: "1"
+      SMOKE_DIR: ${{ github.workspace }}/smoke-artifacts
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate the database client
+        run: pnpm db:generate
+      - name: Unit tests
+        run: pnpm --filter @rakazo/desktop test
+      - name: Package AppImage and deb
+        run: pnpm --filter @rakazo/desktop run pack:linux
+      - name: Smoke test the AppImage
+        # The app starts its own stack (no Docker), writes the web URL under its user data
+        # directory, and must answer /health within two minutes.
+        run: |
+          set -euo pipefail
+          mkdir -p "$SMOKE_DIR"
+          appimage="$(ls apps/desktop/out/*.AppImage | head -n 1)"
+          chmod +x "$appimage"
+          cat > "$RUNNER_TEMP/smoke.sh" <<'SCRIPT'
+          set -uo pipefail
+          url_file="$HOME/.config/VNBot/stack/.desktop-web-url"
+          RAKAZO_DESKTOP_SMOKE=1 "$APPIMAGE" --appimage-extract-and-run --no-sandbox \
+            > "$SMOKE_DIR/app.log" 2>&1 &
+          app_pid=$!
+          status=1
+          deadline=$((SECONDS + 120))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            if [ -s "$url_file" ]; then
+              url="$(tr -d '\r\n' < "$url_file")"
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$url/health" || true)"
+              if [ "$code" = "200" ]; then
+                echo "health ok at $url"
+                status=0
+                break
+              fi
+            fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              echo "app exited before /health answered"
+              break
+            fi
+            sleep 2
+          done
+          [ "$status" = "0" ] || echo "no 200 from /health within 120s"
+          if command -v import >/dev/null 2>&1; then
+            import -window root "$SMOKE_DIR/screen.png" || true
+          fi
+          kill "$app_pid" 2>/dev/null || true
+          exit "$status"
+          SCRIPT
+          APPIMAGE="$PWD/$appimage" xvfb-run -a -s "-screen 0 1280x800x24" bash "$RUNNER_TEMP/smoke.sh"
+      - name: Collect logs
+        if: always()
+        run: |
+          mkdir -p "$SMOKE_DIR/userdata"
+          # Only log files and the web URL marker: the database directory and keys stay on the runner.
+          if [ -d "$HOME/.config/VNBot" ]; then
+            (cd "$HOME/.config/VNBot" && find . -type f \( -name '*.log' -o -name '.desktop-web-url' \) \
+              -exec cp --parents {} "$SMOKE_DIR/userdata/" \;) || true
+          fi
+      - name: Retain installers and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: |
+            apps/desktop/out/*.AppImage
+            apps/desktop/out/*.deb
+            smoke-artifacts/**
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 7

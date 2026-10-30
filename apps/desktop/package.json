@@ -12,9 +12,10 @@
   "scripts": {
     "dev": "pnpm build && electron .",
     "build": "pnpm check && node scripts/build.mjs && node scripts/copy-static.mjs",
+    "build:native": "pnpm check && node scripts/build.mjs --native && node scripts/copy-static.mjs",
     "pack": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --mac --win --linux",
-    "pack:win": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --win --x64",
-    "pack:linux": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --linux --x64",
+    "pack:win": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --win --x64",
+    "pack:linux": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --linux --x64",
     "pack:dir": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --dir",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. apps/desktop/src",
@@ -24,9 +25,15 @@
   "dependencies": {
     "@rakazo/contracts": "workspace:*",
     "@rakazo/logging": "workspace:*",
+    "@rakazo/p2p-prototype": "workspace:*",
     "@sentry/electron": "8.3.0",
     "electron-updater": "6.8.11",
+    "embedded-postgres": "16.9.0-beta.15",
     "koffi": "3.3.4"
+  },
+  "optionalDependencies": {
+    "@embedded-postgres/linux-x64": "16.9.0-beta.15",
+    "@embedded-postgres/windows-x64": "16.9.0-beta.15"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
@@ -49,6 +56,11 @@
       "!**/*.map",
       "package.json"
     ],
+    "asarUnpack": [
+      "**/node_modules/node-datachannel/**",
+      "**/node_modules/@embedded-postgres/**",
+      "**/node_modules/embedded-postgres/**"
+    ],
     "extraResources": [
       {
         "from": "../web/dist",
@@ -57,14 +69,6 @@
           "**/*",
           "!**/*.map"
         ]
-      },
-      {
-        "from": "../../infra/compose/docker-compose.images.yml",
-        "to": "stack/docker-compose.images.yml"
-      },
-      {
-        "from": "../../infra/compose/.env.images.example",
-        "to": "stack/.env.images.example"
       }
     ],
     "extraMetadata": {
@@ -84,7 +88,17 @@
         "dmg",
         "zip"
       ],
-      "notarize": true
+      "notarize": true,
+      "extraResources": [
+        {
+          "from": "../../infra/compose/docker-compose.images.yml",
+          "to": "stack/docker-compose.images.yml"
+        },
+        {
+          "from": "../../infra/compose/.env.images.example",
+          "to": "stack/.env.images.example"
+        }
+      ]
     },
     "dmg": {
       "title": "${productName}",
@@ -119,11 +133,39 @@
           "arch": "x64"
         }
       ],
-      "verifyUpdateCodeSignature": true
+      "verifyUpdateCodeSignature": true,
+      "extraResources": [
+        {
+          "from": "native/server",
+          "to": "server"
+        },
+        {
+          "from": "../../packages/db/prisma/migrations",
+          "to": "server/prisma/migrations"
+        },
+        {
+          "from": "../../packages/db/prisma/schema.prisma",
+          "to": "server/prisma/schema.prisma"
+        }
+      ]
     },
     "linux": {
       "executableName": "vnbot",
       "icon": "assets/icon.png",
+      "extraResources": [
+        {
+          "from": "native/server",
+          "to": "server"
+        },
+        {
+          "from": "../../packages/db/prisma/migrations",
+          "to": "server/prisma/migrations"
+        },
+        {
+          "from": "../../packages/db/prisma/schema.prisma",
+          "to": "server/prisma/schema.prisma"
+        }
+      ],
       "maintainer": "VNBot <hello@vnbot.run>",
       "vendor": "VNBot",
       "target": [
