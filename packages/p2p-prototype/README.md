@@ -141,3 +141,18 @@ The node agent receives authenticated signaling on its existing outbound gateway
 pnpm exec vitest run --root ../.. packages/p2p-prototype/src/two-machine.netns.test.ts
 P2P_NETNS=1 pnpm exec vitest run --root ../.. packages/p2p-prototype/src/two-machine.netns.test.ts
 ```
+
+## TURN over TCP and TLS
+
+node-datachannel 0.32 (libjuice) accepts `relayType: "TurnTcp" | "TurnTls"` but only gathers UDP relay candidates; the binary logs `TURN transports TCP and TLS are not supported with libjuice` and skips the server. To prove the data channel through a coturn over `turn:...?transport=tcp` and `turns:` (self-signed certificate), the test path swaps in [werift](https://github.com/shinyoshiaki/werift-webrtc) (pure TypeScript, dev dependency). `connectPeer` takes an optional `createPeerConnection`; `src/werift-peer-connection.ts` adapts werift to the callback API it drives. Production code keeps node-datachannel and does not import werift.
+
+`PEER_IMPL=werift` makes `two-machine-peer.ts` use it, and `selected_pair` / `channel_open` events then carry `turnTransport` (`udp`, `tcp` or `tls`, read from werift's TURN client transport object behind the selected local candidate). The netns test adds `P2P_PEER_IMPL=werift`, `P2P_EXPECT_TURN_TRANSPORT=tcp|tls` and `P2P_TURN_TLS_CA_FILE=<PEM of the TURNS certificate>`, which pins that certificate as the only trust anchor (hostname is not checked because the peers reach the server through the forwarder). `scripts/turn-forwarder.py` prints per-port wire counters on `SIGUSR1`; with `P2P_EXPECT_TURN_TRANSPORT` set, the test also asserts that only the expected TCP port saw connections, that no UDP datagram went toward either TURN port, and that every TURN connection was closed afterwards (closing the connection frees the allocation).
+
+```sh
+P2P_NETNS=1 P2P_TOPOLOGY=routed P2P_TURN_CREDS_FILE=/path/to/creds P2P_TURN_FORWARD=1 P2P_TURN_PUBLIC_IP=<turn ip> \
+  P2P_TURN_TRANSPORTS=TurnTcp P2P_ICE_POLICY=relay P2P_EXPECT_CANDIDATE_TYPE=relay \
+  P2P_PEER_IMPL=werift P2P_EXPECT_TURN_TRANSPORT=tcp \
+  pnpm exec vitest run --root ../.. packages/p2p-prototype/src/two-machine.netns.test.ts
+```
+
+For TLS use `P2P_TURN_TRANSPORTS=TurnTls P2P_EXPECT_TURN_TRANSPORT=tls P2P_TURN_TLS_CA_FILE=...`. Caveat: werift falls back from a failed UDP allocation to TCP on its own, so always give an explicit `tcp`/`tls` transport and check `turnTransport`.

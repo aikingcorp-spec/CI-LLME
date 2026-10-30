@@ -6,8 +6,9 @@ import { openSession } from "../gateway-client.js";
 import { readKeyFile } from "../key-file.js";
 import { nodeAuthorization } from "../pairing.js";
 import { readTurnCreds } from "../turn-creds.js";
-import type { CloseHandshakeEvent, DataPeer } from "../webrtc-peer.js";
+import type { CloseHandshakeEvent, DataPeer, PeerOptions } from "../webrtc-peer.js";
 import { connectPeer } from "../webrtc-peer.js";
+import type { TurnClientTransport, WeriftPeerConnection } from "../werift-peer-connection.js";
 
 type Role = "node" | "client";
 type Frame = { t: "req"; id: string; method: string } | { t: "res"; id: string; result: unknown };
@@ -54,6 +55,21 @@ if (process.env.TURN_CREDS_FILE) {
   );
 }
 const iceTransportPolicy = process.env.ICE_TRANSPORT_POLICY as "all" | "relay" | undefined;
+// PEER_IMPL=werift swaps in the test-only stack that can reach TURN over TCP/TLS (libjuice cannot).
+let weriftCurrent: WeriftPeerConnection | undefined;
+let createPeerConnection: PeerOptions["createPeerConnection"];
+if (process.env.PEER_IMPL === "werift") {
+  const { WeriftPeerConnection, turnTlsOptionsFromEnv } = await import(
+    "../werift-peer-connection.js"
+  );
+  const tlsOptions = turnTlsOptionsFromEnv();
+  createPeerConnection = (name, config) => {
+    weriftCurrent = new WeriftPeerConnection(name, config, tlsOptions);
+    return weriftCurrent;
+  };
+}
+// Client-to-TURN transport of the selected local candidate (werift only).
+const turnTransport = (): TurnClientTransport | undefined => weriftCurrent?.selectedTurnTransport();
 
 const log = (event: string, fields: Record<string, unknown> = {}): void => {
   console.log(
@@ -158,7 +174,11 @@ async function runSession(
         pending.delete(frame.id);
         if (method === "whoami") {
           log("response_received", { session, id: frame.id, method, from: frame.result });
-          log("selected_pair", { session, pair: peer.selectedPair() });
+          log("selected_pair", {
+            session,
+            pair: peer.selectedPair(),
+            turnTransport: turnTransport() ?? null,
+          });
         }
       }
     }
@@ -200,6 +220,7 @@ async function serve(
     session: attemptNumber,
     localCandidates: peer.localCandidates,
     pair: peer.selectedPair(),
+    turnTransport: turnTransport() ?? null,
   });
   const reason = await runSession(peer, attemptNumber, handshake.seen).finally(() => {
     peer.close();
@@ -265,6 +286,7 @@ if (self === "node") {
       authorization: nodeAuthorization(identity, nodeId),
       iceServers,
       iceTransportPolicy,
+      createPeerConnection,
       onCloseHandshake,
     }),
   );
@@ -280,6 +302,7 @@ if (self === "node") {
       authorization: `Assertion ${assertion}`,
       iceServers,
       iceTransportPolicy,
+      createPeerConnection,
       onCloseHandshake,
     });
   }, connectTimeoutMs);
