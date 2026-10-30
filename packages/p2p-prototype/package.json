@@ -39,6 +39,11 @@
       "types": "./src/node-channel-server.ts",
       "development": "./src/node-channel-server.ts",
       "default": "./src/node-channel-server.ts"
+    },
+    "./connect-error": {
+      "types": "./src/connect-error.ts",
+      "development": "./src/connect-error.ts",
+      "default": "./src/connect-error.ts"
     }
   },
   "scripts": {

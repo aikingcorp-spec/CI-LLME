@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { ChannelFrame } from "./channel-protocol.js";
 import { decodeBytes, decodeChannelFrame, encodeBytes } from "./channel-protocol.js";
+import { P2PConnectError } from "./connect-error.js";
 import type { DataPeer, PeerOptions } from "./webrtc-peer.js";
 import { connectPeer } from "./webrtc-peer.js";
 
@@ -89,7 +90,7 @@ export class DataChannelClientTransport implements ClientTransport {
       return client;
     } catch (error) {
       client.close();
-      throw error;
+      throw error instanceof Error && error.cause instanceof P2PConnectError ? error.cause : error;
     }
   }
   selectedPair(): ReturnType<DataPeer["selectedPair"]> {

@@ -5,6 +5,7 @@ import type { IceServer } from "node-datachannel";
 import { PeerConnection } from "node-datachannel";
 import type { RawData } from "ws";
 import { WebSocket } from "ws";
+import { P2PConnectError } from "./connect-error.js";
 import type { SignalPayload } from "./protocol.js";
 import { decodeGatewayFrame, encodeFrame, toWsUrl } from "./protocol.js";
 
@@ -58,6 +59,8 @@ export interface PeerOptions {
   authorization?: string;
   iceServers?: Array<string | IceServer>;
   iceTransportPolicy?: "all" | "relay";
+  /** Rejects `open` with a `timeout` P2PConnectError when the channel is not open in time. Off by default. */
+  connectTimeoutMs?: number;
   /** Fallback for a remote that never acknowledges BYE. Default 5000 ms. */
   closeAckTimeoutMs?: number;
   onCloseHandshake?: (event: CloseHandshakeEvent) => void;
@@ -133,7 +136,13 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   pc.onStateChange((state) => {
     debug(`onStateChange ${state}`);
     if (state === "closed" || state === "failed") {
-      rejectOpen(new Error(`peer ${state}`));
+      rejectOpen(
+        state === "failed"
+          ? new P2PConnectError("ice_failed", "peer failed")
+          : opened
+            ? new Error("peer closed")
+            : new P2PConnectError("no_candidate_pair", "peer closed"),
+      );
       queue.end();
       // A failed PeerConnection still holds its TURN allocations until close() is called.
       if (state === "failed") queueMicrotask(() => close(false));
@@ -158,6 +167,18 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     rejectOpen = reject;
   });
   void open.catch(() => {});
+  const connectTimer =
+    o.connectTimeoutMs === undefined
+      ? undefined
+      : globalThis.setTimeout(() => {
+          if (opened) return;
+          rejectOpen(new P2PConnectError("timeout", "connect timed out"));
+          close();
+        }, o.connectTimeoutMs);
+  void open.then(
+    () => clearTimeout(connectTimer),
+    () => clearTimeout(connectTimer),
+  );
   ws?.on("error", (error: Error) => {
     rejectOpen(error);
     if (!opened) queueMicrotask(() => close(false));
