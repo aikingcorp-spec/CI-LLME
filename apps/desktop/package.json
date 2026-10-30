@@ -42,6 +42,7 @@
   },
   "optionalDependencies": {
     "@embedded-postgres/linux-x64": "16.14.0-beta.17",
+    "@koromix/koffi-linux-x64": "3.3.4",
     "@embedded-postgres/windows-x64": "16.14.0-beta.17"
   },
   "build": {
@@ -57,7 +58,9 @@
     ],
     "asarUnpack": [
       "**/node_modules/node-datachannel/**",
-      "**/node_modules/@embedded-postgres/**"
+      "**/node_modules/@embedded-postgres/**",
+      "**/node_modules/koffi/**",
+      "**/node_modules/@koromix/koffi-linux-x64/**"
     ],
     "extraResources": [
       {
