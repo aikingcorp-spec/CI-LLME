@@ -7,7 +7,7 @@ import { Label } from "@rakazo/ui-web/components/ui/label";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import type { ComponentProps } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { LanguageSwitch } from "../components/LanguageSwitch";
 import { PasskeySignIn } from "../components/PasskeySignIn";
 import { VnbotWordmark } from "../components/VnbotWordmark";
@@ -35,6 +35,12 @@ const linkClass =
   "font-medium text-link underline underline-offset-4 hover:decoration-2 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
 type Step = "email" | "code";
+/** History state of the code step's entry, so Back lands on email and Forward can return. */
+type CodeEntry = { signInCode: { email: string; sentAt: number } };
+
+function codeEntryOf(state: unknown): CodeEntry["signInCode"] | null {
+  return (state as Partial<CodeEntry> | null)?.signInCode ?? null;
+}
 
 function Button({
   className,
@@ -60,6 +66,8 @@ function formatResend(seconds: number): string {
 export function AuthPage() {
   const { t } = useLingui();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   // F5 on the code step lands back on it (same tab only; see lib/sign-in-progress).
   // ?error=EMAIL_NOT_INVITED (OIDC callback 302 or a revoked session's 401) always lands on the
   // email step with the not-invited state; a stale code step from this tab is dropped.
@@ -94,10 +102,30 @@ export function AuthPage() {
   const [resent, setResent] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const codeRef = useRef<HTMLInputElement>(null);
+  const seenEntry = useRef(location.key);
+  const entryAdded = useRef(false);
 
   useEffect(() => {
     (step === "email" ? emailRef : codeRef).current?.focus();
   }, [reset, step]);
+
+  // A code step restored without its own entry (a new visit to /sign-in in this tab) still gets
+  // one, so Back lands on the email step here too.
+  useEffect(() => {
+    if (entryAdded.current || restored?.step !== "code" || codeEntryOf(location.state)) return;
+    entryAdded.current = true;
+    pushCodeEntry({ email: restored.email, sentAt: restored.sentAt ?? Date.now() }, false);
+  }, []);
+
+  // Back and Forward within the mounted page. On mount, sessionStorage decides instead: an old
+  // entry must not revive a sign-in that has finished.
+  useEffect(() => {
+    if (seenEntry.current === location.key) return;
+    seenEntry.current = location.key;
+    const entry = codeEntryOf(location.state);
+    if (entry && step === "email") returnToCodeStep(entry);
+    if (!entry && step === "code") showEmailStep();
+  }, [location.key]);
 
   useEffect(() => {
     const focusCurrentStep = () => {
@@ -171,6 +199,7 @@ export function AuthPage() {
         if (request.error?.code === EMAIL_NOT_INVITED) {
           setNotInvited(true);
           setStep("email");
+          dropCodeEntry();
           return;
         }
         setError(authErrorText(request.error, t`Could not continue`));
@@ -182,7 +211,9 @@ export function AuthPage() {
       setResendIn(RESEND_SECONDS);
       setResent(isResend);
       setStep("code");
-      writeSignInProgress({ email: trimmedEmail, step: "code", sentAt: Date.now() });
+      const sentAt = Date.now();
+      writeSignInProgress({ email: trimmedEmail, step: "code", sentAt });
+      pushCodeEntry({ email: trimmedEmail, sentAt }, isResend);
     } catch {
       setError(t`Couldn't reach the server. Try again.`);
     } finally {
@@ -208,6 +239,7 @@ export function AuthPage() {
           writeSignInProgress({ email: trimmedEmail, step: "email" });
           setStep("email");
           setCode("");
+          dropCodeEntry();
           return;
         }
         setError(authErrorText(result.error, t`Could not continue`));
@@ -231,7 +263,26 @@ export function AuthPage() {
     setPending(true);
   }
 
-  function leaveCodeStep() {
+  function pushCodeEntry(signInCode: CodeEntry["signInCode"], replace: boolean) {
+    navigate(location, { replace, state: { signInCode } satisfies CodeEntry });
+  }
+
+  function dropCodeEntry() {
+    if (codeEntryOf(location.state)) navigate(location, { replace: true });
+  }
+
+  function returnToCodeStep({ email: sentTo, sentAt }: CodeEntry["signInCode"]) {
+    writeSignInProgress({ email: sentTo, step: "code", sentAt });
+    setEmail(sentTo);
+    setStep("code");
+    setCode("");
+    setError(null);
+    setEmailInvalid(false);
+    setNotInvited(false);
+    setResendIn(resendSecondsLeft(sentAt, RESEND_SECONDS));
+  }
+
+  function showEmailStep() {
     writeSignInProgress({ email: trimmedEmail, step: "email" });
     setStep("email");
     setCode("");
@@ -239,6 +290,11 @@ export function AuthPage() {
     setCodeInvalid(false);
     setNeedsNewCode(false);
     setResent(false);
+  }
+
+  function chooseDifferentEmail() {
+    showEmailStep();
+    dropCodeEntry();
   }
 
   async function signInWithSso() {
@@ -478,7 +534,7 @@ export function AuthPage() {
               type="button"
               disabled={pending}
               className={`mt-6 max-md:inline-flex max-md:min-h-11 max-md:items-center ${linkClass}`}
-              onClick={leaveCodeStep}
+              onClick={chooseDifferentEmail}
             >
               <Trans>Use a different email</Trans>
             </button>

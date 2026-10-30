@@ -264,7 +264,7 @@ it("rejects a bad code without leaving the digits on the page, and offers a new 
 });
 
 describe("focus across real browser navigation", () => {
-  const emailInput = () => host.querySelector('input[name="email"]');
+  const emailInput = () => host.querySelector<HTMLInputElement>('input[name="email"]');
   const codeInput = () => host.querySelector('input[aria-label="6-digit sign-in code"]');
 
   // The routes App.tsx declares for a signed-out visitor, on the router main.tsx uses.
@@ -322,7 +322,23 @@ describe("focus across real browser navigation", () => {
     expect(document.activeElement).toBe(emailInput());
   });
 
-  // The step lives in sessionStorage, not history: back from the code step leaves the page.
+  it("returns from the code step to the prefilled, focused email step on back", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    expect(document.activeElement).toBe(codeInput());
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(codeInput()).toBeNull();
+    expect(emailInput()!.value).toBe("history@example.com");
+    expect(document.activeElement).toBe(emailInput());
+    expect(JSON.parse(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)!)).toMatchObject({
+      email: "history@example.com",
+      step: "email",
+    });
+  });
+
   it("restores and focuses the code step on forward, then email on a different email", async () => {
     await renderFromLanding();
     await followSignInLink();
@@ -330,11 +346,74 @@ describe("focus across real browser navigation", () => {
     await submit();
     expect(document.activeElement).toBe(codeInput());
     await traverse(-1);
-    expect(window.location.pathname).toBe("/");
+    expect(window.location.pathname).toBe("/sign-in");
     expect(codeInput()).toBeNull();
     await traverse(1);
     expect(document.activeElement).toBe(codeInput());
     await act(async () => button("Use a different email").click());
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("returns on forward to the email the code went to, not one edited since", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    await traverse(-1);
+    await enter(emailInput(), "edited@example.com");
+    await traverse(1);
+    expect(host.textContent).toContain("history@example.com");
+    expect(host.textContent).not.toContain("edited@example.com");
+    expect(document.activeElement).toBe(codeInput());
+  });
+
+  it("leaves the page from the email step reached by back", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    await traverse(-1);
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/");
+    expect(emailInput()).toBeNull();
+  });
+
+  it("keeps back on the email step for a code step restored on a later visit", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    await traverse(-2);
+    expect(window.location.pathname).toBe("/");
+    await followSignInLink();
+    expect(document.activeElement).toBe(codeInput());
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(emailInput()!.value).toBe("history@example.com");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("keeps back on the email step after reloading the code step", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    // Simulate F5: a fresh mount on the same history entry and sessionStorage.
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await act(async () =>
+      root.render(
+        <BrowserRouter useTransitions={false}>
+          <Routes>
+            <Route path="/sign-in" element={<AuthPage key="in" />} />
+          </Routes>
+        </BrowserRouter>,
+      ),
+    );
+    expect(document.activeElement).toBe(codeInput());
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(emailInput()!.value).toBe("history@example.com");
     expect(document.activeElement).toBe(emailInput());
   });
 
