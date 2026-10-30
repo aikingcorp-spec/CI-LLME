@@ -904,6 +904,10 @@ msgstr "Đính kèm"
 msgid "Attach file"
 msgstr "Đính kèm tệp"
 
+#: src/lib/tool-activity-label.ts
+msgid "Attaching {detail}"
+msgstr "Đang đính kèm {detail}"
+
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/chat-shared.ts
 msgid "Attachment"
@@ -1175,10 +1179,6 @@ msgstr "Không đọc được ảnh"
 msgid "Cancel"
 msgstr "Hủy"
 
-#: src/lib/builtin-tool-labels.ts
-msgid "Cancel cloud agent"
-msgstr "Hủy tác nhân đám mây"
-
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
 msgstr "Hủy bot mới"
@@ -1306,6 +1306,10 @@ msgstr "Đang kiểm tra thiết lập máy tính…"
 #: src/components/McpServerHealthLine.tsx
 msgid "Checking connection…"
 msgstr "Đang kiểm tra kết nối…"
+
+#: src/lib/tool-activity-label.ts
+msgid "Checking your bots"
+msgstr "Đang kiểm tra các bot của bạn"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdateViews.tsx
@@ -1452,10 +1456,6 @@ msgstr "Đám mây"
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Cloud"
 msgstr "Đám mây"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Cloud agent status"
-msgstr "Trạng thái tác nhân đám mây"
 
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
@@ -1688,6 +1688,10 @@ msgstr "Đã kết nối"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connected {0}."
 msgstr "Đã kết nối {0}."
+
+#: src/lib/tool-activity-label.ts
+msgid "Connecting MCP server: {detail}"
+msgstr "Đang kết nối máy chủ MCP: {detail}"
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpServersOverlay.tsx
@@ -2068,6 +2072,10 @@ msgstr "Không thể xem trước quy tắc"
 msgid "Could not reach the model server."
 msgstr "Không thể kết nối tới máy chủ mô hình."
 
+#: src/lib/user-error.ts
+msgid "Could not reach the model server. Check the server URL."
+msgstr "Không kết nối được tới máy chủ mô hình. Hãy kiểm tra lại địa chỉ máy chủ."
+
 #: src/components/PasskeyOffer.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/computer-sandbox.ts
@@ -2331,6 +2339,18 @@ msgstr "Tạo phiếu"
 msgid "Created"
 msgstr "Đã tạo"
 
+#: src/lib/tool-activity-label.ts
+msgid "Creating group: {detail}"
+msgstr "Đang tạo nhóm: {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Creating skill: {detail}"
+msgstr "Đang tạo kỹ năng: {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Creating space: {detail}"
+msgstr "Đang tạo không gian: {detail}"
+
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2442,6 +2462,10 @@ msgstr "Mặc định từ OpenClaw"
 msgid "Default scope"
 msgstr "Phạm vi mặc định"
 
+#: src/lib/tool-activity-label.ts
+msgid "Delegating to helper: {detail}"
+msgstr "Đang giao việc cho trợ lý: {detail}"
+
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
@@ -2507,6 +2531,10 @@ msgstr "Xóa thông tin xác thực của không gian này?"
 #: src/pages/shell/message-view.tsx
 msgid "deleted"
 msgstr "đã xóa"
+
+#: src/lib/tool-activity-label.ts
+msgid "Deleting skill: {detail}"
+msgstr "Đang xóa kỹ năng: {detail}"
 
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
@@ -3525,6 +3553,10 @@ msgstr "Đang nghe"
 msgid "Listening…"
 msgstr "Đang nghe…"
 
+#: src/lib/tool-activity-label.ts
+msgid "Listing {detail}"
+msgstr "Đang liệt kê {detail}"
+
 #: src/pages/shell/transcript.tsx
 msgid "Load earlier messages"
 msgstr "Tải tin nhắn trước"
@@ -3593,6 +3625,10 @@ msgstr "Quyền truy cập máy tính cục bộ cần ứng dụng máy tính m
 #: src/components/SidebarFooter.tsx
 msgid "Log out"
 msgstr "Đăng xuất"
+
+#: src/lib/tool-activity-label.ts
+msgid "Looking at the screen"
+msgstr "Đang xem màn hình"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Looks like it contains a key"
@@ -3886,8 +3922,16 @@ msgid "Model options"
 msgstr "Tùy chọn mô hình"
 
 #: src/lib/user-error.ts
+msgid "Model server did not respond in time. Check the server URL."
+msgstr "Máy chủ mô hình không phản hồi kịp. Hãy kiểm tra lại địa chỉ máy chủ."
+
+#: src/lib/user-error.ts
 msgid "Model server returned {status}. You can still Connect with an explicit model id."
 msgstr "Máy chủ mô hình trả về mã {status}. Bạn vẫn có thể kết nối bằng cách nhập ID mô hình."
+
+#: src/lib/user-error.ts
+msgid "Model server returned {unanswered}. Check the server URL."
+msgstr "Máy chủ mô hình trả về mã {unanswered}. Hãy kiểm tra lại địa chỉ máy chủ."
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -4359,6 +4403,18 @@ msgstr "URL máy chủ tương thích OpenAI"
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw hoặc Hermes"
 
+#: src/lib/tool-activity-label.ts
+msgid "Opening {detail}"
+msgstr "Đang mở {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Opening page: {detail}"
+msgstr "Đang mở trang: {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Operating the computer"
+msgstr "Đang điều khiển máy tính"
+
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4382,6 +4438,10 @@ msgstr "Khóa API tổ chức"
 #: src/lib/builtin-tool-labels.ts
 msgid "Organize bot"
 msgstr "Sắp xếp bot"
+
+#: src/lib/tool-activity-label.ts
+msgid "Organizing the sidebar"
+msgstr "Đang sắp xếp thanh bên"
 
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
@@ -4623,10 +4683,6 @@ msgstr "Nhà cung cấp"
 msgid "Pull request"
 msgstr "Yêu cầu hợp nhất"
 
-#: src/lib/builtin-tool-labels.ts
-msgid "Purchase status"
-msgstr "Trạng thái mua hàng"
-
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "Đang xếp hàng"
@@ -4654,6 +4710,26 @@ msgstr "Đọc câu trả lời thành tiếng"
 #: src/lib/builtin-tool-labels.ts
 msgid "Read skill"
 msgstr "Đọc kỹ năng"
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading {detail}"
+msgstr "Đang đọc {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading {file} from {name}"
+msgstr "Đang đọc {file} trong {name}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading page: {detail}"
+msgstr "Đang đọc trang: {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading skill: {detail}"
+msgstr "Đang đọc kỹ năng: {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading the page"
+msgstr "Đang đọc trang"
 
 #: src/pages/shell/import-status.ts
 msgid "Ready"
@@ -4900,6 +4976,10 @@ msgstr "Đổi tên mục"
 msgid "Render plot"
 msgstr "Vẽ biểu đồ"
 
+#: src/lib/tool-activity-label.ts
+msgid "Rendering a chart"
+msgstr "Đang vẽ biểu đồ"
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Mở lại"
@@ -4929,10 +5009,6 @@ msgstr "Trả lời"
 #: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr "Đã hủy trả lời"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Reply to cloud agent"
-msgstr "Trả lời tác nhân đám mây"
 
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
@@ -5046,6 +5122,10 @@ msgstr "Quay lại cuộc gọi với {0}"
 msgid "Return to VNBot"
 msgstr "Quay lại VNBot"
 
+#: src/lib/tool-activity-label.ts
+msgid "Review before {action}"
+msgstr "Xem lại trước khi {action}"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "Bạn hãy xem lại cài đặt nhà cung cấp rồi kiểm tra lại."
@@ -5053,6 +5133,10 @@ msgstr "Bạn hãy xem lại cài đặt nhà cung cấp rồi kiểm tra lại.
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
 msgstr "Thu hồi"
+
+#: src/lib/tool-activity-label.ts
+msgid "Rewriting a bot's instructions"
+msgstr "Đang viết lại hướng dẫn của bot"
 
 #: src/pages/Auth.tsx
 msgid "Right now, only invited emails can sign in."
@@ -5111,6 +5195,14 @@ msgstr "đang chạy"
 #: src/pages/RoutineEditor.tsx
 msgid "Running"
 msgstr "Đang chạy"
+
+#: src/lib/tool-activity-label.ts
+msgid "Running on your computer: {detail}"
+msgstr "Đang chạy trên máy của bạn: {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Running: {detail}"
+msgstr "Đang chạy: {detail}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Running…"
@@ -5188,6 +5280,14 @@ msgstr "Đã lưu."
 msgid "Saved. Rotate to reveal."
 msgstr "Đã lưu. Tạo khóa mới để xem."
 
+#: src/lib/tool-activity-label.ts
+msgid "Saving a note to memory"
+msgstr "Đang lưu ghi chú vào trí nhớ"
+
+#: src/lib/tool-activity-label.ts
+msgid "Saving shared memory: {detail}"
+msgstr "Đang lưu trí nhớ chung: {detail}"
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
 msgstr "Đang lưu vùng làm việc của bạn"
@@ -5212,6 +5312,10 @@ msgstr "Đang lưu…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Bạn hãy nói có hoặc không, hoặc trả lời bằng một câu."
+
+#: src/lib/tool-activity-label.ts
+msgid "Scheduling routine: {detail}"
+msgstr "Đang đặt lịch tác vụ định kỳ: {detail}"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Scopes (optional)"
@@ -5276,6 +5380,10 @@ msgstr "Tìm kỹ năng"
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
 msgstr "Tìm kiếm: {0}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Searching the web: {detail}"
+msgstr "Đang tìm trên web: {detail}"
 
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/SpaceSearch.tsx
@@ -5393,6 +5501,10 @@ msgstr "Đặt mô hình cho bot con"
 #: src/lib/builtin-tool-labels.ts
 msgid "Set child instructions"
 msgstr "Đặt hướng dẫn cho bot con"
+
+#: src/lib/tool-activity-label.ts
+msgid "Setting a bot's model"
+msgstr "Đang đặt mô hình cho bot"
 
 #: src/components/call/CallCard.tsx
 #: src/components/SidebarFooter.tsx
@@ -6281,6 +6393,14 @@ msgstr "Cập nhật"
 msgid "Updating {0}’s Computer"
 msgstr "Đang cập nhật máy tính của {0}"
 
+#: src/lib/tool-activity-label.ts
+msgid "Updating group: {detail}"
+msgstr "Đang cập nhật nhóm: {detail}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Updating skill: {detail}"
+msgstr "Đang cập nhật kỹ năng: {detail}"
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Updating Team Computer"
 msgstr "Đang cập nhật máy tính nhóm"
@@ -6381,6 +6501,26 @@ msgstr "Dùng đường dẫn trên máy của bạn"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Dùng thông tin xác thực {hostCredentialSource} riêng của máy chủ này để truy cập {selectedProviderName}."
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {name}"
+msgstr "Đang dùng {name}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {server}: {tool}"
+msgstr "Đang dùng {server}: {tool}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {tool}"
+msgstr "Đang dùng {tool}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Using a tool"
+msgstr "Đang dùng một công cụ"
+
+#: src/lib/tool-activity-label.ts
+msgid "Using the page"
+msgstr "Đang thao tác trên trang"
 
 #: src/components/LoginFields.tsx
 #: src/components/VaultSettings.tsx
@@ -6585,6 +6725,10 @@ msgstr "Không gian làm việc"
 #: src/lib/builtin-tool-labels.ts
 msgid "Write file"
 msgstr "Ghi tệp"
+
+#: src/lib/tool-activity-label.ts
+msgid "Writing {detail}"
+msgstr "Đang ghi {detail}"
 
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/sidebar-roster.tsx

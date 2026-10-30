@@ -34,18 +34,6 @@ export const cloudAgentLaunchSchema = cloudAgentPromptSchema.extend({
     .optional(),
   openPr: z.boolean().optional(),
 });
-const idSchema = z.object({ id: z.string().trim().min(1) }).strict();
 export const cloudAgentReplySchema = cloudAgentPromptSchema.extend({
   id: z.string().trim().min(1),
 });
-
-/** Validate before effect logging: raw environment values must never enter durable tool args. */
-export function validCloudAgentArgs(name: string, args: unknown): boolean {
-  const schema =
-    name === "cloud_agent_launch"
-      ? cloudAgentLaunchSchema
-      : name === "cloud_agent_reply"
-        ? cloudAgentReplySchema
-        : idSchema;
-  return schema.safeParse(args).success;
-}

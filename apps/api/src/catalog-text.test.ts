@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { createRouterClient } from "@orpc/server";
 import { pluginPreviewDto, previewPluginInstall } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
+import { isExcludedCatalogText } from "@rakazo/core/banned-brand";
 import { describe, expect, it, vi } from "vitest";
 import {
-  BANNED_CATALOG_TERMS,
   isCatalogContentAllowed,
   sanitizeAgentSkill,
   sanitizeCatalogText,
@@ -90,11 +90,14 @@ describe("catalog text", () => {
     const client = setup();
     const result = await client.marketplace.catalog({ query: "" });
     const names = result.entries.map((entry) => entry.name);
-    expect(names).not.toContain("stripe");
-    expect(names).not.toContain("supabase");
+    // Stripe and Supabase are listed in the xAI index as "for Grok Build"; they stay, minus that prose.
+    expect(names).toContain("stripe");
+    expect(names).toContain("supabase");
+    expect(result.entries.find((entry) => entry.name === "stripe")?.description).toBe("");
+    // "notes" is named "Grok Voice" by its manifest, so it is dropped by name.
     expect(names).not.toContain("notes");
     const offending = catalogStrings({ catalog: result }).filter((text) =>
-      BANNED_CATALOG_TERMS.test(text),
+      isExcludedCatalogText(text),
     );
     expect(offending).toEqual([]);
   });
@@ -138,7 +141,7 @@ describe("catalog text", () => {
     const result = await client.capabilities.catalogSearch({ query: "supabase" });
     expect(result.results).toHaveLength(0);
     const visible = catalogStrings(result.results);
-    expect(visible.filter((text) => BANNED_CATALOG_TERMS.test(text))).toEqual([]);
+    expect(visible.filter((text) => isExcludedCatalogText(text))).toEqual([]);
   });
 });
 
@@ -275,6 +278,10 @@ describe("whole Skills screen responses", () => {
   it("keeps an installed plugin skill listed so it can be removed", async () => {
     const { client, row } = await skillsClient("plugin");
     expect((await client.agentSkills.list()).some((skill) => skill.id === row.id)).toBe(true);
+    expect(await client.agentSkills.get({ skillId: row.id })).toMatchObject({
+      id: row.id,
+      description: catalogCopy,
+    });
   });
 
   it("preserves a user's authored skill text", async () => {
@@ -352,7 +359,7 @@ describe("catalog exclusion policy", () => {
     for (const key of ["source", "installedSource", "homepage", "url"])
       expect(isCatalogContentAllowed({ [key]: url })).toBe(false);
   });
-  it("drops entries named, described or hosted by xAI, Grok or cursor.com and blanks a brand registry", () => {
+  it("drops entries named or hosted by xAI, Grok or cursor.com, blanks their prose and a brand registry", () => {
     const entry = {
       id: "xAI:https://github.com/example/notes.git",
       name: "notes",
@@ -374,14 +381,36 @@ describe("catalog exclusion policy", () => {
         { ...entry, description: "Works with xAI" },
         { ...entry, description: "Works with Grok" },
         { ...entry, homepage: "https://cursor.com/plugins" },
-        { ...entry, source: "https://api.cursor.com/x.git" },
       ],
       unavailableRegistries: ["Cursor", "xAI", "Other"],
       skippedEntries: 0,
     } as unknown as Parameters<typeof sanitizePluginCatalog>[0];
     const result = sanitizePluginCatalog(catalog);
-    expect(result.entries.map((e) => e.registry)).toEqual(["", "", "Other"]);
+    expect(result.entries.map((e) => e.registry)).toEqual(["", "", "Other", "", ""]);
+    expect(result.entries.slice(3).map((e) => e.description)).toEqual(["", ""]);
     expect(result.unavailableRegistries).toEqual(["", "", "Other"]);
+  });
+  it("keeps an entry whose install source sits in a brand registry repository", () => {
+    const entry = {
+      name: "stripe",
+      displayName: "Stripe",
+      description: "Payments",
+      keywords: [],
+      category: null,
+      homepage: null,
+      domains: [],
+      registry: "Cursor",
+      source: "https://github.com/cursor/plugins#third_party/stripe",
+      installedSource: "https://github.com/cursor/plugins#third_party/stripe",
+    };
+    const catalog = {
+      entries: [entry],
+      unavailableRegistries: [],
+      skippedEntries: 0,
+    } as unknown as Parameters<typeof sanitizePluginCatalog>[0];
+    expect(sanitizePluginCatalog(catalog).entries).toMatchObject([
+      { name: "stripe", registry: "", source: entry.source },
+    ]);
   });
   it("filters before translation and stays idempotent without mutating input", () => {
     const entry = {
@@ -402,7 +431,7 @@ describe("catalog exclusion policy", () => {
       skippedEntries: 0,
     } as unknown as Parameters<typeof sanitizePluginCatalog>[0];
     const result = sanitizePluginCatalog(catalog);
-    expect(result.entries).toHaveLength(1);
+    expect(result.entries.map((e) => e.description)).toEqual(["Daily notes", ""]);
     expect(sanitizePluginCatalog(result)).toEqual(result);
     expect(catalog.entries).toHaveLength(3);
   });
@@ -492,4 +521,177 @@ it("finds neutral app entries independently of their registry's brand", async ()
       expect.objectContaining({ name: name.toLowerCase(), registry: "" }),
     ]);
   }
+});
+
+describe("brand filter keeps ordinary products", () => {
+  const products = [
+    "Stripe",
+    "Supabase",
+    "GitHub",
+    "Linear",
+    "Slack",
+    "Vercel",
+    "HubSpot",
+    "Asana",
+    "Jira",
+    "Notion",
+  ];
+  const entry = (displayName: string, source: string) => ({
+    id: `Cursor:${source}`,
+    name: displayName.toLowerCase(),
+    displayName,
+    description: `${displayName} for Cursor and Grok Build`,
+    keywords: ["tools", "Cursor", "sdk", "ai"],
+    category: null,
+    logo: null,
+    homepage: null,
+    domains: [],
+    registry: "Cursor",
+    source,
+    installedSource: source,
+    hasConnector: true,
+    skillCount: 0,
+  });
+  const catalog = (entries: ReturnType<typeof entry>[]) =>
+    ({
+      entries,
+      unavailableRegistries: [],
+      skippedEntries: 0,
+    }) as unknown as Parameters<typeof sanitizePluginCatalog>[0];
+
+  it("shows our Vietnamese copy for a description the brand filter blanks", () => {
+    const tailscale = {
+      ...entry("Tailscale", "https://github.com/cursor/plugins#third_party/tailscale"),
+      description:
+        "Let Grok Bot reach MCP servers on your private Tailscale network: connect your own tailnet, or your team's company tailnets turned on by a team admin, with each member using their own device.",
+    };
+    const vi = sanitizePluginCatalog(catalog([tailscale])).entries[0]?.description ?? "";
+    expect(vi).toMatch(/^Kết nối bot với các máy chủ MCP/);
+    expect(isExcludedCatalogText(vi)).toBe(false);
+    const en = withCatalogLocale("en", () => sanitizePluginCatalog(catalog([tailscale])));
+    expect(en.entries[0]?.description).toBe("");
+  });
+
+  it("lists products vendored in a brand registry repository, minus the brand prose", () => {
+    const result = sanitizePluginCatalog(
+      catalog([
+        ...products.map((name) =>
+          entry(name, `https://github.com/cursor/plugins#third_party/${name.toLowerCase()}`),
+        ),
+        ...products.map((name) =>
+          entry(name, `https://github.com/xai-org/plugin-marketplace#${name.toLowerCase()}`),
+        ),
+      ]),
+    );
+    expect(result.entries.map((e) => e.displayName)).toEqual([...products, ...products]);
+    expect(result.entries.every((e) => e.description === "" && e.registry === "")).toBe(true);
+    expect(result.entries[0]?.keywords).toEqual(["tools", "sdk", "ai"]);
+  });
+
+  it.each([
+    ["xAI", "https://example.test/"],
+    ["Cursor", "https://cursor.com/"],
+    ["Helper", "https://docs.cursor.com/"],
+    ["VNBot Voice", "https://example.test/"],
+    ["VNBot SDK", "https://example.test/"],
+  ])("drops %s", (displayName, homepage) => {
+    const dropped = { ...entry(displayName, "https://github.com/example/x"), homepage };
+    expect(sanitizePluginCatalog(catalog([dropped])).entries).toEqual([]);
+  });
+
+  it("keeps names that only contain a short banned token", () => {
+    const names = ["Taxaid", "Max AI", "Grokking Algorithms", "Precursor", "Cursory"];
+    const result = sanitizePluginCatalog(
+      catalog(
+        names.map((name) => ({
+          ...entry(name, "https://github.com/example/x"),
+          homepage: `https://${name.replaceAll(" ", "").toLowerCase()}.com/`,
+        })),
+      ),
+    );
+    expect(result.entries.map((e) => e.displayName)).toEqual(names);
+  });
+
+  it("shows integrations whose prose mentions another product", async () => {
+    const fetch = vi.fn(async () =>
+      Response.json({
+        results: [
+          {
+            domain: "stripe.com",
+            name: "stripe.com",
+            description: "Official Stripe MCP, works in Cursor.",
+            url: "https://integrations.sh/stripe.com/",
+            surfaces: [{ kind: "mcp", slug: "stripe", url: "https://mcp.stripe.com" }],
+          },
+        ],
+      }),
+    ) as unknown as typeof globalThis.fetch;
+    const result = await setup(fetch).capabilities.catalogSearch({ query: "stripe" });
+    expect(result.results).toMatchObject([{ domain: "stripe.com", description: "" }]);
+  });
+
+  it("previews a plugin whose manifest says it is made for Grok", async () => {
+    const client = setup(undefined, {
+      remoteConnectors: { resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }] },
+      pluginRepoFetcher: async () => ({
+        resolvedSha: "b".repeat(40),
+        files: [
+          {
+            path: ".grok-plugin/plugin.json",
+            content: JSON.stringify({
+              name: "sentry",
+              description: "Sentry Plugin for Grok to help with debugging.",
+              author: { name: "Sentry", url: "https://sentry.io" },
+              repository: "https://github.com/getsentry/plugin-grok",
+              keywords: ["sentry", "Grok"],
+            }),
+          },
+          {
+            path: ".mcp.json",
+            content: JSON.stringify({
+              mcpServers: { sentry: { type: "http", url: "https://mcp.sentry.dev/mcp" } },
+            }),
+          },
+        ],
+      }),
+    });
+    const preview = await client.capabilities.pluginPreview({
+      source: "https://github.com/getsentry/plugin-grok",
+    });
+    expect(preview).toMatchObject({ name: "sentry", description: "", keywords: ["sentry"] });
+  });
+
+  it("previews a plugin vendored in a brand registry repository", async () => {
+    const client = setup(undefined, {
+      remoteConnectors: { resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }] },
+      pluginRepoFetcher: async () => ({
+        resolvedSha: "c".repeat(40),
+        files: [
+          {
+            path: "third_party/stripe/.cursor-plugin/plugin.json",
+            content: JSON.stringify({ name: "stripe" }),
+          },
+          {
+            path: "third_party/stripe/.mcp.json",
+            content: JSON.stringify({
+              mcpServers: { stripe: { type: "http", url: "https://mcp.stripe.com" } },
+            }),
+          },
+        ],
+      }),
+    });
+    await expect(
+      client.capabilities.pluginPreview({
+        source: "https://github.com/cursor/plugins#third_party/stripe",
+      }),
+    ).resolves.toMatchObject({ name: "stripe" });
+  });
+
+  it("does not hide or blank an installed plugin skill", () => {
+    const skill = {
+      source: "plugin",
+      description: "Works in Cursor and Grok",
+    } as unknown as Parameters<typeof sanitizeAgentSkill>[0];
+    expect(sanitizeAgentSkill(skill)).toBe(skill);
+  });
 });

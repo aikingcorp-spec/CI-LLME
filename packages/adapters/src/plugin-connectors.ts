@@ -310,10 +310,11 @@ export async function fetchGitHubRepo(
   let total = 0;
   let fetched = 0;
   const wanted: string[] = [];
+  const overfull = overfullSkillDirs(entries.map((entry) => entry.path.slice(prefix.length)));
   for (const entry of entries) {
     const path = entry.path.slice(prefix.length);
     // Fetch only component text. Other paths are retained for skipped-part reporting.
-    if (!isFetchedComponent(path)) {
+    if (!isFetchedComponent(path) || inOverfullSkill(path, overfull)) {
       files.push({ path: entry.path, content: "" });
       continue;
     }
@@ -348,6 +349,25 @@ export async function fetchGitHubRepo(
     repoCache.delete(repoCache.keys().next().value as string);
   if (cacheable) repoCache.set(cacheKey, { expires: Date.now() + REPO_CACHE_TTL_MS, files });
   return { files: files.map((file) => ({ ...file })), resolvedSha: sha };
+}
+
+/**
+ * Skill folders whose reference files exceed MAX_SKILL_FILES. collectSkills refuses such a skill
+ * on its own, so its companions are listed without being downloaded and never count toward the
+ * plugin's MAX_FILES; otherwise one oversized skill refused the whole plugin.
+ */
+function overfullSkillDirs(paths: readonly string[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const path of paths) {
+    if (!SKILL_COMPANION.test(path)) continue;
+    const dir = path.split("/", 2).join("/");
+    counts.set(dir, (counts.get(dir) ?? 0) + 1);
+  }
+  return new Set([...counts].filter(([, n]) => n > MAX_SKILL_FILES).map(([dir]) => dir));
+}
+
+function inOverfullSkill(path: string, overfull: ReadonlySet<string>): boolean {
+  return SKILL_COMPANION.test(path) && overfull.has(path.split("/", 2).join("/"));
 }
 
 function object(value: unknown): value is Record<string, unknown> {

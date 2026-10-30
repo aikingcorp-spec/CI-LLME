@@ -24,6 +24,13 @@ export function createModelConnectionFixtureFetch(
     if (request.url === "https://ollama.com/v1/models") {
       return Response.json({ data: [{ id: "fixture-model" }] });
     }
+    const url = new URL(request.url);
+    // The address specs type into the compatible-server form; nothing listens there.
+    if (request.url === "http://127.0.0.1:8090/v1/models")
+      return Response.json({ data: [{ id: "fixture-model" }] });
+    // A spec that starts its own model server on loopback talks to it for real.
+    if (url.hostname === "127.0.0.1" || url.hostname === "localhost")
+      return fetch(request.url, { headers: request.headers, signal: request.signal });
     throw new Error("Unexpected model connection request in the offline fixture");
   };
 }

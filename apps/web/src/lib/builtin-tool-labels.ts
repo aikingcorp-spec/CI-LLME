@@ -34,10 +34,6 @@ const LABELS: Record<BuiltinToolName, () => string> = {
   save_shared_memory: () => t`Save shared memory`,
   web_search: () => t`Web search`,
   web_fetch: () => t`Web fetch`,
-  cloud_agent_status: () => t`Cloud agent status`,
-  cloud_agent_reply: () => t`Reply to cloud agent`,
-  cloud_agent_cancel: () => t`Cancel cloud agent`,
-  purchase_status: () => t`Purchase status`,
   search_history: () => t`Search history`,
   read_history: () => t`Read history`,
   save_memory: () => t`Save memory`,
@@ -93,4 +89,9 @@ function humanize(name: string): string {
 export function builtinToolLabel(name: string): string {
   const label = (LABELS as Record<string, (() => string) | undefined>)[name];
   return label ? label() : humanize(name);
+}
+
+/** Every built-in tool id that has a label. */
+export function builtinToolNames(): string[] {
+  return Object.keys(LABELS);
 }

@@ -7038,6 +7038,8 @@ describe("openai-compatible enabled models", () => {
     backups?: string[];
     roleChoices?: string[];
     mainPrimary?: string;
+    /** The model server's transport; by default it lists one model. */
+    modelServer?: typeof fetch;
   }) {
     const state = {
       credential: {
@@ -7159,6 +7161,9 @@ describe("openai-compatible enabled models", () => {
           agentRuntime: "pi",
           mcpAllowPrivateEndpoint: true,
         },
+        // The server being saved answers its model list, as a reachable one does.
+        modelConnectionFetch:
+          options.modelServer ?? vi.fn(async () => Response.json({ data: [{ id: "m-a" }] })),
       } as unknown as RouterDeps),
     );
     const call = async (path: string, body: unknown) => {
@@ -7303,6 +7308,74 @@ describe("openai-compatible enabled models", () => {
 
     expect(result).toEqual({ status: 400, message: refusal("Elsewhere") });
     expect(secrets.put).not.toHaveBeenCalled();
+  });
+
+  it("refuses to save a server address that does not list models", async () => {
+    const modelServer = vi.fn(async () => new Response("nope", { status: 404 }));
+    const { call, secrets, prisma } = fixture({
+      plaintext: null,
+      defaultModel: "m-a",
+      modelServer: modelServer as unknown as typeof fetch,
+    });
+
+    const result = await call("models/connect", {
+      provider: compatible,
+      baseUrl: "https://10.0.0.5:8443/nope",
+      apiKey: "sk-fake-replacement-key",
+      modelId: "m-a",
+    });
+
+    expect(result).toEqual({
+      status: 400,
+      message: "Model server returned 404. Check the server URL.",
+    });
+    expect(String(modelServer.mock.calls[0]?.[0])).toBe("https://10.0.0.5:8443/nope/v1/models");
+    expect(secrets.put).not.toHaveBeenCalled();
+    expect(prisma.userModelCredential.update).not.toHaveBeenCalled();
+    expect(prisma.userModelCredential.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses to save a server address that cannot be reached", async () => {
+    const modelServer = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    });
+    const { call, secrets } = fixture({
+      plaintext: null,
+      defaultModel: "m-a",
+      modelServer: modelServer as unknown as typeof fetch,
+    });
+
+    const result = await call("models/connect", {
+      provider: compatible,
+      baseUrl,
+      apiKey: "sk-fake-replacement-key",
+      modelId: "m-a",
+    });
+
+    expect(result).toEqual({
+      status: 400,
+      message: "Could not reach the model server. Check the server URL.",
+    });
+    expect(secrets.put).not.toHaveBeenCalled();
+  });
+
+  it("does not need the server to answer when only the limits of a stored address change", async () => {
+    const modelServer = vi.fn(async () => new Response("down", { status: 503 }));
+    const { call } = fixture({
+      plaintext: secretText(["m-a"]),
+      defaultModel: "m-a",
+      modelServer: modelServer as unknown as typeof fetch,
+    });
+
+    const result = await call("models/connect", {
+      provider: compatible,
+      baseUrl,
+      modelId: "m-a",
+      enabledModelIds: ["m-a"],
+    });
+
+    expect(result.status).toBe(200);
+    expect(modelServer).not.toHaveBeenCalled();
   });
 
   it("keeps a thinking level on a newly enabled default judged by the saved secret", async () => {

@@ -13,9 +13,11 @@ export function readBuildTime(path = "/app/BUILT_AT"): string | undefined {
 /** Public deployment identity, without consulting sessions or storage. */
 export function versionRoutes(env: { gitSha?: string; builtAt?: string }) {
   const app = new Hono();
-  app.get("/api/version", (c) => {
-    c.header("cache-control", "no-store");
-    return c.json({ sha: env.gitSha ?? null, builtAt: env.builtAt ?? null });
-  });
+  // /version is the short form a person types; both answer from the same handler.
+  for (const path of ["/api/version", "/version"])
+    app.get(path, (c) => {
+      c.header("cache-control", "no-store");
+      return c.json({ sha: env.gitSha ?? null, builtAt: env.builtAt ?? null });
+    });
   return app;
 }

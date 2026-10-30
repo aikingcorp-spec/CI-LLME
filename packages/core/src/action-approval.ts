@@ -38,9 +38,6 @@ const APPROVAL_REQUIRED_BUILTIN_TOOLS = new Set([
   "secret_request",
   "forget_secret",
   "forget_memory",
-  "cloud_agent_launch",
-  "cloud_agent_reply",
-  "cloud_agent_cancel",
   "user_computer_shell",
 ]);
 const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set([
@@ -56,12 +53,10 @@ const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set([
 
 const UNATTENDED_SAFE_BUILTIN_TOOLS = new Set([
   "browser_snapshot",
-  "cloud_agent_status",
   "computer_observe",
   "list_files",
   "list_fleet",
   "list_secrets",
-  "purchase_status",
   "read_file",
   "recall_memory",
   "request_takeover",

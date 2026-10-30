@@ -1,5 +1,65 @@
 # Architecture changelog
 
+## 2026-10-30 — Source maps answer 404 in the web server
+
+- Date: 2026-10-30.
+- Pull request: none (local commit).
+- What changed versus baseline: the web dev and preview servers answer 404 for any request path ending in `.map`, raw or URL-decoded, before static file handling.
+- Why: a stale source map left in the served assets (or asset archive) was publicly readable.
+- Modules and files: `apps/web/vite.config.ts`, `apps/web/src/missing-asset.ts` and its test.
+- Invariants affected: no files are deleted; hashed JS and CSS assets and the missing-asset fallback behave as before.
+- ADR: none.
+
+## 2026-10-30 — A model server address must answer before it is saved
+
+- Date: 2026-10-30.
+- Pull request: none (local commit).
+- What changed versus baseline: saving an OpenAI-compatible connection with a new server address, or a new key for it, first requests `{base}/models` with a 5 second budget. A failure rejects the save with a stable message (status, timeout or unreachable) that the web client translates. Saves that only change limits or models on a stored address do not contact the server. The three messages are shared constants in `packages/contracts/src/model-provider.ts`.
+- Why: a wrong address saved without any check and the settings screen reported it as saved.
+- Modules and files: `apps/api/src/model-credentials.ts`, `packages/adapters/src/pi-openai-compatible-provider.ts`, `packages/contracts/src/model-provider.ts`, `apps/web/src/lib/user-error.ts` and their tests.
+- Invariants affected: the existing address policy (private endpoints, HTTPS for keyed endpoints) is checked first and unchanged; secrets are stored only after the check passes. No hosted provider is involved.
+- ADR: none.
+
+## 2026-10-30 — /version answers with the deployment version
+
+- Date: 2026-10-30.
+- Pull request: none (local commit).
+- What changed versus baseline: `GET /version` returns the same JSON as `GET /api/version` (`sha`, `builtAt`). The API serves both paths, the web dev and preview server proxy `/version` to the API, and both Caddyfiles route `/version` to the API.
+- Why: `/version` fell through to the web server and returned the app shell.
+- Modules and files: `apps/api/src/version.ts`, `apps/web/vite.config.ts`, `infra/compose/Caddyfile.prod`, `infra/compose/Caddyfile.cloudflare.example` and their tests.
+- Invariants affected: the endpoint stays public, unauthenticated and uncached, and carries the same two fields as before.
+- ADR: none.
+
+## 2026-10-30 — Cloud-agent status, reply, cancel and purchase status tools removed
+
+- Date: 2026-10-30.
+- Pull request: none (local commit).
+- What changed versus baseline: `cloud_agent_status`, `cloud_agent_reply`, `cloud_agent_cancel` and `purchase_status` are no longer built-in tools: not in the contract names, tool definitions, handlers, approval sets, selection options (`cloudAgentEnabled`, `paymentWalletEnabled`) or web labels and catalogs.
+- Why: the launch and request tools were already removed, and the remaining four showed in the bot tool list with nothing to act on.
+- Modules and files: `packages/contracts/src/builtin-tools.ts`, `packages/adapters/src/{builtin-tools,run-tools,run-tools-integrations,run-tool-selection,run-tool-request,executor}.ts`, `packages/core/src/action-approval.ts`, `apps/web/src/lib/builtin-tool-labels.ts`, web locale catalogs and their tests.
+- Invariants affected: approval gating for the remaining tools is unchanged. Stored cloud-agent and purchase rows and their worker jobs are untouched.
+- ADR: none.
+
+## 2026-10-30 — Plugin preview no longer fails on brand words in a manifest
+
+- Date: 2026-10-30.
+- Pull request: none (local commit).
+- What changed versus baseline: `capabilities.pluginPreview` refuses a plugin only when its name, homepage, repository or MCP endpoint hosts are a banned brand. Banned words in its description or keywords are blanked in the response instead of failing the request.
+- Why: Sentry's manifest says "Sentry Plugin for Grok", so every preview returned HTTP 400 and the app could not be added.
+- Modules and files: `apps/api/src/routes/mcp.ts`, `apps/api/src/catalog-text.ts` and their tests.
+- Invariants affected: the MCP endpoint check, digest pinning and install flow are unchanged.
+- ADR: none.
+
+## 2026-10-30 — Brand filter judges what names an item, not where it is installed from
+
+- Date: 2026-10-30.
+- Pull request: none (local commit).
+- What changed versus baseline: marketplace entries and integration results are dropped only when their name, homepage, domains or hosts are a banned brand (`xAI`, `x.ai`, `cursor.com`, `VNBot Voice/SDK/Bot`). Install sources are never judged and prose is blanked instead of hiding the item. Plugin preview no longer refuses a plugin by its install source. The keyword filter uses the same whole-word and whole-host rule as the rest, and the lint guard anchors `xai`, `grok`, `x.ai` and `cursor.com` to word and host boundaries.
+- Why: plugins vendored in the Cursor and xAI registry repositories carry that owner in their install source, so Stripe, Supabase, GitHub, Linear, Slack, Vercel, HubSpot, Asana, Jira and Notion were all hidden.
+- Modules and files: `packages/core/src/banned-brand.ts`, `apps/api/src/catalog-text.ts`, `apps/api/src/routes/mcp.ts` and their tests.
+- Invariants affected: install sources, ids and pins are unchanged; banned brand names and hosts are still never shown.
+- ADR: none.
+
 ## 2026-10-30 — Preserve explicit approval checker configuration
 
 - Date: 2026-10-30.

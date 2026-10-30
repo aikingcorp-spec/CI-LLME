@@ -1,5 +1,4 @@
 import { normalizedHttpUrl } from "@rakazo/core/egress";
-import { executeCloudAgentTool } from "./cloud-agent-service.js";
 import { collectLogIds } from "./composio-connector.js";
 import { connectApp } from "./connect-app.js";
 import { addMcpServerFromTool } from "./mcp-server-tool.js";
@@ -8,20 +7,6 @@ import { runScopedToolExecutionId } from "./run-effects.js";
 import { flushProgress, publishMidTurnNarration, showNarrationStatus } from "./run-progress.js";
 import type { ToolCall, ToolHandlers } from "./run-tool-gate.js";
 import { webFetchFromTool, webSearchFromTool } from "./web-tools.js";
-
-export async function cloudAgentTool(ctx: RunContext, call: ToolCall) {
-  const { deps, run, bot, context } = ctx;
-  const { name, args, effectKey } = call;
-  return call.finish(
-    await executeCloudAgentTool(
-      { ...deps, cloudAgent: ctx.providers.cloudAgent },
-      { ...context, operationId: effectKey, botId: bot.id },
-      run,
-      name,
-      args,
-    ),
-  );
-}
 
 export async function connectorTool(ctx: RunContext, call: ToolCall) {
   const { deps, run, bot, thread, context } = ctx;

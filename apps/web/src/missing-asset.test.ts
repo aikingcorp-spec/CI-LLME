@@ -1,7 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { missingAssetMiddleware } from "./missing-asset";
+import {
+  missingAssetMiddleware,
+  sourceMapBlockMiddleware,
+  sourceMapBlockPlugin,
+} from "./missing-asset";
 
 const assetsDir = path.resolve("/srv/dist/assets");
 const archiveDir = path.resolve("/srv/archive/assets");
@@ -53,5 +57,46 @@ describe("missing asset middleware", () => {
     expect(request("/assets/..%2Fassets%2Findex-new.js").next).toHaveBeenCalled();
     expect(request("/assets/..%2F..%2Fetc%2Fpasswd").res.statusCode).toBe(404);
     expect(request("/assets/%E0%A4%A").res.statusCode).toBe(404);
+  });
+});
+
+describe("sourceMapBlockMiddleware", () => {
+  const run = (url: string) => {
+    const res = { statusCode: 200, setHeader: vi.fn(), end: vi.fn() };
+    const next = vi.fn();
+    sourceMapBlockMiddleware({ url }, res, next);
+    return { res, next };
+  };
+  it.each([
+    "/assets/desktop-abc.js.map",
+    "/assets/index.JS.MAP?x=1",
+    "/assets/index.js%2Emap",
+    "/assets/..%2Fapp.js.map",
+    "/assets/index.js.map%00",
+  ])("answers 404 for %s unless it only looks like a map", (url) => {
+    const { res, next } = run(url);
+    if (url.endsWith("%00")) {
+      expect(next).toHaveBeenCalled();
+      return;
+    }
+    expect(res.statusCode).toBe(404);
+    expect(next).not.toHaveBeenCalled();
+  });
+  it.each(["/assets/index.js", "/map", "/assets/a.map/b.js", "/"])("passes %s on", (url) => {
+    const { res, next } = run(url);
+    expect(next).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+  });
+});
+
+describe("sourceMapBlockPlugin", () => {
+  it("installs the middleware and returns nothing, so Vite runs no post-hook", () => {
+    const plugin = sourceMapBlockPlugin();
+    for (const hook of [plugin.configureServer, plugin.configurePreviewServer]) {
+      const connectApp = () => undefined;
+      const use = vi.fn(() => connectApp);
+      expect(hook.call(plugin, { middlewares: { use } })).toBeUndefined();
+      expect(use).toHaveBeenCalledWith(sourceMapBlockMiddleware);
+    }
   });
 });

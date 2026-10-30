@@ -719,57 +719,6 @@ export const builtinAgentTools: ConnectorTool[] = [
     readOnly: true,
   },
   {
-    name: "cloud_agent_status",
-    description: "Get status, branch, and PR url for a cloud coding agent.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Cloud agent id from launch." },
-      },
-      required: ["id"],
-    },
-    readOnly: true,
-  },
-  {
-    name: "cloud_agent_reply",
-    description: "Send a follow-up prompt to an existing cloud coding agent.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Cloud agent id." },
-        prompt: { type: "string", description: "Follow-up instruction." },
-        images: {
-          type: "array",
-          description: "Optional images (data+mimeType or url).",
-          items: { type: "object" },
-        },
-      },
-      required: ["id", "prompt"],
-    },
-  },
-  {
-    name: "cloud_agent_cancel",
-    description: "Cancel the active run on a cloud coding agent.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Cloud agent id." },
-      },
-      required: ["id"],
-    },
-  },
-  {
-    name: "purchase_status",
-    description:
-      "Get a purchase's status, and once approved the card details to type with browser_act fill_card.",
-    inputSchema: {
-      type: "object",
-      properties: { id: { type: "string", description: "Purchase id." } },
-      required: ["id"],
-    },
-    readOnly: true,
-  },
-  {
     name: "search_history",
     description:
       "Search literal keywords in earlier messages in this chat; every query word must match the same message. For paraphrased recollection, start with one distinctive project or topic keyword. Returns at most five matches, newest first. When nextSearch is present, call search_history with those arguments to continue. Coverage applies only to the requested literal query and range; an empty narrower query does not exhaust an unfinished broader query. Use read_history to check surrounding messages and corrections.",

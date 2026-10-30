@@ -1,6 +1,6 @@
 import { MODEL_IMAGE_INPUT_ERROR } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
-import { authErrorText, errorText } from "./user-error";
+import { authErrorText, errorText, modelConnectionErrorText } from "./user-error";
 
 describe("authErrorText", () => {
   it("maps PASSWORD_AUTH_DISABLED before the server message", () => {
@@ -61,4 +61,15 @@ it.each([
   '402: {"message":"Insufficient credits"}',
 ])("uses model connection advice for funding errors on sends: %s", (message) => {
   expect(errorText(new Error(message))).toBe("Connect your own API key in Models.");
+});
+
+describe("model server address errors", () => {
+  it.each([
+    "Could not reach the model server. Check the server URL.",
+    "Model server did not respond in time. Check the server URL.",
+    "Model server returned 404. Check the server URL.",
+  ])("recognises %s", (message) => {
+    expect(modelConnectionErrorText(message)).toContain("Check the server URL");
+    expect(errorText(new Error(message))).toBe(modelConnectionErrorText(message));
+  });
 });

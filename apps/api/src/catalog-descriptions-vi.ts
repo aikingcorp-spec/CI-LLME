@@ -229,3 +229,10 @@ export const CATALOG_DESCRIPTIONS_VI: Readonly<Record<string, string>> = {
   "pstack (poteto-mode): rigorous agent playbooks and principles for writing less, higher-quality code. Investigation, design, review, verification, and parallel subagent workflows.":
     "pstack (poteto-mode): quy trình và nguyên tắc nghiêm ngặt cho tác nhân để viết ít mã hơn với chất lượng cao hơn. Bao gồm điều tra, thiết kế, đánh giá, xác minh và quy trình dùng tác nhân con chạy song song.",
 };
+
+/** Vietnamese copies for entries whose registry description the brand filter blanks (it names a
+ * foreign product), keyed by the entry's registry name. */
+export const CATALOG_DESCRIPTIONS_VI_BY_NAME: Readonly<Record<string, string>> = {
+  tailscale:
+    "Kết nối bot với các máy chủ MCP trong mạng Tailscale riêng của bạn: dùng tailnet cá nhân hoặc tailnet công ty do quản trị viên nhóm bật, mỗi thành viên dùng thiết bị của riêng mình.",
+};

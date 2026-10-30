@@ -12,6 +12,7 @@ import {
   validateModelAuthAvailability,
   verifyCatalogProviderApiKey,
   verifyOpenAiCompatibleApiKey,
+  verifyOpenAiCompatibleEndpoint,
 } from "@rakazo/adapters";
 import type { Actor, ModelConnectInput, SettingsScope, ThinkingLevel } from "@rakazo/contracts";
 import {
@@ -334,6 +335,16 @@ export function createModelConnector(deps: RouterDeps, codexCatalog: CodexLiveCa
         const saved = parseModelSecret(plaintext);
         if (saved.kind === "openai_compatible") {
           await verifyOpenAiCompatibleApiKey(saved, deps.modelConnectionFetch, signal);
+          // A new address, or a new key for it, must answer before it is saved; other edits to
+          // a stored connection (limits, models) do not need the server to be up.
+          const previous = previousPlaintext ? parseModelSecret(previousPlaintext) : undefined;
+          const sameAddress =
+            previous?.kind === "openai_compatible" && previous.baseUrl === saved.baseUrl;
+          if (!sameAddress || input.apiKey?.trim()) {
+            await verifyOpenAiCompatibleEndpoint(saved, deps.modelConnectionFetch, signal, {
+              allowPrivate: mayUsePrivateEndpoint(deps),
+            });
+          }
         }
       }
       if (input.apiKey?.trim()) {

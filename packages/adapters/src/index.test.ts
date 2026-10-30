@@ -211,7 +211,6 @@ describe("builtin tools", () => {
       groupId: null,
       trigger: "user",
       semanticMemoryEnabled: true,
-      cloudAgentEnabled: true,
       historyRetrievalEnabled: true,
       messagingChannelRun: false,
       voiceCall: true,
@@ -238,21 +237,18 @@ describe("builtin tools", () => {
         disabledBuiltinTools: ticketNames,
       }).map((tool) => tool.name),
     ).toEqual(disabled);
-    const purchaseNames = ["purchase_status"];
-    expect(enabled.filter((name) => purchaseNames.includes(name))).toEqual([]);
-    expect(
-      selectBuiltinToolsForRun({ ...options, paymentWalletEnabled: true })
-        .map((tool) => tool.name)
-        .filter((name) => purchaseNames.includes(name)),
-    ).toEqual(purchaseNames);
-    for (const name of ["cloud_agent_launch", "request_purchase", "paid_request"]) {
+    for (const name of [
+      "cloud_agent_launch",
+      "cloud_agent_status",
+      "cloud_agent_reply",
+      "cloud_agent_cancel",
+      "request_purchase",
+      "purchase_status",
+      "paid_request",
+    ]) {
       expect(BUILTIN_TOOL_NAMES).not.toContain(name);
       expect(builtinAgentTools.map((tool) => tool.name)).not.toContain(name);
-      expect(
-        selectBuiltinToolsForRun({ ...options, paymentWalletEnabled: true }).map(
-          (tool) => tool.name,
-        ),
-      ).not.toContain(name);
+      expect(selectBuiltinToolsForRun(options).map((tool) => tool.name)).not.toContain(name);
     }
     const updateBot = builtinAgentTools.find((tool) => tool.name === "update_bot");
     expect(updateBot?.inputSchema).toEqual(

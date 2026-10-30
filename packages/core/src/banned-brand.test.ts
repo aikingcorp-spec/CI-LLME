@@ -75,3 +75,17 @@ it.each([
 ])("blocks exact owners: %s", (url) => {
   expect(isExcludedCatalogText(url)).toBe(true);
 });
+
+it.each([
+  "Taxaid invoices",
+  "grokking algorithms",
+  "https://max.ai/docs",
+  "https://mycursor.com/a",
+])("lint terms are anchored to whole words and hosts: keeps %s", (text) =>
+  expect(findBannedBrandTerms(text)).toEqual([]),
+);
+it.each([
+  ["Plaid for xAI", "xAI"],
+  ["see https://api.cursor.com/v1", "api.cursor.com"],
+  ["Grok Voice", "Grok"],
+])("lint terms still find %s", (text, term) => expect(findBannedBrandTerms(text)).toEqual([term]));

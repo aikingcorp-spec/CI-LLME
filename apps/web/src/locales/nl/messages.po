@@ -904,6 +904,10 @@ msgstr "Bijvoegen"
 msgid "Attach file"
 msgstr "Bestand bijvoegen"
 
+#: src/lib/tool-activity-label.ts
+msgid "Attaching {detail}"
+msgstr ""
+
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/chat-shared.ts
 msgid "Attachment"
@@ -1175,10 +1179,6 @@ msgstr "Kan afbeeldingen niet lezen"
 msgid "Cancel"
 msgstr "Annuleren"
 
-#: src/lib/builtin-tool-labels.ts
-msgid "Cancel cloud agent"
-msgstr ""
-
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
 msgstr "Nieuwe bot annuleren"
@@ -1306,6 +1306,10 @@ msgstr "Computerinstallatie controleren…"
 #: src/components/McpServerHealthLine.tsx
 msgid "Checking connection…"
 msgstr "Verbinding controleren…"
+
+#: src/lib/tool-activity-label.ts
+msgid "Checking your bots"
+msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdateViews.tsx
@@ -1452,10 +1456,6 @@ msgstr ""
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Cloud"
 msgstr "Cloud"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Cloud agent status"
-msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
@@ -1688,6 +1688,10 @@ msgstr "Gekoppeld"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connected {0}."
 msgstr "{0} gekoppeld."
+
+#: src/lib/tool-activity-label.ts
+msgid "Connecting MCP server: {detail}"
+msgstr ""
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpServersOverlay.tsx
@@ -2068,6 +2072,10 @@ msgstr "Regelvoorbeeld kon niet worden geladen"
 msgid "Could not reach the model server."
 msgstr "De modelserver is niet bereikbaar."
 
+#: src/lib/user-error.ts
+msgid "Could not reach the model server. Check the server URL."
+msgstr ""
+
 #: src/components/PasskeyOffer.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/computer-sandbox.ts
@@ -2331,6 +2339,18 @@ msgstr ""
 msgid "Created"
 msgstr "Aangemaakt"
 
+#: src/lib/tool-activity-label.ts
+msgid "Creating group: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Creating skill: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Creating space: {detail}"
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2442,6 +2462,10 @@ msgstr "Standaard van OpenClaw"
 msgid "Default scope"
 msgstr "Standaardbereik"
 
+#: src/lib/tool-activity-label.ts
+msgid "Delegating to helper: {detail}"
+msgstr ""
+
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
@@ -2507,6 +2531,10 @@ msgstr "De gegevens van deze Space verwijderen?"
 #: src/pages/shell/message-view.tsx
 msgid "deleted"
 msgstr "verwijderd"
+
+#: src/lib/tool-activity-label.ts
+msgid "Deleting skill: {detail}"
+msgstr ""
 
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
@@ -3525,6 +3553,10 @@ msgstr "Luistert"
 msgid "Listening…"
 msgstr "Luistert…"
 
+#: src/lib/tool-activity-label.ts
+msgid "Listing {detail}"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Load earlier messages"
 msgstr "Eerdere berichten laden"
@@ -3593,6 +3625,10 @@ msgstr "Lokale computertoegang vereist de nieuwste desktopapp."
 #: src/components/SidebarFooter.tsx
 msgid "Log out"
 msgstr "Uitloggen"
+
+#: src/lib/tool-activity-label.ts
+msgid "Looking at the screen"
+msgstr ""
 
 #: src/pages/shell/agent-import.tsx
 msgid "Looks like it contains a key"
@@ -3886,7 +3922,15 @@ msgid "Model options"
 msgstr "Modelopties"
 
 #: src/lib/user-error.ts
+msgid "Model server did not respond in time. Check the server URL."
+msgstr ""
+
+#: src/lib/user-error.ts
 msgid "Model server returned {status}. You can still Connect with an explicit model id."
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "Model server returned {unanswered}. Check the server URL."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4359,6 +4403,18 @@ msgstr "OpenAI-compatibele server-URL"
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw of Hermes"
 
+#: src/lib/tool-activity-label.ts
+msgid "Opening {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Opening page: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Operating the computer"
+msgstr ""
+
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4381,6 +4437,10 @@ msgstr "Organisatie-API-sleutel"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Organize bot"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Organizing the sidebar"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx
@@ -4623,10 +4683,6 @@ msgstr "Aanbieders"
 msgid "Pull request"
 msgstr "Pull request"
 
-#: src/lib/builtin-tool-labels.ts
-msgid "Purchase status"
-msgstr ""
-
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "In wachtrij"
@@ -4653,6 +4709,26 @@ msgstr "Antwoorden hardop voorlezen"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Read skill"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading {file} from {name}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading page: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading skill: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading the page"
 msgstr ""
 
 #: src/pages/shell/import-status.ts
@@ -4900,6 +4976,10 @@ msgstr "Sectie hernoemen"
 msgid "Render plot"
 msgstr ""
 
+#: src/lib/tool-activity-label.ts
+msgid "Rendering a chart"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Heropenen"
@@ -4929,10 +5009,6 @@ msgstr "Beantwoorden"
 #: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr "Antwoord geannuleerd"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Reply to cloud agent"
-msgstr ""
 
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
@@ -5046,6 +5122,10 @@ msgstr "Terug naar het gesprek met {0}"
 msgid "Return to VNBot"
 msgstr "Terug naar VNBot"
 
+#: src/lib/tool-activity-label.ts
+msgid "Review before {action}"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "Controleer de aanbiedersinstellingen en test daarna opnieuw."
@@ -5053,6 +5133,10 @@ msgstr "Controleer de aanbiedersinstellingen en test daarna opnieuw."
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
 msgstr "Intrekken"
+
+#: src/lib/tool-activity-label.ts
+msgid "Rewriting a bot's instructions"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Right now, only invited emails can sign in."
@@ -5111,6 +5195,14 @@ msgstr "draait"
 #: src/pages/RoutineEditor.tsx
 msgid "Running"
 msgstr "Draait"
+
+#: src/lib/tool-activity-label.ts
+msgid "Running on your computer: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Running: {detail}"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Running…"
@@ -5188,6 +5280,14 @@ msgstr "Opgeslagen."
 msgid "Saved. Rotate to reveal."
 msgstr "Opgeslagen. Vernieuw de sleutel om deze te tonen."
 
+#: src/lib/tool-activity-label.ts
+msgid "Saving a note to memory"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Saving shared memory: {detail}"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
 msgstr "Je werkruimte opslaan"
@@ -5212,6 +5312,10 @@ msgstr "Bezig met opslaan…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Zeg ja of nee, of antwoord in een zin."
+
+#: src/lib/tool-activity-label.ts
+msgid "Scheduling routine: {detail}"
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Scopes (optional)"
@@ -5276,6 +5380,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
 msgstr "Zoeken: {0}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Searching the web: {detail}"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/SpaceSearch.tsx
@@ -5392,6 +5500,10 @@ msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Set child instructions"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Setting a bot's model"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
@@ -6281,6 +6393,14 @@ msgstr "Updates"
 msgid "Updating {0}’s Computer"
 msgstr "De computer van {0} bijwerken"
 
+#: src/lib/tool-activity-label.ts
+msgid "Updating group: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Updating skill: {detail}"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Updating Team Computer"
 msgstr "Teamcomputer bijwerken"
@@ -6381,6 +6501,26 @@ msgstr "Gebruikt paden op je computer"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Gebruikt de eigen {hostCredentialSource}-gegevens van deze server om toegang te krijgen tot {selectedProviderName}."
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {name}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {server}: {tool}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {tool}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Using a tool"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Using the page"
+msgstr ""
 
 #: src/components/LoginFields.tsx
 #: src/components/VaultSettings.tsx
@@ -6584,6 +6724,10 @@ msgstr "Werkruimte"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Write file"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Writing {detail}"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx

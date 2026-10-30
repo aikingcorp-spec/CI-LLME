@@ -1,4 +1,11 @@
 export const MODEL_KEY_REJECTED_ERROR = "API key was rejected by the provider.";
+/** Saving a model server address that does not answer as an OpenAI-compatible server. */
+export const MODEL_SERVER_UNREACHABLE_ERROR =
+  "Could not reach the model server. Check the server URL.";
+export const MODEL_SERVER_TIMEOUT_ERROR =
+  "Model server did not respond in time. Check the server URL.";
+/** `Model server returned 404. Check the server URL.` */
+export const MODEL_SERVER_STATUS_ERROR = /^Model server returned (\d{3})\. Check the server URL\.$/;
 
 export const MODEL_KEY_FORMAT_ERROR = "That doesn't look like an API key. Paste only the key.";
 

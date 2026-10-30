@@ -10,10 +10,9 @@ import { PAGE_BROWSER_TOOL_NAMES } from "./run-tool-selection.js";
 import { computerTools, pageBrowserTool } from "./run-tools-computer.js";
 import { fileTools } from "./run-tools-files.js";
 import { fleetTools } from "./run-tools-fleet.js";
-import { cloudAgentTool, connectorTool, integrationTools } from "./run-tools-integrations.js";
+import { connectorTool, integrationTools } from "./run-tools-integrations.js";
 import { memoryTools } from "./run-tools-memory.js";
 import { messagingTools } from "./run-tools-messaging.js";
-import { purchaseTools } from "./run-tools-purchases.js";
 import { secretTools } from "./run-tools-secrets.js";
 import { taskTools } from "./run-tools-tasks.js";
 import { USER_COMPUTER_SHELL_TOOL, userComputerShell } from "./run-tools-user-computer.js";
@@ -28,17 +27,11 @@ const TOOL_HANDLERS = new Map<string, ToolHandler>([
   ...Object.entries(secretTools),
   ...Object.entries(fleetTools),
   [USER_COMPUTER_SHELL_TOOL, userComputerShell],
-  ...Object.entries(purchaseTools),
   ...[...PAGE_BROWSER_TOOL_NAMES].map((name) => [name, pageBrowserTool] as const),
 ]);
 
 function toolHandler(name: string): ToolHandler {
-  return (
-    TOOL_HANDLERS.get(name) ??
-    (["cloud_agent_status", "cloud_agent_reply", "cloud_agent_cancel"].includes(name)
-      ? cloudAgentTool
-      : connectorTool)
-  );
+  return TOOL_HANDLERS.get(name) ?? connectorTool;
 }
 
 /** Run one tool call of this run's model: gate it, then hand it to its tool family. */

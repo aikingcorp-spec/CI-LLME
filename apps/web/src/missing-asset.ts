@@ -75,3 +75,51 @@ export function missingAssetMiddleware(
     res.end("Not found");
   };
 }
+
+/** Source maps are never served: a request path ending in .map, raw or URL-decoded, is a 404. */
+export function sourceMapBlockMiddleware(
+  req: Pick<IncomingMessage, "url">,
+  res: Pick<ServerResponse, "statusCode" | "setHeader" | "end">,
+  next: () => void,
+): void {
+  const pathname = (req.url ?? "/").split("?", 1)[0] ?? "/";
+  let decoded = pathname;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    // A malformed escape is judged by its raw form.
+  }
+  if (!/\.map$/i.test(pathname) && !/\.map$/i.test(decoded)) {
+    next();
+    return;
+  }
+  res.statusCode = 404;
+  res.setHeader("content-type", "text/plain; charset=utf-8");
+  res.setHeader("cache-control", "no-store");
+  res.end("Not found");
+}
+
+/**
+ * The source-map 404 as a Vite plugin. The hooks have block bodies on purpose: Vite runs a
+ * function returned from configureServer/configurePreviewServer as a post-hook, and
+ * middlewares.use() returns the connect app, which then crashes the dev server on start.
+ */
+export function sourceMapBlockPlugin(): {
+  name: string;
+  configureServer(server: {
+    middlewares: { use(fn: typeof sourceMapBlockMiddleware): unknown };
+  }): void;
+  configurePreviewServer(server: {
+    middlewares: { use(fn: typeof sourceMapBlockMiddleware): unknown };
+  }): void;
+} {
+  return {
+    name: "rakazo-sourcemap-404",
+    configureServer(server) {
+      server.middlewares.use(sourceMapBlockMiddleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(sourceMapBlockMiddleware);
+    },
+  };
+}

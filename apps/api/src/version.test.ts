@@ -24,6 +24,15 @@ describe("public deployment version", () => {
     expect((await app.request("/rpc/health")).status).toBe(401);
   });
 
+  it("answers /version with the same body as /api/version", async () => {
+    const app = versionRoutes({ gitSha: "abc1234", builtAt: "2026-10-29T13:00:00Z" });
+    const short = await app.request("/version");
+    expect(short.status).toBe(200);
+    expect(short.headers.get("content-type")).toContain("application/json");
+    expect(short.headers.get("cache-control")).toBe("no-store");
+    expect(await short.json()).toEqual(await (await app.request("/api/version")).json());
+  });
+
   it("returns null for missing metadata", async () => {
     const response = await versionRoutes({}).request("/api/version");
     expect(await response.json()).toEqual({ sha: null, builtAt: null });

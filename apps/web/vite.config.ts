@@ -29,7 +29,7 @@ import { resolveScreenProxySecret } from "../../packages/core/src/secrets-guard.
 import { createServiceLogger } from "../../packages/logging/src/env.ts";
 import { ASSET_ARCHIVE_DIR, archiveAssets } from "./src/asset-archive.js";
 import { appendForwardedFor } from "./src/forwarded-for.js";
-import { missingAssetMiddleware } from "./src/missing-asset.js";
+import { missingAssetMiddleware, sourceMapBlockPlugin } from "./src/missing-asset.js";
 import {
   collectNovncHtml,
   injectNovncStorageShim,
@@ -461,6 +461,8 @@ export default defineConfig(({ command, mode }) => {
     [
       "/api",
       "/rpc",
+      // Deployment identity; without this the web server answers with the app shell.
+      "/version",
       // Native app domain association, served by the API from deployment settings.
       "/.well-known/apple-app-site-association",
       "/.well-known/assetlinks.json",
@@ -596,6 +598,8 @@ export default defineConfig(({ command, mode }) => {
           });
         },
       },
+      // Before Vite's static handling, so a map in dist or the asset archive is never served.
+      sourceMapBlockPlugin(),
       {
         name: "rakazo-missing-asset-404",
         configurePreviewServer({ config, middlewares }) {

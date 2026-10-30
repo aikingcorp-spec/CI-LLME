@@ -343,6 +343,31 @@ describe("GitHub acquisition", () => {
       return JSON.stringify(manifest);
     });
   }
+  it("lists an over-full skill without downloading it, so it does not refuse the whole plugin", async () => {
+    // Shape of getsentry/plugin-grok: one skill with 93 reference files, the plugin over MAX_FILES.
+    const blob = (path: string) => ({ path, type: "blob", mode: "100644", size: 500 });
+    const skill = (name: string, refs: number) => [
+      blob(`skills/${name}/SKILL.md`),
+      ...Array.from({ length: refs }, (_, i) => blob(`skills/${name}/references/r${i}.md`)),
+    ];
+    const entries = [
+      blob("plugin.json"),
+      ...skill("instrument", 93),
+      ...["a", "b", "c", "d", "e"].flatMap((name) => skill(name, 30)),
+    ];
+    const read = reader(entries);
+    const repo = await fetchGitHubRepo(
+      parsePluginSource("https://github.com/example/plugin@main"),
+      undefined,
+      read,
+    );
+    const raw = read.mock.calls.map(([url]) => url).filter((url) => url.includes("raw.github"));
+    expect(raw.some((url) => url.includes("/instrument/references/"))).toBe(false);
+    expect(raw).toHaveLength(1 + 1 + 5 * 31);
+    expect(repo.files.filter((file) => file.path.startsWith("skills/instrument/"))).toHaveLength(
+      94,
+    );
+  });
   it("retries one stalled GitHub request instead of failing the preview", async () => {
     const inner = reader();
     let stalled = false;

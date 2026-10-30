@@ -5,7 +5,6 @@ import {
 } from "@rakazo/contracts";
 import { isBackgroundRunTrigger, isOwnerStartedRun } from "@rakazo/core";
 import { builtinAgentTools } from "./builtin-tools.js";
-import { selectCloudAgentTools } from "./cloud-agent-tools-select.js";
 import { selectMemoryTools } from "./memory-tools.js";
 import { filterImageReturningComputerTools } from "./model-vision.js";
 import { filterBuiltinToolsForRun, filterBuiltinToolsForThread } from "./schedule-tools.js";
@@ -30,12 +29,7 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "web_fetch",
   "browser_snapshot",
   "list_secrets",
-  "cloud_agent_status",
-  "purchase_status",
 ]);
-
-/** Offered only to a user who connected a wallet. */
-const PURCHASE_TOOL_NAMES = new Set(["request_purchase", "purchase_status", "paid_request"]);
 
 export const BUILTIN_AGENT_TOOL_NAMES = new Set(builtinAgentTools.map((tool) => tool.name));
 
@@ -63,9 +57,6 @@ export function selectBuiltinToolsForRun(options: {
   semanticMemoryEnabled: boolean;
   /** The configured provider can forget individual facts. */
   semanticMemoryForgets?: boolean;
-  cloudAgentEnabled?: boolean;
-  /** The run's user connected a payment wallet. */
-  paymentWalletEnabled?: boolean;
   mediaImagesEnabled?: boolean;
   mediaVideoEnabled?: boolean;
   messagingChannelRun: boolean;
@@ -81,29 +72,25 @@ export function selectBuiltinToolsForRun(options: {
 }) {
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
   const fleetToolsAllowed = isOwnerStartedRun(options.trigger, Boolean(options.followUpFromUser));
-  return selectCloudAgentTools(
-    selectMemoryTools(
-      filterBuiltinToolsForRun(
-        filterBuiltinToolsForThread(
-          filterPageBrowserTools(
-            filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
-            options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
-          ),
-          options.groupId,
+  return selectMemoryTools(
+    filterBuiltinToolsForRun(
+      filterBuiltinToolsForThread(
+        filterPageBrowserTools(
+          filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
+          options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
         ),
-        options.trigger,
+        options.groupId,
       ),
-      options.semanticMemoryEnabled,
-      Boolean(options.semanticMemoryForgets),
+      options.trigger,
     ),
-    Boolean(options.cloudAgentEnabled),
+    options.semanticMemoryEnabled,
+    Boolean(options.semanticMemoryForgets),
   ).filter(
     (tool) =>
       !disabled.has(tool.name) &&
       (options.trigger !== "created" || CREATED_RUN_TOOL_NAMES.has(tool.name)) &&
       (!FLEET_TOOL_NAMES_SET.has(tool.name) ||
         (Boolean(options.fleetManagement) && fleetToolsAllowed)) &&
-      (options.paymentWalletEnabled || !PURCHASE_TOOL_NAMES.has(tool.name)) &&
       (options.mediaImagesEnabled || tool.name !== "generate_image") &&
       (options.mediaVideoEnabled || tool.name !== "generate_video") &&
       (options.ticketBoardEnabled ||

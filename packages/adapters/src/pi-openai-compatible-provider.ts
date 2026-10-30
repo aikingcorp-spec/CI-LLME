@@ -11,6 +11,8 @@ import {
   isLinkLocalAddress,
   isNonPublicAddress,
   MODEL_KEY_REJECTED_ERROR,
+  MODEL_SERVER_TIMEOUT_ERROR,
+  MODEL_SERVER_UNREACHABLE_ERROR,
   parseModelHeaders,
 } from "@rakazo/contracts";
 import { Agent } from "undici";
@@ -487,6 +489,38 @@ export async function verifyOpenAiCompatibleApiKey(
     throw new Error(MODEL_KEY_REJECTED_ERROR);
   }
   if (!response.ok) throw new Error("Could not verify the API key. Try again.");
+}
+
+/**
+ * Checks a server address before it is saved: GET {base}/models must answer. Address-policy
+ * errors and a rejected key already say what to fix and pass through; any other failure becomes
+ * one of a few stable messages the client can translate.
+ */
+export async function verifyOpenAiCompatibleEndpoint(
+  input: { baseUrl: string; apiKey?: string; headers?: Record<string, string> },
+  fetchImpl?: typeof fetch,
+  signal?: AbortSignal,
+  opts?: OpenAiCompatibleUrlPolicy,
+): Promise<void> {
+  const baseUrl = assertAllowedOpenAiCompatibleUrl(input.baseUrl, opts);
+  assertHttpsForKeyedOpenAiCompatibleUrl(
+    baseUrl,
+    input.apiKey,
+    Object.keys(input.headers ?? {}).length > 0,
+  );
+  try {
+    await probeOpenAiCompatibleModels(input, fetchImpl, signal, opts);
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    const message = error instanceof Error ? error.message : "";
+    if (message === MODEL_KEY_REJECTED_ERROR || /hostname resolved|did not resolve/.test(message))
+      throw error;
+    const status = /^Model server returned (\d{3})\./.exec(message)?.[1];
+    if (status) throw new Error(`Model server returned ${status}. Check the server URL.`);
+    if (message.startsWith("Model server probe timed out"))
+      throw new Error(MODEL_SERVER_TIMEOUT_ERROR);
+    throw new Error(MODEL_SERVER_UNREACHABLE_ERROR);
+  }
 }
 
 export async function probeOpenAiCompatibleModels(

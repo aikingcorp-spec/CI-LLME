@@ -10,6 +10,7 @@ import {
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
+import { toolStepLabel } from "../lib/tool-activity-label";
 import { toolStepCount } from "../lib/tool-activity-view";
 
 type ToolStep = Extract<ThreadMessage["blocks"][number], { kind: "steps" }>["steps"][number];
@@ -57,9 +58,9 @@ export function ToolSteps({
                 className={`min-w-0 flex-1 truncate text-[13px] ${
                   isCurrent ? "text-foreground" : "text-muted-foreground"
                 }`}
-                title={step.label}
+                title={toolStepLabel(step.label)}
               >
-                {step.label}
+                {toolStepLabel(step.label)}
                 {step.count > 1 ? ` ×${step.count}` : ""}
               </span>
             </div>

@@ -1,5 +1,11 @@
 import { t } from "@lingui/core/macro";
-import { ACCOUNT_NOT_LINKED, isVoiceAccountErrorCode } from "@rakazo/contracts";
+import {
+  ACCOUNT_NOT_LINKED,
+  isVoiceAccountErrorCode,
+  MODEL_SERVER_STATUS_ERROR,
+  MODEL_SERVER_TIMEOUT_ERROR,
+  MODEL_SERVER_UNREACHABLE_ERROR,
+} from "@rakazo/contracts";
 import type { CredentialField } from "@rakazo/core";
 import {
   authErrorMessage,
@@ -15,6 +21,12 @@ import {
 export function modelConnectionErrorText(message: string): string {
   if (message === "Your model provider rejected the API key. Check your connection settings.")
     return t`Your model provider rejected the API key. Check your connection settings.`;
+  if (message === MODEL_SERVER_UNREACHABLE_ERROR)
+    return t`Could not reach the model server. Check the server URL.`;
+  if (message === MODEL_SERVER_TIMEOUT_ERROR)
+    return t`Model server did not respond in time. Check the server URL.`;
+  const unanswered = MODEL_SERVER_STATUS_ERROR.exec(message)?.[1];
+  if (unanswered) return t`Model server returned ${unanswered}. Check the server URL.`;
   const probe =
     /^Model server returned (\d{3})\. You can still Connect with an explicit model id\.$/.exec(
       message,

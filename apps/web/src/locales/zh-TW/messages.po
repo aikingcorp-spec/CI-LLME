@@ -905,6 +905,10 @@ msgstr "附加"
 msgid "Attach file"
 msgstr "附加檔案"
 
+#: src/lib/tool-activity-label.ts
+msgid "Attaching {detail}"
+msgstr ""
+
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/chat-shared.ts
 msgid "Attachment"
@@ -1176,10 +1180,6 @@ msgstr "無法讀取影像"
 msgid "Cancel"
 msgstr "取消"
 
-#: src/lib/builtin-tool-labels.ts
-msgid "Cancel cloud agent"
-msgstr ""
-
 #: src/pages/shell/agent-import.tsx
 msgid "Cancel new bot"
 msgstr "取消新增機器人"
@@ -1307,6 +1307,10 @@ msgstr "正在檢查電腦設定…"
 #: src/components/McpServerHealthLine.tsx
 msgid "Checking connection…"
 msgstr "正在檢查連線…"
+
+#: src/lib/tool-activity-label.ts
+msgid "Checking your bots"
+msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdateViews.tsx
@@ -1453,10 +1457,6 @@ msgstr ""
 #: src/pages/memory-providers/ConnectionModeFields.tsx
 msgid "Cloud"
 msgstr "雲端"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Cloud agent status"
-msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/ConfirmIdentityDialog.tsx
@@ -1689,6 +1689,10 @@ msgstr "已連線"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connected {0}."
 msgstr "已連線 {0}。"
+
+#: src/lib/tool-activity-label.ts
+msgid "Connecting MCP server: {detail}"
+msgstr ""
 
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpServersOverlay.tsx
@@ -2069,6 +2073,10 @@ msgstr "無法預覽規則"
 msgid "Could not reach the model server."
 msgstr "無法連線到模型伺服器。"
 
+#: src/lib/user-error.ts
+msgid "Could not reach the model server. Check the server URL."
+msgstr ""
+
 #: src/components/PasskeyOffer.tsx
 #: src/components/PasskeySettings.tsx
 #: src/lib/computer-sandbox.ts
@@ -2332,6 +2340,18 @@ msgstr ""
 msgid "Created"
 msgstr "已建立"
 
+#: src/lib/tool-activity-label.ts
+msgid "Creating group: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Creating skill: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Creating space: {detail}"
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2443,6 +2463,10 @@ msgstr "OpenClaw 預設內容"
 msgid "Default scope"
 msgstr "預設範圍"
 
+#: src/lib/tool-activity-label.ts
+msgid "Delegating to helper: {detail}"
+msgstr ""
+
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
@@ -2508,6 +2532,10 @@ msgstr "要刪除此空間的憑證嗎？"
 #: src/pages/shell/message-view.tsx
 msgid "deleted"
 msgstr "已刪除"
+
+#: src/lib/tool-activity-label.ts
+msgid "Deleting skill: {detail}"
+msgstr ""
 
 #: src/components/PasskeySettings.tsx
 #: src/pages/Artifacts.tsx
@@ -3526,6 +3554,10 @@ msgstr "聆聽中"
 msgid "Listening…"
 msgstr "聆聽中…"
 
+#: src/lib/tool-activity-label.ts
+msgid "Listing {detail}"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Load earlier messages"
 msgstr "載入更早的訊息"
@@ -3594,6 +3626,10 @@ msgstr "存取本機電腦需要最新版桌面應用程式。"
 #: src/components/SidebarFooter.tsx
 msgid "Log out"
 msgstr "登出"
+
+#: src/lib/tool-activity-label.ts
+msgid "Looking at the screen"
+msgstr ""
 
 #: src/pages/shell/agent-import.tsx
 msgid "Looks like it contains a key"
@@ -3887,7 +3923,15 @@ msgid "Model options"
 msgstr "模型選項"
 
 #: src/lib/user-error.ts
+msgid "Model server did not respond in time. Check the server URL."
+msgstr ""
+
+#: src/lib/user-error.ts
 msgid "Model server returned {status}. You can still Connect with an explicit model id."
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "Model server returned {unanswered}. Check the server URL."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4360,6 +4404,18 @@ msgstr "OpenAI 相容伺服器 URL"
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw 或 Hermes"
 
+#: src/lib/tool-activity-label.ts
+msgid "Opening {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Opening page: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Operating the computer"
+msgstr ""
+
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4382,6 +4438,10 @@ msgstr "組織 API 金鑰"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Organize bot"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Organizing the sidebar"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx
@@ -4624,10 +4684,6 @@ msgstr "供應商"
 msgid "Pull request"
 msgstr "Pull request"
 
-#: src/lib/builtin-tool-labels.ts
-msgid "Purchase status"
-msgstr ""
-
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "排隊中"
@@ -4654,6 +4710,26 @@ msgstr "朗讀回覆"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Read skill"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading {file} from {name}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading page: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading skill: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Reading the page"
 msgstr ""
 
 #: src/pages/shell/import-status.ts
@@ -4901,6 +4977,10 @@ msgstr "重新命名分組"
 msgid "Render plot"
 msgstr ""
 
+#: src/lib/tool-activity-label.ts
+msgid "Rendering a chart"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "重新開啟"
@@ -4930,10 +5010,6 @@ msgstr "回覆"
 #: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr "已取消回覆"
-
-#: src/lib/builtin-tool-labels.ts
-msgid "Reply to cloud agent"
-msgstr ""
 
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
@@ -5047,6 +5123,10 @@ msgstr "返回與 {0} 的通話"
 msgid "Return to VNBot"
 msgstr "返回 VNBot"
 
+#: src/lib/tool-activity-label.ts
+msgid "Review before {action}"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "請檢查供應商設定並重新測試。"
@@ -5054,6 +5134,10 @@ msgstr "請檢查供應商設定並重新測試。"
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
 msgstr "撤銷授權"
+
+#: src/lib/tool-activity-label.ts
+msgid "Rewriting a bot's instructions"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Right now, only invited emails can sign in."
@@ -5112,6 +5196,14 @@ msgstr "執行中"
 #: src/pages/RoutineEditor.tsx
 msgid "Running"
 msgstr "執行中"
+
+#: src/lib/tool-activity-label.ts
+msgid "Running on your computer: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Running: {detail}"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Running…"
@@ -5189,6 +5281,14 @@ msgstr "已儲存。"
 msgid "Saved. Rotate to reveal."
 msgstr "已儲存。輪換後可檢視。"
 
+#: src/lib/tool-activity-label.ts
+msgid "Saving a note to memory"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Saving shared memory: {detail}"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
 msgstr "正在儲存工作空間"
@@ -5213,6 +5313,10 @@ msgstr "正在儲存…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "回答是或否，或一句話說明。"
+
+#: src/lib/tool-activity-label.ts
+msgid "Scheduling routine: {detail}"
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Scopes (optional)"
@@ -5277,6 +5381,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
 msgstr "搜尋：{0}"
+
+#: src/lib/tool-activity-label.ts
+msgid "Searching the web: {detail}"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/SpaceSearch.tsx
@@ -5393,6 +5501,10 @@ msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Set child instructions"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Setting a bot's model"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
@@ -6282,6 +6394,14 @@ msgstr "更新"
 msgid "Updating {0}’s Computer"
 msgstr "正在更新 {0} 的電腦"
 
+#: src/lib/tool-activity-label.ts
+msgid "Updating group: {detail}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Updating skill: {detail}"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Updating Team Computer"
 msgstr "正在更新團隊電腦"
@@ -6382,6 +6502,26 @@ msgstr "使用你電腦上的路徑"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "使用此伺服器自己的 {hostCredentialSource} 憑證存取 {selectedProviderName}。"
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {name}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {server}: {tool}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Using {tool}"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Using a tool"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Using the page"
+msgstr ""
 
 #: src/components/LoginFields.tsx
 #: src/components/VaultSettings.tsx
@@ -6585,6 +6725,10 @@ msgstr "工作空間"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Write file"
+msgstr ""
+
+#: src/lib/tool-activity-label.ts
+msgid "Writing {detail}"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx

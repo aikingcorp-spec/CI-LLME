@@ -28,4 +28,8 @@ describe.each(caddyfiles)("%s HSTS", (filename) => {
     expect(httpsSite.match(/header_up X-Forwarded-For \{client_ip\}/g)).toHaveLength(2);
     expect(httpsSite).not.toContain("{remote_host}");
   });
+
+  it("sends /version to the API instead of the app shell", () => {
+    expect(httpsSite).toMatch(/handle \/version \{\s+reverse_proxy api:3100/);
+  });
 });

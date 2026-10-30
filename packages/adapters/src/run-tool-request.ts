@@ -17,7 +17,6 @@ import {
   catalogApprovalMatchesLiveRoute,
   catalogApprovalRequest,
 } from "./approval-effect.js";
-import { validCloudAgentArgs } from "./cloud-agent-tools.js";
 import { sanitizeConnectorError } from "./connector-safety.js";
 import { isFleetApprovalTool, prepareFleetRequest } from "./fleet-tools.js";
 import { assertConnectorToolArgs, CATALOG_EXECUTE } from "./lazy-tool-catalog.js";
@@ -86,11 +85,6 @@ export async function resolveToolRequest(
   if (approvedReplay.args) connectorCall.args = approvedReplay.args;
   let catalogRemapped = false;
   let resolvedTool: ConnectorTool | undefined;
-  if (name.startsWith("cloud_agent_") && !validCloudAgentArgs(name, args)) {
-    return {
-      error: "Invalid cloud agent arguments. Raw environment variables are not supported.",
-    };
-  }
   let effectRequest: unknown = name === "paid_request" ? paidRequestEffect(args) : args;
   if (connectorCall.route && deps.connector?.resolveCall) {
     try {

@@ -32,7 +32,7 @@ import {
   serverSecretSpace,
 } from "../availability.js";
 import {
-  isCatalogContentAllowed,
+  isPluginPreviewAllowed,
   sanitizeCatalogInstall,
   sanitizeIntegrationResults,
   sanitizePluginCatalog,
@@ -306,14 +306,12 @@ export function mcpRoutes(ctx: RouterContext) {
       }),
       pluginPreview: authed.capabilities.pluginPreview.handler(async ({ context, input }) => {
         try {
-          if (!isCatalogContentAllowed({ source: input.source }))
-            throw new Error("Plugin source excluded by catalog content policy");
           const preview = await previewPluginInstall({
             source: input.source,
             signal: context.signal,
             fetcher: deps.pluginRepoFetcher,
           });
-          if (!isCatalogContentAllowed(pluginPreviewDto(preview)))
+          if (!isPluginPreviewAllowed(pluginPreviewDto(preview)))
             throw new Error("Plugin excluded by catalog content policy");
           for (const server of preview.mcpServers) {
             await assertMcpRemoteEndpoint(server.endpoint, deps);

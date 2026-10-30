@@ -42,6 +42,12 @@
 		}
 	}
 
+	handle /version {
+		reverse_proxy api:3100 {
+			import deploy_retry
+		}
+	}
+
 	handle /api/* {
 		reverse_proxy api:3100 {
 			import deploy_retry

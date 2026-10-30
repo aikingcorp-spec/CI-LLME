@@ -18,6 +18,7 @@ import { Button, Input, Textarea } from "@rakazo/ui-web";
 import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { rpc } from "../lib/rpc";
+import { askCardText } from "../lib/tool-activity-label";
 import { errorText } from "../lib/user-error";
 import { BuiCard } from "./ai/primitives";
 import { LoginFieldValue } from "./LoginFields";
@@ -254,7 +255,7 @@ export function AskCard({
         {block.instructionUpdate ? (
           <Trans>Update instructions?</Trans>
         ) : (
-          <ChatMarkdown>{block.text}</ChatMarkdown>
+          <ChatMarkdown>{askCardText(block.text)}</ChatMarkdown>
         )}
       </div>
       {secretInput && block.credential ? (

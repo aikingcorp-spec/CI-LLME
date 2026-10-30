@@ -4,23 +4,26 @@
  * Used by the API catalog sanitizer and by scripts/check-banned-brand.ts (pnpm lint).
  */
 
+const WORD_START = "(?<![\\p{L}\\p{N}])";
+const WORD_END = "(?![\\p{L}\\p{N}])";
+
 /**
  * Banned in user-facing descriptions and text (case-insensitive), but not in functional
  * endpoint URLs in source (API hosts, registry sources, privacy disclosures) — Maya 2026-10-29.
  */
 export const BANNED_DESCRIPTION_TERMS = [
-  "xai",
-  "(?:[a-z0-9-]+\\.)?x\\.ai",
-  "cursor\\.com",
-  "vnbot[\\s]+voice",
-  "vnbot[\\s]+sdk",
-  "vnbot[\\s]+bot",
-  "vnbot[\\s]+syncs[\\s]+and[\\s]+stores",
+  `${WORD_START}xai${WORD_END}`,
+  // A host starts at a label boundary, so "max.ai" and "mycursor.com" are not x.ai / cursor.com.
+  "(?<![a-z0-9-])(?:[a-z0-9-]+\\.)*(?:x\\.ai|cursor\\.com)(?![a-z0-9-])",
+  `${WORD_START}vnbot[\\s]+voice${WORD_END}`,
+  `${WORD_START}vnbot[\\s]+sdk${WORD_END}`,
+  `${WORD_START}vnbot[\\s]+bot${WORD_END}`,
+  `${WORD_START}vnbot[\\s]+syncs[\\s]+and[\\s]+stores${WORD_END}`,
 ] as const;
 
 /** Terms matched case-insensitively. */
 export const BANNED_BRAND_TERMS_ANY_CASE = [
-  "grok",
+  `${WORD_START}grok${WORD_END}`,
   "rakazo",
   "open[\\s-]?source",
   "mã nguồn mở",
@@ -32,12 +35,6 @@ export const BANNED_BRAND_TERMS_ANY_CASE = [
 
 /** Terms matched case-sensitively: lowercase "cursor" is an ordinary word (text cursor). */
 export const BANNED_BRAND_TERMS_CASED = ["Cursor", "CURSOR"] as const;
-
-/** Catalog keyword filter: stricter, any-case match including "cursor". */
-export const BANNED_CATALOG_TERMS = new RegExp(
-  [...BANNED_BRAND_TERMS_ANY_CASE, "cursor"].join("|"),
-  "i",
-);
 
 /** Returns the banned brand terms found in user-facing text. */
 export function findBannedBrandTerms(
