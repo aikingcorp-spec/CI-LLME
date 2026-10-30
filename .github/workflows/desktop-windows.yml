@@ -105,10 +105,11 @@ jobs:
         timeout-minutes: 20
         # Keep executable resource editing enabled; disable signing only for this CI build.
         # MSI uses the WiX toolset downloaded by electron-builder; only NSIS is installed.
+        # pwsh splits unquoted -x.y=z native args into "-x" and ".y=z", so single-quote them.
         run: |
           $ErrorActionPreference = 'Stop'
           pnpm --filter @rakazo/desktop exec electron-builder --win nsis msi --x64 --publish never `
-            -c.win.signExecutable=false -c.win.verifyUpdateCodeSignature=false -c.forceCodeSigning=false
+            '-c.win.signExecutable=false' '-c.win.verifyUpdateCodeSignature=false' '-c.forceCodeSigning=false'
           if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed' }
       - name: Check packaged native Windows dependencies and installers
         timeout-minutes: 2
@@ -251,10 +252,19 @@ jobs:
         timeout-minutes: 2
         run: |
           $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path $env:SMOKE_DIR | Out-Null
+          # Keep packaging diagnostics even when the build failed before the smoke test.
+          foreach ($name in @('builder-debug.yml', 'builder-effective-config.yaml')) {
+            $builderFile = Join-Path $env:GITHUB_WORKSPACE "apps/desktop/out/$name"
+            if (Test-Path -LiteralPath $builderFile -PathType Leaf) {
+              New-Item -ItemType Directory -Force -Path "$env:SMOKE_DIR/builder" | Out-Null
+              Copy-Item -LiteralPath $builderFile -Destination "$env:SMOKE_DIR/builder/$name"
+            }
+          }
           $root = Join-Path $env:APPDATA 'VNBot'
           # Allowlist log locations; never copy the database, setup files, or keys.
           foreach ($relative in @('', 'stack', 'logs', 'stack/logs')) {
-            $source = Join-Path $root $relative
+            $source = if ($relative) { Join-Path $root $relative } else { $root }
             if (-not (Test-Path -LiteralPath $source)) { continue }
             $files = if ($relative -in @('logs', 'stack/logs')) {
               @(Get-ChildItem -LiteralPath $source -Filter '*.log' -Recurse -File)
