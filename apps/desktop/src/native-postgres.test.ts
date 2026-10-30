@@ -1,7 +1,9 @@
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { RunProcess, RunProcessResult } from "./native-postgres.js";
 import {
   bootstrapSql,
   databaseUrl,
@@ -14,8 +16,6 @@ import {
   postgresPackageName,
   postgresPaths,
   resolvePostgresBinDir,
-  type RunProcess,
-  type RunProcessResult,
   startArgs,
   stopArgs,
   unpackedPath,
@@ -166,7 +166,9 @@ describe("command lines", () => {
     const args = startArgs({ dataDir: "/d", logFile: "/l", port: 54329 });
     expect(args.slice(0, 2)).toEqual(["start", "-D"]);
     expect(args).toContain("-w");
-    expect(args.at(-1)).toBe("-c listen_addresses=127.0.0.1 -c port=54329 -c unix_socket_directories=");
+    expect(args.at(-1)).toBe(
+      "-c listen_addresses=127.0.0.1 -c port=54329 -c unix_socket_directories=",
+    );
     expect(args[args.indexOf("-l") + 1]).toBe("/l");
   });
 
@@ -251,8 +253,12 @@ describe("NativePostgres lifecycle", () => {
     const pg = create();
     const endpoints = await pg.start();
     expect(endpoints.port).toBe(40000);
-    expect(endpoints.databaseUrl).toBe(`postgres://rakazo_app:${"ab".repeat(24)}@127.0.0.1:40000/rakazo`);
-    expect(endpoints.migrationUrl).toBe(`postgres://rakazo:${"ab".repeat(24)}@127.0.0.1:40000/rakazo`);
+    expect(endpoints.databaseUrl).toBe(
+      `postgres://rakazo_app:${"ab".repeat(24)}@127.0.0.1:40000/rakazo`,
+    );
+    expect(endpoints.migrationUrl).toBe(
+      `postgres://rakazo:${"ab".repeat(24)}@127.0.0.1:40000/rakazo`,
+    );
     expect(pg.phase()).toBe("running");
     expect(pg.running()).toEqual(endpoints);
     expect((await readFile(path.join(userData, "pg", "port"), "utf8")).trim()).toBe("40000");
@@ -304,7 +310,9 @@ describe("NativePostgres lifecycle", () => {
     await run(path.join(binDir, "pg_ctl"), ["start"], { env: {}, timeoutMs: 1 });
     calls.length = 0;
     await create({ run }).start();
-    const order = calls.filter((call) => path.basename(call.file) === "pg_ctl").map((c) => c.args[0]);
+    const order = calls
+      .filter((call) => path.basename(call.file) === "pg_ctl")
+      .map((c) => c.args[0]);
     expect(order).toEqual(["status", "stop", "start"]);
   });
 
@@ -325,7 +333,10 @@ describe("NativePostgres lifecycle", () => {
     const pg = create({ run: fakeRun({ start: [taken] }) });
     expect((await pg.start()).port).toBe(40001);
 
-    const other: RunProcessResult = { ...taken, stderr: "FATAL: data directory has wrong ownership" };
+    const other: RunProcessResult = {
+      ...taken,
+      stderr: "FATAL: data directory has wrong ownership",
+    };
     const failing = create({ run: fakeRun({ start: [other, OK] }) });
     await expect(failing.start()).rejects.toMatchObject({ code: "start-failed" });
     expect(failing.phase()).toBe("stopped");
@@ -437,12 +448,18 @@ describe.runIf(Boolean(REAL_BIN_DIR) && process.platform !== "win32" && process.
   },
 );
 
-/** Minimal PostgreSQL wire client: startup, SCRAM-SHA-256, then `SELECT 1`, with no dependency. */
+/** Use the database package’s existing pg dependency without adding a desktop dependency. */
 async function expectSelectOne(url: string) {
   expect(await connectOnce(url)).toBe("1");
 }
 
 async function connectOnce(url: string): Promise<string> {
-  const { scramSelectOne } = await import("./native-postgres-wire.test-helper.js");
-  return scramSelectOne(url);
+  const { Client } = createRequire(path.resolve("packages/db/package.json"))("pg");
+  const client = new Client({ connectionString: url, connectionTimeoutMillis: 2000 });
+  try {
+    await client.connect();
+    return String((await client.query("SELECT 1 AS value")).rows[0].value);
+  } finally {
+    await client.end();
+  }
 }

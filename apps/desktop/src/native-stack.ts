@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
 import path from "node:path";
 import type { NativePostgres, RunProcess } from "./native-postgres.js";
 import type { NativeServices } from "./native-services.js";
@@ -9,17 +8,25 @@ export interface NativeStackEndpoints {
   webUrl?: string;
 }
 
-export type NativeStackStatus = "stopped" | "starting" | "migrating" | "running" | "stopping" | "failed";
+export type NativeStackStatus =
+  | "stopped"
+  | "starting"
+  | "migrating"
+  | "running"
+  | "stopping"
+  | "failed";
 
 export interface NativeStackOptions {
   postgres: Pick<NativePostgres, "start" | "stop">;
-  /** Absolute path to packages/db (or its packaged equivalent, including Prisma). */
+  /** Absolute path to the shared DB package and its existing pg dependency. */
   dbDir: string;
   services?: NativeServices;
   env?: NodeJS.ProcessEnv;
   /** A JavaScript entry for utilityProcess.fork; an injected runner may use any executable. */
   migrationCommand?: { file: string; args: string[] };
   run?: RunProcess;
+  migrationsDir?: string;
+  migrationEntry?: string;
 }
 
 /** Load Electron only when migrating, so lifecycle tests and tooling work in plain Node. */
@@ -32,8 +39,13 @@ const runUtilityMigration: RunProcess = async (file, args, options) => {
       stdio: "ignore",
     });
     let timedOut = false;
-    const kill = () => { child.kill(); };
-    const timer = setTimeout(() => { timedOut = true; kill(); }, options.timeoutMs);
+    const kill = () => {
+      child.kill();
+    };
+    const timer = setTimeout(() => {
+      timedOut = true;
+      kill();
+    }, options.timeoutMs);
     options.signal?.addEventListener("abort", kill, { once: true });
     if (options.signal?.aborted) kill();
     const clear = () => {
@@ -64,18 +76,22 @@ export class NativeStack {
 
   constructor(private readonly options: NativeStackOptions) {}
 
-  status(): NativeStackStatus { return this.current; }
+  status(): NativeStackStatus {
+    return this.current;
+  }
 
   start(): Promise<NativeStackEndpoints> {
     if (this.starting) return this.starting;
     if (this.endpoints && !this.stopping) return Promise.resolve({ ...this.endpoints });
     const generation = this.generation;
-    const attempt = (this.stopping ?? Promise.resolve()).then(async () => {
-      if (generation !== this.generation) throw new Error("Local stack startup was stopped.");
-      return this.startStack(generation);
-    }).finally(() => {
-      if (this.starting === attempt) this.starting = null;
-    });
+    const attempt = (this.stopping ?? Promise.resolve())
+      .then(async () => {
+        if (generation !== this.generation) throw new Error("Local stack startup was stopped.");
+        return this.startStack(generation);
+      })
+      .finally(() => {
+        if (this.starting === attempt) this.starting = null;
+      });
     this.starting = attempt;
     return attempt;
   }
@@ -92,10 +108,12 @@ export class NativeStack {
       .then(async () => {
         await this.cleanup();
         this.current = "stopped";
-      }).catch(() => {
+      })
+      .catch(() => {
         this.current = "failed";
         throw new Error("The local stack did not stop.");
-      }).finally(() => {
+      })
+      .finally(() => {
         if (this.stopping === attempt) this.stopping = null;
       });
     this.stopping = attempt;
@@ -118,8 +136,8 @@ export class NativeStack {
       checkStopped();
       this.current = "migrating";
       const command = this.options.migrationCommand ?? {
-        file: createRequire(path.join(this.options.dbDir, "package.json")).resolve("prisma/build/index.js"),
-        args: ["migrate", "deploy"],
+        file: this.options.migrationEntry ?? path.join(import.meta.dirname, "main.js"),
+        args: ["--rakazo-native-migrate"],
       };
       const result = await (this.options.run ?? runUtilityMigration)(command.file, command.args, {
         cwd: this.options.dbDir,
@@ -127,6 +145,10 @@ export class NativeStack {
           ...(this.options.env ?? process.env),
           DATABASE_URL: pg.migrationUrl,
           DATABASE_MIGRATION_URL: pg.migrationUrl,
+          RAKAZO_NATIVE_RUNTIME_URL: pg.databaseUrl,
+          RAKAZO_NATIVE_DB_DIR: this.options.dbDir,
+          RAKAZO_NATIVE_MIGRATIONS_DIR:
+            this.options.migrationsDir ?? path.join(this.options.dbDir, "prisma", "migrations"),
         },
         timeoutMs: 120_000,
         signal: controller.signal,
@@ -138,12 +160,15 @@ export class NativeStack {
         this.servicesStarted = true;
         ({ webUrl } = await this.options.services.start({
           DATABASE_URL: pg.databaseUrl,
-          DATABASE_MIGRATION_URL: pg.migrationUrl,
           SANDBOX_PROVIDER: "desktop",
         }));
       }
       checkStopped();
-      this.endpoints = { databaseUrl: pg.databaseUrl, migrationUrl: pg.migrationUrl, ...(webUrl ? { webUrl } : {}) };
+      this.endpoints = {
+        databaseUrl: pg.databaseUrl,
+        migrationUrl: pg.migrationUrl,
+        ...(webUrl ? { webUrl } : {}),
+      };
       this.current = "running";
       return { ...this.endpoints };
     } catch {
@@ -163,13 +188,17 @@ export class NativeStack {
       try {
         await this.options.services!.stop();
         this.servicesStarted = false;
-      } catch { failed = true; }
+      } catch {
+        failed = true;
+      }
     }
     if (this.postgresStarted) {
       try {
         await this.options.postgres.stop();
         this.postgresStarted = false;
-      } catch { failed = true; }
+      } catch {
+        failed = true;
+      }
     }
     if (failed) throw new Error("The local stack did not stop.");
   }
