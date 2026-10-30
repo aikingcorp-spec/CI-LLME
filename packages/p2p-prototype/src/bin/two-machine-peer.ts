@@ -60,9 +60,14 @@ const iceTransportPolicy = process.env.ICE_TRANSPORT_POLICY as "all" | "relay" |
 let weriftCurrent: WeriftPeerConnection | undefined;
 let createPeerConnection: PeerOptions["createPeerConnection"];
 if (process.env.PEER_IMPL === "werift") {
+  // Only loaded here: werift is a devDependency, so a production install must never reach this import.
   const { WeriftPeerConnection, turnTlsOptionsFromEnv } = await import(
     "../werift-peer-connection.js"
-  );
+  ).catch((error: unknown) => {
+    console.error("PEER_IMPL=werift needs the werift devDependency (test-only)");
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
   const tlsOptions = turnTlsOptionsFromEnv();
   createPeerConnection = (name, config) => {
     weriftCurrent = new WeriftPeerConnection(name, config, tlsOptions);
