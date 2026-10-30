@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The website download section now detects your computer, shows the version, file and SHA-256 checksum, and guides Windows users past the SmartScreen warning; download buttons stay off until the installers are published.
 - The download section now matches the approved layout: a green download button with operating-system icons, a full-width card that walks Windows users through the SmartScreen warning, a release notes link, and the Linux `chmod +x` step; the sticky header no longer covers the section when you jump to it.
+- While installers are not yet published, the download button, copy button and release notes link are visibly inactive, and Windows MSI users now see instructions that name the .msi file.
 - `MASTER_KEY_PROVIDER=aws-kms` wraps content keys with an AWS KMS key, so the master key no longer sits on the server. `content-encryption rotate` moves existing keys over ([content encryption](docs/content-encryption.md#external-key-management)).
 - Ollama Cloud preset in Models settings on web and mobile, using an OpenAI-compatible connection with model discovery and no deployment configuration.
 
