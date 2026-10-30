@@ -5,6 +5,13 @@ on:
     paths:
       - "apps/desktop/**"
       - "packages/p2p-prototype/**"
+      - "apps/api/**"
+      - "apps/worker/**"
+      - "apps/web/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/desktop-windows.yml"
   workflow_dispatch:
 
@@ -46,6 +53,19 @@ jobs:
         run: pnpm --filter @rakazo/desktop test
       - name: Package NSIS and MSI
         run: pnpm --filter @rakazo/desktop run pack:win
+      - name: Check packaged server resources
+        run: |
+          $resources = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/out/win-unpacked/resources'
+          foreach ($file in @('server/api/dist/index.js', 'server/worker/dist/index.js', 'server/db/dist/database-access.js', 'server/db/package.json', 'server/adapters/package.json', 'web/index.html')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $resources $file) -PathType Leaf)) { throw "Missing packaged resource: $file" }
+          }
+          $migrations = @(Get-ChildItem (Join-Path $resources 'migrations') -Directory | Where-Object {
+            Test-Path -LiteralPath (Join-Path $_.FullName 'migration.sql') -PathType Leaf
+          })
+          if ($migrations.Count -eq 0) { throw 'Packaged migrations missing' }
+          foreach ($module in @('pg', 'graphile-worker')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $resources "server/node_modules/$module") -PathType Container)) { throw "Missing server dependency: $module" }
+          }
       - name: Silent install, smoke test, uninstall
         run: |
           New-Item -ItemType Directory -Force -Path $env:SMOKE_DIR | Out-Null
@@ -64,33 +84,34 @@ jobs:
           Remove-Item Env:ELECTRON_RUN_AS_NODE
 
           # The app starts its own stack, writes the web URL under its user data directory,
-          # and must answer /health within two minutes.
+          # and must emit the smoke success line before exiting.
           $env:RAKAZO_DESKTOP_SMOKE = '1'
           $urlFile = Join-Path $env:APPDATA 'VNBot\stack\.desktop-web-url'
-          $app = Start-Process -FilePath $exe -PassThru `
-            -RedirectStandardOutput (Join-Path $env:SMOKE_DIR 'app.out.log') `
-            -RedirectStandardError (Join-Path $env:SMOKE_DIR 'app.err.log')
-          $healthy = $false
+          $env:ELECTRON_ENABLE_LOGGING = '1'
           try {
-            $deadline = (Get-Date).AddSeconds(120)
-            while ((Get-Date) -lt $deadline) {
-              if (Test-Path $urlFile) {
-                $url = (Get-Content $urlFile -Raw).Trim()
-                if ($url) {
-                  try {
-                    $res = Invoke-WebRequest -Uri "$url/health" -UseBasicParsing -TimeoutSec 5
-                    if ($res.StatusCode -eq 200) { Write-Host "health ok at $url"; $healthy = $true; break }
-                  } catch { }
-                }
-              }
-              if ($app.HasExited) { Write-Host 'app exited before /health answered'; break }
-              Start-Sleep -Seconds 2
+            $stdout = Join-Path $env:SMOKE_DIR 'app.out.log'
+            $stderr = Join-Path $env:SMOKE_DIR 'app.err.log'
+            $app = Start-Process -FilePath $exe -PassThru `
+              -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+            try {
+              $app | Wait-Process -Timeout 180 -ErrorAction Stop
+            } catch {
+              Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+              throw 'App did not exit within the 180-second smoke budget'
+            }
+            $app.WaitForExit()
+            $app.Refresh()
+            if ($app.ExitCode -ne 0) { throw "Smoke process exited with $($app.ExitCode)" }
+            if (-not (Select-String -LiteralPath $stdout -Pattern '^RAKAZO_DESKTOP_SMOKE ok http://127\.0\.0\.1:[0-9]{4,5}\r?$' -Quiet)) {
+              throw 'Smoke success line missing from stdout'
+            }
+            if (Test-Path -LiteralPath $urlFile -PathType Leaf) {
+              Copy-Item -LiteralPath $urlFile -Destination (Join-Path $env:SMOKE_DIR '.desktop-web-url')
             }
           } finally {
             taskkill /F /T /PID $app.Id 2>&1 | Out-Null
             Get-Process -Name postgres -ErrorAction SilentlyContinue | Stop-Process -Force
           }
-          if (-not $healthy) { throw 'no 200 from /health within 120s' }
 
           # `_?=` keeps the uninstaller in place so Start-Process -Wait waits for it.
           $uninstaller = Join-Path $installDir 'Uninstall VNBot.exe'

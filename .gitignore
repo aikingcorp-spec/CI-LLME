@@ -22,6 +22,7 @@ apps/web/dist
 apps/desktop/dist
 apps/desktop/native
 apps/desktop/out
+smoke-artifacts/
 apps/desktop/e2e/screenshots
 apps/mobile/.expo
 apps/mobile/dist

@@ -5,6 +5,9 @@ on:
     paths:
       - "apps/desktop/**"
       - "packages/p2p-prototype/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/desktop-p2p-smoke.yml"
   workflow_dispatch:
 
@@ -69,7 +72,7 @@ jobs:
           done
 
           echo "== two-process data channel echo (webrtc-demo)"
-          timeout 90 pnpm exec tsx src/bin/webrtc-demo.ts
+          timeout 90 pnpm exec tsx src/bin/webrtc-demo.ts 2> "$work/webrtc.err.log" | tee "$work/webrtc.out.log"
 
           echo "== node agent plus client transport (transport-demo)"
           code="$(curl -s -X POST -H "Authorization: Bearer $SESSION_TOKEN" "$GATEWAY_URL/pair/start" \
@@ -81,8 +84,16 @@ jobs:
             grep -q "dialing" "$work/node-agent.log" && break
             sleep 1
           done
-          timeout 60 pnpm exec tsx src/bin/transport-demo.ts | tee "$work/transport.log"
+          timeout 60 pnpm exec tsx src/bin/transport-demo.ts 2> "$work/transport.err.log" | tee "$work/transport.log"
           grep -q "data-channel call status=200" "$work/transport.log"
       - name: Show logs on failure
         if: failure()
         run: tail -n 100 "$RUNNER_TEMP"/p2p-smoke/*.log || true
+      - name: Retain smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-p2p-smoke
+          path: ${{ runner.temp }}/p2p-smoke/*.log
+          if-no-files-found: warn
+          retention-days: 7

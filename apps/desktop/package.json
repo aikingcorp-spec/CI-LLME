@@ -13,14 +13,14 @@
     "dev": "pnpm build && electron .",
     "build": "pnpm check && node scripts/build.mjs && node scripts/copy-static.mjs",
     "build:native": "pnpm check && node scripts/build.mjs --native && node scripts/copy-static.mjs",
-    "pack": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --mac --win --linux",
+    "pack": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --mac --win --linux",
     "pack:win": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --win --x64",
     "pack:linux": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --linux --x64",
-    "pack:dir": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --dir",
+    "pack:dir": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --dir",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. apps/desktop/src",
     "test:e2e": "pnpm build && playwright test --config e2e/playwright.config.ts",
-    "release": "pnpm --filter @rakazo/web build && pnpm build && electron-builder --publish never"
+    "release": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --publish never"
   },
   "dependencies": {
     "@rakazo/contracts": "workspace:*",
@@ -28,12 +28,7 @@
     "@rakazo/p2p-prototype": "workspace:*",
     "@sentry/electron": "8.3.0",
     "electron-updater": "6.8.11",
-    "embedded-postgres": "16.9.0-beta.15",
     "koffi": "3.3.4"
-  },
-  "optionalDependencies": {
-    "@embedded-postgres/linux-x64": "16.9.0-beta.15",
-    "@embedded-postgres/windows-x64": "16.9.0-beta.15"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
@@ -44,6 +39,10 @@
     "esbuild": "0.28.2",
     "typescript": "7.0.2",
     "vitest": "4.1.12"
+  },
+  "optionalDependencies": {
+    "@embedded-postgres/linux-x64": "16.14.0-beta.17",
+    "@embedded-postgres/windows-x64": "16.14.0-beta.17"
   },
   "build": {
     "appId": "run.vnbot.desktop",
@@ -58,8 +57,7 @@
     ],
     "asarUnpack": [
       "**/node_modules/node-datachannel/**",
-      "**/node_modules/@embedded-postgres/**",
-      "**/node_modules/embedded-postgres/**"
+      "**/node_modules/@embedded-postgres/**"
     ],
     "extraResources": [
       {
@@ -137,15 +135,18 @@
       "extraResources": [
         {
           "from": "native/server",
-          "to": "server"
+          "to": "server",
+          "filter": [
+            "**/*",
+            "!**/*.map"
+          ]
         },
         {
           "from": "../../packages/db/prisma/migrations",
-          "to": "server/prisma/migrations"
-        },
-        {
-          "from": "../../packages/db/prisma/schema.prisma",
-          "to": "server/prisma/schema.prisma"
+          "to": "migrations",
+          "filter": [
+            "*/migration.sql"
+          ]
         }
       ]
     },
@@ -155,15 +156,18 @@
       "extraResources": [
         {
           "from": "native/server",
-          "to": "server"
+          "to": "server",
+          "filter": [
+            "**/*",
+            "!**/*.map"
+          ]
         },
         {
           "from": "../../packages/db/prisma/migrations",
-          "to": "server/prisma/migrations"
-        },
-        {
-          "from": "../../packages/db/prisma/schema.prisma",
-          "to": "server/prisma/schema.prisma"
+          "to": "migrations",
+          "filter": [
+            "*/migration.sql"
+          ]
         }
       ],
       "maintainer": "VNBot <hello@vnbot.run>",
