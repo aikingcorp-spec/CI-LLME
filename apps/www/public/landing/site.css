@@ -252,3 +252,5 @@ pre code{font:500 13px/1.6 ui-monospace,Menlo,monospace}
 .marq .row{width:max-content;gap:16px;animation:none}
 .marq .row picture:nth-child(n+9){display:none}.marq img{width:40px}
 }
+
+.nav-brand{display:inline-flex;align-items:center;gap:8px}.nav-icon{width:32px;height:32px;border-radius:8px;flex-shrink:0}
