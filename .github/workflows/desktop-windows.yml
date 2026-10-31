@@ -90,7 +90,7 @@ jobs:
           # node-datachannel must load from the unpacked resources of the installed app.
           $env:NDC_PATH = Join-Path $installDir 'resources\app.asar.unpacked\node_modules\node-datachannel'
           $env:ELECTRON_RUN_AS_NODE = '1'
-          & $exe -e "require(process.env.NDC_PATH); console.log('node-datachannel loaded')"
+          & $exe -e "require(process.env.NDC_PATH); console.log('node-datachannel loaded')" | Out-Host
           if ($LASTEXITCODE -ne 0) { throw 'node-datachannel failed to load from the installed app' }
           Remove-Item Env:ELECTRON_RUN_AS_NODE
 
