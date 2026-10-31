@@ -44,6 +44,7 @@ RUN pnpm --filter @rakazo/api --filter @rakazo/worker build
 ARG VITE_DEFAULT_UI_LOCALE=vi
 ARG VITE_VNBOT_CONTACT_URL=
 ARG VITE_P2P_GATEWAY_URL=
+# Must never contain TURN credentials: this value is embedded in the public web bundle. TURN credentials come from the gateway /turn-credentials endpoint at runtime.
 ARG VITE_P2P_ICE_SERVERS=
 RUN VITE_DEFAULT_UI_LOCALE="$VITE_DEFAULT_UI_LOCALE" VITE_VNBOT_CONTACT_URL="$VITE_VNBOT_CONTACT_URL" \
   VITE_P2P_GATEWAY_URL="$VITE_P2P_GATEWAY_URL" VITE_P2P_ICE_SERVERS="$VITE_P2P_ICE_SERVERS" \
