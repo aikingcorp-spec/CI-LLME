@@ -1,0 +1,56 @@
+name = "vnbot-p2p-gateway"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# No routes or custom domains yet: the first deploy is workers.dev only.
+
+[vars]
+# Placeholders. Public values; the private half lives in the GATEWAY_PRIVATE_KEY secret
+# (`wrangler secret put GATEWAY_PRIVATE_KEY`, see .dev.vars.example for local runs).
+GATEWAY_PUBLIC_KEY = "REPLACE_WITH_BASE64URL_ED25519_PUBLIC_KEY"
+GATEWAY_KEY_ID = "gw-2026-10"
+# JSON {kid: base64url Ed25519 public key} of the keys the app signs 5-minute tokens with.
+APP_TOKEN_PUBLIC_KEYS = "{}"
+APP_TOKEN_ISSUER = "https://app.vnbot.run"
+APP_TOKEN_AUDIENCE = "p2p.vnbot.run"
+# Comma-separated origins allowed to call the HTTP routes from a browser.
+ALLOWED_ORIGINS = "https://app.vnbot.run"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vnbot-p2p-d1"
+database_id = "26f5ef29-6df6-4e45-8099-eb802ab9f6fc"
+
+[[durable_objects.bindings]]
+name = "NODE_ROOM"
+class_name = "NodeRoom"
+
+# SQLite-backed Durable Objects run on the Workers Free plan.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["NodeRoom"]
+
+[env.p2p-test]
+name = "vnbot-p2p-test"
+workers_dev = true
+
+[env.p2p-test.vars]
+GATEWAY_PUBLIC_KEY = "REPLACE_WITH_BASE64URL_ED25519_PUBLIC_KEY"
+GATEWAY_KEY_ID = "gw-2026-10-test"
+APP_TOKEN_PUBLIC_KEYS = "{}"
+APP_TOKEN_ISSUER = "https://app.vnbot.run"
+APP_TOKEN_AUDIENCE = "p2p.vnbot.run"
+ALLOWED_ORIGINS = "http://localhost:8787"
+
+[[env.p2p-test.d1_databases]]
+binding = "DB"
+database_name = "vnbot-p2p-test-d1"
+database_id = "00000000-0000-4000-8000-000000000000"
+
+[[env.p2p-test.durable_objects.bindings]]
+name = "NODE_ROOM"
+class_name = "NodeRoom"
+
+[[env.p2p-test.migrations]]
+tag = "v1"
+new_sqlite_classes = ["NodeRoom"]

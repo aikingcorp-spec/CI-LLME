@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added a separately configured, workers.dev-only P2P gateway test environment for owner-approved validation.
+- Added local WebSocket offer/answer smoke coverage for the P2P gateway, including node pairing and client target restrictions.
+
 Notable product changes in Rakazo. See GitHub Releases for tagged builds.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
@@ -14,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Sign-in focuses the email field on arrival and when returning to the email step, and focuses the one-time-code field when the code step appears, without relying on `autoFocus`.
+- The P2P gateway now has tests proving each web client's offer and answer reach only its own node, that clients cannot signal each other, and that pairing is saved to the database.
+- The P2P gateway Worker now type-checks cleanly and answers its health check when run locally.
 - Mobile threads now show work started by another client as soon as the run starts, without hiding waiting runs or another group member's error.
 - Hovering a message no longer places its entire row above the floating chat header and other higher-priority controls.
 - Mobile chat and call subscriptions reject oversized event frames and release their readers after cancellation or connection failure.

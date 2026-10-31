@@ -50,6 +50,7 @@ export default defineConfig({
       "apps/mobile/plugins/**/*.test.js",
       "apps/api/src/**/*.test.ts",
       "apps/worker/src/**/*.test.ts",
+      "apps/p2p-gateway/src/**/*.test.ts",
       "scripts/check-banned-brand.test.ts",
     ],
     testTimeout: 30_000,

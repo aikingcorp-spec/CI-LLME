@@ -1,21 +1,21 @@
-run-01 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49328,49809,49895,49898,49947,49966 tcp_conns=6 bytes_up=32268 bytes_down=25720 udp_dgrams=0
-run-02 FAIL pairs=4 relay@<coturn-host>+tcp=4 transports=tcp relay_ports=49702,49733 tcp_conns=4 bytes_up=15604 bytes_down=14332 udp_dgrams=0 WHY: vitest passed=2 failed=1
-run-03 FAIL pairs=8 relay@<coturn-host>+tcp=8 transports=tcp relay_ports=49541,49624,49713,49742 tcp_conns=5 bytes_up=20408 bytes_down=15808 udp_dgrams=0 WHY: vitest passed=2 failed=1
-run-04 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49175,49319,49325,49506,49646,49914 tcp_conns=8 bytes_up=36360 bytes_down=29644 udp_dgrams=0
-run-05 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49243,49377,49379,49514,49603,49846 tcp_conns=6 bytes_up=30012 bytes_down=25332 udp_dgrams=0
-run-06 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49176,49537,49872,49896,49903,49940 tcp_conns=6 bytes_up=31948 bytes_down=25708 udp_dgrams=0
-run-07 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49317,49327,49382,49795,49970,49996 tcp_conns=6 bytes_up=32380 bytes_down=25496 udp_dgrams=0
-run-08 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49263,49534,49570,49587,49677,49841 tcp_conns=6 bytes_up=31664 bytes_down=25712 udp_dgrams=0
-run-09 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49353,49532,49619,49687,49932,49954 tcp_conns=6 bytes_up=30416 bytes_down=25208 udp_dgrams=0
-run-10 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49448,49618,49708,49867,49885,49927 tcp_conns=6 bytes_up=30296 bytes_down=24996 udp_dgrams=0
-run-11 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49218,49345,49582,49817,49913,49999 tcp_conns=6 bytes_up=31460 bytes_down=25344 udp_dgrams=0
-run-12 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49242,49309,49395,49760,49813,49893 tcp_conns=6 bytes_up=30076 bytes_down=25112 udp_dgrams=0
-run-13 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49213,49371,49425,49496,49508,49808 tcp_conns=6 bytes_up=31904 bytes_down=25716 udp_dgrams=0
-run-14 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49330,49360,49397,49850,49863,49975 tcp_conns=6 bytes_up=30104 bytes_down=25184 udp_dgrams=0
-run-15 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49241,49253,49490,49571,49671,49953 tcp_conns=6 bytes_up=29812 bytes_down=25108 udp_dgrams=0
-run-16 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49282,49461,49591,49721,49851,49977 tcp_conns=6 bytes_up=30276 bytes_down=25332 udp_dgrams=0
-run-17 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49306,49690,49783,49855,49963,49965 tcp_conns=6 bytes_up=30108 bytes_down=25332 udp_dgrams=0
-run-18 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49223,49233,49402,49880,49924,49939 tcp_conns=6 bytes_up=29916 bytes_down=24972 udp_dgrams=0
-run-19 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49204,49289,49342,49523,49695,49907 tcp_conns=6 bytes_up=31816 bytes_down=25648 udp_dgrams=0
-run-20 OK pairs=12 relay@<coturn-host>+tcp=12 transports=tcp relay_ports=49214,49389,49463,49617,49637,49825 tcp_conns=6 bytes_up=31688 bytes_down=27324 udp_dgrams=0
+run-01 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49328,49809,49895,49898,49947,49966 tcp_conns=6 bytes_up=32268 bytes_down=25720 udp_dgrams=0
+run-02 FAIL pairs=4 relay@72.62.255.70+tcp=4 transports=tcp relay_ports=49702,49733 tcp_conns=4 bytes_up=15604 bytes_down=14332 udp_dgrams=0 WHY: vitest passed=2 failed=1
+run-03 FAIL pairs=8 relay@72.62.255.70+tcp=8 transports=tcp relay_ports=49541,49624,49713,49742 tcp_conns=5 bytes_up=20408 bytes_down=15808 udp_dgrams=0 WHY: vitest passed=2 failed=1
+run-04 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49175,49319,49325,49506,49646,49914 tcp_conns=8 bytes_up=36360 bytes_down=29644 udp_dgrams=0
+run-05 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49243,49377,49379,49514,49603,49846 tcp_conns=6 bytes_up=30012 bytes_down=25332 udp_dgrams=0
+run-06 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49176,49537,49872,49896,49903,49940 tcp_conns=6 bytes_up=31948 bytes_down=25708 udp_dgrams=0
+run-07 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49317,49327,49382,49795,49970,49996 tcp_conns=6 bytes_up=32380 bytes_down=25496 udp_dgrams=0
+run-08 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49263,49534,49570,49587,49677,49841 tcp_conns=6 bytes_up=31664 bytes_down=25712 udp_dgrams=0
+run-09 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49353,49532,49619,49687,49932,49954 tcp_conns=6 bytes_up=30416 bytes_down=25208 udp_dgrams=0
+run-10 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49448,49618,49708,49867,49885,49927 tcp_conns=6 bytes_up=30296 bytes_down=24996 udp_dgrams=0
+run-11 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49218,49345,49582,49817,49913,49999 tcp_conns=6 bytes_up=31460 bytes_down=25344 udp_dgrams=0
+run-12 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49242,49309,49395,49760,49813,49893 tcp_conns=6 bytes_up=30076 bytes_down=25112 udp_dgrams=0
+run-13 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49213,49371,49425,49496,49508,49808 tcp_conns=6 bytes_up=31904 bytes_down=25716 udp_dgrams=0
+run-14 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49330,49360,49397,49850,49863,49975 tcp_conns=6 bytes_up=30104 bytes_down=25184 udp_dgrams=0
+run-15 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49241,49253,49490,49571,49671,49953 tcp_conns=6 bytes_up=29812 bytes_down=25108 udp_dgrams=0
+run-16 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49282,49461,49591,49721,49851,49977 tcp_conns=6 bytes_up=30276 bytes_down=25332 udp_dgrams=0
+run-17 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49306,49690,49783,49855,49963,49965 tcp_conns=6 bytes_up=30108 bytes_down=25332 udp_dgrams=0
+run-18 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49223,49233,49402,49880,49924,49939 tcp_conns=6 bytes_up=29916 bytes_down=24972 udp_dgrams=0
+run-19 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49204,49289,49342,49523,49695,49907 tcp_conns=6 bytes_up=31816 bytes_down=25648 udp_dgrams=0
+run-20 OK pairs=12 relay@72.62.255.70+tcp=12 transports=tcp relay_ports=49214,49389,49463,49617,49637,49825 tcp_conns=6 bytes_up=31688 bytes_down=27324 udp_dgrams=0
 TOTAL mode=tcp runs=20 ok=18 failed=2

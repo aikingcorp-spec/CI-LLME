@@ -10,7 +10,7 @@ import { ONCE_ROUTINE_CRON } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { RunHistoryWriteError } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { builtinAgentTools } from "./builtin-tools.js";
 import { createRunExecutor as createExecutor } from "./executor.js";
 import { UnavailableModelForAuthError, validateConnectedModelChoice } from "./model-selection.js";
@@ -48,6 +48,15 @@ import {
   toolCompletionFromResult,
 } from "./tool-completion-audit.js";
 import { parseUpdateBotPatch } from "./update-bot-patch.js";
+
+// These tests must not depend on the developer's shell: a real OPENROUTER_API_KEY changes model
+// and auto-review selection. Each test starts without it; tests that need it stub it themselves.
+beforeEach(() => {
+  vi.stubEnv("OPENROUTER_API_KEY", undefined);
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 const createRunExecutor = (deps: Parameters<typeof createExecutor>[0]) =>
   createExecutor({ ...deps, prisma: withModelRoles(deps.prisma) });

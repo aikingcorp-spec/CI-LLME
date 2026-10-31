@@ -1,0 +1,6 @@
+# Copy to .dev.vars for `wrangler dev`. Fake values: generate real ones with
+# `node scripts/generate-keypair.mjs`. In production the private key is a Worker secret
+# (`wrangler secret put GATEWAY_PRIVATE_KEY`) and never lives in the repository.
+GATEWAY_PRIVATE_KEY=FAKE_base64url_ed25519_private_key_32_bytes_
+GATEWAY_PUBLIC_KEY=FAKE_base64url_ed25519_public_key_32_bytes__
+APP_TOKEN_PUBLIC_KEYS={"app-dev":"FAKE_base64url_ed25519_public_key_32_bytes__"}
