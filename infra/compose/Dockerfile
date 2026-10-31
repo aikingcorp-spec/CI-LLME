@@ -13,6 +13,7 @@ COPY --chmod=755 patches patches
 COPY --chmod=755 apps/api/package.json apps/api/
 COPY --chmod=755 apps/desktop/package.json apps/desktop/
 COPY --chmod=755 apps/mobile/package.json apps/mobile/
+COPY --chmod=755 apps/p2p-gateway/package.json apps/p2p-gateway/
 COPY --chmod=755 apps/web/package.json apps/web/
 COPY --chmod=755 apps/worker/package.json apps/worker/
 COPY --chmod=755 apps/www/package.json apps/www/
@@ -25,6 +26,7 @@ COPY --chmod=755 packages/core/package.json packages/core/
 COPY --chmod=755 packages/db/package.json packages/db/
 COPY --chmod=755 packages/logging/package.json packages/logging/
 COPY --chmod=755 packages/memory/package.json packages/memory/
+COPY --chmod=755 packages/p2p-prototype/package.json packages/p2p-prototype/
 COPY --chmod=755 packages/testkit/package.json packages/testkit/
 COPY --chmod=755 packages/ui-tokens/package.json packages/ui-tokens/
 COPY --chmod=755 packages/ui-web/package.json packages/ui-web/
@@ -41,7 +43,10 @@ RUN pnpm --filter @rakazo/api --filter @rakazo/worker build
 # instead; the defaults mirror that file. Only public, bundle-bound values belong here.
 ARG VITE_DEFAULT_UI_LOCALE=vi
 ARG VITE_VNBOT_CONTACT_URL=
+ARG VITE_P2P_GATEWAY_URL=
+ARG VITE_P2P_ICE_SERVERS=
 RUN VITE_DEFAULT_UI_LOCALE="$VITE_DEFAULT_UI_LOCALE" VITE_VNBOT_CONTACT_URL="$VITE_VNBOT_CONTACT_URL" \
+  VITE_P2P_GATEWAY_URL="$VITE_P2P_GATEWAY_URL" VITE_P2P_ICE_SERVERS="$VITE_P2P_ICE_SERVERS" \
   RAKAZO_ALLOW_DEV_SECRETS=1 pnpm --filter @rakazo/web build
 RUN install -d -m 750 -o node -g node /data /app/apps/web/node_modules/.vite-temp /app/apps/web/asset-archive
 ARG GIT_SHA
