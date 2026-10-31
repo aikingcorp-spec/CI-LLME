@@ -1,18 +1,6 @@
 name: desktop-linux
 
 on:
-  pull_request:
-    paths:
-      - "apps/desktop/**"
-      - "packages/p2p-prototype/**"
-      - "apps/api/**"
-      - "apps/worker/**"
-      - "apps/web/**"
-      - "packages/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/workflows/desktop-linux.yml"
   workflow_dispatch:
 
 permissions:
