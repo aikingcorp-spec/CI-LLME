@@ -23,7 +23,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
+  webServer: process.env.PLAYWRIGHT_WWW_BASE_URL ? undefined : {
     command: "pnpm dev",
     url: baseURL,
     reuseExistingServer: !process.env.CI,

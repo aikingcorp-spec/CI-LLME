@@ -1,7 +1,7 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { devices, test } from "@playwright/test";
 
-// The hero and closing call to action pick actions for the visitor's platform; record the macOS and iPhone variants.
+// Record desktop and native viewport sizes for both landing languages.
 const { defaultBrowserType: _, ...iPhone } = devices["iPhone 15"];
 test.use({
   userAgent:
@@ -11,7 +11,11 @@ test.use({
 // "/" and "/en/" are the only landing pages; the 404 page shares their wordmark.
 async function openHomepage(page: Page, path = "/") {
   await page.goto(path);
-  await page.locator("nav.top img.wmimg").waitFor();
+  await page.locator(".nav img:visible, nav.top img.wmimg").first().waitFor();
+  await page.evaluate(() => {
+    document.querySelectorAll("[data-reveal]").forEach(el => el.setAttribute("data-revealed", "true"));
+    document.querySelectorAll("img[loading=lazy]").forEach(el => el.removeAttribute("loading"));
+  });
   await page.waitForLoadState("networkidle");
 }
 
