@@ -25,7 +25,9 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     await expect(page.locator(".faq details").nth(1)).toHaveAttribute("open", "");
     await expect(page.locator('a[href*="notes"], a[href*="releases"]')).toHaveCount(0);
     await expect(page.getByRole("link", { name: /release notes|ghi chú phát hành/i })).toHaveCount(0);
-    await expect(page.locator('img[src*="non.svg"], img[src*="flag"], img[src*="_rejects"]')).toHaveCount(0);
+    // D012 (2026-10-31): the VNBot app icon (felt Nón + VN flag) is allowed on the landing as the nav logo.
+    await expect(page.locator('img[src*="non.svg"], img[src*="_rejects"]')).toHaveCount(0);
+    await expect(page.locator('header.nav img.nav-icon[src="/landing/img/vnbot-app-icon-128.png"]')).toHaveCount(1);
     await expect(page.locator('.nav .lang')).toHaveAttribute('href', locale.lang === 'vi' ? '/en/' : '/');
     const languageLink = page.locator(".nav .lang");
     await expect(languageLink).toHaveAttribute("lang", locale.lang === "vi" ? "en" : "vi");
