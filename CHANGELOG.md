@@ -1,20 +1,17 @@
 # Changelog
 
-## [Unreleased]
-
-### Added
-
-- Added a separately configured, workers.dev-only P2P gateway test environment for owner-approved validation.
-- Added local WebSocket offer/answer smoke coverage for the P2P gateway, including node pairing and client target restrictions.
-
 Notable product changes in Rakazo. See GitHub Releases for tagged builds.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Merged into main on 2026-10-31: VNB-001 (sign-in focus), VNB-018 (adapter tests no longer read OPENROUTER_API_KEY), VNB-008 (website download block), VNB-011/012/013 (P2P gateway Worker, signaling and pairing tests, WebSocket smoke).
+
 ### Added
 
+- Added a separately configured, workers.dev-only P2P gateway test environment for owner-approved validation.
+- Added local WebSocket offer/answer smoke coverage for the P2P gateway, including node pairing and client target restrictions.
 - The website download section now detects your computer, shows the version, file and SHA-256 checksum, and guides Windows users past the SmartScreen warning; download buttons stay off until the installers are published.
 - The download section now matches the approved layout: a green download button with operating-system icons, a full-width card that walks Windows users through the SmartScreen warning, a release notes link, and the Linux `chmod +x` step; the sticky header no longer covers the section when you jump to it.
 - While installers are not yet published, the download button, copy button and release notes link are visibly inactive, and Windows MSI users now see instructions that name the .msi file.
