@@ -351,6 +351,11 @@ services:
       API_HOST: "0.0.0.0"
       API_PORT:
       BETTER_AUTH_SECRET:
+      # Optional: app-issued P2P tokens for p2p.vnbot.run (apps/api/src/p2p-token.ts); off when unset.
+      P2P_TOKEN_PRIVATE_KEY:
+      P2P_TOKEN_KID:
+      P2P_TOKEN_ISSUER:
+      P2P_TOKEN_AUDIENCE:
       BETTER_AUTH_URL:
       WEB_ORIGIN:
       AUTH_PASSWORD_ENABLED: ${AUTH_PASSWORD_ENABLED:-true}

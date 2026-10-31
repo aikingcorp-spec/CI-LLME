@@ -160,6 +160,7 @@ import {
 import { createMessagingReceipts } from "./messaging-receipts.js";
 import { mountMessagingWebhookRoutes } from "./messaging-webhook.js";
 import { monitoringRoutes } from "./monitoring.js";
+import { mountP2pTokenRoute } from "./p2p-token.js";
 import { mountApiRequestBodyLimits } from "./request-body-limit.js";
 import { createRouter } from "./router.js";
 import { mountScreenTarget } from "./screen-proxy.js";
@@ -835,6 +836,14 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   ] as const) {
     app.use(path, (_c, next) => runAsSystem(reason, next));
   }
+  mountP2pTokenRoute(app, {
+    config: env.p2pToken,
+    trustedOrigin: (origin) => isTrustedOrigin(origin, env),
+    sessionUser: async (request) => {
+      const session = await auth.api.getSession({ headers: request.headers });
+      return session?.user ? { id: session.user.id, email: session.user.email } : null;
+    },
+  });
   app.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const path = new URL(c.req.url).pathname.replace("/api/auth", "");
     if (isBlockedAuthPath(path)) {
