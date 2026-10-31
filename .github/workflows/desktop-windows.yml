@@ -235,6 +235,62 @@ jobs:
             Write-Error -Message $failure -ErrorAction Continue
             exit 1
           }
+      - name: Smoke test prod secret guard refuses to start
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Remove-Item Env:RAKAZO_ALLOW_DEV_SECRETS -ErrorAction SilentlyContinue
+          Remove-Item Env:BETTER_AUTH_SECRET -ErrorAction SilentlyContinue
+          Remove-Item Env:ENCRYPTION_KEY -ErrorAction SilentlyContinue
+          Remove-Item Env:VITEST -ErrorAction SilentlyContinue
+          Remove-Item Env:RAKAZO_DESKTOP_SMOKE -ErrorAction SilentlyContinue
+          $env:NODE_ENV = 'production'
+          $env:ELECTRON_RUN_AS_NODE = '1'
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs/vnbot/VNBot.exe'
+          $entry = Join-Path $env:LOCALAPPDATA 'Programs/vnbot/resources/server/api/dist/index.js'
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Installed executable missing: $exe" }
+          if (-not (Test-Path -LiteralPath $entry -PathType Leaf)) { throw "Installed API entry missing: $entry" }
+          New-Item -ItemType Directory -Force -Path $env:SMOKE_DIR | Out-Null
+          $message = 'Set BETTER_AUTH_SECRET and ENCRYPTION_KEY to long random strings before starting VNBot outside local development or tests.'
+          try {
+            foreach ($case in @('missing', 'placeholder')) {
+              if ($case -eq 'placeholder') {
+                $env:BETTER_AUTH_SECRET = 'dev-secret-change-me-please-32chars'
+                $env:ENCRYPTION_KEY = 'dev-encryption-key'
+              }
+              $stdout = Join-Path $env:SMOKE_DIR "guard-$case.out.log"
+              $stderr = Join-Path $env:SMOKE_DIR "guard-$case.err.log"
+              try {
+                $process = Start-Process -FilePath $exe -ArgumentList "`"$entry`"" -PassThru `
+                  -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+                try {
+                  $process | Wait-Process -Timeout 60 -ErrorAction Stop
+                } catch {
+                  Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+                  throw "guard ${case}: did not exit within 60 seconds"
+                }
+                $process.WaitForExit()
+                $process.Refresh()
+                if ($process.ExitCode -eq 0) { throw "guard ${case}: expected non-zero exit" }
+                if (-not (Get-Content -LiteralPath $stdout, $stderr | Select-String -Pattern $message -SimpleMatch -Quiet)) {
+                  throw "guard ${case}: refusal message missing"
+                }
+                Write-Host "guard $case refused (exit $($process.ExitCode))"
+              } catch {
+                foreach ($log in @($stdout, $stderr)) {
+                  if (Test-Path -LiteralPath $log -PathType Leaf) {
+                    Write-Host "Log: $log"
+                    Get-Content -LiteralPath $log -Tail 200
+                  }
+                }
+                throw
+              }
+            }
+          } finally {
+            Remove-Item Env:BETTER_AUTH_SECRET -ErrorAction SilentlyContinue
+            Remove-Item Env:ENCRYPTION_KEY -ErrorAction SilentlyContinue
+          }
       - name: Stop app and Postgres processes
         if: always()
         timeout-minutes: 2
