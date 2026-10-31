@@ -1,5 +1,15 @@
 # Architecture changelog
 
+## 2026-11-01 — Server image packages the P2P workspace packages
+
+- Date: 2026-11-01.
+- Pull request: #34.
+- What changed versus baseline: `infra/compose/Dockerfile` copies the package manifests of `packages/p2p-prototype` and `apps/p2p-gateway` for the frozen-lockfile install, and takes build args `VITE_P2P_GATEWAY_URL` and `VITE_P2P_ICE_SERVERS` (empty defaults) passed into the web build like `VITE_VNBOT_CONTACT_URL`.
+- Why: web (PR #33) depends on `@rakazo/p2p-prototype` and reads those vars.
+- Modules and files: `infra/compose/Dockerfile`.
+- Invariants affected: only public bundle-bound values; compose files and other build stages unchanged; empty args keep current behaviour.
+- ADR: none.
+
 ## 2026-10-30 — Source maps answer 404 in the web server
 
 - Date: 2026-10-30.
