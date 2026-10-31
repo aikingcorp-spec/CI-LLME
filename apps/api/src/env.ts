@@ -24,6 +24,8 @@ import {
 } from "@rakazo/core";
 import { monitoringPseudonymSecret } from "@rakazo/logging";
 
+import type { P2pTokenConfig } from "./p2p-token.js";
+import { p2pTokenConfigFromEnv } from "./p2p-token.js";
 import { readBuildTime } from "./version.js";
 
 export { resolveCloudAgentProvider, resolveSandboxProvider } from "@rakazo/adapters";
@@ -42,6 +44,8 @@ export interface AppEnv {
   databaseUrl: string;
   realtimeDatabaseUrl: string;
   authSecret: string;
+  /** P2P gateway token signer (VNB-022); undefined keeps POST /api/auth/p2p-token off. */
+  p2pToken?: P2pTokenConfig;
   authUrl: string;
   webOrigin: string;
   /** `<TEAM_ID>.<bundle id>` of iOS apps that may use this domain's passkeys. */
@@ -229,6 +233,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     realtimeDatabaseUrl: source.REALTIME_DATABASE_URL ?? required(source, "DATABASE_URL"),
     desktopStackToken: optional(source.RAKAZO_DESKTOP_STACK_TOKEN),
     authSecret,
+    ...((p2p) => (p2p ? { p2pToken: p2p } : {}))(
+      p2pTokenConfigFromEnv(source, source.WEB_ORIGIN ?? "http://127.0.0.1:5173"),
+    ),
     authUrl: source.BETTER_AUTH_URL ?? source.WEB_ORIGIN ?? "http://127.0.0.1:5173",
     webOrigin: source.WEB_ORIGIN ?? "http://127.0.0.1:5173",
     passkeyAppleAppIds: list(source.PASSKEY_APPLE_APP_IDS),
