@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- Desktop: fix Windows-only unit test failures (after-pack realpath of package root; native-postgres test uid) so desktop-windows CI passes.
+
 Merged into main on 2026-10-31: VNB-001 (sign-in focus), VNB-018 (adapter tests no longer read OPENROUTER_API_KEY), VNB-008 (website download block), VNB-011/012/013 (P2P gateway Worker, signaling and pairing tests, WebSocket smoke).
 
 ### Added
