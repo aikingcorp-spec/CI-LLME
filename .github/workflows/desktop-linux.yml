@@ -89,6 +89,52 @@ jobs:
           if [ -f "$url_file" ]; then
             cp "$url_file" "$SMOKE_DIR/.desktop-web-url"
           fi
+      - name: Smoke test prod secret guard refuses to start
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          unset RAKAZO_ALLOW_DEV_SECRETS BETTER_AUTH_SECRET ENCRYPTION_KEY VITEST RAKAZO_DESKTOP_SMOKE
+          export NODE_ENV=production ELECTRON_RUN_AS_NODE=1
+          unpacked=apps/desktop/out/linux-unpacked
+          executable_name="$(node -p 'const { build } = require("./apps/desktop/package.json"); build?.linux?.executableName ?? build?.executableName ?? ""')"
+          if [ -n "$executable_name" ]; then
+            exe="$unpacked/$executable_name"
+          else
+            mapfile -t executables < <(find "$unpacked" -maxdepth 1 -type f -executable ! -name chrome-sandbox ! -name chrome_crashpad_handler)
+            if [ "${#executables[@]}" -ne 1 ]; then
+              echo "Expected a single packaged executable in $unpacked; found ${#executables[@]}"
+              exit 1
+            fi
+            exe="${executables[0]}"
+          fi
+          entry="$unpacked/resources/server/api/dist/index.js"
+          if [ ! -f "$exe" ] || [ ! -x "$exe" ]; then
+            echo "Packaged executable missing or not executable: $exe"
+            exit 1
+          fi
+          if [ ! -f "$entry" ]; then
+            echo "Packaged API entry missing: $entry"
+            exit 1
+          fi
+          mkdir -p "$SMOKE_DIR"
+          message='Set BETTER_AUTH_SECRET and ENCRYPTION_KEY to long random strings before starting VNBot outside local development or tests.'
+          for case in missing placeholder; do
+            if [ "$case" = placeholder ]; then
+              export BETTER_AUTH_SECRET='dev-secret-change-me-please-32chars' ENCRYPTION_KEY='dev-encryption-key'
+            fi
+            stdout="$SMOKE_DIR/guard-$case.out.log"
+            stderr="$SMOKE_DIR/guard-$case.err.log"
+            status=0
+            timeout --kill-after=5 60 "$exe" "$entry" > "$stdout" 2> "$stderr" || status=$?
+            if [ "$status" -eq 0 ] || [ "$status" -eq 124 ] || [ "$status" -eq 137 ] ||
+              ! { grep -Fq "$message" "$stdout" || grep -Fq "$message" "$stderr"; }; then
+              echo "guard $case failed (exit $status): expected prompt refusal with the secret guard message"
+              tail -200 "$stdout" "$stderr"
+              exit 1
+            fi
+            echo "guard $case refused (exit $status)"
+          done
       - name: Stop leftover app and postgres processes
         if: always()
         run: |
@@ -117,6 +163,19 @@ jobs:
             (cd "$HOME/.config/VNBot" && find . -type f \( -name '*.log' -o -name '.desktop-web-url' \) \
               -exec cp --parents {} "$SMOKE_DIR/userdata/" \;) || true
           fi
+      - name: Print installer sha256
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$SMOKE_DIR"
+          shopt -s nullglob
+          files=(apps/desktop/out/*.AppImage apps/desktop/out/*.deb)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No installers found"
+            exit 0
+          fi
+          ls -l "${files[@]}"
+          sha256sum "${files[@]}" | tee "$SMOKE_DIR/SHA256SUMS.txt"
       - name: Retain installers and logs
         if: always()
         uses: actions/upload-artifact@v4

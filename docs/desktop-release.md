@@ -43,6 +43,11 @@ gh secret set APPLE_API_KEY_P8 < AuthKey_XXXXXXXXXX.p8
 
 ## Cut a release
 
+Before tagging, every release builds both desktop installers on CI:
+
+- [ ] Dispatch `desktop-windows` AND `desktop-linux`; record both run URLs and
+      the sha256 of every artifact (exe, msi, AppImage, deb).
+
 1. Bump `version` in `apps/desktop/package.json` on `main`.
 2. Tag that commit `v<version>` and push the tag:
 

@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- CI: desktop-linux proves the packaged API refuses to start with missing or placeholder production secrets and prints the sha256 of the AppImage and .deb.
+
 - CI: desktop-windows adds a separate smoke step proving the packaged API refuses to start without RAKAZO_ALLOW_DEV_SECRETS (missing and placeholder secrets).
 
 - Desktop: fix Windows-only unit test failures (after-pack realpath of package root; native-postgres test uid) so desktop-windows CI passes.
