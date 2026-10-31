@@ -72,6 +72,72 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     });
   }
 
+  test(`${locale.lang}: desktop SPEC dimensions at 1440px`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(locale.path);
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.locator(".hero .wrap").evaluate(el =>
+      getComputedStyle(el).gridTemplateColumns.split(" ")[0],
+    )).toBe("600px");
+    await expect(page.locator(".hero .ctas")).toHaveCSS("max-width", "600px");
+    await expect(page.locator(".sscard code")).toHaveCSS("border-radius", "8px");
+    await expect(page.locator(".final")).toHaveCSS("padding-top", "112px");
+    await expect(page.locator(".final")).toHaveCSS("padding-bottom", "112px");
+  });
+
+  test(`${locale.lang}: mobile SPEC dimensions at 390x844`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+    await page.goto(locale.path);
+    await page.evaluate(() => document.fonts.ready);
+    for (const [selector, size] of [
+      [".feat h3", "18px"], [".hero .eyebrow", "13px"],
+      [".mate .tag", "13px"], [".mate h3", "16px"],
+      [".hero .meta", "14px"], [".hero .msi", "14px"],
+      [".hero .ss", "14px"], [".dl .btn small", "12px"],
+    ]) {
+      for (const element of await page.locator(selector).all()) {
+        await expect(element).toHaveCSS("font-size", size);
+      }
+    }
+    await expect(page.locator(".hero .ctas")).toHaveCSS("max-width", "600px");
+    await expect(page.locator(".hero .ss")).toHaveCSS("padding", "12px 14px");
+    await expect(page.locator(".sscard code")).toHaveCSS("border-radius", "8px");
+    await expect(page.locator(".final")).toHaveCSS("padding-top", "72px");
+    await expect(page.locator(".final")).toHaveCSS("padding-bottom", "72px");
+    expect(await page.locator(".stage").evaluate(el => el.getBoundingClientRect().height)).toBe(168);
+    await expect(page.locator(".stage-in")).toHaveCSS("transform", "matrix(0.3, 0, 0, 0.3, 0, 0)");
+    await expect(page.locator(".stage-in")).toHaveCSS("top", "-4px");
+    await expect(page.locator(".marq")).toHaveCSS("overflow", "hidden");
+    await expect(page.locator(".marq .row")).toHaveCSS("gap", "16px");
+    await expect(page.locator(".marq .row")).toHaveCSS("animation-name", "none");
+    expect(await page.locator(".marq img").first().evaluate(el =>
+      el.getBoundingClientRect().width,
+    )).toBe(40);
+    await expect(page.locator(".lineup")).toHaveCSS("gap", "12px");
+    await expect(page.locator(".lineup")).toHaveCSS("flex-wrap", "nowrap");
+    await page.locator(".lineup").scrollIntoViewIfNeeded();
+    const images = page.locator(".lineup img");
+    await expect(images).toHaveCount(8);
+    for (const [index, img] of (await images.all()).entries()) {
+      if (index < 3) {
+        await expect(img).toBeVisible();
+        expect(await img.evaluate(el => el.getBoundingClientRect().width)).toBe(56);
+        await expect.poll(() => img.evaluate(el =>
+          el instanceof HTMLImageElement && el.currentSrc.endsWith("lookup-128.webp"),
+        )).toBe(true);
+      } else {
+        await expect(img).toHaveCSS("display", "none");
+      }
+    }
+    await expect(page.locator(".lineup img:visible")).toHaveCount(3);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await page.emulateMedia({ colorScheme: "dark" });
+    for (const small of await page.locator(".dl .btn small").all()) {
+      await expect(small).toHaveCSS("font-size", "12px");
+    }
+  });
+
   test(`${locale.lang}: mobile hero stage and actions fit at 390x844`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(locale.path);
@@ -114,7 +180,7 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     const mascots = page.locator('img[src*="/landing/img/mascots/"]');
     expect(await mascots.count()).toBeGreaterThan(0);
     for (const mascot of await mascots.all()) {
-      const source = mascot.locator('..').locator('source[type="image/webp"]');
+      const source = mascot.locator('..').locator('source[type="image/webp"]:not([media])');
       await expect(source).toHaveCount(1);
       const fallback = await mascot.getAttribute("src");
       expect(fallback).not.toBeNull();
@@ -215,10 +281,11 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     await expect(command).toHaveText("Get-FileHash .\\VNBot-Setup-0.3.6-x64.exe -Algorithm SHA256");
     await expect(command).toBeVisible();
     const overflow = await page.locator("body *").evaluateAll(elements => elements
-      .filter(el => el.getClientRects().length && el.getBoundingClientRect().right > window.innerWidth)
+      .filter(el => !el.closest(".marq") && el.getClientRects().length
+        && el.getBoundingClientRect().right > window.innerWidth)
       .map(el => ({ tag: el.tagName, className: el.className })));
     expect(overflow).toEqual([]);
-    for (const label of await page.locator(".eyebrow, .mate .tag").all()) {
+    for (const label of await page.locator(".eyebrow").all()) {
       const lines = await label.evaluate(el => {
         const range = document.createRange();
         range.selectNodeContents(el);
