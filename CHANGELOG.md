@@ -10,6 +10,7 @@ Merged into main on 2026-10-31: VNB-001 (sign-in focus), VNB-018 (adapter tests 
 
 ### Added
 
+- VNB-025 (r5): landing redesign. 600px hero column with the VI headline break; mobile mascot stage 168px @ .30; SPEC-MEASURE sizes; final CTA 112/72; mobile marquee 40/16 and lineup 56/3/12 using lookup-128 sources; computed-style e2e (36 tests). Not deployed.
 - Redesigned the Vietnamese and English landing pages with the VNBot mascot team and clearer Windows and web access.
 
 - Added a separately configured, workers.dev-only P2P gateway test environment for owner-approved validation.
