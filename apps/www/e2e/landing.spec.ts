@@ -69,7 +69,9 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
       const fallback = await mascot.getAttribute("src");
       expect(fallback).not.toBeNull();
       if (!fallback) throw new Error("Missing mascot PNG fallback");
-      await expect(source).toHaveAttribute("srcset", fallback.replace(/\.png$/, ".webp"));
+      const uses300 = await mascot.evaluate(img => img.matches('.hero .m[style*="width:150px"] img, img.tm'));
+      const webp = fallback.replace(/\.png$/, ".webp");
+      await expect(source).toHaveAttribute("srcset", uses300 ? webp.replace(/-256\.webp$/, "-300.webp") : webp);
       await expect(mascot).toHaveAttribute("width", /^[1-9]\d*$/);
       await expect(mascot).toHaveAttribute("height", /^[1-9]\d*$/);
       await expect.poll(() => mascot.evaluate(img =>
@@ -211,5 +213,44 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     }
     await expect(page.locator(".hero .meta")).toContainText("170 MB");
     await context.close();
+  });
+}
+
+for (const locale of [{ path: "/", lang: "vi" }, { path: "/en/", lang: "en" }]) {
+  test(`${locale.lang}: light hero CTA contrast meets WCAG AA`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto(locale.path);
+    const button = page.locator(".hero .btn-win");
+    await expect(button).toHaveCSS("background-color", "rgb(15, 122, 68)");
+    const { main, sub } = await button.evaluate(element => {
+      const label = element.querySelector(".lbl");
+      const small = element.querySelector("small");
+      if (!label || !small) throw new Error("Missing hero CTA labels");
+      const channels = (color: string) => {
+        const values = color.match(/[\d.]+/g)?.map(Number);
+        if (!values || values.length < 3) throw new Error(`Unsupported color: ${color}`);
+        return values;
+      };
+      const background = channels(getComputedStyle(element).backgroundColor);
+      const luminance = (rgb: number[]) => rgb.reduce((sum, channel, index) => {
+        const value = channel / 255;
+        const linear = value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        return sum + linear * [0.2126, 0.7152, 0.0722][index];
+      }, 0);
+      const contrast = (target: Element) => {
+        const style = getComputedStyle(target);
+        const foreground = channels(style.color);
+        const alpha = (foreground[3] ?? 1) * Number(style.opacity);
+        const composite = background.slice(0, 3).map((channel, index) =>
+          foreground[index] * alpha + channel * (1 - alpha));
+        const a = luminance(composite);
+        const b = luminance(background.slice(0, 3));
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      };
+      return { main: contrast(label), sub: contrast(small) };
+    });
+    console.log("CONTRAST", locale.lang, main, sub);
+    expect(main).toBeGreaterThanOrEqual(4.5);
+    expect(sub).toBeGreaterThanOrEqual(4.5);
   });
 }
