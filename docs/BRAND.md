@@ -83,7 +83,7 @@ Lời anh: "Cái landing thì 8 còn trên app thì 5 con trước".
 - Bất kỳ icon/wordmark nào tự vẽ lại hoặc tự sinh.
 - icons-v2/svg/*.svg (bộ 5 phẳng) cho landing: landing dùng mascot-felt-v1. Riêng app vẫn giữ bộ 5 này theo D011 (apps/web VnbotMascotRow.tsx).
 - Pose bị loại: VNB-015/mascots/_rejects/.
-- Không có khối cam (orange blob) ở bất cứ đâu: không icon, không mascot, không landing. File 99c3a0e9d34a (`apps/desktop/assets/icon.png` trên `main`) không được dùng, phải thay bằng icon từ master 2870083f1918.
+- Không có khối cam (orange blob) ở bất cứ đâu: không icon, không mascot, không landing. File 99c3a0e9d34a (`apps/desktop/assets/icon.png` trên `main`): cấm. Icon app đúng là master 2870083f1918.
 - Bé Nón cầm cờ (icon 2870083f1918) không được dùng làm mascot hay pose.
 
 ## Quy tắc đặt tên
@@ -98,7 +98,7 @@ Lời anh: "Cái landing thì 8 còn trên app thì 5 con trước".
 
 ## Icon ≠ mascot
 - Icon app là **bé Nón len cầm cờ Việt Nam**: master sha **2870083f1918**.
-  - Dùng làm icon app/desktop/web/store và logo trên landing (nav, footer) — anh Hùng chốt 31/10 22:49 (D012): "Brand ghi sai khúc đó á, icon app mà khối màu cam là sai cái đó là rakazo".
+  - Dùng làm icon app/desktop/web/store và logo trên landing (nav và footer, anh Hùng chốt cả hai 31/10 22:57) — anh Hùng chốt 31/10 22:49 (D012): "Brand ghi sai khúc đó á, icon app mà khối màu cam là sai cái đó là rakazo".
   - Bé Nón cầm cờ **không bao giờ** là mascot hay pose.
 - Mascot và pose **không bao giờ** được:
   - cầm hay mang cờ;
