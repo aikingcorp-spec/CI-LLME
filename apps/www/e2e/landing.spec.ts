@@ -28,7 +28,15 @@ for (const os of ["windows", "linux", "mac", "ios", "android", "unknown"]) {
     await page.goto(`/?os=${os}`);
     const block = page.locator("#download");
     await expect(block).toBeVisible();
-    if (os === "windows" || os === "linux") {
+    if (os === "windows") {
+      await expect(block.locator(".dl-primary")).toHaveAttribute(
+        "href",
+        "https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe",
+      );
+      await expect(block.locator(".dl-meta + .dl-note")).toHaveText(
+        "Bản thử chưa ký số: Windows SmartScreen sẽ cảnh báo, bấm “Thông tin thêm” rồi “Vẫn chạy”.",
+      );
+    } else if (os === "linux") {
       await expect(block.locator(".dl-primary")).toHaveAttribute("aria-disabled", "true");
     } else if (os === "unknown") {
       await expect(block.getByText("Chọn bản cài cho máy của bạn")).toBeVisible();
@@ -46,9 +54,11 @@ for (const path of ["/de/", "/docs", "/blog", "/about", "/privacy", "/terms"]) {
   });
 }
 
-test("disabled downloads never expose installer hrefs", async ({ page }) => {
+test("Windows installers are available while Linux remains disabled", async ({ page }) => {
   await page.goto("/?os=unknown");
-  await expect(page.locator("#download a[href^='https://dl.vnbot.run/']")).toHaveCount(0);
+  await expect(page.locator("#download a[href$='.exe']")).toHaveCount(1);
+  await expect(page.locator("#download a[href$='.msi']")).toHaveCount(1);
+  await expect(page.locator("#download a[href$='.AppImage']")).toHaveCount(0);
 });
 
 test("enabled Windows post-click opens SmartScreen help", async ({ page }) => {
@@ -79,7 +89,7 @@ test("download block switches VI and EN", async ({ page }) => {
 test("gated primary button has 0.6 opacity, not-allowed cursor, download icon svg, and detected info icon", async ({
   page,
 }) => {
-  await page.goto("/?os=windows");
+  await page.goto("/?os=linux");
   const primary = page.locator("#download .dl-primary");
   await expect(primary).toBeVisible();
   await expect(primary).toHaveAttribute("aria-disabled", "true");
@@ -101,14 +111,14 @@ test("gated primary button has 0.6 opacity, not-allowed cursor, download icon sv
   const infoSvg = page.locator('#download .dl-detected svg[data-icon="info"]');
   await expect(infoSvg).toBeVisible();
   await expect(infoSvg).toHaveAttribute("aria-hidden", "true");
-  await expect(page.locator("#download .dl-detected")).toContainText("Đã nhận diện: Windows");
+  await expect(page.locator("#download .dl-detected")).toContainText("Đã nhận diện: Linux");
 });
 
 test("copy button shows copy icon, hides text at 390px with aria-label, and is disabled when gated", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/?os=windows");
+  await page.goto("/?os=linux");
   const copyBtn = page.locator("#download .dl-copy");
   await expect(copyBtn).toBeVisible();
   await expect(copyBtn).toHaveAttribute("aria-label", "Sao chép mã SHA-256");
@@ -120,7 +130,7 @@ test("copy button shows copy icon, hides text at 390px with aria-label, and is d
   await expect(copyBtn).not.toContainText("Đã chép");
   await expect(page.locator("#dl-live")).toHaveText("");
 
-  await page.goto("/en/?os=windows");
+  await page.goto("/en/?os=linux");
   await expect(copyBtn).toHaveAttribute("aria-label", "Copy SHA-256");
 });
 
@@ -131,7 +141,11 @@ test("unsupported OS state renders plain text links without button-like spans", 
   await expect(main.locator(".dl-buttons")).toHaveCount(0);
   await expect(main.locator(".dl-unsup-links")).toHaveText("Tải cho Windows · Tải cho Linux");
   await expect(main.locator(".dl-text-link")).toHaveCount(2);
-  await expect(main.locator(".dl-text-link").first()).toHaveAttribute("aria-disabled", "true");
+  await expect(main.locator(".dl-text-link").first()).toHaveAttribute(
+    "href",
+    "https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe",
+  );
+  await expect(main.locator(".dl-text-link").nth(1)).toHaveAttribute("aria-disabled", "true");
 
   await page.goto("/?os=mac&flags=windows,linux");
   await expect(main.locator("a.dl-text-link")).toHaveCount(2);
@@ -167,11 +181,11 @@ test("standalone #requirements is removed and install steps match origin/main", 
 });
 
 test("release notes is omitted when gated and a link when enabled", async ({ page }) => {
-  await page.goto("/?os=windows");
+  await page.goto("/?os=linux");
   await expect(page.locator("#download .dl-links").getByText("Ghi chú phát hành")).toHaveCount(0);
   await expect(page.locator("#download .dl-links a", { hasText: "Ghi chú phát hành" })).toHaveCount(0);
 
-  await page.goto("/?os=windows&flags=windows");
+  await page.goto("/?os=windows");
   await expect(page.locator("#download .dl-links a", { hasText: "Ghi chú phát hành" })).toHaveCount(1);
 });
 

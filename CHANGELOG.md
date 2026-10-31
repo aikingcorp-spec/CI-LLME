@@ -51,6 +51,8 @@ Merged into main on 2026-10-31: VNB-001 (sign-in focus), VNB-018 (adapter tests 
 
 ### Changed
 
+- The landing page offers the Windows 0.3.6 installer (.exe and .msi) with SHA-256 checksums and a note that the preview build is unsigned.
+
 - Compose runs database migrations in a one-shot `migrate` container, the only one given the database owner login. Code running in the API or worker can no longer read that login from the container and bypass row-level security. Railway restarts its start script without the login after migrating.
 - Mobile routine and connector mention suggestions load only when requested, with bounded routine-request concurrency.
 - MCP result truncation no longer allocates an encoded copy of the full oversized result.
