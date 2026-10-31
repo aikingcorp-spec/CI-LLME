@@ -123,6 +123,8 @@ jobs:
             }
           } finally {
             taskkill /F /T /PID $app.Id 2>&1 | Out-Null
+            # Best-effort cleanup may fail if the smoke app already exited.
+            $global:LASTEXITCODE = 0
             Get-Process -Name postgres -ErrorAction SilentlyContinue | Stop-Process -Force
           }
 
