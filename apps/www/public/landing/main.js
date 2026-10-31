@@ -6,6 +6,13 @@
   const data = window.VNBOT_FEATURES;
   const windows = data.downloads.windows;
   const en = root.lang === 'en';
+  const labels = {
+    vi: { windowsDownload: 'Tải cho Windows' },
+    en: { windowsDownload: 'Get Windows app' },
+  };
+  document.querySelectorAll('.btn-win .lbl').forEach(label => {
+    label.firstChild.textContent = labels[en ? 'en' : 'vi'].windowsDownload;
+  });
   const downloads = { windows, msi: windows.msi };
   document.querySelectorAll('[data-size]').forEach(el => {
     el.textContent = data.sizeMB(downloads[el.dataset.size]);

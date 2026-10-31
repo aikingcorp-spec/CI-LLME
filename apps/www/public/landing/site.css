@@ -234,3 +234,5 @@ html{scroll-padding-top:76px}
 .js .bar i,.js .peek img{transform:none!important}
 .mate:hover .tm,.btn:hover,.btn:active{transform:none}
 }
+
+.btn-win,.btn-win .lbl{font-size:19px;font-weight:700}

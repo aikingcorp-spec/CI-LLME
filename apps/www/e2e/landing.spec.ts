@@ -50,6 +50,33 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
   });
 
   for (const width of [390, 1280]) {
+    test(`${locale.lang}: Windows download labels stay bold and on one line at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(locale.path);
+      await page.evaluate(() => document.fonts.ready);
+      const buttons = page.locator(".btn-win");
+      await expect(buttons).toHaveCount(3);
+      for (const button of await buttons.all()) {
+        const label = button.locator(".lbl");
+        expect(await label.evaluate(el => el.firstChild?.textContent)).toBe(
+          locale.lang === "en" ? "Get Windows app" : "Tải cho Windows",
+        );
+        for (const element of [button, label]) {
+          await expect(element).toHaveCSS("font-size", "19px");
+          await expect(element).toHaveCSS("font-weight", "700");
+        }
+        const layout = await label.evaluate(el => {
+          if (!el.firstChild) throw new Error("Missing Windows download label");
+          const range = document.createRange();
+          range.selectNode(el.firstChild);
+          return { lines: range.getClientRects().length, fits: el.scrollWidth <= el.clientWidth };
+        });
+        expect(layout.lines).toBe(1);
+        expect(layout.fits).toBe(true);
+        expect(await button.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+      }
+    });
+
     test(`${locale.lang}: equal hero actions at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 });
       await page.goto(locale.path);

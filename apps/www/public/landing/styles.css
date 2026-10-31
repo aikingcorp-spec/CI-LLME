@@ -139,4 +139,4 @@ ol.steps.install{margin-top:36px}
 @media(prefers-reduced-motion:reduce){.spinner{animation:none;border-top-color:#fff}}
 @media(max-width:599px){.dl-buttons .btn{flex:1;min-width:0;justify-content:center}}
 
-@media(max-width:420px){#download .dl-primary{white-space:nowrap;padding:0 8px;gap:8px;font-size:16px;line-height:1.4}}
+@media(max-width:420px){#download .dl-primary{white-space:nowrap;padding:0 8px;gap:8px;line-height:1.4}}
