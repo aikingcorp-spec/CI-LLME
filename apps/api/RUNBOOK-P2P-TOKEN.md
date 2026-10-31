@@ -1,5 +1,25 @@
 # VNB-022 app-issued P2P tokens prod runbook
 
+## ⚠️ REQUIRED: compose override on every deploy
+
+From now on, every deploy or recreate of the `vnbot8088` stack on the VPS (`/opt/vnbot-8088`) **MUST include `-f docker-compose.vnb022-api.yml`**.
+
+`up.sh` and `redeploy.sh` do not include this override. Running either script puts `api` back on image `vnbot8088/app:96d8550b`, which has no P2P token signer and breaks `POST /api/auth/p2p-token`. By Maya's decision, `up.sh` and `redeploy.sh` on prod are intentionally **NOT edited**.
+
+Deploy or recreate the stack with:
+
+```sh
+cd /opt/vnbot-8088 && docker compose -f docker-compose.yml -f docker-compose.vnb022-api.yml up -d
+```
+
+To recreate only API, retain the existing `--no-deps` flag and append `api`:
+
+```sh
+cd /opt/vnbot-8088 && docker compose -f docker-compose.yml -f docker-compose.vnb022-api.yml up -d --no-deps api
+```
+
+`api` runs main `31167991`; `worker` and `web` run `96d8550b`. Include the override in the confirmed ordered Compose files for the deployment commands below.
+
 Planned procedure, not evidence of a deploy. POST https://app.vnbot.run/api/auth/p2p-token issues a 120 s EdDSA JWT with kid `app-2026-10`, iss `https://app.vnbot.run`, and aud `p2p.vnbot.run`.
 
 > Never print private keys, cookies, bearer tokens, assertions, or environment values. Disable shell tracing (`set +x`). Keep sensitive files outside git with mode 600. Each step needs its own explicit owner (sếp) approval, including cleanup. Stop on any failed verify and follow [ROLLBACK-P2P-TOKEN.md](ROLLBACK-P2P-TOKEN.md). Do not continue to the next step to fix a failure.
