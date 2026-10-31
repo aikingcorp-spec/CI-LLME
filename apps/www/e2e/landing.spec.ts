@@ -113,10 +113,21 @@ for (const language of ["en", "vi"]) {
     if (language === "en") await page.locator("#lang2").click();
     const primary = page.locator("#download .dl-primary");
     await expect(primary).toHaveText(
-      language === "en" ? "Download VNBot for Windows" : "Tải VNBot cho Windows",
+      language === "en" ? "Download for Windows" : "Tải VNBot cho Windows",
     );
     await page.evaluate(() => document.fonts.ready);
     const label = primary.locator("span");
+    for (const element of [primary, label]) {
+      const styles = await element.evaluate((el) => {
+        const computed = getComputedStyle(el);
+        return {
+          fontSize: parseFloat(computed.fontSize),
+          fontWeight: parseFloat(computed.fontWeight),
+        };
+      });
+      expect(styles.fontSize).toBeGreaterThanOrEqual(19);
+      expect(styles.fontWeight).toBeGreaterThanOrEqual(700);
+    }
     const box = await label.boundingBox();
     expect(box).not.toBeNull();
     const lineHeight = await label.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));

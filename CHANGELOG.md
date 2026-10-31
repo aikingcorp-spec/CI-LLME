@@ -51,7 +51,7 @@ Merged into main on 2026-10-31: VNB-001 (sign-in focus), VNB-018 (adapter tests 
 
 ### Changed
 
-- The landing page offers the Windows 0.3.6 installer (.exe 178 MB, .msi 194 MB) with SHA-256 checksums and one Vietnamese or English note that the preview build is unsigned and may trigger SmartScreen; the release-notes link is hidden until notes are published, and the download button stays on one line on narrow screens.
+- The landing page offers the Windows 0.3.6 installer (.exe 178 MB, .msi 194 MB) with SHA-256 checksums and one Vietnamese or English note that the preview build is unsigned and may trigger SmartScreen; the release-notes link is hidden until notes are published, and the download button stays on one line on narrow screens at its full 19px bold size (English label shortened to "Download for Windows").
 
 - Compose runs database migrations in a one-shot `migrate` container, the only one given the database owner login. Code running in the API or worker can no longer read that login from the container and bypass row-level security. Railway restarts its start script without the login after migrating.
 - Mobile routine and connector mention suggestions load only when requested, with bounded routine-request concurrency.
