@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-lang="en">
+<html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VNBot: Your own team of AI employees</title>
@@ -13,111 +13,90 @@
 <meta property="og:image" content="https://vnbot.run/landing/img/og.jpg"><meta property="og:locale" content="en_US"><meta property="og:locale:alternate" content="vi_VN">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="VNBot: Your own team of AI employees">
 <meta name="twitter:description" content="Each bot has memory, its own computer, and works on a schedule. Use the AI model you already have. Your data stays yours. Free."><meta name="twitter:image" content="https://vnbot.run/landing/img/og.jpg">
-<link rel="stylesheet" href="/landing/styles.css">
+<link rel="stylesheet" href="/landing/site.css">
+
+<script defer src="/landing/features.js"></script>
+<script defer src="/landing/main.js"></script>
 </head>
-<body id="top">
-<nav class="top" data-ia="nav" aria-label="Main navigation"><div class="w">
- <a class="brand" href="#top" data-ia="home" aria-label="VNbot, back to top"><img src="/landing/img/non.svg" alt=""><img class="wmimg" src="/landing/img/vnbot-wordmark-v4-light.svg" alt="VNbot"></a>
- <div class="links"><a class="opt" href="#features" data-i="n1">Features</a><a class="opt" href="#data" data-i="n2">Data</a><a class="opt" href="#how" data-i="n6">How it works</a><a class="opt" href="#free" data-i="n3" data-free>Free</a><a href="#download" data-i="n4">Use & download</a><a href="#faq" data-i="n5">FAQ</a></div>
- <a class="btn nav-login" href="https://app.vnbot.run/en/" data-i="login">Sign in · Coming soon</a>
- <button class="lang" id="lang" data-ia="lang" aria-label="Switch to Vietnamese">VI</button>
- <a class="btn p nav-cta"></a>
-</div></nav>
+<body>
+<header class="nav" role="navigation" aria-label="Main navigation"><div class="wrap"><a href="/" aria-label="VNBot home"><img class="wm-light" src="/landing/img/vnbot-wordmark-v4-light.svg" alt="VNBot"><img class="wm-dark" src="/landing/img/vnbot-wordmark-v4-dark.svg" alt="VNBot"></a>
+<ul><li><a href="#tinh-nang">Features</a></li><li><a href="#doi-bot">The team</a></li><li><a href="#cach-dung">How it works</a></li><li><a href="#tai-ve">Download</a></li><li><a href="#hoi-dap">FAQ</a></li></ul>
+<a class="navcta" href="https://app.vnbot.run">Open web app</a><a class="lang" href="/">VI</a></div></header>
 <main>
-<section id="hero"><div class="w">
- <div class="eyebrow" id="eb"></div>
- <h1 data-i="h1">Đội nhân viên AI của riêng bạn</h1>
- <p class="sub" data-i="h_sub">Mỗi bot có trí nhớ, máy tính riêng và tự làm việc theo lịch. Dùng mô hình AI bạn đã có. Dữ liệu là của bạn.<span data-free> Miễn phí.</span></p>
- <div class="btns"><a class="btn contact main-contact">Liên hệ để nhận lời mời</a><a class="btn web-main" id="web-hero"></a><a class="tlink dl-main" id="dl-hero"></a></div>
- <div class="micro"><span data-i="h_micro">Đang beta. Đăng nhập bằng email và mã, chỉ dành cho người được duyệt.</span> <span data-i="pk">Có thể dùng passkey sau khi đăng nhập.</span></div>
- <div class="shot hero-d"><img data-img="hero" src="/landing/img/hero-vi.webp" width="1280" height="800" data-ia="a_hero" alt="Ảnh chụp app VNBot: danh sách bot bên trái, cuộc trò chuyện tiếng Việt bên phải"></div>
- <div class="shot hero-m"><img data-img="hero-m" src="/landing/img/hero-m-vi.webp" width="390" height="566" data-ia="a_hero" alt="Ảnh chụp app VNBot: danh sách bot bên trái, cuộc trò chuyện tiếng Việt bên phải"></div>
-</div></section>
+<section class="hero" id="hero"><div class="wrap"><div class="hcopy">
+<span class="eyebrow">New · Version <span data-version>0.3.6</span> for Windows 10/11 64-bit</span>
+<h1>Your own team of AI employees</h1>
+<p class="sub">Each bot has memory, its own computer, and works on a schedule. Use the AI model you already have. Free.</p>
+<div class="ctas">
+<a class="btn btn-win" href="https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe" download data-cta="win"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg><span class="lbl">Get Windows app<small>v<span data-version>0.3.6</span> · <span data-size="windows">170 MB</span></small></span></a>
+<a class="btn btn-web" href="https://app.vnbot.run" data-cta="web"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><span class="lbl">Open web app<small>app.vnbot.run</small></span></a></div>
+<div class="meta"><span><b>v<span data-version>0.3.6</span></b></span><i class="dot"></i><span><span data-size="windows">170 MB</span></span><i class="dot"></i><span>SHA-256 <span data-sha="windows" class="sha" data-short title="8682aa010f9280cb21c88473022073b61e00694da365b4766309c7e093c9dde3">8682aa01…c9dde3</span></span><button type="button" aria-live="polite" class="copy" aria-label="Copy SHA-256">Copy</button></div>
+<p class="msi">Need an MSI for a work computer? <a href="https://dl.vnbot.run/desktop/VNBot-0.3.6-win-x64.msi" download>Download VNBot-0.3.6-win-x64.msi (<span data-size="msi">185 MB</span>)</a></p>
+<p class="ss" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/></svg><span>This unsigned preview build may show a SmartScreen warning. Click <b>“More info”</b>, then <b>“Run anyway”</b>. <a href="#tai-ve">See how to open it</a></span></p>
+<div class="soon" aria-label="Upcoming platforms"><span>Other platforms:</span>
+<span class="chip" aria-disabled="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.8C7 7.3 5.6 8.2 4.8 9.6c-1.6 2.8-.4 6.9 1.2 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.8-2.2c.9-1.3 1.2-2.5 1.2-2.6 0 0-2.4-.9-2.4-3.6zM14.2 5.6c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.3z"/></svg>Mac <em>· coming soon</em></span>
+<span class="chip" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>iOS <em>· coming soon</em></span>
+<span class="chip" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>Android <em>· coming soon</em></span></div>
+</div><div class="stage" aria-hidden="true"><div class="stage-in"><div class="m " style="left:4%;top:250px;width:170px;--i:0"><img src="/landing/img/mascots/ran/tilt.png" alt="" width="170" height="170"></div>
+<div class="m float" style="left:30%;top:40px;width:150px;--i:1"><img src="/landing/img/mascots/sen/jump-256.png" alt="" width="150" height="150"></div>
+<div class="m nofloor float" style="left:62%;top:10px;width:150px;--i:2"><img src="/landing/img/mascots/longden/base-256.png" alt="" width="150" height="150"></div>
+<div class="m " style="left:30%;top:250px;width:250px;--i:3"><img data-blink src="/landing/img/mascots/non/bounce.png" alt="" width="250" height="250"></div>
+<div class="m " style="left:72%;top:250px;width:150px;--i:4"><img src="/landing/img/mascots/chung/lookup-256.png" alt="" width="150" height="150"></div>
+<div class="m float" style="left:8%;top:60px;width:110px;--i:5"><img src="/landing/img/mascots/tre/jump-256.png" alt="" width="110" height="110"></div>
+<div class="m " style="left:84%;top:140px;width:100px;--i:6"><img src="/landing/img/mascots/suong/tilt-256.png" alt="" width="100" height="100"></div>
+<div class="m " style="left:56%;top:410px;width:120px;--i:7"><img src="/landing/img/mascots/aodai/base-256.png" alt="" width="120" height="120"></div></div></div></div></section>
 
-<section id="team"><div class="w">
- <h2 data-i="t_h">Các bot làm việc với nhau.</h2>
- <p class="sub" data-i="t_sub">Giao một việc, các bot tự hỏi nhau, chia việc và kiểm tra lại cho nhau. Cần thêm việc thì thêm bot.</p>
- <div class="two">
-  <div class="chat" role="group" data-ia="a_chat" aria-label="Ví dụ một nhóm chat của các bot">
-   <div class="msg"><div class="who">Lan <span data-i="r1">· Bán hàng</span></div><div class="bub" data-i="m1">Có 12 đơn mới từ hôm qua. Minh tổng hợp giúp nhé.</div></div>
-   <div class="hand" data-i="hd1">Lan → Minh</div>
-   <div class="msg"><div class="who">Minh <span data-i="r2">· Kế toán</span></div><div class="bub" data-i="m2">Đã tổng hợp vào bảng. Hà soạn tin cảm ơn khách được không?</div></div>
-   <div class="hand" data-i="hd2">Minh → Hà</div>
-   <div class="msg"><div class="who">Hà <span data-i="r3">· CSKH</span></div><div class="bub" data-i="m3">Xong, đã gửi anh duyệt.</div></div>
-   <div class="cap" data-i="t_note">Ví dụ minh họa. Nhóm chat và giao việc giữa các bot đã có trong app.</div>
-  </div>
-  <div><div class="shot"><img data-img="group" src="/landing/img/group-vi.webp" data-ia="a_group" alt="Ảnh chụp nhóm chat thật trong app VNBot, ba bot cùng trả lời một yêu cầu"></div><div class="cap" data-i="t_cap">Nhóm chat trong app VNBot.</div></div>
- </div>
-</div></section>
+<section id="tinh-nang"><div class="wrap center"><span class="eyebrow">Features</span><h2 style="margin-top:14px">What VNBot can do</h2><p class="sub" style="margin-top:12px">Delegate as you would to a colleague. Your bots remember, get to work, and report back.</p></div>
+<div class="wrap"><div class="grid3"><article class="card feat" data-reveal style="--i:0"><img class="fm" src="/landing/img/mascots/non/prop-256.png" alt="" loading="lazy" width="112" height="112"><h3>A role for every bot</h3><p>Each bot has its own name, instructions, memory, and history.</p></article><article class="card feat" data-reveal style="--i:1"><img class="fm" src="/landing/img/mascots/suong/prop-256.png" alt="" loading="lazy" width="112" height="112"><h3>Its own computer</h3><p>Bots browse the web, use a terminal, and read and edit files on their own computer.</p></article><article class="card feat" data-reveal style="--i:2"><img class="fm" src="/landing/img/mascots/chung/prop-256.png" alt="" loading="lazy" width="112" height="112"><h3>Works on a schedule</h3><p>Set a schedule once. Every morning, your bot prepares reports, checks orders, or sends messages.</p></article><article class="card feat" data-reveal style="--i:0"><img class="fm" src="/landing/img/mascots/sen/prop-256.png" alt="" loading="lazy" width="112" height="112"><h3>Bots work together</h3><p>Give them a task. Bots ask each other questions, share the work, and check each other’s results.</p></article><article class="card feat" data-reveal style="--i:1"><img class="fm" src="/landing/img/mascots/aodai/prop-256.png" alt="" loading="lazy" width="112" height="112"><h3>Connect your tools</h3><p>Connect apps, MCP, or APIs so bots can work in your systems.</p></article><article class="card feat" data-reveal style="--i:2"><img class="fm" src="/landing/img/mascots/tre/prop-256.png" alt="" loading="lazy" width="112" height="112"><h3>Your models, your data</h3><p>Use the AI plan you already have. Chats and data stay on your machine.</p></article></div></div></section>
 
-<section id="features"><div class="w">
- <h2 data-i="f_h">VNBot làm được gì</h2>
- <div class="row"><div class="txt"><h3 data-i="f1">Mỗi bot một việc</h3><p data-i="f1d">Mỗi bot có tên, hướng dẫn, trí nhớ và lịch sử riêng.</p></div><div class="shot"><img data-img="f1" src="/landing/img/f1-vi.webp" data-ia="a_f1" alt="Mỗi bot một việc: ảnh chụp app VNBot"></div></div>
- <div class="row rev"><div class="txt"><h3 data-i="f2">Có máy tính riêng</h3><p data-i="f2d">Bot mở trình duyệt, dùng terminal, đọc và sửa file trên máy tính riêng của nó.</p></div><div class="shot"><img data-img="f2" src="/landing/img/f2-vi.webp" data-ia="a_f2" alt="Có máy tính riêng: ảnh chụp app VNBot"></div></div>
- <div class="row"><div class="txt"><h3 data-i="f3">Tự chạy theo lịch</h3><p data-i="f3d">Hẹn giờ một lần, mỗi sáng bot tự làm báo cáo, kiểm tra đơn, gửi tin.</p></div><div class="shot"><img data-img="f3" src="/landing/img/f3-vi.webp" data-ia="a_f3" alt="Tự chạy theo lịch: ảnh chụp app VNBot"></div></div>
- <div class="row rev"><div class="txt"><h3 data-i="f4">Kết nối công cụ bạn dùng</h3><p data-i="f4d">Gắn ứng dụng, MCP hoặc API để bot làm việc trong hệ thống của bạn.</p><div class="logos"><span><img src="/landing/icons/gmail.svg" alt="">Gmail</span><span><img src="/landing/icons/googlecalendar.svg" alt="">Google Calendar</span><span><img src="/landing/icons/googledrive.svg" alt="">Google Drive</span><span><img src="/landing/icons/slack.svg" alt="">Slack</span><span><img src="/landing/icons/notion.svg" alt="">Notion</span><em data-i="f4m">và hàng trăm app khác qua MCP</em></div></div><div class="shot"><img data-img="f4" src="/landing/img/f4-vi.webp" data-ia="a_f4" alt="Kết nối công cụ bạn dùng: ảnh chụp app VNBot"></div></div>
- <div class="row"><div class="txt"><h3 data-i="f5">Nói chuyện bằng giọng</h3><p data-i="f5d">Đọc cho bot ghi, nghe bot trả lời, gọi thoại với bot. Giọng nói dùng nhà cung cấp và khóa của bạn.</p></div><div class="shot"><img data-img="f5" src="/landing/img/f5-vi.webp" data-ia="a_f5" alt="Nói chuyện bằng giọng: ảnh chụp app VNBot"></div></div>
- <p class="dev" id="devline"></p>
-</div></section>
+<section class="team" id="doi-bot"><div class="wrap center"><span class="eyebrow">The team</span><h2 style="margin-top:14px">Meet the VNBot team</h2><p class="sub" style="margin-top:12px">Eight woolly friends, each with a touch of Vietnam. Every bot you create gets a companion.</p>
+<div class="grid4"><article class="card mate" data-reveal style="--i:0"><img class="tm" src="/landing/img/mascots/non/tilt-256.png" alt="" loading="lazy" width="150" height="150"><h3>Bé Nón</h3><p>Kind, hardworking, and always first to arrive.</p><span class="tag">The cheerful captain</span></article><article class="card mate" data-reveal style="--i:1"><img class="tm" src="/landing/img/mascots/sen/lookup-256.png" alt="" loading="lazy" width="150" height="150"><h3>Bé Sen</h3><p>Gentle and attentive to every detail.</p><span class="tag">Loves keeping things tidy</span></article><article class="card mate" data-reveal style="--i:2"><img class="tm" src="/landing/img/mascots/suong/tilt-256.png" alt="" loading="lazy" width="150" height="150"><h3>Bé Sương</h3><p>Fresh as the morning mist.</p><span class="tag">The team’s early bird</span></article><article class="card mate" data-reveal style="--i:3"><img class="tm" src="/landing/img/mascots/longden/bounce-256.png" alt="" loading="lazy" width="150" height="150"><h3>Bé Lồng Đèn</h3><p>Brightens every room.</p><span class="tag">Lights up new ideas</span></article><article class="card mate" data-reveal style="--i:0"><img class="tm" src="/landing/img/mascots/ran/tilt-256.png" alt="" loading="lazy" width="150" height="150"><h3>Bé Rằn</h3><p>A hardworking friend in a Mekong Delta scarf.</p><span class="tag">Ready for a challenge</span></article><article class="card mate" data-reveal style="--i:1"><img class="tm" src="/landing/img/mascots/chung/lookup-256.png" alt="" loading="lazy" width="150" height="150"><h3>Bé Chưng</h3><p>Steady, dependable, and always on time.</p><span class="tag">Keeps things on schedule</span></article><article class="card mate" data-reveal style="--i:2"><img class="tm" src="/landing/img/mascots/aodai/tilt-256.png" alt="" loading="lazy" width="150" height="150"><h3>Bé Áo Dài</h3><p>Graceful and thoughtful with guests.</p><span class="tag">Polite and well prepared</span></article><article class="card mate" data-reveal style="--i:3"><img class="tm" src="/landing/img/mascots/tre/bounce-256.png" alt="" loading="lazy" width="150" height="150"><h3>Bé Tre</h3><p>Resilient and growing fast as bamboo.</p><span class="tag">A quick, persistent learner</span></article></div></div>
+<div class="marq" aria-hidden="true"><div class="row"><img loading="lazy" src="/landing/img/mascots/non/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/sen/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/suong/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/longden/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/ran/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/chung/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/aodai/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/tre/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/non/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/sen/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/suong/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/longden/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/ran/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/chung/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/aodai/jump-128.png" alt="" width="72" height="72"><img loading="lazy" src="/landing/img/mascots/tre/jump-128.png" alt="" width="72" height="72"></div></div></section>
 
-<section id="data"><div class="w two">
- <div>
-  <h2 data-i="d_h">Mô hình của bạn. Dữ liệu của bạn.</h2>
-  <p class="sub"><strong data-i="d_node">Chat và dữ liệu nằm trên máy của bạn, không nằm trên máy chủ của VNBot.</strong></p>
-  <p class="sub" data-i="d_sub">VNBot không cung cấp mô hình AI. Bạn tự kết nối bằng API key, hoặc đăng nhập với nhà cung cấp có hỗ trợ. VNBot không nhận và không trả tiền cho các kết nối đó.</p>
-  <ul class="ck"><li data-i="d1">Dùng gói AI bạn đã trả tiền.</li><li data-i="d2">Đổi mô hình bất cứ lúc nào, bot vẫn giữ trí nhớ và công việc.</li><li data-i="d3">Không bị khóa vào một nhà cung cấp.</li><li data-i="d4">API key và khóa kết nối được mã hóa.</li><li data-i="d5">Xóa từng bot hoặc cả tài khoản khi bạn muốn.</li></ul>
- </div>
- <div><div class="shot"><img data-img="models" src="/landing/img/models-vi.webp" data-ia="a_models" alt="Ảnh chụp Cài đặt → Mô hình trong app VNBot: nhà cung cấp đã kết nối bằng khóa của người dùng"></div><div class="cap" data-i="d_cap">Cài đặt, mục Mô hình.</div></div>
-</div></section>
+<section id="cach-dung"><div class="wrap center"><span class="eyebrow">How it works</span><h2 style="margin-top:14px">Ready in 3 steps</h2>
+<div class="steps" data-reveal><div class="bar"><i></i></div>
+<div class="step"><div class="sm"><img src="/landing/img/mascots/suong/jump-256.png" alt="" loading="lazy"></div><div class="num">1</div><h3>Download</h3><p>Download the Windows installer, or open the web app if you already have a node.</p></div>
+<div class="step"><div class="sm"><img src="/landing/img/mascots/chung/bounce-256.png" alt="" loading="lazy"></div><div class="num">2</div><h3>Install</h3><p>Open the downloaded file and follow the instructions. Your computer becomes a node.</p></div>
+<div class="step"><div class="sm"><img src="/landing/img/mascots/aodai/jump-256.png" alt="" loading="lazy"></div><div class="num">3</div><h3>Start chatting</h3><p>Connect your AI model, create your first bot, and give it a task.</p></div>
+</div></div></section>
 
-<section id="how"><div class="w">
- <h2 data-i="hw_h">Cách hoạt động</h2>
- <p class="sub" data-i="hw_sub">Máy chạy VNBot gọi là node. Đội bot chạy và giữ dữ liệu trên máy đó.</p>
- <ol class="steps how">
-  <li data-feat="ownNode"><strong data-i="hw1">Máy của bạn là node</strong><span data-i="hw1d">Cài VNBot trên Mac mini, PC văn phòng hoặc VPS riêng. Bot chạy, nhớ và lưu dữ liệu trên máy đó.</span></li>
-  <li data-feat="web"><strong data-i="hw2">Dùng trên web qua app.vnbot.run</strong><span data-i="hw2d">Mở app.vnbot.run trên trình duyệt để nối tới node của bạn, giao việc và xem bot làm.</span></li>
-  <li data-feat="remoteAccess"><strong data-i="hw3">Dùng ở mọi nơi qua vnbot.run</strong><span data-i="hw3d">Từ điện thoại hoặc máy khác, mở vnbot.run. Kết nối P2P đi thẳng tới node của bạn.</span></li>
- </ol>
-</div></section>
+<section class="dl" id="tai-ve"><div class="wrap"><div class="card" data-reveal>
+<div><span class="eyebrow">Download · Windows</span><h2 style="margin-top:14px">Download VNBot for Windows</h2><p class="sub" style="margin-top:10px">Version <span data-version>0.3.6</span> for Windows 10/11 64-bit. Free, no card required.</p>
+<a class="btn btn-win" href="https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="lbl">Get Windows app<small>VNBot-Setup-0.3.6-x64.exe · <span data-size="windows">170 MB</span></small></span></a>
+<dl class="facts"><dt>Version</dt><dd data-version>0.3.6</dd><dt>Size</dt><dd><span data-size="windows">170 MB</span> (178,132,544 bytes)</dd><dt>Requires</dt><dd>Windows 10/11 64-bit</dd>
+<dt>SHA-256</dt><dd><span data-sha="windows" class="sha">8682aa010f9280cb21c88473022073b61e00694da365b4766309c7e093c9dde3</span><button type="button" aria-live="polite" class="copy" aria-label="Copy SHA-256">Copy</button></dd></dl>
+<div class="alt"><div class="t"><b>MSI installer (optional)</b><span>For work computers or managed installations · <span data-size="msi">185 MB</span> · SHA-256 <span data-sha="msi" data-short title="eb640894a4af3805d019a860d210a23f31bdb3597d92f7cfda54def585e44801">eb640894…e44801</span></span></div><a class="btn-out" href="https://dl.vnbot.run/desktop/VNBot-0.3.6-win-x64.msi" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Download .msi</a></div>
+<p class="msi" style="margin-top:14px"><a href="https://dl.vnbot.run/desktop/SHA256SUMS.txt">SHA256SUMS.txt</a> · <a href="#hoi-dap">How to check SHA-256</a></p>
+<div class="soon" aria-label="Upcoming platforms"><span>Other platforms:</span>
+<span class="chip" aria-disabled="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.8C7 7.3 5.6 8.2 4.8 9.6c-1.6 2.8-.4 6.9 1.2 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.8-2.2c.9-1.3 1.2-2.5 1.2-2.6 0 0-2.4-.9-2.4-3.6zM14.2 5.6c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.3z"/></svg>Mac <em>· coming soon</em></span>
+<span class="chip" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>iOS <em>· coming soon</em></span>
+<span class="chip" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>Android <em>· coming soon</em></span></div>
+</div>
+<div><div class="sscard" id="smartscreen"><h3>Windows blocked the installer? Follow these 3 steps</h3>
+<ol><li><span><b>Click “More info”</b>If you see “Windows protected your PC”, click More info below the description.</span></li>
+<li><span><b>Check the filename</b>The app should be <code>VNBot-Setup-0.3.6-x64.exe</code>. The publisher appears as “Unknown” because this preview build is unsigned.</span></li>
+<li><span><b>Click “Run anyway”</b>Click Run anyway. The VNBot installer opens; follow its instructions.</span></li></ol>
+<p class="warn">Only click “Run anyway” for files downloaded from <b>vnbot.run</b> or <b>dl.vnbot.run</b>. <a href="#hoi-dap">Check SHA-256</a></p></div>
+<div class="m ss-mascot" aria-hidden="true" style="position:relative;width:150px;margin:24px 0 0 auto"><img src="/landing/img/mascots/non/tilt-256.png" alt="" loading="lazy"></div></div>
+</div></div></section>
 
-<section id="free" data-free><div class="w">
- <div class="zero">0đ</div>
- <h2 data-i="z_h">Toàn bộ tính năng hiện có miễn phí, mãi mãi.</h2>
- <p class="sub" data-i="z_b">Không có phí ẩn. Bạn chỉ trả cho gói AI của chính bạn, trực tiếp với nhà cung cấp.</p>
- <a class="btn cta-dl" href="#download">Tải VNBot</a>
-</div></section>
+<section class="webb" id="ban-web"><div class="wrap"><div class="card" data-reveal>
+<div><span class="eyebrow">Web app</span><h2 style="margin-top:14px">Prefer not to install?<br>Use the web app</h2><p class="sub" style="margin-top:10px">Open app.vnbot.run in your browser to connect to your node, assign tasks, and see your bots at work.</p>
+<a class="btn btn-web" href="https://app.vnbot.run"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><span class="lbl">Open web app<small>app.vnbot.run</small></span></a>
+<ul><li>Nothing extra to install on the computer you’re using.</li><li>In beta: sign in with email and a code. Access is by approval.</li><li>Requires a computer running VNBot as your node.</li></ul></div>
+<div class="webstage" aria-hidden="true"><div class="m" style="left:8%;top:60px;width:200px"><img loading="lazy" src="/landing/img/mascots/ran/jump.png" alt=""></div><div class="m nofloor float" style="left:52%;top:10px;width:170px"><img loading="lazy" src="/landing/img/mascots/longden/jump-256.png" alt=""></div><div class="m" style="left:66%;top:190px;width:110px"><img loading="lazy" src="/landing/img/mascots/tre/tilt-256.png" alt=""></div></div>
+</div></div></section>
 
-<section id="biz"><div class="w">
- <h2 data-i="b_h">Làm cho doanh nghiệp Việt.</h2>
- <p class="sub" data-i="b_sub">Giao diện và bot dùng tiếng Việt. Dùng được cho cửa hàng, văn phòng, spa và lớp học.</p>
- <div class="usecases">
-  <div class="uc"><h3 data-i="b1">Bán hàng & chăm sóc khách</h3><p data-i="b1d">Trả lời tin nhắn khách, gom đơn mới mỗi sáng.</p></div>
-  <div class="uc"><h3 data-i="b2">Báo cáo & sổ sách</h3><p data-i="b2d">Tổng hợp đơn vào bảng tính, gửi báo cáo cuối ngày.</p></div>
-  <div class="uc"><h3 data-i="b3">Nội dung & marketing</h3><p data-i="b3d">Viết bài đăng, lên lịch đăng theo tuần.</p></div>
-  <div class="uc"><h3 data-i="b4">Việc văn phòng lặp lại</h3><p data-i="b4d">Đọc email, nhắc lịch họp, điền biểu mẫu.</p></div>
- </div>
- <div class="btns"><a class="btn contact" data-i="contact2">Liên hệ</a><span data-i="b_cta">Để cả công ty dùng VNBot, liên hệ AIKING.</span></div>
-</div></section>
+<section class="faq" id="hoi-dap" data-reveal><div class="peek" aria-hidden="true"><img loading="lazy" src="/landing/img/mascots/non/peek-256.png" alt=""></div><div class="wrap"><div class="center"><span class="eyebrow">FAQ</span><h2 style="margin-top:14px">Frequently asked questions</h2></div>
+<div class="list"><details><summary>Is VNBot free?</summary><p>Yes. All current features are free. You only pay for your own AI plan, directly with your provider.</p></details><details open><summary>Why does Windows warn me about the installer?</summary><p>VNBot is new and this preview is unsigned, so Microsoft SmartScreen does not yet recognize the file. A warning does not mean the file contains a virus. Click “More info”, then “Run anyway”. We plan to sign future releases.</p></details><details><summary>Should I download the .exe or .msi?</summary><p>Most people should use the .exe. The .msi is for work computers or managed installations; it may also show a UAC permission prompt.</p></details><details><summary>How can I verify the download?</summary><p>Open PowerShell in your Downloads folder, run Get-FileHash .\VNBot-Setup-0.3.6-x64.exe -Algorithm SHA256, and compare the result with the SHA-256 on this page. If they differ, do not run the file. Delete it and download it again.</p></details><details><summary>Is there a version for Mac, iOS, or Android?</summary><p>Coming soon. VNBot currently has an installer for Windows 10/11 64-bit and a web app at app.vnbot.run.</p></details><details><summary>How does the web app differ from the desktop app?</summary><p>The desktop app turns your computer into a node, where bots run and keep their data. The web app at app.vnbot.run connects to your node so you can assign tasks and see your bots at work.</p></details><details><summary>Where is my data stored?</summary><p>Chats and data stay on your computer, not on VNBot’s servers. API keys and connection credentials are encrypted.</p></details></div></div></section>
 
-<section id="download"><div class="w dl-wrap"><div class="dl-heading"><img src="/landing/img/non.svg" alt=""><span class="dl-chip" data-i="dl_chip">Free · Preview</span><h2 data-i="dl_h">Download VNBot.</h2><p class="sub" id="dlsub" data-i="dl_sub">The desktop app runs VNBot on your machine. Chats, running work, files and data live on that machine.</p></div><noscript><div class="dl-card"><h3>Choose the installer for your computer</h3><span aria-disabled="true" class="btn p dl-primary">Installers coming soon</span></div></noscript><div id="dlstate" class="dl-layout"><div id="dlmain" class="dl-card"><span class="btn p dl-primary dl-detecting" aria-disabled="true"><span class="spinner" aria-hidden="true"></span><span data-i="dl_detecting">Detecting your computer…</span></span><div class="skeleton"></div><div class="skeleton short"></div></div><aside id="dlother" class="dl-other"></aside></div><div id="smart-help-slot"></div><div id="dl-live" aria-live="polite"></div><ol class="steps install"><li data-i="s1">Cài app trên máy sẽ chạy VNBot (Mac mini, PC văn phòng hoặc VPS riêng)</li><li data-i="s2">Đăng nhập bằng email và mã</li><li data-i="s3">Kết nối mô hình của bạn và giao việc cho bot đầu tiên</li></ol></div></section>
-
-<section id="faq"><div class="w faq">
- <h2 data-i="q_h">Hỏi đáp</h2>
- <details data-free><summary data-i="q1">VNBot có mất phí không?</summary><p data-i="a1">Không. Toàn bộ tính năng hiện có miễn phí, mãi mãi. Bạn chỉ trả cho gói AI của chính bạn, trực tiếp với nhà cung cấp.</p></details>
- <details><summary data-i="q2">Tôi cần mô hình AI nào?</summary><p data-i="a2">Mô hình nào bạn đang dùng cũng được. Kết nối bằng API key của bạn, hoặc đăng nhập với nhà cung cấp có hỗ trợ.</p></details>
- <details><summary data-i="q3">Dữ liệu của tôi ở đâu, VNBot có xem không?</summary><p data-i="a3">Chat và dữ liệu nằm trên máy của bạn, không nằm trên máy chủ của VNBot. API key và khóa kết nối được mã hóa. Bạn có thể xóa từng bot hoặc cả tài khoản. Nội dung bạn gửi cho mô hình AI đi tới nhà cung cấp bạn tự chọn, theo điều khoản của họ.</p></details>
- <details><summary data-i="q7">VNBot chạy ở đâu?</summary><p><span data-i="a7">Trên máy bạn chọn (node), ví dụ Mac mini, PC văn phòng hoặc VPS riêng. Chat, việc đang chạy, file và dữ liệu nằm trên máy đó.</span> <span data-feat="remoteAccess" data-i="a7b">Mở đội bot từ điện thoại hoặc máy khác qua vnbot.run, kết nối P2P đi thẳng tới node của bạn.</span></p></details>
- <details><summary data-i="q4">Ai được dùng?</summary><p data-i="a4">Đang beta, chỉ email đã được duyệt. Đăng nhập bằng email và mã, có thể thêm passkey. Chưa có quyền? Bấm "Liên hệ để nhận lời mời".</p></details>
- <details><summary data-i="q5">Có trên điện thoại không?</summary><p id="a5dyn"></p></details>
- <details><summary data-i="q6">Có tiếng Anh không?</summary><p data-i="a6">Có, chuyển VI/EN bất cứ lúc nào.</p></details>
-</div></section>
-
-<section id="cta"><div class="w">
- <div class="tex" aria-hidden="true"><img src="/landing/img/non.svg" alt=""><img src="/landing/img/non.svg" alt=""><img src="/landing/img/non.svg" alt=""><img src="/landing/img/non.svg" alt=""><img src="/landing/img/non.svg" alt=""></div>
- <h2 id="c_h"></h2>
- <div class="btns" style="margin-top:24px"><a class="btn contact main-contact">Liên hệ để nhận lời mời</a><a class="btn web-main"></a><a class="tlink cta-dl" href="#download">Tải VNBot</a></div>
-</div></section>
+<section class="final"><div class="wrap"><h2>Ready for your own team of bots?</h2><p class="sub" style="margin:12px auto 0">Download for Windows or open the web app. Free.</p><div class="ctas">
+<a class="btn btn-win" href="https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe" download data-cta="win"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg><span class="lbl">Get Windows app<small>v<span data-version>0.3.6</span> · <span data-size="windows">170 MB</span></small></span></a>
+<a class="btn btn-web" href="https://app.vnbot.run" data-cta="web"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><span class="lbl">Open web app<small>app.vnbot.run</small></span></a></div><div class="lineup" aria-hidden="true"><img loading="lazy" src="/landing/img/mascots/tre/lookup-256.png" alt="" width="84" style="width:84px"><img loading="lazy" src="/landing/img/mascots/aodai/lookup-256.png" alt="" width="96" style="width:96px"><img loading="lazy" src="/landing/img/mascots/chung/lookup-256.png" alt="" width="108" style="width:108px"><img loading="lazy" src="/landing/img/mascots/non/lookup-256.png" alt="" width="132" style="width:132px"><img loading="lazy" src="/landing/img/mascots/sen/lookup-256.png" alt="" width="120" style="width:120px"><img loading="lazy" src="/landing/img/mascots/longden/lookup-256.png" alt="" width="104" style="width:104px"><img loading="lazy" src="/landing/img/mascots/ran/lookup-256.png" alt="" width="96" style="width:96px"><img loading="lazy" src="/landing/img/mascots/suong/lookup-256.png" alt="" width="84" style="width:84px"></div></div></section>
 </main>
-<footer data-ia="foot" aria-label="Chân trang"><div class="w"><img class="wmimg ft" src="/landing/img/vnbot-wordmark-v4-light.svg" alt="VNbot"><span style="font-weight:300">powered by AIKING</span><button class="lang" id="lang2" data-ia="lang" aria-label="Chuyển sang tiếng Anh">EN</button><a class="contact" data-i="contact">Liên hệ</a></div></footer>
-<script src="/landing/features.js"></script><script src="/landing/main.js"></script>
+<footer><div class="wrap"><div class="brand"><img loading="lazy" class="wm-light" src="/landing/img/vnbot-wordmark-v4-light.svg" alt="VNBot"><img loading="lazy" class="wm-dark" src="/landing/img/vnbot-wordmark-v4-dark.svg" alt="VNBot"><p style="margin-top:12px;max-width:32ch">Your own team of AI employees. Built for Vietnamese businesses.</p></div>
+<div><h4>Product</h4><ul><li><a href="#tinh-nang">Features</a></li><li><a href="#doi-bot">The team</a></li><li><a href="#tai-ve">Download</a></li><li><a href="https://app.vnbot.run">Web app</a></li></ul></div>
+<div><h4>Support</h4><ul><li><a href="#hoi-dap">FAQ</a></li><li><a href="#smartscreen">Open the Windows installer</a></li><li><a href="https://dl.vnbot.run/desktop/SHA256SUMS.txt">SHA-256 checksums</a></li></ul></div>
+<div><h4>Language</h4><ul><li><a href="/">Tiếng Việt</a></li><li><a href="/en/">English</a></li></ul></div>
+<div class="legal"><span>© 2026 VNBot · powered by AIKING</span><span>vnbot.run</span></div></div></footer>
 </body></html>

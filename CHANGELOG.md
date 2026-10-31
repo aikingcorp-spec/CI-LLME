@@ -10,6 +10,8 @@ Merged into main on 2026-10-31: VNB-001 (sign-in focus), VNB-018 (adapter tests 
 
 ### Added
 
+- Redesigned the Vietnamese and English landing pages with the VNBot mascot team and clearer Windows and web access.
+
 - Added a separately configured, workers.dev-only P2P gateway test environment for owner-approved validation.
 - Added local WebSocket offer/answer smoke coverage for the P2P gateway, including node pairing and client target restrictions.
 - The website download section now detects your computer, shows the version, file and SHA-256 checksum, and guides Windows users past the SmartScreen warning; download buttons stay off until the installers are published.
@@ -51,7 +53,7 @@ Merged into main on 2026-10-31: VNB-001 (sign-in focus), VNB-018 (adapter tests 
 
 ### Changed
 
-- The landing page offers the Windows 0.3.6 installer (.exe 178 MB, .msi 194 MB) with SHA-256 checksums and one Vietnamese or English note that the preview build is unsigned and may trigger SmartScreen; the release-notes link is hidden until notes are published, and the download button stays on one line on narrow screens.
+- The landing page offers the Windows 0.3.6 installer (.exe 170 MB, .msi 185 MB) with SHA-256 checksums and one Vietnamese or English note that the preview build is unsigned and may trigger SmartScreen; the release-notes link is hidden until notes are published, and the download button stays on one line on narrow screens.
 
 - Compose runs database migrations in a one-shot `migrate` container, the only one given the database owner login. Code running in the API or worker can no longer read that login from the container and bypass row-level security. Railway restarts its start script without the login after migrating.
 - Mobile routine and connector mention suggestions load only when requested, with bounded routine-request concurrency.
