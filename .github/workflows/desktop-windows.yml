@@ -1,0 +1,157 @@
+name: desktop-windows
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "packages/p2p-prototype/**"
+      - "apps/api/**"
+      - "apps/worker/**"
+      - "apps/web/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/desktop-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-and-smoke:
+    name: Package, install and smoke test the Windows installers
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      # Installers are unsigned: never look for a signing identity.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      RAKAZO_ALLOW_DEV_SECRETS: "1"
+      SMOKE_DIR: ${{ github.workspace }}\smoke-artifacts
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # Installing on Windows fetches the win32 prebuilds of node-datachannel and the
+      # Windows Postgres binaries; do not cross-install from another OS.
+      - run: pnpm install --frozen-lockfile
+      - name: Generate the database client
+        run: pnpm db:generate
+      - name: Unit tests
+        run: pnpm --filter @rakazo/desktop test
+      - name: Package NSIS and MSI
+        run: pnpm --filter @rakazo/desktop run pack:win
+      - name: Check packaged server resources
+        run: |
+          $resources = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/out/win-unpacked/resources'
+          $modules = Join-Path $resources 'app.asar.unpacked/node_modules'
+          # The P2P bundles load from inside the archive; the native addon stays unpacked.
+          $archive = Join-Path $resources 'app.asar'
+          $asarFiles = @(npx --yes @electron/asar@3.4.1 list $archive) -replace '\\', '/'
+          if ($LASTEXITCODE -ne 0) { throw 'Listing app.asar failed' }
+          foreach ($file in @('/dist/p2p-agent.js', '/dist/p2p-pairing.js')) {
+            if ($asarFiles -notcontains $file) { throw "Missing in app.asar: $file" }
+          }
+          if (@(Get-ChildItem (Join-Path $modules 'node-datachannel/build/Release') -Filter '*.node' -File).Count -eq 0) {
+            throw 'Missing unpacked node-datachannel .node addon'
+          }
+          foreach ($file in @('server/api/dist/index.js', 'server/worker/dist/index.js', 'server/db/dist/database-access.js', 'server/db/package.json', 'server/adapters/package.json', 'web/index.html')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $resources $file) -PathType Leaf)) { throw "Missing packaged resource: $file" }
+          }
+          $migrations = @(Get-ChildItem (Join-Path $resources 'migrations') -Directory | Where-Object {
+            Test-Path -LiteralPath (Join-Path $_.FullName 'migration.sql') -PathType Leaf
+          })
+          if ($migrations.Count -eq 0) { throw 'Packaged migrations missing' }
+          foreach ($module in @('pg', 'graphile-worker')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $resources "server/node_modules/$module/package.json") -PathType Leaf)) { throw "Missing server dependency: $module" }
+          }
+      - name: Silent install, smoke test, uninstall
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:SMOKE_DIR | Out-Null
+          $installer = (Get-ChildItem apps/desktop/out -Filter 'VNBot-Setup-*.exe' | Select-Object -First 1).FullName
+          if (-not $installer) { throw 'NSIS installer was not produced' }
+          Start-Process -FilePath $installer -ArgumentList '/S' -Wait
+          $installDir = Join-Path $env:LOCALAPPDATA 'Programs\VNBot'
+          $exe = Join-Path $installDir 'VNBot.exe'
+          if (-not (Test-Path $exe)) { throw "VNBot.exe not found in $installDir" }
+
+          # node-datachannel must load from the unpacked resources of the installed app.
+          $env:NDC_PATH = Join-Path $installDir 'resources\app.asar.unpacked\node_modules\node-datachannel'
+          $env:ELECTRON_RUN_AS_NODE = '1'
+          & $exe -e "require(process.env.NDC_PATH); console.log('node-datachannel loaded')"
+          if ($LASTEXITCODE -ne 0) { throw 'node-datachannel failed to load from the installed app' }
+          Remove-Item Env:ELECTRON_RUN_AS_NODE
+
+          # The app starts its own stack, writes the web URL under its user data directory,
+          # and must emit the smoke success line before exiting.
+          $env:RAKAZO_DESKTOP_SMOKE = '1'
+          $urlFile = Join-Path $env:APPDATA 'VNBot\stack\.desktop-web-url'
+          $env:ELECTRON_ENABLE_LOGGING = '1'
+          try {
+            $stdout = Join-Path $env:SMOKE_DIR 'app.out.log'
+            $stderr = Join-Path $env:SMOKE_DIR 'app.err.log'
+            $app = Start-Process -FilePath $exe -PassThru `
+              -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+            try {
+              $app | Wait-Process -Timeout 180 -ErrorAction Stop
+            } catch {
+              Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+              throw 'App did not exit within the 180-second smoke budget'
+            }
+            $app.WaitForExit()
+            $app.Refresh()
+            if ($app.ExitCode -ne 0) { throw "Smoke process exited with $($app.ExitCode)" }
+            if (-not (Select-String -LiteralPath $stdout -Pattern '^RAKAZO_DESKTOP_SMOKE ok http://127\.0\.0\.1:[0-9]{4,5}\r?$' -Quiet)) {
+              throw 'Smoke success line missing from stdout'
+            }
+            if (Test-Path -LiteralPath $urlFile -PathType Leaf) {
+              Copy-Item -LiteralPath $urlFile -Destination (Join-Path $env:SMOKE_DIR '.desktop-web-url')
+            }
+          } finally {
+            taskkill /F /T /PID $app.Id 2>&1 | Out-Null
+            Get-Process -Name postgres -ErrorAction SilentlyContinue | Stop-Process -Force
+          }
+
+          # `_?=` keeps the uninstaller in place so Start-Process -Wait waits for it.
+          $uninstaller = Join-Path $installDir 'Uninstall VNBot.exe'
+          Start-Process -FilePath $uninstaller -ArgumentList '/S', "_?=$installDir" -Wait
+          if (Test-Path $exe) { throw 'VNBot.exe still present after uninstall' }
+      - name: Collect logs
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:SMOKE_DIR\userdata" | Out-Null
+          # Only log files and the web URL marker: the database directory and keys stay on the runner.
+          $root = Join-Path $env:APPDATA 'VNBot'
+          if (Test-Path $root) {
+            Get-ChildItem $root -Recurse -File -Force -ErrorAction SilentlyContinue |
+              Where-Object { $_.Extension -eq '.log' -or $_.Name -eq '.desktop-web-url' } |
+              ForEach-Object {
+                $dest = Join-Path "$env:SMOKE_DIR\userdata" $_.FullName.Substring($root.Length).TrimStart('\')
+                New-Item -ItemType Directory -Force -Path (Split-Path $dest) | Out-Null
+                Copy-Item $_.FullName $dest
+              }
+          }
+      - name: Retain installers and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: |
+            apps/desktop/out/*.exe
+            apps/desktop/out/*.msi
+            smoke-artifacts/**
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 7

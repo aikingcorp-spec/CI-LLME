@@ -2,11 +2,12 @@ import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, rename, rm } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { createRequire as createModuleRequire } from "node:module";
 import path from "node:path";
 import { allocateLoopbackPort } from "./local-stack.js";
 import { createMigrationClient, type MigrationClient } from "./native-migrate.js";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
+import { DESKTOP_APP_NAME } from "./user-data-name.js";
 
 export const PG_BIN_DIR_ENV = "RAKAZO_PG_BIN_DIR";
 export const PG_DIR_NAME = "pg";
@@ -15,7 +16,7 @@ const PID_FILE_NAME = "postmaster.pid";
 export const PG_OWNER_ROLE = "rakazo";
 export const PG_APP_ROLE = "rakazo_app";
 export const PG_DATABASE = "rakazo";
-export const PG_PRODUCT_DIR = "VNBot";
+export const PG_PRODUCT_DIR = DESKTOP_APP_NAME;
 
 const PG_START_TIMEOUT_S = 60;
 const PG_STOP_TIMEOUT_S = 60;
@@ -269,7 +270,7 @@ export interface BinDirInput {
 export function resolvePostgresBinDir(input: BinDirInput): string | null {
   const explicit = input.binDir?.trim() || input.env[PG_BIN_DIR_ENV]?.trim();
   if (explicit) return explicit;
-  const resolveModule = input.resolveModule ?? createRequire(import.meta.url).resolve;
+  const resolveModule = input.resolveModule ?? createModuleRequire(import.meta.url).resolve;
   try {
     const entry = resolveModule(postgresPackageName(input.platform, input.arch));
     return unpackedPath(

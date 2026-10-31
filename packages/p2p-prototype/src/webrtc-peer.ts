@@ -133,12 +133,17 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   const pc: PeerTransport = o.createPeerConnection
     ? o.createPeerConnection(o.selfId, pcConfig)
     : new PeerConnection(o.selfId, pcConfig);
+  const localCandidates: string[] = [];
+  let remoteCandidateCount = 0;
   pc.onStateChange((state) => {
     debug(`onStateChange ${state}`);
     if (state === "closed" || state === "failed") {
       rejectOpen(
         state === "failed"
-          ? new P2PConnectError("ice_failed", "peer failed")
+          ? // Without candidates on both sides there was never a pair to check.
+            localCandidates.length > 0 && remoteCandidateCount > 0
+            ? new P2PConnectError("ice_failed", "peer failed")
+            : new P2PConnectError("no_candidate_pair", "peer failed without candidates")
           : opened
             ? new Error("peer closed")
             : new P2PConnectError("no_candidate_pair", "peer closed"),
@@ -240,7 +245,6 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
   pc.onLocalDescription((sdp, type) =>
     signal({ type: type === "offer" ? "offer" : "answer", sdp, attemptId }),
   );
-  const localCandidates: string[] = [];
   pc.onLocalCandidate((candidate, mid) => {
     localCandidates.push(candidate);
     signal({ type: "candidate", candidate, mid, attemptId });
@@ -259,6 +263,7 @@ export async function connectPeer(o: PeerOptions): Promise<DataPeer> {
     }
     if (p.attemptId !== undefined && p.attemptId !== attemptId) return;
     if (p.type === "candidate") {
+      remoteCandidateCount += 1;
       if (remoteDescriptionSet) pc.addRemoteCandidate(p.candidate, p.mid);
       else pendingCandidates.push({ candidate: p.candidate, mid: p.mid });
       return;
