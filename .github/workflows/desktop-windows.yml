@@ -108,6 +108,8 @@ jobs:
               $app | Wait-Process -Timeout 180 -ErrorAction Stop
             } catch {
               Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+              Get-Content -LiteralPath $stdout -ErrorAction SilentlyContinue | Out-Host
+              Get-Content -LiteralPath $stderr -ErrorAction SilentlyContinue | Out-Host
               throw 'App did not exit within the 180-second smoke budget'
             }
             $app.WaitForExit()
