@@ -1,5 +1,17 @@
 # VNB-022 app-issued P2P tokens prod rollback
 
+## ⚠️ REQUIRED: recreate API without the override to roll back
+
+Rolling back `api` means recreating it **WITHOUT `-f docker-compose.vnb022-api.yml`**:
+
+```sh
+cd /opt/vnbot-8088 && docker compose -f docker-compose.yml up -d --no-deps api
+```
+
+This returns `api` from main `31167991` to image `vnbot8088/app:96d8550b`. That image has no P2P token signer, so **`POST /api/auth/p2p-token` stops working**. `worker` and `web` already run `96d8550b`.
+
+`up.sh` and `redeploy.sh` omit the override and also return `api` to `96d8550b`. By Maya's decision, these scripts on prod are intentionally **NOT edited**. Follow the approvals and applicable rollback steps below.
+
 Use the confirmed VPS Compose context, protected evidence, `.env.bak-<ts>`, and previous API image ID from [RUNBOOK-P2P-TOKEN.md](RUNBOOK-P2P-TOKEN.md). Apply only the steps reached, in reverse order: 4, 3, 2, 1.
 
 > Never print private keys, cookies, bearer tokens, assertions, or environment values. Run `set +x`. Each rollback step needs its own explicit owner (sếp) approval. Stop on a failed verify and escalate; do not improvise destructive recovery. Merge history and deleted smoke rows cannot be erased or restored by this rollback.
