@@ -34,11 +34,17 @@ for (const os of ["windows", "linux", "mac", "ios", "android", "unknown"]) {
         "href",
         "https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe",
       );
-      await expect(block.locator(".dl-meta + .dl-note")).toHaveText(
-        "Bản thử chưa ký số: Windows SmartScreen sẽ cảnh báo, bấm “Thông tin thêm” rồi “Vẫn chạy”.",
+      await expect(block.locator(".dl-ss-hint > span")).toHaveText(
+        "Bản thử chưa ký số: Windows có thể hiện cảnh báo SmartScreen. Bấm “Thông tin thêm” rồi “Vẫn chạy”. Xem cách mở",
       );
+      await expect(block.locator(".dl-meta")).toContainText("~178 MB");
+      await expect(block.locator("#dlother")).toContainText("~194 MB");
+      await expect(block.locator("#dlmain p").filter({ hasText: /SmartScreen|chưa ký số/ })).toHaveCount(1);
+      await expect(block.locator(".dl-note")).toHaveCount(0);
     } else if (os === "linux") {
       await expect(block.locator(".dl-primary")).toHaveAttribute("aria-disabled", "true");
+      await expect(block.locator(".dl-meta")).not.toContainText("MB");
+      await expect(block.locator(".dl-meta")).not.toContainText("· ·");
     } else if (os === "unknown") {
       await expect(block.getByText("Chọn bản cài cho máy của bạn")).toBeVisible();
     } else {
@@ -57,9 +63,14 @@ for (const path of ["/de/", "/docs", "/blog", "/about", "/privacy", "/terms"]) {
 
 test("Windows installers are available while Linux remains disabled", async ({ page }) => {
   await page.goto("/?os=unknown");
-  await expect(page.locator("#download a[href$='.exe']")).toHaveCount(1);
+  await expect(page.locator("#download a[href$='.exe']")).toHaveCount(2);
   await expect(page.locator("#download a[href$='.msi']")).toHaveCount(1);
   await expect(page.locator("#download a[href$='.AppImage']")).toHaveCount(0);
+  await expect(page.locator("#dlother .platform-detail")).toHaveText([
+    ".exe · ~178 MB",
+    "(doanh nghiệp) · ~194 MB",
+    "AppImage x86_64",
+  ]);
 });
 
 test("enabled Windows post-click opens SmartScreen help", async ({ page }) => {
@@ -85,7 +96,35 @@ test("download block switches VI and EN", async ({ page }) => {
   await page.locator("#lang2").click();
   await expect(page.locator("#download h2")).toHaveText("Download VNBot.");
   await expect(page.locator("#download .dl-chip")).toHaveText("Free · Preview");
+  await expect(page.locator("#download .dl-ss-hint > span")).toHaveText(
+    "Unsigned preview build: Windows may show a SmartScreen warning. Click “More info”, then “Run anyway”. See how to open it",
+  );
+  await expect(page.locator("#dlmain")).not.toContainText("Bản thử chưa ký số");
+  await expect(page.locator("#dlmain p").filter({ hasText: /SmartScreen|Unsigned/ })).toHaveCount(1);
+  await page.locator(".ss-open").click();
+  await expect(page.locator("#smart-help")).toBeVisible();
+  await expect(page.locator("#smart-steps ol li")).toHaveCount(3);
 });
+
+for (const language of ["en", "vi"]) {
+  test(`Windows download button stays on one line at 390px in ${language}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/?os=windows");
+    if (language === "en") await page.locator("#lang2").click();
+    const primary = page.locator("#download .dl-primary");
+    await expect(primary).toHaveText(
+      language === "en" ? "Download VNBot for Windows" : "Tải VNBot cho Windows",
+    );
+    await page.evaluate(() => document.fonts.ready);
+    const label = primary.locator("span");
+    const box = await label.boundingBox();
+    expect(box).not.toBeNull();
+    const lineHeight = await label.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+    expect(box?.height).toBeLessThanOrEqual(1.6 * lineHeight);
+    const fits = await primary.evaluate((el) => el.scrollWidth <= el.clientWidth);
+    expect(fits).toBe(true);
+  });
+}
 
 test("gated primary button has 0.6 opacity, not-allowed cursor, download icon svg, and detected info icon", async ({
   page,

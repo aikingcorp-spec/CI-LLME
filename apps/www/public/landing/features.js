@@ -5,9 +5,10 @@ window.VNBOT_FEATURES={
   webAppLive:false,            // public WEB_APP_URL reachable? (app.vnbot.run has no DNS yet) false => contact is primary, web button inert
   showFree:true,               // hero "Miễn phí" wording + 0đ section + free nav/FAQ
   CONTACT_URL:'https://aikingx.com',
+  // sizeMB = Math.round(bytes / 1_000_000) (decimal MB); null when no file is published.
   downloads:{                  // the ONLY platforms shown in the download grid; enabled:false => "Sắp có", true => real download button
-    windows:{enabled:true,version:'0.3.6',file:'VNBot-Setup-0.3.6-x64.exe',url:'https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe',sizeMB:176,sha256:'8682aa010f9280cb21c88473022073b61e00694da365b4766309c7e093c9dde3',notesUrl:null,req:'Windows 10/11 64-bit',label:'Windows',note:'Bản thử chưa ký số: Windows SmartScreen sẽ cảnh báo, bấm “Thông tin thêm” rồi “Vẫn chạy”.',msi:{file:'VNBot-0.3.6-win-x64.msi',url:'https://dl.vnbot.run/desktop/VNBot-0.3.6-win-x64.msi',sizeMB:192,sha256:'eb640894a4af3805d019a860d210a23f31bdb3597d92f7cfda54def585e44801',notesUrl:null,req:'Windows 10/11 64-bit'}},
-    linux:{enabled:false,version:'0.3.6',file:'VNBot-0.3.6-linux-x86_64.AppImage',url:'https://dl.vnbot.run/desktop/VNBot-0.3.6-linux-x86_64.AppImage',sizeMB:200,sha256:null,notesUrl:null,req:'Linux x86_64',label:'Linux'}
+    windows:{enabled:true,version:'0.3.6',file:'VNBot-Setup-0.3.6-x64.exe',url:'https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe',sizeMB:178,sha256:'8682aa010f9280cb21c88473022073b61e00694da365b4766309c7e093c9dde3',notesUrl:null,req:'Windows 10/11 64-bit',label:'Windows',note:{vi:'Bản thử chưa ký số: Windows có thể hiện cảnh báo SmartScreen. Bấm “Thông tin thêm” rồi “Vẫn chạy”.',en:'Unsigned preview build: Windows may show a SmartScreen warning. Click “More info”, then “Run anyway”.'},msi:{file:'VNBot-0.3.6-win-x64.msi',url:'https://dl.vnbot.run/desktop/VNBot-0.3.6-win-x64.msi',sizeMB:194,sha256:'eb640894a4af3805d019a860d210a23f31bdb3597d92f7cfda54def585e44801',notesUrl:null,req:'Windows 10/11 64-bit'}},
+    linux:{enabled:false,version:'0.3.6',file:'VNBot-0.3.6-linux-x86_64.AppImage',url:'https://dl.vnbot.run/desktop/VNBot-0.3.6-linux-x86_64.AppImage',sizeMB:null,sha256:null,notesUrl:null,req:'Linux x86_64',label:'Linux'}
   },
   // TODO(VNB-006): replace placeholder metadata when 0.3.6 is uploaded.
   sumsUrl:'https://dl.vnbot.run/desktop/SHA256SUMS.txt',

@@ -138,3 +138,5 @@ ol.steps.install{margin-top:36px}
 #dlmain{min-height:360px}.dl-detecting{display:inline-flex;align-items:center;gap:10px;min-height:56px}.spinner{width:18px;height:18px;border:3px solid #d7e9df;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}.skeleton{height:14px;width:72%;background:#f1f0eb;border-radius:6px;margin:12px 0}.skeleton.short{width:48%}@keyframes spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.spinner{animation:none;border-top-color:#fff}}
 @media(max-width:599px){.dl-buttons .btn{flex:1;min-width:0;justify-content:center}}
+
+@media(max-width:420px){#download .dl-primary{white-space:nowrap;padding:0 8px;gap:8px;font-size:16px;line-height:1.4}}
