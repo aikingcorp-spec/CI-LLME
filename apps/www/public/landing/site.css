@@ -254,3 +254,4 @@ pre code{font:500 13px/1.6 ui-monospace,Menlo,monospace}
 }
 
 .nav-brand{display:inline-flex;align-items:center;gap:8px}.nav-icon{width:32px;height:32px;border-radius:8px;flex-shrink:0}
+.footer-brand{display:inline-flex;align-items:center;gap:8px}footer img.footer-icon{width:30px;height:30px;border-radius:8px;flex-shrink:0}

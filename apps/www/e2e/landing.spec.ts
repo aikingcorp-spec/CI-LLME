@@ -28,6 +28,8 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     // D012 (2026-10-31): the VNBot app icon (felt Nón + VN flag) is allowed on the landing as the nav logo.
     await expect(page.locator('img[src*="non.svg"], img[src*="_rejects"]')).toHaveCount(0);
     await expect(page.locator('header.nav img.nav-icon[src="/landing/img/vnbot-app-icon-128.png"]')).toHaveCount(1);
+    // D012 addendum 2026-10-31 22:57: icon also allowed in the footer.
+    await expect(page.locator('footer img.footer-icon[src="/landing/img/vnbot-app-icon-128.png"]')).toHaveCount(1);
     await expect(page.locator('.nav .lang')).toHaveAttribute('href', locale.lang === 'vi' ? '/en/' : '/');
     const languageLink = page.locator(".nav .lang");
     await expect(languageLink).toHaveAttribute("lang", locale.lang === "vi" ? "en" : "vi");
