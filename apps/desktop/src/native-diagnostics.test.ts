@@ -56,6 +56,20 @@ describe("describeFailure", () => {
 });
 
 describe("logNativeFailure", () => {
+  it("writes one path-free data directory refusal to stdout", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "vnbot-diag-"));
+    dirs.push(dir);
+    const lines: string[] = [];
+    await logNativeFailure({
+      userDataDir: dir,
+      stage: "postgres",
+      error: new Error(`private path ${dir}`),
+      refusal: { code: "data-dir-incomplete", messageVi: "Thư mục dữ liệu bị thiếu hoặc hỏng." },
+      stdout: (line) => lines.push(line),
+    });
+    expect(lines).toEqual(["data-dir-incomplete Thư mục dữ liệu bị thiếu hoặc hỏng."]);
+  });
+
   it("writes a private log under logs/ and mirrors to stderr only in debug", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "vnbot-diag-"));
     dirs.push(dir);

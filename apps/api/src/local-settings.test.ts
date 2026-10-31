@@ -1,7 +1,15 @@
-import { LOCAL_COMPUTER_HOST_PATH, LOCAL_SETTINGS_TOKEN_HEADER } from "@rakazo/contracts";
+import {
+  LOCAL_COMPUTER_HOST_PATH,
+  LOCAL_NODE_SESSION_PATH,
+  LOCAL_SETTINGS_TOKEN_HEADER,
+} from "@rakazo/contracts";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
-import { mountLocalComputerHost, validLocalSettingsToken } from "./local-settings.js";
+import {
+  mountLocalComputerHost,
+  mountLocalNodeSession,
+  validLocalSettingsToken,
+} from "./local-settings.js";
 
 const token = "ab".repeat(32);
 function fixture(sandboxProvider = "docker") {
@@ -70,5 +78,68 @@ describe("native computer host capability", () => {
     expect((await f.request("x".repeat(1025))).status).toBe(413);
     expect((await fixture("e2b").request('{"computerHost":"this-mac"}')).status).toBe(403);
     expect(f.upsert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("local node session", () => {
+  function session(webOrigin = "http://127.0.0.1:5173", configured: string | null = token) {
+    const mint = vi.fn(async (_email: string) => ["better-auth.session_token=abc; Path=/"]);
+    const app = new Hono();
+    mountLocalNodeSession(app, { token: configured ?? undefined, webOrigin, mint });
+    const request = (supplied: string | null = token, body = '{"email":"e2e@example.com"}') =>
+      app.request(LOCAL_NODE_SESSION_PATH, {
+        method: "POST",
+        headers: supplied === null ? {} : { [LOCAL_SETTINGS_TOKEN_HEADER]: supplied },
+        body,
+      });
+    return { mint, request };
+  }
+
+  it("mints a session for the verified address with the private token", async () => {
+    const f = session();
+    const response = await f.request();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.getSetCookie()).toEqual(["better-auth.session_token=abc; Path=/"]);
+    expect(f.mint).toHaveBeenCalledExactlyOnceWith("e2e@example.com");
+  });
+
+  it("rejects any request without the private token", async () => {
+    const f = session();
+    for (const supplied of [null, "", "cd".repeat(32), `${token}x`]) {
+      const response = await f.request(supplied);
+      expect(response.status).toBe(401);
+      expect(response.headers.getSetCookie()).toEqual([]);
+    }
+    expect(f.mint).not.toHaveBeenCalled();
+  });
+
+  it("is closed on a node with no token", async () => {
+    const f = session("http://127.0.0.1:5173", null);
+    expect((await f.request()).status).toBe(401);
+    expect(f.mint).not.toHaveBeenCalled();
+  });
+
+  it("is closed on a node served beyond loopback, even with the token", async () => {
+    const f = session("https://vnbot.example.com");
+    expect((await f.request()).status).toBe(403);
+    expect(f.mint).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed body", async () => {
+    const f = session();
+    expect((await f.request(token, "not json")).status).toBe(400);
+    expect((await f.request(token, '{"email":1}')).status).toBe(400);
+    expect((await f.request(token, JSON.stringify({ email: "a".repeat(2000) }))).status).toBe(413);
+    expect((await f.request(token, JSON.stringify({ email: "a".repeat(300) }))).status).toBe(400);
+    expect(f.mint).not.toHaveBeenCalled();
+  });
+
+  it("does not reveal why the node refused the address", async () => {
+    const f = session();
+    f.mint.mockRejectedValueOnce(new Error("Registration is closed"));
+    const response = await f.request();
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "Could not open a session" });
   });
 });

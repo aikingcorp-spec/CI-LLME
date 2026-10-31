@@ -6,7 +6,7 @@ export type AccountOtpErrorKind =
   | "expired"
   | "not-invited"
   | "rate-limited"
-  | "network"
+  | "unavailable"
   | "failed";
 
 export class AccountOtpError extends Error {
@@ -29,6 +29,7 @@ export function isPlausibleEmail(value: unknown): value is string {
 }
 
 function errorKind(status: number, code: unknown): AccountOtpErrorKind {
+  if (status === 404 || status >= 500) return "unavailable";
   if (code === "EMAIL_NOT_INVITED") return "not-invited";
   if (code === "INVALID_OTP") return "invalid-code";
   if (code === "OTP_EXPIRED" || code === "TOO_MANY_ATTEMPTS") return "expired";
@@ -59,7 +60,7 @@ export function createAccountOtpClient(input: { baseUrl: string; fetch: typeof f
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch {
-      throw new AccountOtpError("network");
+      throw new AccountOtpError("unavailable");
     }
     const parsed: unknown = await response.json().catch(() => null);
     if (!response.ok) {
@@ -92,7 +93,7 @@ export function accountOtpErrorText(error: unknown, text: Strings["setup"]): str
     expired: text.otpExpired,
     "not-invited": text.otpNotInvited,
     "rate-limited": text.otpRateLimited,
-    network: text.otpNetwork,
+    unavailable: text.otpUnavailable,
     failed: text.otpFailed,
   };
   return messages[kind];

@@ -29,7 +29,10 @@ describe("verified email", () => {
     expect(JSON.parse(await readFile(path.join(userData, "account.json"), "utf8"))).toEqual({
       email: "lan@vnbot.vn",
     });
-    expect((await stat(path.join(userData, "account.json"))).mode & 0o077).toBe(0);
+    // POSIX permission bits are not meaningful on Windows; the address-only check above still runs.
+    if (process.platform !== "win32") {
+      expect((await stat(path.join(userData, "account.json"))).mode & 0o077).toBe(0);
+    }
   });
 
   it("treats an unusable file as nobody verified", async () => {

@@ -203,6 +203,14 @@ describe("BotAvatar", () => {
     expect(html).toContain("rakazo-organic-avatar");
   });
 
+  it("renders imported rakazo bots with the same VNBot avatar", () => {
+    const props = { color: "#10B981", identity: "imported-bot" };
+    const imported = renderToString(<BotAvatar {...props} avatarSet="rakazo" />);
+    const native = renderToString(<BotAvatar {...props} avatarSet="vnbot" />);
+    expect(imported).toBe(native);
+    expect(imported).toContain("data-vnbot-shape");
+  });
+
   it("draws every plain-colour bot with the organic body", () => {
     const html = renderToString(<BotAvatar color={DEFAULT_BOT_AVATAR_COLOR} identity="maya" />);
     expect(html).toContain("rakazo-organic-avatar");

@@ -136,7 +136,6 @@ export default function Account() {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [security, setSecurity] = useState<AccountSecurity | null>(null);
-  const canChangePassword = security?.hasPassword && security.passwordChangeEnabled !== false;
   const [deletionCodeSent, setDeletionCodeSent] = useState(false);
   const [ssoReauthenticated, setSsoReauthenticated] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
@@ -513,7 +512,7 @@ export default function Account() {
           {focus !== "usage" ? usageBlock : null}
         </SettingsGroup>
 
-        {(security?.sso && !security.ssoLinked) || canChangePassword ? (
+        {security?.sso && !security.ssoLinked ? (
           <SettingsGroup>
             {security?.sso && !security.ssoLinked ? (
               <SettingsRow
@@ -527,14 +526,6 @@ export default function Account() {
                     if (await continueWithSso("link")) setSecurity(await fetchAccountSecurity());
                   })
                 }
-              />
-            ) : null}
-            {canChangePassword ? (
-              <SettingsRow
-                accessibilityRole="button"
-                chevron="right"
-                onPress={() => router.push("/change-password")}
-                title={t("Change password")}
               />
             ) : null}
           </SettingsGroup>

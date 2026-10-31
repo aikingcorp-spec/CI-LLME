@@ -6,6 +6,17 @@ import { strings } from "./strings.js";
 export const LAUNCH_CHECK_DELAY_MS = 8_000;
 /** A connected server drives the renderer, so a manual check cannot become a request loop. */
 export const MIN_CHECK_INTERVAL_MS = 60_000;
+export const MISSING_FEED_BACKOFF_MS = 24 * 60 * 60 * 1000;
+
+/** Feed overrides are only for development and builds explicitly marked at packaging time. */
+export function updateFeedOverride(input: {
+  packaged: boolean;
+  testBuild: boolean;
+  value?: string;
+}): string | undefined {
+  if (input.packaged && !input.testBuild) return undefined;
+  return input.value?.trim() || undefined;
+}
 
 export interface UpdaterEnvironment {
   packaged: boolean;
@@ -162,7 +173,7 @@ export function reduceUpdateState(
           message: failure.message ?? strings().updater.failed,
         };
       }
-      if (failure.kind === "no-releases" && state.phase === "checking") {
+      if (failure.kind === "no-releases" && state.phase === "checking" && event.userInitiated) {
         return {
           ...state,
           phase: "unsupported",
@@ -175,9 +186,9 @@ export function reduceUpdateState(
       if (failure.kind === "no-releases") {
         return {
           ...state,
-          phase: "error",
+          phase: event.userInitiated ? "error" : "idle",
           percent: null,
-          message: strings().updater.failed,
+          message: event.userInitiated ? failure.message : null,
           checkedAt: now,
         };
       }
@@ -209,7 +220,10 @@ export function shouldCheck(
   options: ShouldCheckOptions = {},
 ): boolean {
   if (state.phase === "unsupported") {
-    return options.userInitiated === true && options.environmentSupportsUpdates === true;
+    return (
+      options.environmentSupportsUpdates === true &&
+      (options.userInitiated === true || now - lastCheck >= MISSING_FEED_BACKOFF_MS)
+    );
   }
   if (state.phase !== "idle" && state.phase !== "error") return false;
   return now - lastCheck >= MIN_CHECK_INTERVAL_MS || lastCheck === 0;
@@ -217,6 +231,7 @@ export function shouldCheck(
 
 export interface ElectronAutoUpdater {
   autoDownload: boolean;
+  logger?: null;
   autoInstallOnAppQuit: boolean;
   allowDowngrade: boolean;
   allowPrerelease: boolean;
@@ -261,6 +276,8 @@ export class DesktopUpdateController {
   private downloadPromise: Promise<DesktopUpdateState> | null = null;
   private checkWasRequested = false;
   private installStarted = false;
+  private missingFeedUntil = 0;
+  private missingFeedLogged = false;
 
   constructor(
     private readonly environment: UpdaterEnvironment,
@@ -278,6 +295,17 @@ export class DesktopUpdateController {
   private push(event: UpdaterEvent) {
     if (event.type === "failed") {
       const failure = classifyUpdaterFailure(event.error);
+      if (failure.kind === "no-releases" || failure.kind === "offline") {
+        this.missingFeedUntil = this.clock.now() + MISSING_FEED_BACKOFF_MS;
+        if (!this.missingFeedLogged) {
+          console.info(
+            failure.kind === "no-releases"
+              ? "[updater] Chưa có bản cập nhật trên máy chủ (404); thử lại sau 24 giờ"
+              : "[updater] Không thể kết nối máy chủ cập nhật (DNS); thử lại sau 24 giờ",
+          );
+          this.missingFeedLogged = true;
+        }
+      }
       if (failure.kind === "signature" || failure.kind === "other")
         reportDesktopError(event.error, "desktop.update", { "update.failure": failure.kind });
     }
@@ -293,6 +321,9 @@ export class DesktopUpdateController {
 
     const loading = this.loadUpdater()
       .then((updater) => {
+        // electron-updater prints raw HttpError stacks and authorization hints itself.
+        // Its outcomes are reported through this controller instead.
+        updater.logger = null;
         if (this.environment.feedUrl !== undefined && updater.setFeedURL !== undefined) {
           updater.setFeedURL({ provider: "generic", url: this.environment.feedUrl });
         }
@@ -357,6 +388,8 @@ export class DesktopUpdateController {
   }
 
   private async runCheck(userInitiated: boolean) {
+    if (!userInitiated && this.clock.now() < this.missingFeedUntil) return this.current;
+    if (userInitiated && this.missingFeedUntil > 0) this.lastCheck = 0;
     const checkOptions = {
       userInitiated,
       environmentSupportsUpdates: updaterSupport(this.environment).supported,
@@ -364,7 +397,7 @@ export class DesktopUpdateController {
     let now = this.clock.now();
     if (!shouldCheck(this.current, now, this.lastCheck, checkOptions)) return this.current;
     this.checkWasRequested = userInitiated;
-    // A prior empty feed freezes automatic checks; a manual retry clears that freeze.
+    // A prior empty feed may be retried manually or after its background backoff.
     if (this.current.phase === "unsupported" && checkOptions.environmentSupportsUpdates) {
       this.current = {
         ...this.current,

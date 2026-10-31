@@ -14,6 +14,10 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: @lingui/cli\n"
 
+#: src/components/MachinePicker.tsx
+msgid "Connect by pairing — coming soon"
+msgstr "透過配對連線 — 即將推出"
+
 #. js-lingui-explicit-id
 #: src/App.tsx
 msgid "Page not found"

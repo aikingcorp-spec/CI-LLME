@@ -38,12 +38,14 @@ import {
   verificationEmail,
 } from "./email.js";
 import {
+  addAllowlistEmail,
   isEmailInvited,
   normalizeEmail,
   notInvited,
   sessionNotInvited,
 } from "./email-allowlist.js";
 import { hasRecentIdentityConfirmation, identityConfirmation } from "./identity-confirmation.js";
+import { localNodeSession } from "./local-node-session.js";
 import type { OidcConfig } from "./oidc.js";
 import { isCurrentOidcAccount, oidcDiscovery } from "./oidc.js";
 import { passkeyRelyingParty } from "./passkey.js";
@@ -90,6 +92,8 @@ export interface AuthEnv {
    * Email codes and passkeys stay available. Not the same as `passwordAuth: false`.
    */
   emailCodeOnly?: boolean;
+  /** A node the desktop app signs people in to; it can run with no password, SSO or mail. */
+  localNodeSessions?: boolean;
   /** `AUTH_EMAIL_ALLOWLIST=on`. Only listed emails can get a code, an account, or a session. */
   emailAllowlist?: boolean;
   email?: TransactionalEmailProvider;
@@ -217,7 +221,7 @@ export function authRateLimitOptions(
 }
 
 export function createAuth(prisma: PrismaClient, env: AuthEnv) {
-  if (env.passwordAuth === false && !env.oidc)
+  if (env.passwordAuth === false && !env.oidc && !env.localNodeSessions)
     throw new Error("Password auth requires OIDC when disabled");
   if (env.emailCodeOnly && !env.email)
     throw new Error("Email-code-only sign-in needs an email sender");
@@ -361,6 +365,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
       expo(),
       accountSecurity(env.email, env.oidc?.name, env.oidc?.issuer, passwordEnabled),
       identityConfirmation(env.email),
+      localNodeSession,
       ...(discovery ? [discovery.plugin] : []),
       ...(emailCodeSignIn
         ? [
@@ -749,6 +754,15 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
     hasRecentIdentityConfirmation: async (session: { sessionId: string; userId: string }) =>
       hasRecentIdentityConfirmation((await auth.$context).internalAdapter, session),
     disposeOidcDiscovery: () => discovery?.dispose(),
+    /** The Set-Cookie lines of a new session. This computer's owner vouched for the address. */
+    mintLocalNodeSession: async (email: string): Promise<string[]> => {
+      if (env.emailAllowlist) await addAllowlistEmail(prisma, email, { note: "desktop app" });
+      const { headers } = await auth.api.mintLocalNodeSession({
+        body: { email },
+        returnHeaders: true,
+      });
+      return headers.getSetCookie();
+    },
   });
 }
 

@@ -5,7 +5,12 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createMigrationClient } from "./native-migrate.js";
 import type { RunProcessResult } from "./native-postgres.js";
-import { NativePostgres, PG_BIN_DIR_ENV, runProcess } from "./native-postgres.js";
+import {
+  NativePostgres,
+  NativePostgresError,
+  PG_BIN_DIR_ENV,
+  runProcess,
+} from "./native-postgres.js";
 import { NativeStack } from "./native-stack.js";
 
 const ok: RunProcessResult = { code: 0, timedOut: false, stdout: "", stderr: "" };
@@ -50,6 +55,37 @@ function fixture(withServices = true) {
 }
 
 describe("NativeStack", () => {
+  it("keeps a database refusal code without its original cause", async () => {
+    const f = fixture();
+    const reason = new NativePostgresError(
+      "data-dir-version-missing",
+      "Thiếu PG_VERSION trong thư mục dữ liệu.",
+      { cause: new Error("private child output postgres://owner:secret@localhost/db") },
+    );
+    f.postgres.start.mockRejectedValueOnce(new Error("wrapped", { cause: reason }));
+
+    const failure = await f.stack.start().catch((error: unknown) => error);
+    if (!(failure instanceof Error)) throw new Error("Expected a stack startup error.");
+    expect(failure.message).toBe("The local stack could not start.");
+    expect(failure.cause).toBeInstanceOf(NativePostgresError);
+    if (!(failure.cause instanceof NativePostgresError)) {
+      throw new Error("Expected a sanitized PostgreSQL cause.");
+    }
+    expect(failure.cause.code).toBe("data-dir-version-missing");
+    expect(failure.cause.message).toBe(reason.message);
+    expect(failure.cause.cause).toBeUndefined();
+  });
+
+  it("leaves unrelated failures without a cause", async () => {
+    const f = fixture();
+    f.postgres.start.mockRejectedValueOnce(new Error("private child output"));
+
+    const failure = await f.stack.start().catch((error: unknown) => error);
+    if (!(failure instanceof Error)) throw new Error("Expected a stack startup error.");
+    expect(failure.message).toBe("The local stack could not start.");
+    expect(failure).not.toHaveProperty("cause");
+  });
+
   it("migrates with the owner before services start with the runtime login", async () => {
     const f = fixture();
     expect(f.stack.status()).toBe("stopped");

@@ -16,6 +16,7 @@
     "pack": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --mac --win --linux",
     "pack:win": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --win --x64",
     "pack:linux": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --linux --x64",
+    "pack:linux:test": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --linux --x64 -c.extraMetadata.vnbotTestBuild=true",
     "pack:dir": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --dir",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. apps/desktop/src",
@@ -42,10 +43,12 @@
   },
   "optionalDependencies": {
     "@embedded-postgres/linux-x64": "16.14.0-beta.17",
+    "@koromix/koffi-linux-x64": "3.3.4",
     "@embedded-postgres/windows-x64": "16.14.0-beta.17"
   },
   "build": {
     "appId": "run.vnbot.desktop",
+    "afterPack": "scripts/after-pack.cjs",
     "directories": {
       "output": "out",
       "buildResources": "assets"
@@ -57,7 +60,9 @@
     ],
     "asarUnpack": [
       "**/node_modules/node-datachannel/**",
-      "**/node_modules/@embedded-postgres/**"
+      "**/node_modules/@embedded-postgres/**",
+      "**/node_modules/koffi/**",
+      "**/node_modules/@koromix/koffi-linux-x64/**"
     ],
     "extraResources": [
       {

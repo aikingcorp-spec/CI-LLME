@@ -11,7 +11,11 @@ import {
 } from "@rakazo/adapters";
 import type { OidcConfig } from "@rakazo/auth";
 import type { MinimumClientBuilds, NavLink } from "@rakazo/contracts";
-import { parseMinimumClientBuilds, parseNavLinks } from "@rakazo/contracts";
+import {
+  isLocalhostOrLoopbackIp,
+  parseMinimumClientBuilds,
+  parseNavLinks,
+} from "@rakazo/contracts";
 import { parseCrispWebsiteId } from "@rakazo/contracts/content-security-policy";
 import {
   phoneCallSettings,
@@ -199,8 +203,11 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   if (allowlist && !["on", "off"].includes(allowlist))
     throw new Error("AUTH_EMAIL_ALLOWLIST must be on or off");
   const passwordAuth = source.AUTH_PASSWORD_ENABLED !== "false";
-  if (!passwordAuth && !issuer)
-    throw new Error("AUTH_PASSWORD_ENABLED=false requires OIDC configuration");
+  const localNode =
+    Boolean(optional(source.RAKAZO_DESKTOP_STACK_TOKEN)) &&
+    isLocalhostOrLoopbackIp(source.API_HOST ?? "127.0.0.1");
+  if (!passwordAuth && !issuer && !localNode)
+    throw new Error("AUTH_PASSWORD_ENABLED=false requires OIDC or a loopback desktop stack token");
   const oidc =
     issuer && clientId && clientSecret
       ? {

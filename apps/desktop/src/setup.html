@@ -19,6 +19,10 @@
     <main class="shell">
       <h1 class="heading" data-text="heading">Chào mừng đến với VNBot</h1>
       <p id="subheading" class="subheading" data-text="subheadingEmail">Nhập email để nhận mã đăng nhập.</p>
+      <div id="legacy-profile-notice" class="status" role="status" hidden>
+        <p id="legacy-profile-message"></p>
+        <button id="dismiss-legacy-profile" class="button button-secondary" type="button" data-text="dismissLegacyProfile">Đã hiểu</button>
+      </div>
 
       <form id="step-email" novalidate>
         <label class="field-label" for="account-email" data-text="emailLabel">Email</label>
@@ -53,6 +57,7 @@
       </form>
 
       <p id="account-status" class="status" role="status" aria-live="polite"></p>
+      <button id="retry-code" class="button button-secondary" type="button" data-text="retry" hidden>Thử lại</button>
 
       <form id="setup" novalidate hidden>
         <fieldset class="choices">
@@ -95,6 +100,10 @@
                 </svg>
               </button>
             </div>
+            <div id="stack-failure" class="stack-failure" hidden>
+              <p id="stack-failure-message"></p>
+              <small id="stack-failure-code"></small>
+            </div>
             <div
               id="stack-progress"
               class="progress"
@@ -119,16 +128,8 @@
         </section>
 
         <section id="panel-existing" class="panel" hidden>
-          <label class="field-label" for="server-url" data-text="serverAddress">Địa chỉ máy chủ</label>
-          <input
-            id="server-url"
-            class="field"
-            type="text"
-            spellcheck="false"
-            autocomplete="off"
-            placeholder="https://vnbot.example.com"
-            data-placeholder="serverPlaceholder"
-          />
+          <p id="pairing-state" class="status" role="status" data-text="pairingComingSoon">Kết nối qua ghép cặp — sắp có</p>
+          <input id="server-url" type="hidden" />
         </section>
 
         <p id="status" class="status" role="status" aria-live="polite"></p>
@@ -140,6 +141,7 @@
       </form>
     </main>
 
+    <script src="setup-state.js"></script>
     <script src="setup.js"></script>
   </body>
 </html>

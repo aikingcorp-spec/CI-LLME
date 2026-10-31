@@ -24,6 +24,10 @@
   const accountEmail = document.getElementById("account-email");
   const accountCode = document.getElementById("account-code");
   const accountStatus = document.getElementById("account-status");
+  const legacyProfileNotice = document.getElementById("legacy-profile-notice");
+  const legacyProfileMessage = document.getElementById("legacy-profile-message");
+  const dismissLegacyProfile = document.getElementById("dismiss-legacy-profile");
+  const retryCodeButton = document.getElementById("retry-code");
   const sendCodeButton = document.getElementById("send-code");
   const verifyCodeButton = document.getElementById("verify-code");
   const resendCodeButton = document.getElementById("resend-code");
@@ -35,6 +39,9 @@
   const panelExisting = document.getElementById("panel-existing");
   const stackSection = document.getElementById("stack");
   const stackPhase = document.getElementById("stack-phase");
+  const stackFailure = document.getElementById("stack-failure");
+  const stackFailureMessage = document.getElementById("stack-failure-message");
+  const stackFailureCode = document.getElementById("stack-failure-code");
   const stackOutput = document.getElementById("stack-output");
   const stackDetail = document.getElementById("stack-detail");
   const stackDetails = document.getElementById("stack-details");
@@ -74,7 +81,34 @@
   const PULL_SPAN = 0.6;
   const PULL_SCALE_BYTES = 1.2e9;
 
-  let defaultLocalUrl = "";
+  const setupState = window.rakazoSetupState;
+  let machine = setupState.initial();
+  function dispatchMachine(event) {
+    machine = setupState.transition(machine, event);
+    renderMachine();
+    return machine;
+  }
+  function renderMachine() {
+    const phase = machine.phase;
+    if (machine.stack !== null) {
+      const visibleStack =
+        (phase === "probing" || phase === "failed") && machine.stack.phase === "ready"
+          ? { ...machine.stack, phase: "waiting-healthy" }
+          : machine.stack;
+      renderStack(visibleStack);
+    }
+    if (phase === "failed") {
+      if (machine.stack !== null) {
+        stackPhase.textContent = machine.messageVi ?? text.startFailed;
+        stackPhase.setAttribute("data-tone", "error");
+        setStatus("");
+      } else setStatus(machine.messageVi ?? text.startFailed, "error");
+      setBusy(false);
+    } else if (phase === "starting" || phase === "probing" || phase === "ready") {
+      setStatus("");
+      setBusy(true);
+    }
+  }
   /** Bumped on user edits, mode switches, and new async runs; a run left behind is stale. */
   let requestGeneration = 0;
   /** Generation of the check in flight; an edit or mode switch retires it and releases its lock. */
@@ -104,19 +138,12 @@
     continueButton.disabled = busy;
   }
 
-  /** A save in flight cannot be cancelled, so the choice it commits must not change under it. */
-  function lockMode(locked) {
-    for (const input of form.querySelectorAll('input[name="mode"]')) {
-      // VNBot Cloud is not available yet, so an unlock must not enable it.
-      input.disabled = locked || input.value === "cloud";
-    }
-  }
-
   function syncPanels() {
     const mode = selectedMode();
     panelNew.hidden = mode !== "new";
     panelExisting.hidden = mode !== "existing";
-    checkButton.hidden = mode !== "existing";
+    checkButton.hidden = true;
+    continueButton.hidden = mode === "existing";
     if (mode !== "new") continueButton.textContent = text.continue;
     setStatus("");
   }
@@ -198,6 +225,12 @@
     if (failed) stackPhase.setAttribute("data-tone", "error");
     else if (phase === "ready") stackPhase.setAttribute("data-tone", "ok");
     else stackPhase.removeAttribute("data-tone");
+    const failure = phase === "failed" ? stack.failure : null;
+    // Stack state owns a failed start; an earlier status or a generic fallback adds no reason.
+    if (phase === "failed") setStatus("");
+    stackFailure.hidden = !failure || failure.messageVi === stack.message;
+    stackFailureMessage.textContent = stackFailure.hidden ? "" : failure.messageVi;
+    stackFailureCode.textContent = failure?.code ?? "";
 
     renderProgress(stack);
     renderDetails(stack);
@@ -207,23 +240,6 @@
     else if (phase === "failed") continueButton.textContent = text.retry;
     else continueButton.textContent = text.continue;
     setBusy(!TERMINAL_PHASES.has(phase));
-  }
-
-  async function save(mode, url) {
-    const generation = ++requestGeneration;
-    setBusy(true);
-    lockMode(true);
-    setStatus(text.connecting);
-    try {
-      const saved = await bridge.save({ mode, serverUrl: url });
-      if (!saved.ok) setStatus(saved.error ?? text.saveFailed, "error");
-    } catch {
-      setStatus(text.saveFailedRetry, "error");
-    } finally {
-      lockMode(false);
-      // A newer run may own the controls by now; only their owner unlocks them.
-      if (generation === requestGeneration) setBusy(false);
-    }
   }
 
   /** Wakes on the next pushed state, and on the timer if a push is ever missed. */
@@ -245,57 +261,100 @@
    * Follows a start already in flight until it settles. Leaving "This computer"
    * ends the follow so the stack becoming ready never saves over that choice.
    */
-  async function followStack() {
+  const PROBE_DEADLINE_MS = 90_000;
+  async function probeLocalPage(generation) {
+    const deadline = Date.now() + PROBE_DEADLINE_MS;
+    let delay = 400;
+    while (generation === machine.generation && machine.phase === "probing") {
+      try {
+        const state = await bridge.state();
+        if (generation !== machine.generation) return;
+        if (state === null || !state.defaultLocalUrl) throw new Error("Local address unavailable");
+        const localUrl = state.defaultLocalUrl;
+        const result = await bridge.test(localUrl);
+        if (generation !== machine.generation) return;
+        if (result.ok) {
+          const saved = await bridge.save({ mode: "new", serverUrl: localUrl });
+          if (generation !== machine.generation) return;
+          if (saved.ok) dispatchMachine({ type: "probe-ready", generation });
+          else
+            dispatchMachine({
+              type: "failure",
+              generation,
+              code: "open",
+              messageVi: saved.error ?? text.saveFailed,
+            });
+          return;
+        }
+        if (Date.now() >= deadline) {
+          dispatchMachine({
+            type: "failure",
+            generation,
+            code: "probe",
+            messageVi: result.error ?? text.unreachable,
+          });
+          return;
+        }
+      } catch {
+        if (generation !== machine.generation) return;
+        if (Date.now() >= deadline) {
+          dispatchMachine({
+            type: "failure",
+            generation,
+            code: "probe",
+            messageVi: text.checkFailed,
+          });
+          return;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay = Math.min(delay * 1.6, 4000);
+    }
+  }
+
+  async function followStack(generation) {
     if (stackPolling) return;
     stackPolling = true;
     try {
-      while (true) {
+      while (generation === machine.generation && selectedMode() === "new") {
         const stack = await bridge.stack.state();
+        if (generation !== machine.generation || selectedMode() !== "new") return;
         if (stack === null) throw new Error("Setup is not active");
-        // Checked after the await: a mode change during it hands the form to the change
-        // handler, and a save it started must stay busy and must not be re-rendered over.
-        if (selectedMode() !== "new") return;
-        renderStack(stack);
-        if (TERMINAL_PHASES.has(stack.phase)) {
-          if (stack.phase === "ready" && selectedMode() === "new") {
-            const current = await bridge.state();
-            if (selectedMode() !== "new") return;
-            defaultLocalUrl = current.defaultLocalUrl;
-            await save("new", defaultLocalUrl);
-          }
+        dispatchMachine({ type: "stack", generation, stack });
+        if (machine.phase === "probing") {
+          await probeLocalPage(generation);
           return;
         }
+        if (machine.phase === "failed") return;
         await waitForStackChange();
       }
     } catch {
-      // Only report a follow the person still sees; leaving "new" already handed the form back.
-      if (selectedMode() === "new") {
-        setStatus(text.followFailed, "error");
-        setBusy(false);
-      }
+      if (generation === machine.generation)
+        dispatchMachine({
+          type: "failure",
+          generation,
+          code: "follow",
+          messageVi: text.followFailed,
+        });
     } finally {
       stackPolling = false;
     }
   }
 
   async function runStack() {
-    const generation = ++requestGeneration;
-    setStatus("");
-    setBusy(true);
+    if (machine.phase === "starting" || machine.phase === "probing" || machine.phase === "ready")
+      return;
+    const generation = dispatchMachine({ type: "start" }).generation;
     try {
-      // A queued start still reads `idle`; leave the panel as it is and let the follow render it.
       const started = await bridge.stack.start();
-      // The person left "This computer" mid-start; the next pushed state re-attaches the follow.
-      if (generation !== requestGeneration) return;
-      if (started !== null && started.phase !== "idle") renderStack(started);
+      if (generation !== machine.generation) return;
+      if (started !== null) dispatchMachine({ type: "stack", generation, stack: started });
+      if (machine.phase === "failed") return;
     } catch {
-      if (generation === requestGeneration) {
-        setStatus(text.startFailed, "error");
-        setBusy(false);
-      }
+      dispatchMachine({ type: "failure", generation, code: "start", messageVi: text.startFailed });
       return;
     }
-    await followStack();
+    await followStack(generation);
   }
 
   async function check() {
@@ -335,6 +394,7 @@
   form.addEventListener("change", (event) => {
     if (event.target instanceof HTMLInputElement && event.target.name === "mode") {
       requestGeneration++;
+      machine = setupState.transition(machine, { type: "reset" });
       // The interrupted check completes stale and stays silent, so retire its lock here.
       const interruptedCheck = activeCheck !== 0;
       activeCheck = 0;
@@ -382,7 +442,7 @@
     event.preventDefault();
     const mode = selectedMode();
     if (mode === "new") void runStack();
-    else void save("existing", serverUrl.value);
+    // Pairing is not available yet; there is no direct-address connection.
   });
 
   function showStep(step) {
@@ -409,6 +469,11 @@
     else accountStatus.setAttribute("data-tone", tone);
   }
 
+  function showAccountRetry(visible) {
+    retryCodeButton.hidden = !visible;
+    sendCodeButton.hidden = visible;
+  }
+
   function setAccountBusy(busy) {
     sendCodeButton.disabled = busy;
     verifyCodeButton.disabled = busy;
@@ -430,14 +495,17 @@
   }
 
   async function sendCode(isResend) {
+    showAccountRetry(false);
     const email = accountEmail.value.trim();
     if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
       setAccountStatus(text.enterEmail, "error");
       return;
     }
     const sent = await accountRequest(text.sendingCode, () => bridge.account.sendCode(email));
-    if (!sent.ok) setAccountStatus(sent.error ?? text.otpFailed, "error");
-    else if (isResend) setAccountStatus(text.codeResent, "ok");
+    if (!sent.ok) {
+      setAccountStatus(sent.error ?? text.otpFailed, "error");
+      showAccountRetry(sent.kind === "unavailable");
+    } else if (isResend) setAccountStatus(text.codeResent, "ok");
     else showStep("code");
   }
 
@@ -453,11 +521,17 @@
     );
     if (verified.ok) {
       showStep("machine");
-      if (selectedMode() === "existing") serverUrl.focus();
+      if (selectedMode() === "existing") document.getElementById("mode-existing").focus();
       else continueButton.focus();
       return;
     }
     const message = verified.error ?? text.otpFailed;
+    if (verified.kind === "unavailable") {
+      showStep("email");
+      setAccountStatus(message, "error");
+      showAccountRetry(true);
+      return;
+    }
     if (verified.kind === "not-invited") showStep("email");
     else {
       accountCode.value = "";
@@ -483,22 +557,33 @@
   resendCodeButton.addEventListener("click", () => {
     void sendCode(true);
   });
+  retryCodeButton.addEventListener("click", () => {
+    void sendCode(false);
+  });
 
   changeEmailButton.addEventListener("click", () => {
     showStep("email");
   });
+  dismissLegacyProfile.addEventListener("click", () => {
+    legacyProfileNotice.hidden = true;
+    void bridge.dismissLegacyProfileNotice();
+  });
 
   /** Pushed state keeps progress moving even when the OS throttles this window's timers. */
   function watchStack() {
-    bridge.stack.onChange(() => {
+    bridge.stack.onChange((stack) => {
       wakePoll?.();
       // Before sign-in there is no machine choice for a ready stack to save.
       if (form.hidden) return;
       // A follow that ended on an error restarts here instead of leaving the panel frozen;
       // hold the controls until it has rendered the state it is restarting on.
       if (!stackPolling && selectedMode() === "new") {
-        setBusy(true);
-        void followStack();
+        if (machine.phase === "idle" && stack?.phase !== "idle") {
+          const generation = dispatchMachine({ type: "start" }).generation;
+          dispatchMachine({ type: "stack", generation, stack });
+          if (machine.phase === "probing") void probeLocalPage(generation);
+          else if (machine.phase === "starting") void followStack(generation);
+        } else if (machine.phase === "starting") void followStack(machine.generation);
       }
     });
   }
@@ -516,7 +601,12 @@
     try {
       const state = await bridge.state();
       if (state === null) throw new Error("Setup is not active");
-      defaultLocalUrl = state.defaultLocalUrl;
+      if (state.legacyProfilePath) {
+        legacyProfileMessage.textContent = format(text.legacyProfileNotice, {
+          path: state.legacyProfilePath,
+        });
+        legacyProfileNotice.hidden = false;
+      }
       if (state.saved !== null) {
         const { mode } = state.saved;
         const modeInput = document.querySelector(`input[name="mode"][value="${mode}"]`);
@@ -539,10 +629,12 @@
       showStep("machine");
       if (state.error) setStatus(state.error, "error");
       if (attached) {
-        renderStack(stack);
-        if (!TERMINAL_PHASES.has(stack.phase)) void followStack();
+        const generation = dispatchMachine({ type: "start" }).generation;
+        dispatchMachine({ type: "stack", generation, stack });
+        if (machine.phase === "probing") void probeLocalPage(generation);
+        else if (machine.phase === "starting") void followStack(generation);
       } else if (selectedMode() === "existing") {
-        serverUrl.focus();
+        document.getElementById("mode-existing").focus();
       } else {
         continueButton.focus();
       }

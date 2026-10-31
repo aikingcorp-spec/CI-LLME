@@ -387,6 +387,21 @@ describe("OIDC environment", () => {
   it("guards password-only lockout without contacting discovery", () => {
     expect(() => loadEnv({ ...base, AUTH_PASSWORD_ENABLED: "false" })).toThrow(/requires OIDC/);
     expect(loadEnv({ ...base, ...oidc, AUTH_PASSWORD_ENABLED: "false" }).passwordAuth).toBe(false);
+    expect(
+      loadEnv({
+        ...base,
+        AUTH_PASSWORD_ENABLED: "false",
+        RAKAZO_DESKTOP_STACK_TOKEN: "fake-test-token",
+      }).passwordAuth,
+    ).toBe(false);
+    expect(() =>
+      loadEnv({
+        ...base,
+        AUTH_PASSWORD_ENABLED: "false",
+        RAKAZO_DESKTOP_STACK_TOKEN: "fake-test-token",
+        API_HOST: "0.0.0.0",
+      }),
+    ).toThrow(/requires OIDC/);
   });
   it("leaves the breached password check off unless explicitly enabled", () => {
     expect(loadEnv(base).breachedPasswordCheck).toBe(false);

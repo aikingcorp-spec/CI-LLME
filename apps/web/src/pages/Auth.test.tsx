@@ -204,7 +204,7 @@ it("sends a code, masks it, and signs in with a name taken from the email", asyn
   expect(clearSpaceSelection).not.toHaveBeenCalled();
 });
 
-async function reachMachineStep(onMachineChosen?: () => void) {
+async function reachMachineStep() {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
     data: { success: true },
@@ -214,7 +214,7 @@ async function reachMachineStep(onMachineChosen?: () => void) {
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <AuthPage onMachineChosen={onMachineChosen} />
+        <AuthPage />
       </MemoryRouter>,
     ),
   );
@@ -223,33 +223,20 @@ async function reachMachineStep(onMachineChosen?: () => void) {
   await enter(host.querySelector('input[aria-label="6-digit sign-in code"]'), "123456");
 }
 
-it("offers three machines after the code, with cloud disabled and no password field", async () => {
+it("offers own machine and disabled Cloud after the code", async () => {
   await reachMachineStep();
   const radios = [...host.querySelectorAll('[role="radio"]')];
-  expect(radios).toHaveLength(3);
-  expect(host.textContent).toContain("This computer");
+  expect(radios).toHaveLength(2);
+  expect(host.textContent).not.toContain("This computer");
   expect(host.textContent).toContain("Your own machine (VPS, Mac mini, any server)");
   expect(host.textContent).toContain("VNBot Cloud");
   expect(host.textContent).toContain("Coming soon");
+  expect(host.textContent).toContain("Connect by pairing — coming soon");
+  expect(host.querySelector('input[name="machine-address"]')).toBeNull();
+  expect(button("Continue")).toBeUndefined();
   expect(radios[0]!.getAttribute("aria-checked")).toBe("true");
-  expect(radios.map((radio) => radio.getAttribute("aria-disabled") === "true")).toEqual([
-    false,
-    false,
-    true,
-  ]);
+  expect(radios[1]!.getAttribute("aria-disabled")).toBe("true");
   expect(host.querySelector('input[type="password"]')).toBeNull();
-});
-
-it("continues to the app from This computer and forgets the sign-in progress", async () => {
-  const onMachineChosen = vi.fn();
-  await reachMachineStep(onMachineChosen);
-  expect(JSON.parse(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)!)).toMatchObject({
-    step: "machine",
-  });
-  await act(async () => button("Continue").click());
-  expect(clearSpaceSelection).toHaveBeenCalled();
-  expect(onMachineChosen).toHaveBeenCalledOnce();
-  expect(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)).toBeNull();
 });
 
 it("keeps the code step in storage when the code is wrong", async () => {

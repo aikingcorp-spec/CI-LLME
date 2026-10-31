@@ -10,7 +10,6 @@ import {
   Suspense,
   useEffect,
   useLayoutEffect,
-  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
@@ -161,7 +160,6 @@ function SessionApp() {
     () => false,
   );
   const session = authClient.useSession();
-  const [, machineChosen] = useReducer((count: number) => count + 1, 0);
   const { pathname, search } = useLocation();
   const screen = analyticsScreen(pathname);
   const analyticsUserId = session.data?.user.id;
@@ -226,7 +224,7 @@ function SessionApp() {
                   user && readSignInProgress()?.step !== "machine" ? (
                     <Navigate to={signInDestination} replace />
                   ) : (
-                    <AuthPage key="in" signedIn={Boolean(user)} onMachineChosen={machineChosen} />
+                    <AuthPage key="in" signedIn={Boolean(user)} />
                   )
                 }
               />

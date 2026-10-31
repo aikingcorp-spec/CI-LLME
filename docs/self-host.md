@@ -2168,3 +2168,7 @@ read-only token raises the quota and is sent only to the GitHub API.
 
 The marketing integrations catalog defaults to `https://vnbot.run/integrations/catalog.json`.
 Set `PUBLIC_CATALOG_URL` at site build time to override it.
+
+### Testing the desktop update feed on Linux
+
+Run `pnpm --filter @rakazo/desktop pack:linux:test` to build an AppImage with a `vnbotTestBuild: true` marker in its packaged `package.json`. Set `VNBOT_UPDATE_FEED_URL` when launching that AppImage to test a local generic update feed. Ordinary `pack:linux` builds do not carry the marker and ignore this environment variable. Downloads still require the update manifest's sha512 check.

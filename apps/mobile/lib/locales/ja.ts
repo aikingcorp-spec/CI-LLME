@@ -1232,4 +1232,6 @@ export const JA_MESSAGES: Record<string, string> = {
   "Could not load skill": "スキルを読み込めませんでした",
   "Could not save skill": "スキルを保存できませんでした",
   "Could not delete skill": "スキルを削除できませんでした",
+  "Email sign-in is unavailable on this server":
+    "このサーバーではメールでのログインを利用できません",
 };

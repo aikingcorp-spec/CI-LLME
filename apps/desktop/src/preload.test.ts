@@ -119,6 +119,7 @@ describe("setup preload bridge", () => {
     expect(bridge.platform).toBe("linux");
     expect(Object.keys(bridge).sort()).toEqual([
       "account",
+      "dismissLegacyProfileNotice",
       "openLink",
       "platform",
       "quit",
@@ -130,6 +131,7 @@ describe("setup preload bridge", () => {
     expect(Object.keys(bridge.stack).sort()).toEqual(["onChange", "start", "state"]);
 
     await bridge.state();
+    await bridge.dismissLegacyProfileNotice();
     await bridge.test("http://127.0.0.1:5173");
     await bridge.save({ mode: "new", serverUrl: "http://127.0.0.1:5173" });
     await bridge.account.sendCode("lan@vnbot.vn");
@@ -140,6 +142,7 @@ describe("setup preload bridge", () => {
     await bridge.stack.start();
     expect(invoke.mock.calls.map(([channel]) => channel)).toEqual([
       "desktop.setup.state",
+      "desktop.setup.dismissLegacyProfileNotice",
       "desktop.setup.test",
       "desktop.setup.save",
       "desktop.setup.account.sendCode",

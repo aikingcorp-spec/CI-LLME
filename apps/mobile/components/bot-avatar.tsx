@@ -20,7 +20,7 @@ import {
   SHIPPED_BOT_AVATAR_VIEWBOX,
 } from "@rakazo/core";
 import { botEyeColor } from "@rakazo/ui-tokens";
-import { memo, useSyncExternalStore } from "react";
+import { memo } from "react";
 import { Image, Pressable, View } from "react-native";
 import Animated, {
   useAnimatedProps,
@@ -28,13 +28,12 @@ import Animated, {
   useReducedMotion,
 } from "react-native-reanimated";
 import Svg, { Ellipse, G, Path, Rect } from "react-native-svg";
+import ownerAvatar from "../assets/owner-avatar.png";
 import type { AvatarLife } from "../lib/avatar-life";
 import { useAvatarOnScreen, useLife, usePoke, useSettling } from "../lib/avatar-life";
 import { mobileBotAvatarPresentation } from "../lib/bot-avatar";
 import { useI18n } from "../lib/i18n";
-import { mobileLogoAvatarActivity } from "../lib/logo-avatar-activity";
 import { useMobileTokens } from "../lib/native";
-import { LogoAvatar } from "./logo-avatar";
 import { NativeSymbol } from "./native-symbol";
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
@@ -131,37 +130,16 @@ export const BotAvatar = memo(function BotAvatar(props: BotAvatarProps) {
 });
 
 function RakazoBotAvatar({
-  color,
-  identity,
   size = 54,
   status,
-  activity,
   composing = false,
   muted = false,
   motion = "static",
-  pokeable = false,
 }: BotAvatarProps) {
-  const liveActivity = useSyncExternalStore(
-    mobileLogoAvatarActivity.subscribe,
-    () => mobileLogoAvatarActivity.getActivity(identity ?? "", status),
-    (): LogoAvatarActivity => "idle",
-  );
-  const resolved =
-    activity ??
-    (composing && (liveActivity === "working" || liveActivity === "idle")
-      ? "writing"
-      : liveActivity);
-  const working = isRunWorking(status) && resolved !== "writing" && motion !== "running";
+  const working = isRunWorking(status) && !composing && motion !== "running";
   return (
     <View style={{ width: size, height: size }}>
-      <LogoAvatar
-        color={color}
-        identity={identity}
-        size={size}
-        activity={resolved}
-        motion={motion}
-        pokeable={pokeable}
-      />
+      <Image source={ownerAvatar} style={{ width: size, height: size }} resizeMode="contain" />
       {working ? <WorkingDot size={size} muted={muted} /> : null}
       {muted ? <MutedBadge size={size} /> : null}
     </View>

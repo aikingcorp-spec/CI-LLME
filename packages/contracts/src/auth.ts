@@ -102,3 +102,6 @@ export async function runWithIdentityConfirmation<T>(
   }
   return action();
 }
+
+/** What the desktop app sends to open a session on this computer's node. */
+export const localNodeSessionBody = z.object({ email: z.string().max(254) });

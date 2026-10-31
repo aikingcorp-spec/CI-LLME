@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { createNativeServices } from "./native-services.js";
+import { createNativeServices, readNativeStackToken } from "./native-services.js";
 import { readPrivateFile } from "./setup-store.js";
 
 describe("native services", () => {
@@ -42,6 +42,11 @@ describe("native services", () => {
       expect(await readPrivateFile(`${root}/native-stack-env`, 65536)).toContain(
         "BETTER_AUTH_SECRET",
       );
+      // The session route trusts the token holder, so the API listens on this computer only.
+      expect(forks[0]!.env.API_HOST).toBe("127.0.0.1");
+      const stackToken = await readNativeStackToken(root);
+      expect(stackToken).toMatch(/^[a-f0-9]{64}$/);
+      expect(forks[0]!.env.RAKAZO_DESKTOP_STACK_TOKEN).toBe(stackToken);
     } finally {
       await services.stop();
       await rm(root, { recursive: true, force: true });
@@ -323,6 +328,7 @@ it("tells the backend when the app runs as an administrator", async () => {
   try {
     await services.start();
     expect(envs.map((env) => env.RAKAZO_HOST_COMMANDS_ELEVATED)).toEqual(["1", "1"]);
+    expect(envs.map((env) => env.AUTH_PASSWORD_ENABLED)).toEqual(["false", "false"]);
   } finally {
     await services.stop();
     await rm(root, { recursive: true, force: true });

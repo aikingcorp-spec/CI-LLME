@@ -1203,4 +1203,6 @@ export const NL_MESSAGES: Record<string, string> = {
   "Could not load skill": "Kan skill niet laden",
   "Could not save skill": "Kan skill niet opslaan",
   "Could not delete skill": "Kan skill niet verwijderen",
+  "Email sign-in is unavailable on this server":
+    "Aanmelden via e-mail is niet beschikbaar op deze server",
 };

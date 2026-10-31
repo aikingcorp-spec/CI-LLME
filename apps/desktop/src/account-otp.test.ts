@@ -83,9 +83,11 @@ describe("account OTP client", () => {
     [failure(403, "TOO_MANY_ATTEMPTS"), "expired"],
     [failure(403, "EMAIL_NOT_INVITED"), "not-invited"],
     [failure(429), "rate-limited"],
-    [failure(500), "failed"],
-    [new Response("<html>", { status: 502 }), "failed"],
-    [new TypeError("fetch failed"), "network"],
+    [failure(404), "unavailable"],
+    [failure(500), "unavailable"],
+    [new Response("<html>", { status: 502 }), "unavailable"],
+    [new TypeError("fetch failed"), "unavailable"],
+    [new DOMException("timed out", "TimeoutError"), "unavailable"],
   ])("maps a failed request to a typed error (%#)", async (response, kind) => {
     const { otp } = client(response);
     await expect(otp.verifyCode("lan@vnbot.vn", "123456")).rejects.toMatchObject({ kind });
@@ -101,7 +103,7 @@ describe("accountOtpErrorText", () => {
     expect(accountOtpErrorText(new AccountOtpError("rate-limited"), text)).toBe(
       text.otpRateLimited,
     );
-    expect(accountOtpErrorText(new AccountOtpError("network"), text)).toBe(text.otpNetwork);
+    expect(accountOtpErrorText(new AccountOtpError("unavailable"), text)).toBe(text.otpUnavailable);
     expect(accountOtpErrorText(new AccountOtpError("failed"), text)).toBe(text.otpFailed);
     expect(accountOtpErrorText(new Error("server text"), text)).toBe(text.otpFailed);
   });

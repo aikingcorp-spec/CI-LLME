@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("rakazoSetupText", ipcRenderer.sendSync("desktop
 contextBridge.exposeInMainWorld("rakazoSetup", {
   platform: process.platform,
   state: () => ipcRenderer.invoke("desktop.setup.state"),
+  dismissLegacyProfileNotice: () => ipcRenderer.invoke("desktop.setup.dismissLegacyProfileNotice"),
   test: (url) => ipcRenderer.invoke("desktop.setup.test", url),
   save: (setup) => ipcRenderer.invoke("desktop.setup.save", setup),
   account: {

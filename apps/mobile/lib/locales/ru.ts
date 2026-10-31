@@ -1240,4 +1240,6 @@ export const RU_MESSAGES: Record<string, string> = {
   "Could not load skill": "Не удалось загрузить навык",
   "Could not save skill": "Не удалось сохранить навык",
   "Could not delete skill": "Не удалось удалить навык",
+  "Email sign-in is unavailable on this server":
+    "Вход по электронной почте недоступен на этом сервере",
 };

@@ -64,7 +64,6 @@ export function logoAvatarTraits(identity: string, color?: string) {
   const colorDef = resolvePersonaColorDef(identity, color || seededLogoAvatarColor(identity));
   return {
     color: colorDef.hex,
-    originalOrange: colorDef.id === "orange",
     blinkMs,
     blinkVariant,
     blinkDelayMs,

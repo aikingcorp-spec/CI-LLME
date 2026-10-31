@@ -1,6 +1,8 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { ensureLocalNodeSession } from "./local-node-session.js";
 import { defaultUserDataDir, PG_DIR_NAME } from "./native-postgres.js";
+import { readNativeStackToken } from "./native-services.js";
 import { writePrivateFile } from "./setup-store.js";
 
 export function nativeWebUrlFile(input: {
@@ -32,12 +34,15 @@ async function printPostgresLogTail(input: {
   userDataDir: string;
   printError?: (line: string) => void;
   readPostgresLog?: () => Promise<string>;
+  startOffset: number;
 }) {
   const text = await (
     input.readPostgresLog ??
     (() => readFile(path.join(input.userDataDir, PG_DIR_NAME, "postgres.log"), "utf8"))
   )().catch(() => "");
-  const lines = postgresLogTail(text);
+  const lines = postgresLogTail(
+    text.slice(text.length < input.startOffset ? 0 : input.startOffset),
+  );
   if (lines.length === 0) return;
   const print = input.printError ?? ((line: string) => void process.stderr.write(`${line}\n`));
   print("RAKAZO_DESKTOP_SMOKE postgres-log-tail");
@@ -88,6 +93,35 @@ async function signInSurfaceFailure(
   return null;
 }
 
+/** The real path behind "this computer": the private token opens a session the node then honours. */
+async function localSessionFailure(
+  webUrl: string,
+  token: string | null,
+  call: typeof fetch,
+): Promise<"local-session" | null> {
+  if (token === null) return "local-session";
+  const email = "smoke@example.com";
+  let cookie = "";
+  await ensureLocalNodeSession({
+    origin: webUrl,
+    token,
+    email,
+    request: call,
+    cookies: {
+      get: async () => [],
+      set: async ({ name, value }) => {
+        cookie = `${name}=${value}`;
+      },
+    },
+  });
+  const session = await call(`${webUrl}/api/auth/get-session`, {
+    headers: { cookie },
+    signal: AbortSignal.timeout(10_000),
+  });
+  const body = (await session.json()) as { user?: { email?: unknown } } | null;
+  return body?.user?.email === email ? null : "local-session";
+}
+
 /** Fixed failure text prevents child errors, credentials and local paths reaching logs. */
 export async function runNativeSmoke(input: {
   stack: { start(): Promise<{ webUrl?: string }>; stop(): Promise<void> };
@@ -98,7 +132,10 @@ export async function runNativeSmoke(input: {
   /** Where the redacted server log tail goes on failure. */
   printError?: (line: string) => void;
   readPostgresLog?: () => Promise<string>;
+  readStackToken?: (userDataDir: string) => Promise<string | null>;
 }): Promise<0 | 1> {
+  const logFile = path.join(input.userDataDir, PG_DIR_NAME, "postgres.log");
+  const startOffset = (await stat(logFile).catch(() => null))?.size ?? 0;
   let result: 0 | 1 = 1;
   let message = "RAKAZO_DESKTOP_SMOKE fail startup";
   try {
@@ -112,7 +149,13 @@ export async function runNativeSmoke(input: {
     });
     if (response.status === 200) {
       input.onStage?.("sign-in");
-      const failure = await signInSurfaceFailure(webUrl, call);
+      const failure =
+        (await signInSurfaceFailure(webUrl, call)) ??
+        (await localSessionFailure(
+          webUrl,
+          await (input.readStackToken ?? readNativeStackToken)(input.userDataDir),
+          call,
+        ));
       if (failure === null) {
         result = 0;
         message = `RAKAZO_DESKTOP_SMOKE ok ${webUrl}`;
@@ -127,7 +170,7 @@ export async function runNativeSmoke(input: {
     result = 1;
     message = "RAKAZO_DESKTOP_SMOKE fail shutdown";
   }
-  if (result !== 0) await printPostgresLogTail(input);
+  if (result !== 0) await printPostgresLogTail({ ...input, startOffset });
   (input.print ?? console.log)(message);
   return result;
 }

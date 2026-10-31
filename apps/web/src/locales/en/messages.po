@@ -13,6 +13,10 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/components/MachinePicker.tsx
+msgid "Connect by pairing — coming soon"
+msgstr "Connect by pairing — coming soon"
+
 #. js-lingui-explicit-id
 #: src/App.tsx
 msgid "Page not found"

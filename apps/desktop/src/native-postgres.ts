@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readFile, rename, rm } from "node:fs/promises";
+import { chmod, lstat, mkdir, readdir, readFile, rename, rm, rmdir } from "node:fs/promises";
 import { createRequire as createModuleRequire } from "node:module";
 import path from "node:path";
 import { allocateLoopbackPort } from "./local-stack.js";
@@ -13,6 +13,25 @@ export const PG_BIN_DIR_ENV = "RAKAZO_PG_BIN_DIR";
 export const PG_DIR_NAME = "pg";
 export const PG_DATA_DIR_NAME = "data";
 const PID_FILE_NAME = "postmaster.pid";
+const PG_MAJOR_VERSION = "16";
+const EMPTY_VERSION_MESSAGE =
+  "PG_VERSION trống hoặc không hợp lệ. Dữ liệu được giữ nguyên; hãy khôi phục bản sao lưu hoặc liên hệ hỗ trợ.";
+const INCOMPLETE_DATA_DIR_MESSAGE =
+  "Thư mục dữ liệu bị thiếu hoặc hỏng (không có base/ hoặc global/). Dữ liệu được giữ nguyên; hãy khôi phục bản sao lưu hoặc liên hệ hỗ trợ.";
+const PG_EMPTY_DIRS = [
+  "pg_notify",
+  "pg_tblspc",
+  "pg_twophase",
+  "pg_snapshots",
+  "pg_replslot",
+  "pg_serial",
+  "pg_commit_ts",
+  "pg_dynshmem",
+  "pg_stat_tmp",
+  "pg_logical",
+  "pg_logical/snapshots",
+  "pg_logical/mappings",
+] as const;
 export const PG_OWNER_ROLE = "rakazo";
 export const PG_APP_ROLE = "rakazo_app";
 export const PG_DATABASE = "rakazo";
@@ -38,6 +57,14 @@ export type NativePostgresFailure =
   | "root-user"
   | "binaries-missing"
   | "credentials-missing"
+  | "data-dir-unsafe"
+  | "data-dir-not-owned"
+  | "data-dir-symlink"
+  | "data-dir-version-missing"
+  | "data-dir-version-unreadable"
+  | "data-dir-version-empty"
+  | "data-dir-incomplete"
+  | "version-mismatch"
   | "init-failed"
   | "start-failed"
   | "stop-failed";
@@ -51,6 +78,74 @@ export class NativePostgresError extends Error {
   ) {
     super(message, options);
     this.name = "NativePostgresError";
+  }
+}
+
+export interface ClusterRepairOps {
+  lstat: typeof lstat;
+  chmod: typeof chmod;
+  mkdir: typeof mkdir;
+  readFile: typeof readFile;
+}
+
+const clusterRepairOps: ClusterRepairOps = { lstat, chmod, mkdir, readFile };
+
+/** Repairs only metadata and standard directories in an existing PostgreSQL 16 cluster. */
+export async function repairExistingCluster(
+  dataDir: string,
+  input: {
+    uid: number | undefined;
+    path?: PathModule;
+    ops?: ClusterRepairOps;
+    onRepair?: (stage: string) => void;
+  },
+): Promise<void> {
+  const ops = input.ops ?? clusterRepairOps;
+  const join = input.path?.join ?? path.join;
+  const data = await ops.lstat(dataDir);
+  if (
+    !data.isDirectory() ||
+    data.isSymbolicLink() ||
+    input.uid === undefined ||
+    data.uid !== input.uid
+  ) {
+    throw new NativePostgresError(
+      "data-dir-unsafe",
+      "Thư mục dữ liệu không an toàn. Dữ liệu được giữ nguyên; hãy kiểm tra quyền sở hữu thư mục hoặc liên hệ hỗ trợ.",
+    );
+  }
+  const versionFile = join(dataDir, "PG_VERSION");
+  const versionStat = await ops.lstat(versionFile);
+  const regularVersionFile = versionStat.isFile() && !versionStat.isSymbolicLink();
+  const version = regularVersionFile ? (await ops.readFile(versionFile, "utf8")).trim() : "";
+  if (regularVersionFile && version === "") {
+    throw new NativePostgresError("data-dir-version-empty", EMPTY_VERSION_MESSAGE);
+  }
+  if (version !== PG_MAJOR_VERSION) {
+    throw new NativePostgresError(
+      "version-mismatch",
+      "Phiên bản dữ liệu PostgreSQL không tương thích. Dữ liệu được giữ nguyên; hãy dùng phiên bản ứng dụng phù hợp hoặc khôi phục bản sao lưu.",
+    );
+  }
+  if ((data.mode & 0o7777 & ~0o750) !== 0) {
+    await ops.chmod(dataDir, 0o700);
+    input.onRepair?.("postgres-repair-permissions");
+  }
+  for (const relative of PG_EMPTY_DIRS) {
+    const directory = join(dataDir, relative);
+    try {
+      const existing = await ops.lstat(directory);
+      if (!existing.isDirectory() || existing.isSymbolicLink()) {
+        throw new NativePostgresError(
+          "data-dir-unsafe",
+          "Thư mục dữ liệu bắt buộc không hợp lệ. Dữ liệu được giữ nguyên; hãy liên hệ hỗ trợ.",
+        );
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      await ops.mkdir(directory, { mode: 0o700 });
+      input.onRepair?.(`postgres-repair-directory:${relative}`);
+    }
   }
 }
 
@@ -187,7 +282,7 @@ export function parsePostmasterPid(text: string): number | null {
 
 /**
  * Whether `pid` is still a PostgreSQL server. A reused id that now belongs to another
- * program must not be signalled by `pg_ctl`, so Linux checks the process name.
+ * program must not be signalled by `pg_ctl`, so Unix checks the process name.
  */
 export function isPostgresProcess(
   pid: number,
@@ -204,18 +299,24 @@ export function isPostgresProcess(
     // EPERM still means the process exists.
     if ((error as NodeJS.ErrnoException).code !== "EPERM") return false;
   }
-  if (input.platform !== "linux") return true;
+  if (input.platform !== "linux" && input.platform !== "darwin") return true;
   const readComm =
     input.readComm ??
     ((target) => {
       try {
-        return readFileSync(`/proc/${target}/comm`, "utf8");
+        if (input.platform === "linux") return readFileSync(`/proc/${target}/comm`, "utf8");
+        const result = spawnSync("ps", ["-p", String(target), "-o", "comm="], {
+          encoding: "utf8",
+          timeout: 1000,
+          windowsHide: true,
+        });
+        return result.status === 0 ? result.stdout : null;
       } catch {
         return null;
       }
     });
   const name = readComm(pid);
-  return name === null || name.trim().startsWith("postgres");
+  return name === null || path.basename(name.trim()).startsWith("postgres");
 }
 
 /** `@embedded-postgres/<os>-<arch>` names Windows `windows`, everything else as Node does. */
@@ -467,10 +568,13 @@ export interface NativePostgresOptions {
   runSync?: RunProcessSync;
   /** Whether a process id from `postmaster.pid` still belongs to a PostgreSQL server. */
   isPostgresProcess?: (pid: number) => boolean;
+  repairOps?: ClusterRepairOps;
+  /** Filesystem probe for classifying the data directory before any startup writes. */
+  dataDirOps?: Pick<ClusterRepairOps, "lstat" | "readFile"> & { readdir: typeof readdir };
   allocatePort?: () => Promise<number>;
   randomHex?: (bytes: number) => string;
   /** Progress marker for diagnostics; never carries paths or secrets. */
-  onStage?: (stage: "postgres-init" | "postgres-start") => void;
+  onStage?: (stage: string) => void;
 }
 
 /**
@@ -613,8 +717,17 @@ export class NativePostgres {
     const paths = this.resolvePaths();
     try {
       await mkdir(paths.root, { recursive: true, mode: 0o700 });
-      const secrets = await this.ensureSecrets(paths);
-      if (!(await this.isInitialized(paths))) {
+      const initialized = await this.isInitialized(paths);
+      if (initialized && this.platform !== "win32") {
+        await repairExistingCluster(paths.dataDir, {
+          uid: (this.options.getuid ?? process.getuid?.bind(process))?.(),
+          path: this.pathModule,
+          ops: this.options.repairOps,
+          onRepair: this.options.onStage,
+        });
+      }
+      const secrets = await this.ensureSecrets(paths, initialized);
+      if (!initialized) {
         this.current = "initializing";
         this.options.onStage?.("postgres-init");
         await this.initialize(paths, secrets);
@@ -637,9 +750,11 @@ export class NativePostgres {
     }
   }
 
-  private async ensureSecrets(paths: PostgresPaths): Promise<{ owner: string; app: string }> {
+  private async ensureSecrets(
+    paths: PostgresPaths,
+    initialized: boolean,
+  ): Promise<{ owner: string; app: string }> {
     const randomHex = this.options.randomHex ?? ((bytes) => randomBytes(bytes).toString("hex"));
-    const initialized = await this.isInitialized(paths);
     const read = async (file: string) => {
       const raw = (await readPrivateFile(file, MAX_SECRET_BYTES))?.trim() ?? "";
       return SECRET.test(raw) ? raw : null;
@@ -666,7 +781,100 @@ export class NativePostgres {
   }
 
   private async isInitialized(paths: PostgresPaths): Promise<boolean> {
-    return (await readPrivateFile(this.pathModule.join(paths.dataDir, "PG_VERSION"), 16)) !== null;
+    const ops = this.options.dataDirOps ?? { lstat, readFile, readdir };
+    let data: Awaited<ReturnType<typeof lstat>>;
+    try {
+      data = await ops.lstat(paths.dataDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+      throw new NativePostgresError(
+        "data-dir-unsafe",
+        "Không thể kiểm tra thư mục dữ liệu. Dữ liệu được giữ nguyên; hãy kiểm tra quyền truy cập.",
+        { cause: error },
+      );
+    }
+    if (data.isSymbolicLink()) {
+      throw new NativePostgresError(
+        "data-dir-symlink",
+        "Thư mục dữ liệu là liên kết tượng trưng. Dữ liệu được giữ nguyên; hãy liên hệ hỗ trợ.",
+      );
+    }
+    if (!data.isDirectory()) {
+      throw new NativePostgresError(
+        "data-dir-unsafe",
+        "Đường dẫn dữ liệu không phải thư mục. Dữ liệu được giữ nguyên; hãy liên hệ hỗ trợ.",
+      );
+    }
+    const uid = (this.options.getuid ?? process.getuid?.bind(process))?.();
+    if (this.platform !== "win32" && (uid === undefined || data.uid !== uid)) {
+      throw new NativePostgresError(
+        "data-dir-not-owned",
+        "Thư mục dữ liệu thuộc người dùng khác. Dữ liệu được giữ nguyên; hãy kiểm tra quyền sở hữu thư mục.",
+      );
+    }
+    let entries: string[];
+    try {
+      entries = await ops.readdir(paths.dataDir);
+    } catch (error) {
+      throw new NativePostgresError(
+        "data-dir-unsafe",
+        "Không thể đọc thư mục dữ liệu. Dữ liệu được giữ nguyên; hãy kiểm tra quyền truy cập.",
+        { cause: error },
+      );
+    }
+    if (entries.length === 0) return false;
+    const versionFile = this.pathModule.join(paths.dataDir, "PG_VERSION");
+    let versionStat: Awaited<ReturnType<typeof lstat>>;
+    try {
+      versionStat = await ops.lstat(versionFile);
+    } catch (error) {
+      const missing = (error as NodeJS.ErrnoException).code === "ENOENT";
+      throw new NativePostgresError(
+        missing ? "data-dir-version-missing" : "data-dir-version-unreadable",
+        missing
+          ? "Thiếu PG_VERSION trong thư mục dữ liệu. Dữ liệu được giữ nguyên; hãy khôi phục bản sao lưu hoặc liên hệ hỗ trợ."
+          : "Không thể đọc PG_VERSION. Dữ liệu được giữ nguyên; hãy kiểm tra quyền thư mục và liên hệ hỗ trợ.",
+        { cause: error },
+      );
+    }
+    if (!versionStat.isFile() || versionStat.isSymbolicLink()) {
+      throw new NativePostgresError(
+        "data-dir-version-unreadable",
+        "PG_VERSION không hợp lệ. Dữ liệu được giữ nguyên; hãy khôi phục bản sao lưu hoặc liên hệ hỗ trợ.",
+      );
+    }
+    let version: string;
+    try {
+      version = (await ops.readFile(versionFile, "utf8")).trim();
+    } catch (error) {
+      throw new NativePostgresError(
+        "data-dir-version-unreadable",
+        "Không thể đọc PG_VERSION. Dữ liệu được giữ nguyên; hãy kiểm tra quyền thư mục và liên hệ hỗ trợ.",
+        { cause: error },
+      );
+    }
+    if (version === "") {
+      throw new NativePostgresError("data-dir-version-empty", EMPTY_VERSION_MESSAGE);
+    }
+    if (version !== PG_MAJOR_VERSION) {
+      throw new NativePostgresError(
+        "version-mismatch",
+        "Phiên bản dữ liệu PostgreSQL không tương thích. Dữ liệu được giữ nguyên; hãy dùng phiên bản ứng dụng phù hợp hoặc khôi phục bản sao lưu.",
+      );
+    }
+    for (const name of ["base", "global"]) {
+      let directory: Awaited<ReturnType<typeof lstat>>;
+      try {
+        directory = await ops.lstat(this.pathModule.join(paths.dataDir, name));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        throw new NativePostgresError("data-dir-incomplete", INCOMPLETE_DATA_DIR_MESSAGE);
+      }
+      if (!directory.isDirectory() || directory.isSymbolicLink()) {
+        throw new NativePostgresError("data-dir-incomplete", INCOMPLETE_DATA_DIR_MESSAGE);
+      }
+    }
+    return true;
   }
 
   /**
@@ -679,7 +887,6 @@ export class NativePostgres {
         cause,
       });
     await rm(paths.scratchDir, { recursive: true, force: true });
-    await rm(paths.dataDir, { recursive: true, force: true });
     const initInput = {
       scratchDir: paths.scratchDir,
       ownerPasswordFile: paths.ownerPasswordFile,
@@ -702,7 +909,7 @@ export class NativePostgres {
     if (this.platform === "win32") {
       // `postgres --single` refuses an Administrator account; the database and login are
       // created through a client once the server is up (`bootstrapAfterStart`).
-      await rename(paths.scratchDir, paths.dataDir);
+      await this.installInitializedCluster(paths);
       return;
     }
     // Single-user mode skips authentication and needs no listening socket.
@@ -712,6 +919,16 @@ export class NativePostgres {
       { env: this.childEnv(), timeoutMs: INITDB_TIMEOUT_MS, stdin: bootstrapSql(secrets.app) },
     );
     if (bootstrap.code !== 0) throw fail(new Error(bootstrap.stderr.slice(-LOG_TAIL_BYTES)));
+    await this.installInitializedCluster(paths);
+  }
+
+  private async installInitializedCluster(paths: PostgresPaths): Promise<void> {
+    // rmdir succeeds only for an empty directory; existing content is never removed.
+    try {
+      await rmdir(paths.dataDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
     await rename(paths.scratchDir, paths.dataDir);
   }
 
@@ -808,7 +1025,8 @@ export class NativePostgres {
   /**
    * A killed session leaves `postmaster.pid` behind. PostgreSQL ignores one whose process
    * is gone, but not always one whose id was reused, and `pg_ctl` would then signal that
-   * unrelated program. Remove the file when its process is not a PostgreSQL server.
+   * unrelated program. Remove it only when its PID is dead or belongs to a non-Postgres
+   * process (Linux: /proc/<pid>/comm; macOS: ps -o comm=). Keep a live Postgres PID.
    */
   private async clearStalePidFile(paths: PostgresPaths) {
     const pidFile = this.pathModule.join(paths.dataDir, PID_FILE_NAME);

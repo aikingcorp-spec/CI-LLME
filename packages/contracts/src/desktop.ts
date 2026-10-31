@@ -108,6 +108,8 @@ export interface DesktopSetupState {
   saved: DesktopSetup | null;
   /** Who already passed the sign-in code on this computer; null shows the email step first. */
   verifiedEmail: string | null;
+  /** Existing pre-rename profile, shown only until its notice is dismissed. */
+  legacyProfilePath?: string | null;
   /** Present when a saved or newly selected server could not be reopened. */
   error?: string;
 }
@@ -147,6 +149,8 @@ export interface DesktopLocalStackState {
   phase: DesktopLocalStackPhase;
   /** One actionable sentence; null while the stack is progressing normally. */
   message: string | null;
+  /** Safe, serializable reason for a native start failure, when available. */
+  failure?: { code: string; messageVi: string };
   /** Bounded tail of docker output for the current attempt. */
   output: string[];
   /** Bytes pulled per image layer in the current attempt; the sum is the only progress Docker reports. */
@@ -165,6 +169,7 @@ export interface RakazoSetup {
   /** Used only to reserve space for native window controls in the local setup UI. */
   platform: string;
   state: () => Promise<DesktopSetupState>;
+  dismissLegacyProfileNotice: () => Promise<void>;
   test: (url: string) => Promise<DesktopReachability>;
   save: (setup: DesktopSetup) => Promise<{ ok: boolean; error?: string }>;
   quit: () => Promise<void>;

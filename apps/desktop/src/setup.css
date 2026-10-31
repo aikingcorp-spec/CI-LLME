@@ -272,6 +272,22 @@ html[data-platform="darwin"] .titlebar {
   color: var(--destructive);
 }
 
+.stack-failure {
+  margin-top: 8px;
+  color: var(--destructive);
+  font-size: 13px;
+}
+
+.stack-failure p {
+  margin: 0;
+}
+
+.stack-failure small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted-foreground);
+}
+
 .stack-phase[data-tone="ok"] {
   color: var(--success);
 }
@@ -384,4 +400,12 @@ html[data-platform="darwin"] .titlebar {
 /* Last so it wins over the flex layouts above at equal specificity. */
 [hidden] {
   display: none;
+}
+
+#legacy-profile-notice {
+  margin-bottom: 18px;
+}
+
+#retry-code {
+  margin-top: 14px;
 }

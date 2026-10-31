@@ -43,9 +43,9 @@ describe("window chrome", () => {
     expect(windowChromeKind(desktop("darwin"))).toBe("darwin");
   });
 
-  it("uses real window-control buttons on Windows and Linux", () => {
-    expect(windowChromeKind(desktop("win32"))).toBe("controls");
-    expect(windowChromeKind(desktop("linux"))).toBe("controls");
+  it("does not draw macOS dots on Windows and Linux", () => {
+    expect(windowChromeKind(desktop("win32"))).toBe("spacer");
+    expect(windowChromeKind(desktop("linux"))).toBe("spacer");
   });
 });
 

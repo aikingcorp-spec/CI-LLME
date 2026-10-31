@@ -2,30 +2,18 @@ appId: com.rakazo.app
 name: Auth
 ---
 - runFlow: ../subflows/launch-app.yaml
-- runFlow:
-    when:
-      visible: "Sign in to VNBot"
-    commands:
-      - tapOn: "Sign up"
-- extendedWaitUntil:
-    visible: "Sign up for VNBot"
-    timeout: 15000
-- takeScreenshot: 01-welcome
-- tapOn: "Sign in"
 - extendedWaitUntil:
     visible: "Sign in to VNBot"
     timeout: 15000
 - takeScreenshot: 02-sign-in
 - tapOn: "Email"
 - inputText: ${RAKAZO_SCREENSHOT_EMAIL}
-- tapOn: "Password"
-- inputText: "wrong-password"
 - hideKeyboard
-- tapOn: "Sign in"
+- tapOn: "Continue"
 - extendedWaitUntil:
-    visible: "Invalid email or password|Invalid credentials|Could not sign in"
+    visible: "Check your email"
     timeout: 20000
-- takeScreenshot: 03-sign-in-error
+- takeScreenshot: 03-check-email
 - tapOn: "Use a custom server|Custom server"
 - extendedWaitUntil:
     visible: "Server"

@@ -7,7 +7,7 @@ name: Settings
       RAKAZO_ACTIVE_EMAIL: ${RAKAZO_SCREENSHOT_EMAIL}
 - openLink: "rakazo:///account"
 - extendedWaitUntil:
-    visible: ".*Change password.*"
+    visible: ".*Language.*"
     timeout: 15000
 - assertNotVisible: "(?s).*__[A-Za-z0-9]+__.*"
 - assertNotVisible: "(?is).*[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}.*"
@@ -25,26 +25,6 @@ name: Settings
     visible: "Stream replies"
     timeout: 10000
 - takeScreenshot: 03-account-advanced
-- openLink: "rakazo:///change-password"
-- extendedWaitUntil:
-    visible: "Current password"
-    timeout: 15000
-- takeScreenshot: 04-change-password
-- tapOn: "Current password"
-- inputText: "wrong-current"
-- tapOn: "New password"
-- inputText: "replacement-1"
-- tapOn: "Confirm password"
-- inputText: "replacement-2"
-- hideKeyboard
-- tapOn:
-    text: "Change password"
-    index: 1
-- extendedWaitUntil:
-    visible: "Passwords do not match"
-    timeout: 10000
-- takeScreenshot: 05-password-mismatch
-- tapOn: "Back"
 - openLink: "rakazo:///models"
 - extendedWaitUntil:
     visible: "Main model"

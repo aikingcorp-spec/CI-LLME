@@ -1216,4 +1216,5 @@ export const ZH_TW_MESSAGES: Record<string, string> = {
   "Could not load skill": "無法載入技能",
   "Could not save skill": "無法儲存技能",
   "Could not delete skill": "無法刪除技能",
+  "Email sign-in is unavailable on this server": "此伺服器不支援電子郵件登入",
 };

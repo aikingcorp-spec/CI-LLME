@@ -51,6 +51,8 @@ const SECRET_BYTES: Record<string, number> = {
   ENCRYPTION_KEY: 32,
   SCREEN_PROXY_SECRET: 32,
   SANDBOX_SUPERVISOR_TOKEN: 32,
+  // Lets this app, and nothing else, open a session on its own node.
+  RAKAZO_DESKTOP_STACK_TOKEN: 32,
 };
 const ENV_FILE = "native-stack-env";
 
@@ -78,6 +80,17 @@ async function loadEnv(
   values = { ...values, ...supplied };
   await writePrivateFile(file, JSON.stringify(values));
   return { ...base, ...values };
+}
+
+/** The private token the native services started with, for the main process alone. */
+export async function readNativeStackToken(userDataDir: string): Promise<string | null> {
+  const raw = await readPrivateFile(path.join(userDataDir, ENV_FILE), 64 * 1024);
+  try {
+    const token = raw === null ? null : JSON.parse(raw).RAKAZO_DESKTOP_STACK_TOKEN;
+    return typeof token === "string" ? token : null;
+  } catch {
+    return null;
+  }
 }
 
 export function resolveNativeEntryPath(
@@ -185,7 +198,9 @@ export function createNativeServices(input: NativeServicesDeps): NativeServices 
           env.DATABASE_URL ?? `postgresql://127.0.0.1:${env.POSTGRES_PORT ?? "5432"}/rakazo`,
         API_PORT: String(apiPort),
         WORKER_PORT: String(workerPort),
+        // Loopback only: the session route trusts whoever holds the token on this computer.
         API_HOST: "127.0.0.1",
+        AUTH_PASSWORD_ENABLED: "false",
         SANDBOX_PROVIDER: "desktop",
         // Bot commands never run with administrator or root rights; the backend refuses them
         // while the app itself runs that way.

@@ -2,6 +2,7 @@
   "_reason": "Strings legitimately identical in vi and en: brand/product names, protocol names, units, code tokens, and accessory names whose source text is already Vietnamese. Add an entry only with a reason in the commit message.",
   "allow": [
     "VNBot",
+    "VNBot Cloud",
     "API",
     "OAuth",
     "MCP",

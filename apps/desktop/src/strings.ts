@@ -113,8 +113,7 @@ const vi = {
     composeMissing:
       "Thiếu Docker Compose. Hãy cài Docker Desktop hoặc docker-compose-plugin rồi thử lại.",
     pullFailed: "Tải image VNBot không thành công. Hãy xem chi tiết kỹ thuật bên dưới rồi thử lại.",
-    startFailed:
-      "Các dịch vụ VNBot không khởi động được. Hãy xem chi tiết kỹ thuật bên dưới rồi thử lại.",
+    startFailed: "Các dịch vụ VNBot không khởi động được. Hãy thử lại.",
     prepareFailed: "Không thể chuẩn bị dịch vụ cục bộ. Hãy thử lại.",
     dockerMissing: "Máy tính này chưa cài Docker.",
     composeNotInstalled:
@@ -132,6 +131,9 @@ const vi = {
     subheading: "Chọn nơi VNBot sẽ chạy.",
     subheadingEmail: "Nhập email để nhận mã đăng nhập.",
     subheadingCode: "Nhập mã 6 chữ số đã gửi đến {email}.",
+    legacyProfileNotice:
+      "Đã tìm thấy dữ liệu từ phiên bản cũ 0.3.5 tại {path}. Bản này chưa nhập dữ liệu đó; dữ liệu cũ vẫn được giữ nguyên.",
+    dismissLegacyProfile: "Đã hiểu",
     emailLabel: "Email",
     sendCode: "Gửi mã",
     codeLabel: "Mã 6 chữ số",
@@ -148,12 +150,15 @@ const vi = {
     otpNotInvited: "Email này chưa được mời dùng VNBot.",
     otpRateLimited: "Thử quá nhiều lần. Hãy đợi một lát rồi thử lại.",
     otpNetwork: "Không thể kết nối đến máy chủ tài khoản. Hãy kiểm tra Internet rồi thử lại.",
+    otpUnavailable:
+      "Đăng nhập tạm thời chưa khả dụng: máy chủ tài khoản VNBot chưa sẵn sàng. Dữ liệu của bạn không bị ảnh hưởng. Vui lòng thử lại sau.",
     otpFailed: "Không thể đăng nhập. Hãy thử lại.",
     comingSoon: "Sắp có",
     legend: "Máy",
     modeCloud: "VNBot Cloud",
     modeNew: "Máy tính này",
     modeExisting: "Máy của bạn (VPS, Mac mini, máy chủ riêng…)",
+    pairingComingSoon: "Kết nối qua ghép cặp — sắp có",
     technicalDetails: "Chi tiết kỹ thuật",
     progress: "Tiến trình thiết lập",
     serverAddress: "Địa chỉ máy chủ",
@@ -293,7 +298,7 @@ const en: Strings = {
     composeMissing:
       "Docker Compose is missing. Install Docker Desktop or the docker-compose-plugin, then retry.",
     pullFailed: "Downloading VNBot images failed. Check the output below, then retry.",
-    startFailed: "VNBot services did not start. Check the output below, then retry.",
+    startFailed: "VNBot services did not start. Try again.",
     prepareFailed: "Could not prepare the local stack. Retry.",
     dockerMissing: "Docker is not installed on this computer.",
     composeNotInstalled:
@@ -310,6 +315,9 @@ const en: Strings = {
     subheading: "Choose where VNBot runs.",
     subheadingEmail: "Enter your email to get a sign-in code.",
     subheadingCode: "Enter the 6-digit code sent to {email}.",
+    legacyProfileNotice:
+      "Found data from the old 0.3.5 version at {path}. This version has not imported it; the old data is kept unchanged.",
+    dismissLegacyProfile: "Đã hiểu",
     emailLabel: "Email",
     sendCode: "Send code",
     codeLabel: "6-digit code",
@@ -326,12 +334,15 @@ const en: Strings = {
     otpNotInvited: "This email is not invited to VNBot yet.",
     otpRateLimited: "Too many attempts. Wait a moment and try again.",
     otpNetwork: "Could not reach the account server. Check your internet connection and try again.",
+    otpUnavailable:
+      "Đăng nhập tạm thời chưa khả dụng: máy chủ tài khoản VNBot chưa sẵn sàng. Dữ liệu của bạn không bị ảnh hưởng. Vui lòng thử lại sau.",
     otpFailed: "Could not sign in. Try again.",
     comingSoon: "Coming soon",
     legend: "Machine",
     modeCloud: "VNBot Cloud",
     modeNew: "This computer",
     modeExisting: "Your own machine (VPS, Mac mini, any server)",
+    pairingComingSoon: "Connect by pairing — coming soon",
     technicalDetails: "Technical details",
     progress: "Setup progress",
     serverAddress: "Server address",

@@ -113,6 +113,9 @@ importers:
         specifier: 0.32.0
         version: 0.32.0
     optionalDependencies:
+      '@koromix/koffi-linux-x64':
+        specifier: 3.3.4
+        version: 3.3.4
       '@embedded-postgres/linux-x64':
         specifier: 16.14.0-beta.17
         version: 16.14.0-beta.17

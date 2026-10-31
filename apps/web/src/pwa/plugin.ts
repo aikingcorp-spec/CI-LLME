@@ -26,7 +26,7 @@ export function webManifest() {
     id: "/",
     name: "VNBot",
     short_name: "VNBot",
-    description: "Your team of always-on agents.",
+    description: "VNBot giúp bạn làm việc cùng các bot trên máy của mình.",
     start_url: "/",
     scope: "/",
     display: "standalone",

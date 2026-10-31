@@ -412,11 +412,11 @@ it("submits only a trimmed deletion code, never whitespace", async () => {
 });
 
 it.each([undefined, true, false])(
-  "respects the password-change policy (%s) while keeping password deletion",
+  "hides password change for code sign-in (%s) while keeping password deletion",
   async (passwordChangeEnabled) => {
     vi.mocked(fetchAccountSecurity).mockResolvedValue(security({ passwordChangeEnabled }));
     const view = await renderAccount();
-    expect(Boolean(view.button("Change password"))).toBe(passwordChangeEnabled !== false);
+    expect(view.button("Change password")).toBeUndefined();
     await view.press("Delete account");
     await view.type("Current password", "hunter2");
     await view.press("Delete");

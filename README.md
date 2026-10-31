@@ -7,7 +7,7 @@
 iOS: Sắp có.
 [![Download the Android APK](https://img.shields.io/badge/Android-Download%20APK-black?labelColor=black&style=for-the-badge&logo=android&logoColor=white)](https://github.com/aikingcorp-spec/vnbot/releases/download/android/rakazo.apk)
 
-![Rakazo — AI teammates you actually own](./docs/readme-hero.png)
+![VNBot — AI teammates you actually own](./docs/readme-hero.png)
 
 Rakazo is an open source AI agent for persistent teammates, and a self-hosted AI assistant you
 can run on your own machine. It is available on the web, as an Electron desktop app, and on

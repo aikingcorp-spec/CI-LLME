@@ -1,6 +1,7 @@
 {
   "name": "VNBot",
   "short_name": "VNBot",
+  "description": "VNBot giúp bạn làm việc cùng các bot trên máy của mình.",
   "start_url": "/",
   "display": "browser",
   "background_color": "#FDFDFD",

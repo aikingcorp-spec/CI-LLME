@@ -78,7 +78,7 @@ describe("settings sheet header", () => {
     expect(headerItems("models", ["account", "models"])).toEqual([]);
   });
 
-  it.each(["account", "change-password"])("leaves a cold deep link to %s for Home", (page) => {
+  it.each(["account"])("leaves a cold deep link to %s for Home", (page) => {
     sheet.canGoBack.mockReturnValue(false);
     const [close] = headerItems(page, [page]);
     close?.onPress();
@@ -105,7 +105,7 @@ describe("settings sheet header", () => {
     expect(sheet.dispatch).not.toHaveBeenCalled();
   });
 
-  it.each(["account", "change-password"])(
+  it.each(["account"])(
     "shows an Android back arrow for a cold link to %s that returns Home",
     (page) => {
       Platform.OS = "android";

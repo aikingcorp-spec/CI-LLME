@@ -1,20 +1,19 @@
 appId: com.rakazo.app
 ---
 - runFlow: launch-app.yaml
-- runFlow:
-    when:
-      visible: "Sign up for VNBot"
-    commands:
-      - tapOn: "Sign in"
 - extendedWaitUntil:
     visible: "Sign in to VNBot"
     timeout: 15000
 - tapOn: "Email"
 - inputText: ${RAKAZO_ACTIVE_EMAIL}
-- tapOn: "Password"
-- inputText: ${RAKAZO_SCREENSHOT_PASSWORD}
 - hideKeyboard
-- tapOn: "Sign in"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Check your email"
+    timeout: 15000
+- runScript: read-sign-in-code.js
+- tapOn: "Code"
+- inputText: ${output.signInCode}
 - tapOn:
     text: "Not Now"
     optional: true

@@ -61,11 +61,9 @@ function formatResend(seconds: number): string {
 
 export function AuthPage({
   signedIn = false,
-  onMachineChosen,
 }: {
   /** A session exists, so a reload on the machine step stays there. */
   signedIn?: boolean;
-  onMachineChosen?: () => void;
 }) {
   const { t } = useLingui();
   const [searchParams] = useSearchParams();
@@ -259,16 +257,6 @@ export function AuthPage({
     setResent(false);
   }
 
-  function chooseThisComputer() {
-    enterApp();
-    onMachineChosen?.();
-  }
-
-  function chooseOwnMachine(url: string) {
-    clearSignInProgress();
-    window.location.assign(url);
-  }
-
   async function signInWithSso() {
     setError(null);
     try {
@@ -318,7 +306,7 @@ export function AuthPage({
         onSubmit={(event) => event.preventDefault()}
         title={<Trans>Choose a machine</Trans>}
       >
-        <MachinePicker onThisComputer={chooseThisComputer} onOwnMachine={chooseOwnMachine} />
+        <MachinePicker />
       </AuthFrame>
     );
   }

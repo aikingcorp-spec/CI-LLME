@@ -60,10 +60,17 @@ export interface NativeFailureLogInput {
   debug?: boolean;
   now?: () => Date;
   stderr?: (line: string) => void;
+  refusal?: { code: string; messageVi: string };
+  stdout?: (line: string) => void;
 }
 
 /** Appends to `<userData>/logs/native-stack.log` (owner-only) and, in debug mode, to stderr. */
 export async function logNativeFailure(input: NativeFailureLogInput): Promise<void> {
+  if (input.refusal?.code.startsWith("data-dir-")) {
+    (input.stdout ?? ((text) => process.stdout.write(`${text}\n`)))(
+      `${input.refusal.code} ${input.refusal.messageVi}`,
+    );
+  }
   const line = `${(input.now ?? (() => new Date()))().toISOString()} ${describeFailure(
     input.stage,
     input.error,

@@ -5,8 +5,10 @@ import {
   DesktopUpdateController,
   initialUpdateState,
   MIN_CHECK_INTERVAL_MS,
+  MISSING_FEED_BACKOFF_MS,
   reduceUpdateState,
   shouldCheck,
+  updateFeedOverride,
   updaterSupport,
 } from "./auto-update.js";
 import { strings } from "./strings.js";
@@ -171,15 +173,48 @@ describe("reduceUpdateState", () => {
     expect(state).toMatchObject({ phase: "idle", availableVersion: null, checkedAt: NOW });
   });
 
-  it("goes quiet on a missing feed instead of nagging every launch", () => {
+  it("keeps a missing background feed quiet without freezing checks", () => {
     const state = apply([
       { type: "check-start" },
       { type: "failed", error: new Error("HttpError: 404 Not Found"), userInitiated: false },
     ]);
-    expect(state.phase).toBe("unsupported");
-    expect(state.message).toBe(strings().updater.noReleases);
-    expect(reduceUpdateState(state, { type: "check-start" }, NOW)).toBe(state);
-    expect(shouldCheck(state, 10_000_000, 0)).toBe(false);
+    expect(state.phase).toBe("idle");
+    expect(state.message).toBeNull();
+  });
+
+  it("backs off a missing feed for a day, logs once, and still permits manual checks", async () => {
+    let now = 1_000;
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    let fake: ReturnType<typeof fakeUpdater>;
+    fake = fakeUpdater({
+      checkForUpdates: vi.fn(async () => {
+        fake.emit("checking-for-update");
+        fake.emit("error", new Error("HttpError: 404 Not Found"));
+      }),
+    });
+    const controller = new DesktopUpdateController(packaged, async () => fake.updater, {
+      now: () => now,
+      iso: () => NOW,
+    });
+    try {
+      await controller.check(false);
+      expect(controller.state()).toMatchObject({ phase: "idle", message: null });
+      now += MIN_CHECK_INTERVAL_MS;
+      await controller.check(false);
+      expect(fake.updater.checkForUpdates).toHaveBeenCalledTimes(1);
+      await controller.check(true);
+      expect(controller.state()).toMatchObject({
+        phase: "unsupported",
+        message: strings().updater.noReleases,
+      });
+      expect(info).toHaveBeenCalledTimes(1);
+      now += MISSING_FEED_BACKOFF_MS;
+      await controller.check(false);
+      expect(fake.updater.checkForUpdates).toHaveBeenCalledTimes(3);
+      expect(info).toHaveBeenCalledTimes(1);
+    } finally {
+      info.mockRestore();
+    }
   });
 
   it("keeps a verified download when the updater emits a late failure", () => {
@@ -261,10 +296,10 @@ describe("shouldCheck", () => {
     }
   });
 
-  it("lets a manual check retry after an empty feed when the install supports updates", () => {
+  it("lets a manual check retry an unsupported feed when the install supports updates", () => {
     const absent = apply([
       { type: "check-start" },
-      { type: "failed", error: new Error("HttpError: 404 Not Found"), userInitiated: false },
+      { type: "failed", error: new Error("HttpError: 404 Not Found"), userInitiated: true },
     ]);
     expect(
       shouldCheck(absent, 1_000, 1_000, {
@@ -295,6 +330,17 @@ describe("DesktopUpdateController", () => {
       allowDowngrade: false,
       disableWebInstaller: true,
     });
+  });
+
+  it("ignores feed overrides in packaged production but permits explicit test builds", () => {
+    const value = " http://127.0.0.1:4173/ ";
+    expect(updateFeedOverride({ packaged: true, testBuild: false, value })).toBeUndefined();
+    expect(updateFeedOverride({ packaged: true, testBuild: true, value })).toBe(
+      "http://127.0.0.1:4173/",
+    );
+    expect(updateFeedOverride({ packaged: false, testBuild: false, value })).toBe(
+      "http://127.0.0.1:4173/",
+    );
   });
 
   it("uses a local generic feed override when configured", async () => {
@@ -468,6 +514,49 @@ describe("DesktopUpdateController", () => {
     },
   );
 
+  it.each([
+    [
+      "HttpError: 404 Not Found",
+      "[updater] Chưa có bản cập nhật trên máy chủ (404); thử lại sau 24 giờ",
+    ],
+    [
+      "getaddrinfo ENOTFOUND example.invalid",
+      "[updater] Không thể kết nối máy chủ cập nhật (DNS); thử lại sau 24 giờ",
+    ],
+    [
+      "getaddrinfo EAI_AGAIN example.invalid",
+      "[updater] Không thể kết nối máy chủ cập nhật (DNS); thử lại sau 24 giờ",
+    ],
+  ])("logs one clean line and backs off for %s", async (reason, line) => {
+    let now = 1_000;
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    let fake: ReturnType<typeof fakeUpdater>;
+    fake = fakeUpdater({
+      checkForUpdates: vi.fn(async () => {
+        fake.emit("checking-for-update");
+        fake.emit("error", new Error(reason));
+      }),
+    });
+    const controller = new DesktopUpdateController(packaged, async () => fake.updater, {
+      now: () => now,
+      iso: () => NOW,
+    });
+    try {
+      await controller.check(false);
+      expect(fake.updater.logger).toBeNull();
+      expect(info).toHaveBeenCalledExactlyOnceWith(line);
+      now += MISSING_FEED_BACKOFF_MS - 1;
+      await controller.check(false);
+      expect(fake.updater.checkForUpdates).toHaveBeenCalledTimes(1);
+      now += 1;
+      await controller.check(false);
+      expect(fake.updater.checkForUpdates).toHaveBeenCalledTimes(2);
+      expect(info).toHaveBeenCalledTimes(1);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
   it("runs installation at most once", async () => {
     let fake: ReturnType<typeof fakeUpdater>;
     fake = fakeUpdater({
@@ -594,7 +683,7 @@ describe("DesktopUpdateController", () => {
     const controller = new DesktopUpdateController(packaged, async () => fake.updater, clock);
 
     await controller.check(false);
-    expect(controller.state().phase).toBe("unsupported");
+    expect(controller.state()).toMatchObject({ phase: "idle", message: null });
 
     await controller.check(true);
     expect(fake.updater.checkForUpdates).toHaveBeenCalledTimes(2);

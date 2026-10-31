@@ -23,12 +23,8 @@ describe("seeded logo colours", () => {
   });
 
   it("preserves a saved colour and leaves seeded motion parameters unchanged", () => {
-    const { color, originalOrange: _orange, ...seeded } = logoAvatarTraits("persistent-bot-1");
-    const {
-      color: explicit,
-      originalOrange: _explicitOrange,
-      ...chosen
-    } = logoAvatarTraits("persistent-bot-1", "#123456");
+    const { color, ...seeded } = logoAvatarTraits("persistent-bot-1");
+    const { color: explicit, ...chosen } = logoAvatarTraits("persistent-bot-1", "#123456");
     expect(color).toBe(seededLogoAvatarColor("persistent-bot-1"));
     expect(explicit).toBe("#123456");
     expect(chosen).toEqual(seeded);
@@ -74,16 +70,8 @@ describe("stable logo avatar traits", () => {
   });
 
   it("keeps movement identity when the saved colour changes", () => {
-    const {
-      color: _firstColor,
-      originalOrange: _firstOrange,
-      ...first
-    } = logoAvatarTraits("bot-1", "orange");
-    const {
-      color: _secondColor,
-      originalOrange: _secondOrange,
-      ...second
-    } = logoAvatarTraits("bot-1", "blue");
+    const { color: _firstColor, ...first } = logoAvatarTraits("bot-1", "orange");
+    const { color: _secondColor, ...second } = logoAvatarTraits("bot-1", "blue");
     expect(first).toEqual(second);
     expect(logoAvatarTraits("bot-1", "blue").color).toBe("#3B82F6");
     expect(logoAvatarTraits("bot-1", "#abc").color).toBe("#abc");

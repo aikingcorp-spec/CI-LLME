@@ -6,6 +6,7 @@ import {
   provisionNativeRuntimeRole,
 } from "./native-migrate.js";
 import type { NativePostgres, RunProcess } from "./native-postgres.js";
+import { NativePostgresError } from "./native-postgres.js";
 import type { NativeServices } from "./native-services.js";
 
 export interface NativeStackEndpoints {
@@ -66,6 +67,19 @@ const runInProcessMigration: RunProcess = async (_file, _args, options) => {
     clearTimeout(timer);
   }
 };
+
+function sanitizedPostgresCause(error: unknown): NativePostgresError | undefined {
+  const seen = new Set<object>();
+  let current = error;
+  while (current !== null && typeof current === "object" && !seen.has(current)) {
+    if (current instanceof NativePostgresError) {
+      return new NativePostgresError(current.code, current.message);
+    }
+    seen.add(current);
+    current = "cause" in current ? current.cause : undefined;
+  }
+  return undefined;
+}
 
 /** Migration always finishes before runtime services receive the restricted database login. */
 export class NativeStack {
@@ -193,7 +207,10 @@ export class NativeStack {
       await this.cleanup().catch(() => undefined);
       this.current = "failed";
       // Neither child output nor database URLs belong in errors or logs.
-      throw new Error("The local stack could not start.");
+      const cause = sanitizedPostgresCause(error);
+      throw cause
+        ? new Error("The local stack could not start.", { cause })
+        : new Error("The local stack could not start.");
     } finally {
       if (this.controller === controller) this.controller = null;
     }

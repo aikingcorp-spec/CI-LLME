@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
+import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { startUserDeviceClient } from "@rakazo/adapters/user-device-client";
 import type { DesktopReachability, DesktopSetup, RakazoDesktopDevice } from "@rakazo/contracts";
@@ -26,13 +26,26 @@ import {
 } from "./account-otp.js";
 import type { AppDocumentState } from "./app-document-state.js";
 import { APP_DOCUMENT_STATE_SCRIPT } from "./app-document-state.js";
+import type { AppOpenState } from "./app-open-state.js";
+import {
+  initialAppOpenState,
+  setupDetailForOpenFailure,
+  transitionAppOpenState,
+} from "./app-open-state.js";
 import { createAppOpener } from "./app-opener.js";
 import type { ElectronAutoUpdater } from "./auto-update.js";
-import { DesktopUpdateController, LAUNCH_CHECK_DELAY_MS, updaterSupport } from "./auto-update.js";
+import {
+  DesktopUpdateController,
+  LAUNCH_CHECK_DELAY_MS,
+  updateFeedOverride,
+  updaterSupport,
+} from "./auto-update.js";
 import { createBadgeHandler } from "./badge.js";
 import { openBrowserAuth } from "./browser-auth.js";
 import { DOCKER_INSTALL_LINKS, isDesktopSetupLink, runDocker } from "./docker-cli.js";
 import { prepareHostComputer } from "./host-computer.js";
+import { legacyProfilePath } from "./legacy-profile.js";
+import { ensureLocalNodeSession } from "./local-node-session.js";
 import { saveLocalComputerHost } from "./local-settings.js";
 import {
   LocalStackController,
@@ -50,10 +63,10 @@ import {
   reportDesktopError,
 } from "./monitoring.js";
 import { logNativeFailure } from "./native-diagnostics.js";
-import { NativeLocalStackController } from "./native-local-stack.js";
+import { NativeLocalStackController, nativeStartFailureDetail } from "./native-local-stack.js";
 import { nativeMigrationsDir } from "./native-migrate.js";
 import { NativePostgres } from "./native-postgres.js";
-import { createNativeServices } from "./native-services.js";
+import { createNativeServices, readNativeStackToken } from "./native-services.js";
 import { installNativeShutdown } from "./native-shutdown.js";
 import { runNativeSmoke, smokeStageReporter } from "./native-smoke.js";
 import { NativeStack } from "./native-stack.js";
@@ -136,7 +149,7 @@ let setupSaveInProgress = false;
 const appOpener = createAppOpener(openAppOnce);
 /** Prior app window kept until setup is persisted (or the switch is abandoned). */
 let pendingPreviousWindow: BrowserWindow | null = null;
-let quitting = false;
+let appOpenState: AppOpenState = initialAppOpenState;
 let warmWindowTimer: NodeJS.Timeout | undefined;
 // Number of short-lived hidden probe windows currently alive. On Windows/Linux,
 // destroying the last window fires "window-all-closed" -> app.quit(); a probe
@@ -169,12 +182,33 @@ function isMsiInstall(): boolean {
   }
 }
 
+function packagedTestBuild(): boolean {
+  if (!app.isPackaged) return false;
+  try {
+    const metadata: unknown = JSON.parse(
+      readFileSync(path.join(app.getAppPath(), "package.json"), "utf8"),
+    );
+    return (
+      typeof metadata === "object" &&
+      metadata !== null &&
+      "vnbotTestBuild" in metadata &&
+      metadata.vnbotTestBuild === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 const updaterEnvironment = {
   packaged: app.isPackaged,
   version: app.getVersion(),
   disabled: process.env.RAKAZO_DISABLE_AUTO_UPDATE === "1",
   msi: isMsiInstall(),
-  feedUrl: process.env.VNBOT_UPDATE_FEED_URL?.trim() || undefined,
+  feedUrl: updateFeedOverride({
+    packaged: app.isPackaged,
+    testBuild: packagedTestBuild(),
+    value: process.env.VNBOT_UPDATE_FEED_URL,
+  }),
 };
 let desktopUpdater: DesktopUpdateController;
 let launchUpdateCheckScheduled = false;
@@ -406,7 +440,7 @@ function createWindow(url: string, partition: string | null) {
   win.on("close", (event) => {
     if (
       process.platform === "darwin" &&
-      !quitting &&
+      appOpenState.kind !== "quitting" &&
       process.env.RAKAZO_DISABLE_WARM_WINDOW !== "1"
     ) {
       event.preventDefault();
@@ -456,6 +490,31 @@ function createWindow(url: string, partition: string | null) {
     setInterval(() => void desktopUpdater.check(false), 60 * 60 * 1_000).unref();
   }
   return { loaded, win };
+}
+
+const LOCAL_PAGE_DEADLINE_MS = 90_000;
+
+/** Health can lead the renderer during a cold launch, so wait for the page itself. */
+async function probeLocalDocument(url: string): Promise<string | null> {
+  const deadline = Date.now() + LOCAL_PAGE_DEADLINE_MS;
+  let delay = 400;
+  while (true) {
+    const error = await probeDocument(url);
+    if (error === null || Date.now() >= deadline) return error;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    delay = Math.min(Math.round(delay * 1.6), 4000);
+  }
+}
+
+async function probeLocalServer(url: string): Promise<DesktopReachability> {
+  const deadline = Date.now() + LOCAL_PAGE_DEADLINE_MS;
+  let delay = 400;
+  while (true) {
+    const result = await probeServer(url);
+    if (result.ok || Date.now() >= deadline) return result;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    delay = Math.min(Math.round(delay * 1.6), 4000);
+  }
 }
 
 async function probeDocument(url: string): Promise<string | null> {
@@ -667,7 +726,9 @@ function createSetupWindow() {
 }
 
 /** Hide the app while setup is open; do not clear the saved target until a new one opens. */
-function showSetupWindow(error: string | null = null) {
+function showSetupWindow(error: string | null = null): BrowserWindow | null {
+  // A failed app-window load can finish after quit and must not reopen setup.
+  if (appOpenState.kind === "quitting") return null;
   setupError = error;
 
   let win: BrowserWindow;
@@ -684,7 +745,7 @@ function showSetupWindow(error: string | null = null) {
 }
 
 function restoreAppWindowAfterSetup() {
-  if (quitting) return;
+  if (appOpenState.kind === "quitting") return;
   if (setupWindow !== null && !setupWindow.isDestroyed()) return;
   if (mainWindow === null || mainWindow.isDestroyed() || currentTargetUrl === null) return;
   clearTimeout(warmWindowTimer);
@@ -747,11 +808,12 @@ async function runMenuUpdateCheck() {
 
 async function installUpdate() {
   if (desktopUpdater.state().phase !== "ready") return desktopUpdater.state();
-  quitting = true;
+  appOpenState = transitionAppOpenState(appOpenState, { type: "quit" });
   const state = await desktopUpdater.install();
   // A failed install stays ready for retry but reports a message. Restore normal
   // window behavior while the user keeps working after that failure.
-  if (state.phase !== "ready" || state.message !== null) quitting = false;
+  if (state.phase !== "ready" || state.message !== null)
+    appOpenState = transitionAppOpenState(appOpenState, { type: "resume" });
   return state;
 }
 
@@ -951,6 +1013,26 @@ async function probeServer(rawUrl: string, signal?: AbortSignal): Promise<Deskto
   }
 }
 
+async function waitForLocalServerReady(url: string): Promise<void> {
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    const health = await probeServer(url);
+    if (health.ok) {
+      try {
+        const page = await net.fetch(url, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(3_000),
+        });
+        if (page.ok && page.headers.get("content-type")?.includes("text/html")) return;
+      } catch {
+        /* The local web server is still starting. */
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("Local server did not become ready");
+}
+
 /** A public health response is not enough: another checkout may own the same fixed port. */
 async function probeManagedStack(
   rawUrl: string,
@@ -1011,17 +1093,45 @@ function activateDesktopMonitoring(url: string | undefined, targetSession?: Sess
   });
 }
 
+/** The app window of this computer's node opens signed in, with no mail on the node. */
+async function signInToLocalNode(targetUrl: string, target: Session) {
+  const userDataDir = app.getPath("userData");
+  try {
+    const token = nativeStack
+      ? await readNativeStackToken(userDataDir)
+      : await readStackToken(stackDir(userDataDir));
+    if (token === null) throw new Error("The private stack token is missing.");
+    await ensureLocalNodeSession({
+      origin: new URL(targetUrl).origin,
+      token,
+      email: verifiedEmail,
+      cookies: target.cookies,
+      request: fetch,
+    });
+  } catch (error) {
+    reportDesktopError(error, "desktop.startup");
+    throw new OpenFailure(strings().setup.otpFailed);
+  }
+}
+
 async function openAppOnce(targetUrl: string, switching: boolean) {
   hostComputer?.activate(currentSetup?.mode === "new" && targetUrl === localStack.webUrl());
   const target = await resolveSessionForTarget(targetUrl);
+  appOpenState = transitionAppOpenState(appOpenState, { type: "open-start" });
+  const generation = appOpenState.generation;
   // A failed switch must leave telemetry with the window that remains selected.
   if (mainWindow === null) activateDesktopMonitoring(targetUrl, target.value);
   const previous = mainWindow;
   let win: BrowserWindow | null = null;
   try {
-    const documentError = await probeDocument(targetUrl);
+    const documentError = await (currentSetup?.mode === "new" && targetUrl === localStack.webUrl()
+      ? probeLocalDocument(targetUrl)
+      : probeDocument(targetUrl));
     if (documentError !== null) {
       throw new Error(documentError);
+    }
+    if (currentSetup?.mode === "new" && targetUrl === localStack.webUrl()) {
+      await signInToLocalNode(targetUrl, target.value);
     }
     await installBundledRenderer(
       targetUrl,
@@ -1036,6 +1146,7 @@ async function openAppOnce(targetUrl: string, switching: boolean) {
     if ((await created.loaded) === "failed" && switching) {
       throw new OpenFailure(strings().server.pageNotReady);
     }
+    appOpenState = transitionAppOpenState(appOpenState, { type: "load-ok", generation });
     currentTargetUrl = targetUrl;
     activateDesktopMonitoring(targetUrl, target.value);
     setupError = null;
@@ -1052,7 +1163,15 @@ async function openAppOnce(targetUrl: string, switching: boolean) {
     // Show the setup window BEFORE destroying the failed one: on Windows/Linux,
     // destroying the last window fires "window-all-closed" -> app.quit() before
     // showSetupWindow() runs, so the app silently exits instead of showing this error.
-    showSetupWindow(format(strings().server.couldNotOpen, { detail: openFailureDetail(error) }));
+    appOpenState = transitionAppOpenState(appOpenState, {
+      type: "load-failed",
+      generation,
+      detail: openFailureDetail(error),
+    });
+    const setupDetail = setupDetailForOpenFailure(appOpenState, generation);
+    if (setupDetail !== null) {
+      showSetupWindow(format(strings().server.couldNotOpen, { detail: setupDetail }));
+    }
     if (win !== null && !win.isDestroyed()) win.destroy();
     return false;
   }
@@ -1245,7 +1364,7 @@ app.whenReady().then(async () => {
     },
     undefined,
     () => {
-      quitting = false;
+      appOpenState = transitionAppOpenState(appOpenState, { type: "resume" });
     },
   );
   installSessionPermissions(session.defaultSession, permissionTarget);
@@ -1300,6 +1419,7 @@ app.whenReady().then(async () => {
           userDataDir,
           stage,
           error,
+          refusal: nativeStartFailureDetail(error),
           debug: process.env.RAKAZO_DESKTOP_DEBUG === "1",
         }),
     });
@@ -1312,6 +1432,7 @@ app.whenReady().then(async () => {
     localStack = new NativeLocalStackController({
       stack: nativeStack,
       userDataDir,
+      waitForReady: waitForLocalServerReady,
       onState: (state) => {
         if (setupWindow && !setupWindow.isDestroyed())
           setupWindow.webContents.send("desktop.setup.stack.changed", state);
@@ -1570,15 +1691,33 @@ app.whenReady().then(async () => {
       ? { lang: currentLocale(), strings: strings().setup }
       : null;
   });
-  ipcMain.handle("desktop.setup.state", (event) => {
+  const legacyNoticeDismissed = path.join(userDataDir, "legacy-profile-notice-dismissed");
+  ipcMain.handle("desktop.setup.state", async (event) => {
     if (!fromSetupWindow(event)) return null;
+    const dismissed = await access(legacyNoticeDismissed).then(
+      () => true,
+      () => false,
+    );
     return {
       defaultLocalUrl: localStack.webUrl(),
       cloudUrl: RAKAZO_CLOUD_URL,
       saved: currentSetup,
       verifiedEmail,
+      legacyProfilePath: dismissed
+        ? null
+        : await legacyProfilePath({
+            appDataDir: app.getPath("appData"),
+            platform: process.platform,
+          }),
       error: setupError ?? undefined,
     };
+  });
+  ipcMain.handle("desktop.setup.dismissLegacyProfileNotice", async (event) => {
+    if (!fromSetupWindow(event)) return;
+    await mkdir(userDataDir, { recursive: true });
+    await writeFile(legacyNoticeDismissed, "dismissed", { flag: "wx", mode: 0o600 }).catch(
+      () => undefined,
+    );
   });
 
   const accountOtp = createAccountOtpClient({
@@ -1592,7 +1731,11 @@ app.whenReady().then(async () => {
       await accountOtp.sendCode(email, currentLocale());
       return { ok: true };
     } catch (error) {
-      return { ok: false, error: accountOtpErrorText(error, strings().setup) };
+      return {
+        ok: false,
+        error: accountOtpErrorText(error, strings().setup),
+        kind: error instanceof AccountOtpError ? error.kind : "failed",
+      };
     }
   });
   ipcMain.handle(
@@ -1653,7 +1796,13 @@ app.whenReady().then(async () => {
         openSetup = { mode: "new", serverUrl: managedUrl };
       }
 
-      const reachability = await probeServer(openSetup.serverUrl);
+      const reachability = await (setup.mode === "new"
+        ? probeLocalServer(openSetup.serverUrl)
+        : probeServer(openSetup.serverUrl));
+      if (reachability.ok && setup.mode === "new") {
+        const documentError = await probeLocalDocument(openSetup.serverUrl);
+        if (documentError !== null) return { ok: false, error: documentError };
+      }
       if (!reachability.ok) return { ok: false, error: reachability.error };
 
       // Open before persisting so a failed renderer load keeps the last working setup.
@@ -1836,7 +1985,7 @@ app.on("will-quit", holdQuitForNativeStack);
 
 app.on("before-quit", (event) => {
   holdQuitForNativeStack(event);
-  quitting = true;
+  appOpenState = transitionAppOpenState(appOpenState, { type: "quit" });
   clearTimeout(warmWindowTimer);
   // Containers keep running; only an in-flight pull/up is cut short.
   hostComputer?.activate(false);

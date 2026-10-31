@@ -10,7 +10,7 @@ import type {
   DesktopSetupState,
   RakazoSetup,
 } from "@rakazo/contracts";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Locale } from "./strings.js";
 import { format, stringsFor } from "./strings.js";
 
@@ -22,6 +22,7 @@ const srcDir = path.dirname(fileURLToPath(import.meta.url));
 const setupBody = readFileSync(path.join(srcDir, "setup.html"), "utf8").match(
   /<body>([\s\S]*)<\/body>/,
 )?.[1];
+const setupStateScript = readFileSync(path.join(srcDir, "setup-state.js"), "utf8");
 const setupScript = readFileSync(path.join(srcDir, "setup.js"), "utf8");
 
 interface Deferred<T> {
@@ -71,12 +72,13 @@ function submitForm(): void {
 interface Harness {
   /** The oldest pending `test` call's deferred, for settling one check by handle. */
   nextCheck: () => Deferred<DesktopReachability>;
+  testedUrls: string[];
   /** Resolves the oldest pending `test` call, in call order. */
   resolveCheck: (result: DesktopReachability) => void;
   /** The one `stack.start` call this mount can receive. */
   startResult: Deferred<DesktopLocalStackState>;
   /** Resolves the oldest pending `state` call, in call order. */
-  resolveAppState: (saved: DesktopSetup | null) => void;
+  resolveAppState: (saved: DesktopSetup | null, defaultLocalUrl?: string) => void;
   /** Resolves the oldest pending `stack.state` call, in call order. */
   resolveStackState: (state: DesktopLocalStackState) => void;
   /** Delivers a pushed stack state the way the `desktop.setup.stack.changed` push does. */
@@ -94,7 +96,9 @@ interface Harness {
 interface MountOptions {
   /** Who already passed the code; `null` starts on the email step. */
   verifiedEmail?: string | null;
+  defaultLocalUrl?: string;
   error?: string;
+  legacyProfilePath?: string;
 }
 
 function mount(
@@ -106,12 +110,14 @@ function mount(
     options.verifiedEmail === undefined ? "lan@vnbot.vn" : options.verifiedEmail;
   document.body.innerHTML = setupBody ?? "";
   const checkCalls: Array<Deferred<DesktopReachability>> = [];
+  const testedUrls: string[] = [];
   const startResult = deferred<DesktopLocalStackState>();
   const stateCalls: Array<Deferred<DesktopSetupState>> = [];
   const stackStateCalls: Array<Deferred<DesktopLocalStackState>> = [];
   const pushListeners: Array<(state: DesktopLocalStackState) => void> = [];
   const saves: DesktopSetup[] = [];
   const codesSent: string[] = [];
+  const dismissLegacyProfileNotice = vi.fn(async () => {});
   const sendCalls: Array<Deferred<{ ok: boolean; error?: string }>> = [];
   const verifyCalls: Array<
     Deferred<{ ok: boolean; email?: string; error?: string; kind?: string }>
@@ -119,12 +125,14 @@ function mount(
 
   const bridge: RakazoSetup = {
     platform: "linux",
+    dismissLegacyProfileNotice,
     state: () => {
       const call = deferred<DesktopSetupState>();
       stateCalls.push(call);
       return call.promise;
     },
-    test: () => {
+    test: (url) => {
+      testedUrls.push(url);
       const call = deferred<DesktopReachability>();
       checkCalls.push(call);
       return call.promise;
@@ -166,15 +174,17 @@ function mount(
     strings: stringsFor(locale).setup,
   };
   // Run the plain script the same way setup.html's script tag does.
+  new Function(setupStateScript)();
   new Function(setupScript)();
 
   const initState = stateCalls.shift();
   initState?.resolve({
-    defaultLocalUrl: DEFAULT_LOCAL_URL,
+    defaultLocalUrl: options.defaultLocalUrl ?? DEFAULT_LOCAL_URL,
     cloudUrl: CLOUD_URL,
     saved,
     verifiedEmail,
     error: options.error,
+    legacyProfilePath: options.legacyProfilePath,
   });
   return {
     nextCheck: () => {
@@ -182,11 +192,12 @@ function mount(
       if (call === undefined) throw new Error("no connection check is pending");
       return call;
     },
+    testedUrls,
     resolveCheck: (result) => checkCalls.shift()?.resolve(result),
     startResult,
-    resolveAppState: (next) =>
+    resolveAppState: (next, defaultLocalUrl = DEFAULT_LOCAL_URL) =>
       stateCalls.shift()?.resolve({
-        defaultLocalUrl: DEFAULT_LOCAL_URL,
+        defaultLocalUrl,
         cloudUrl: CLOUD_URL,
         saved: next,
         verifiedEmail,
@@ -388,13 +399,75 @@ describe("setup", () => {
 
     ui.resolveStackState(stackState("ready"));
     await flush();
+    expect(element("stack-phase").textContent).toBe(text.phaseWaiting);
     ui.resolveAppState(null);
+    await flush();
+    ui.resolveCheck({ ok: true, url: DEFAULT_LOCAL_URL });
     await flush();
 
     expect(element("stack-phase").textContent).toBe(text.phaseReady);
     expect(element("stack-phase").getAttribute("data-tone")).toBe("ok");
     expect(ui.saves).toEqual([{ mode: "new", serverUrl: DEFAULT_LOCAL_URL }]);
-    expect(element<HTMLButtonElement>("continue").disabled).toBe(false);
+    expect(element<HTMLButtonElement>("continue").disabled).toBe(true);
+  });
+
+  it("probes and saves the address chosen after native stack startup", async () => {
+    const startedUrl = "http://127.0.0.1:38581";
+    const ui = await boot(null, "vi", { defaultLocalUrl: "" });
+    selectMode("new");
+    submitForm();
+    ui.startResult.resolve(stackState("starting"));
+    await flush();
+
+    ui.resolveStackState(stackState("ready"));
+    await flush();
+    ui.resolveAppState(null, startedUrl);
+    await flush();
+    expect(ui.testedUrls).toEqual([startedUrl]);
+
+    ui.resolveCheck({ ok: true, url: startedUrl });
+    await flush();
+    expect(ui.saves).toEqual([{ mode: "new", serverUrl: startedUrl }]);
+    expect(element("stack-phase").textContent).toBe(text.phaseReady);
+  });
+
+  it("shows the Vietnamese refusal reason and code from a pushed IPC stack state", async () => {
+    const ui = await boot(null);
+    const failed = {
+      ...stackState("failed"),
+      message: stringsFor("vi").stack.startFailed,
+      failure: {
+        code: "version-mismatch",
+        messageVi: "Phiên bản dữ liệu PostgreSQL không tương thích. Dữ liệu được giữ nguyên.",
+      },
+    };
+    ui.pushStackState(structuredClone(failed));
+    await flush();
+    ui.resolveStackState(structuredClone(failed));
+    await flush();
+    expect(element("stack").hidden).toBe(false);
+    expect(element("stack-phase").textContent).toBe(failed.message);
+    expect(element("stack-failure").hidden).toBe(false);
+    expect(element("stack-failure").textContent).toContain(failed.failure.messageVi);
+    expect(element("stack-failure-code").textContent).toContain("version-mismatch");
+  });
+
+  it("shows a repeated failure reason once with at most one generic line", async () => {
+    const ui = await boot(null, "vi", { error: text.startFailed });
+    const failed = {
+      ...stackState("failed"),
+      message: text.startFailed,
+      failure: { code: "data-dir-incomplete", messageVi: "Thư mục dữ liệu bị thiếu hoặc hỏng." },
+    };
+    for (let i = 0; i < 3; i += 1) {
+      ui.pushStackState(structuredClone(failed));
+      await flush();
+      ui.resolveStackState(structuredClone(failed));
+      await flush();
+    }
+    const shown = document.body.textContent ?? "";
+    expect(shown.split(failed.failure.messageVi)).toHaveLength(2);
+    expect(shown.split(text.startFailed).length - 1).toBeLessThanOrEqual(1);
   });
 
   it("renders the page in Vietnamese by default", async () => {
@@ -404,7 +477,21 @@ describe("setup", () => {
     expect(document.querySelector(".heading")?.textContent).toBe(text.heading);
     expect(element("continue").textContent).toBe(text.continue);
     expect(element("quit").getAttribute("title")).toBe(text.quitTitle);
-    expect(element("server-url").getAttribute("placeholder")).toBe("https://vnbot.example.com");
+    expect(element("subheading").textContent).toBe(text.subheading);
+    expect(element("pairing-state").textContent).toBe(text.pairingComingSoon);
+  });
+
+  it("shows and dismisses the old-profile notice without opening that profile", async () => {
+    const oldPath = "/config/Rakazo";
+    await boot(null, "vi", { legacyProfilePath: oldPath });
+    expect(element("legacy-profile-notice").hidden).toBe(false);
+    expect(element("legacy-profile-message").textContent).toBe(
+      format(text.legacyProfileNotice, { path: oldPath }),
+    );
+    const dismiss = vi.spyOn(window.rakazoSetup!, "dismissLegacyProfileNotice");
+    element<HTMLButtonElement>("dismiss-legacy-profile").click();
+    expect(element("legacy-profile-notice").hidden).toBe(true);
+    expect(dismiss).toHaveBeenCalledOnce();
   });
 
   it("renders the page in English when asked", async () => {
@@ -510,6 +597,24 @@ describe("setup", () => {
     expect(element<HTMLButtonElement>("send-code").disabled).toBe(false);
   });
 
+  it("shows service unavailability and retries by sending a new code", async () => {
+    const ui = await boot(null, "vi", { verifiedEmail: null });
+    element<HTMLInputElement>("account-email").value = "lan@vnbot.vn";
+    submitStep("step-email");
+    ui.nextSend().resolve({ ok: false, kind: "unavailable", error: text.otpUnavailable });
+    await flush();
+    expect(element("account-status").textContent).toBe(text.otpUnavailable);
+    expect(element<HTMLButtonElement>("retry-code").hidden).toBe(false);
+    expect(element<HTMLButtonElement>("send-code").hidden).toBe(true);
+    element<HTMLButtonElement>("retry-code").click();
+    expect(ui.codesSent).toEqual(["lan@vnbot.vn", "lan@vnbot.vn"]);
+    ui.nextSend().resolve({ ok: true });
+    await flush();
+    expect(visibleStep()).toEqual(["step-code"]);
+    expect(element<HTMLButtonElement>("retry-code").hidden).toBe(true);
+    expect(element<HTMLButtonElement>("send-code").hidden).toBe(false);
+  });
+
   it("keeps a wrong code on the code step, clearing it", async () => {
     const ui = await boot(null, "vi", { verifiedEmail: null });
     await reachCodeStep(ui);
@@ -561,7 +666,7 @@ describe("setup", () => {
     expect(element("account-status").textContent).toBe("");
   });
 
-  it("offers VNBot Cloud disabled with a badge, and keeps it disabled after a save", async () => {
+  it("offers VNBot Cloud disabled with a badge, and keeps it disabled after changing modes", async () => {
     const ui = await boot(null);
     const cloud = element<HTMLInputElement>("mode-cloud");
     expect(cloud.disabled).toBe(true);
@@ -573,10 +678,10 @@ describe("setup", () => {
     expect(element<HTMLInputElement>("mode-new").checked).toBe(true);
 
     selectMode("existing");
-    element<HTMLInputElement>("server-url").value = "https://one.example";
     submitForm();
     await flush();
-    expect(ui.saves).toEqual([{ mode: "existing", serverUrl: "https://one.example" }]);
+    expect(ui.saves).toEqual([]);
+    expect(element<HTMLButtonElement>("continue").hidden).toBe(true);
     expect(cloud.disabled).toBe(true);
     expect(element<HTMLInputElement>("mode-new").disabled).toBe(false);
   });

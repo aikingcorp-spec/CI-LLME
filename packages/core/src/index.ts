@@ -46,7 +46,6 @@ export * from "./inbound-routine.js";
 export * from "./instruction-diff.js";
 export * from "./logo-avatar-activity.js";
 export * from "./logo-avatar-activity-store.js";
-export * from "./logo-avatar-art.js";
 export * from "./logo-avatar-motion.js";
 export * from "./logo-avatar-traits.js";
 export * from "./markdown-plain.js";

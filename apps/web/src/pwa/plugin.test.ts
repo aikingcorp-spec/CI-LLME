@@ -47,6 +47,7 @@ describe("PWA build", () => {
     const manifest = webManifest();
     expect(manifest).toMatchObject({
       id: "/",
+      description: "VNBot giúp bạn làm việc cùng các bot trên máy của mình.",
       scope: "/",
       start_url: "/",
       display: "standalone",

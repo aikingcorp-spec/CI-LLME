@@ -79,7 +79,7 @@ describe("settings links", () => {
     expect(isSettingsLink("rakazo://voice")).toBe(true);
     expect(isSettingsLink("rakazo:///account?focus=usage")).toBe(true);
     expect(isSettingsLink("rakazo://integrations/")).toBe(true);
-    expect(isSettingsLink("/change-password")).toBe(true);
+    expect(isSettingsLink("/change-password")).toBe(false);
     expect(isSettingsLink("rakazo:///thread?botId=bot-1")).toBe(false);
     expect(isSettingsLink("rakazo://group-thread?groupId=group-1")).toBe(false);
     expect(isSettingsLink("/new")).toBe(false);

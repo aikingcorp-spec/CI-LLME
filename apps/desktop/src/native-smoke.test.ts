@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -13,10 +13,19 @@ import {
 
 /** The local node's HTTP surface as the smoke sees it, with one switch per check. */
 function fakeNode(
-  options: { health?: number; capabilities?: Response; page?: Response } = {},
+  options: { health?: number; capabilities?: Response; page?: Response; session?: Response } = {},
 ): typeof fetch {
-  return (async (url: string) => {
+  return (async (url: string, init?: RequestInit) => {
     const pathname = new URL(url).pathname;
+    if (pathname === "/api/auth/get-session") {
+      const cookie = new Headers(init?.headers).get("cookie");
+      return Response.json(cookie ? { user: { email: "smoke@example.com" } } : null);
+    }
+    if (pathname === "/api/desktop-settings/session")
+      return (
+        options.session ??
+        new Response("{}", { headers: { "set-cookie": "better-auth.session_token=a; Path=/" } })
+      );
     if (pathname === "/health") return new Response("ok", { status: options.health ?? 200 });
     if (pathname === "/api/auth/capabilities")
       return options.capabilities ?? Response.json({ emailCode: false, passwordAuth: true });
@@ -35,6 +44,7 @@ describe("native smoke", () => {
     ["capabilities", { capabilities: Response.json({ passwordAuth: true }) }],
     ["sign-in-page", { page: new Response("", { status: 404 }) }],
     ["sign-in-page", { page: Response.json({}) }],
+    ["startup", { session: new Response("", { status: 401 }) }],
   ])("fails at %s when the sign-in surface is not usable", async (check, options) => {
     const dir = await mkdtemp(path.join(tmpdir(), "rakazo-smoke-"));
     try {
@@ -46,6 +56,7 @@ describe("native smoke", () => {
         print,
         printError: vi.fn(),
         readPostgresLog: async () => "",
+        readStackToken: async () => "ab".repeat(32),
       });
       expect(code).toBe(1);
       expect(print).toHaveBeenCalledExactlyOnceWith(`RAKAZO_DESKTOP_SMOKE fail ${check}`);
@@ -89,9 +100,15 @@ describe("native smoke", () => {
       const print = vi.fn();
       const fetchImpl = fakeNode({ health: typeof outcome === "number" ? outcome : 200 });
       try {
-        expect(await runNativeSmoke({ stack, userDataDir: dir, fetch: fetchImpl, print })).toBe(
-          outcome === 200 ? 0 : 1,
-        );
+        expect(
+          await runNativeSmoke({
+            stack,
+            userDataDir: dir,
+            fetch: fetchImpl,
+            print,
+            readStackToken: async () => "ab".repeat(32),
+          }),
+        ).toBe(outcome === 200 ? 0 : 1);
         expect(stack.stop).toHaveBeenCalledOnce();
         expect(print).toHaveBeenCalledExactlyOnceWith(
           outcome === 200
@@ -129,6 +146,7 @@ describe("native smoke", () => {
         fetch: fakeNode(),
         print: vi.fn(),
         onStage,
+        readStackToken: async () => "ab".repeat(32),
       });
       expect(onStage.mock.calls.map(([stage]) => stage)).toEqual(["health", "sign-in"]);
     } finally {
@@ -174,6 +192,7 @@ describe("native smoke", () => {
           print: vi.fn(),
           printError,
           readPostgresLog: async () => log,
+          readStackToken: async () => "ab".repeat(32),
         });
         expect(code).toBe(ok ? 0 : 1);
         if (ok) expect(printError).not.toHaveBeenCalled();
@@ -184,6 +203,34 @@ describe("native smoke", () => {
             "STATEMENT: CREATE ROLE a PASSWORD '***'",
           ]);
       }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("excludes postgres log lines from before this smoke run", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "rakazo-smoke-"));
+    const file = path.join(dir, "pg", "postgres.log");
+    try {
+      await mkdir(path.dirname(file), { recursive: true });
+      await writeFile(file, "STALE FAILURE\n");
+      const printError = vi.fn();
+      await runNativeSmoke({
+        stack: {
+          start: async () => {
+            await appendFile(file, "CURRENT FAILURE\n");
+            throw new Error("startup");
+          },
+          stop: async () => {},
+        },
+        userDataDir: dir,
+        print: vi.fn(),
+        printError,
+      });
+      expect(printError.mock.calls.map(([line]) => line)).toEqual([
+        "RAKAZO_DESKTOP_SMOKE postgres-log-tail",
+        "CURRENT FAILURE",
+      ]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

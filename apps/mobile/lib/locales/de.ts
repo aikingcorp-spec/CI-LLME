@@ -1207,4 +1207,6 @@ export const DE_MESSAGES: Record<string, string> = {
   "Could not load skill": "Skill konnte nicht geladen werden",
   "Could not save skill": "Skill konnte nicht gespeichert werden",
   "Could not delete skill": "Skill konnte nicht gelöscht werden",
+  "Email sign-in is unavailable on this server":
+    "Die Anmeldung per E-Mail ist auf diesem Server nicht verfügbar",
 };

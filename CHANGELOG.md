@@ -8,19 +8,79 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Legacy orange bot avatar artwork is removed; web and mobile use the uncropped owner bé Nón master where that art appeared.
+
+- The README hero now uses the full owner bé Nón image and VNBot wording.
+
+- Mobile sign-in uses email and a one-time code; the password sign-in and change-password screen are removed. Native desktop nodes reject password auth and open verified local sessions through their stack token.
+
+- Your own machine now shows a pairing coming-soon state on web and desktop instead of trying a direct connection.
+
+- Imported bots marked with the legacy `rakazo` avatar set now display the VNBot avatar.
+
+- Web machine choice shows only your own machine and a visibly disabled VNBot Cloud option.
+
 - Sign-in is now email, then a one-time code, then choosing where to work: this computer, your own machine (VPS, Mac mini, any server), or VNBot Cloud (coming soon). This includes the first launch of the desktop app.
 - Password sign-in for fresh desktop installs is removed.
+- Choosing this computer in the desktop app now finishes sign-in on its own: you land in the app signed in with the email you verified, with no second code and no mail set up on the computer.
 - A fresh desktop install on Linux or Windows now opens sign-in and the machine choice instead of starting the local services straight away.
 - The app icon, favicons, and mobile icons now use the bé Nón logo everywhere.
 - The old placeholder logo is gone.
 
 ### Added
 
+- Desktop setup detects a legacy Rakazo 0.3.5 profile using an existence check and offers a dismissible Vietnamese notice; the old profile is left untouched.
+
 - Desktop builds check for updates by default and install them after verifying the download checksum.
 - `MASTER_KEY_PROVIDER=aws-kms` wraps content keys with an AWS KMS key, so the master key no longer sits on the server. `content-encryption rotate` moves existing keys over ([content encryption](docs/content-encryption.md#external-key-management)).
 - Ollama Cloud preset in Models settings on web and mobile, using an OpenAI-compatible connection with model discovery and no deployment configuration.
 
 ### Fixed
+
+- Quitting the desktop app while it is still opening no longer leaves a setup window behind that keeps the app running.
+
+- Desktop first launch checks the local page at the address the local server actually started on.
+
+- Packaged desktop builds include the setup state script, so the sign-in form works.
+
+- The desktop notice about an old 0.3.5 profile no longer names the retired product and has an English translation.
+
+- Desktop setup separates the legacy notice and sign-in retry controls, while unavailable update feeds and DNS failures log one Vietnamese line and back off for a day.
+
+- Desktop and Android mascot icons now have a solid interior, clean transparent edges, and a separate monochrome hat outline.
+
+- Desktop first launch keeps one setup state, retries the local page probe during startup, and opens the app only after the page responds.
+
+- Desktop setup waits for the local page before showing ready, Linux and Windows no longer draw macOS window dots, and smoke diagnostics show only new PostgreSQL log lines.
+
+- A missing desktop update feed now stays quiet during background checks and retries after a day; manual checks still explain the missing release.
+
+- Android icons now keep bé Nón inside the launcher's circular safe zone. The monochrome and notification silhouettes retain readable eyes without the old tile outline. Shipped icon hashes and README image names match the owner master.
+
+- Desktop sign-in reports account-service outages clearly and offers a code resend, while keeping wrong-code errors distinct.
+
+- Desktop startup now refuses an incomplete PostgreSQL data directory with a recovery reason and preserves its files.
+- Desktop startup now identifies an empty `PG_VERSION` separately from a different PostgreSQL version.
+- Desktop setup now shows each startup failure reason once instead of repeating the generic error.
+- Packaged desktop setup now shows the database refusal reason; the stack error kept the generic message but dropped the reason code.
+- Desktop setup now shows the Vietnamese reason and failure code when the local database refuses to start.
+- Desktop startup now preserves existing PostgreSQL data when the database version file is missing or unreadable and explains how to recover.
+- Existing Linux and macOS desktop database profiles start after a restore loosens directory permissions or omits empty PostgreSQL directories, without changing saved data.
+
+- Packaged Linux desktop builds restore PostgreSQL's bundled library links so local database setup can start.
+
+- The web app manifest now describes VNBot in Vietnamese.
+
+- Linux desktop packages include and unpack Koffi’s x64 native module so the AppImage starts.
+
+- Packaged production desktop builds ignore update-feed environment overrides; explicit Linux test builds can still use them.
+
+- The Linux desktop icon has transparent corners, and macOS icon files include small native frames.
+
+- Android monochrome and notification icons now have a transparent VNBot silhouette.
+
+- Desktop local-stack E2E checks use the setup window’s Vietnamese labels and pass under a virtual display.
+- Compose passes `AUTH_SINGLE_OWNER` to the API so single-owner sign-in works in deployed stacks.
 
 - Mobile threads now show work started by another client as soon as the run starts, without hiding waiting runs or another group member's error.
 - Hovering a message no longer places its entire row above the floating chat header and other higher-priority controls.

@@ -1,9 +1,21 @@
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RunProcess, RunProcessResult } from "./native-postgres.js";
+import type { ClusterRepairOps, RunProcess, RunProcessResult } from "./native-postgres.js";
 import {
   bootstrapSql,
   bootstrapThroughClient,
@@ -19,6 +31,7 @@ import {
   postgresEnv,
   postgresPackageName,
   postgresPaths,
+  repairExistingCluster,
   resolvePostgresBinDir,
   startArgs,
   stopArgs,
@@ -26,6 +39,125 @@ import {
 } from "./native-postgres.js";
 
 const OK: RunProcessResult = { code: 0, stdout: "", stderr: "", timedOut: false };
+
+describe.runIf(process.platform !== "win32")("existing cluster repair", () => {
+  let root: string;
+  let dataDir: string;
+  let ops: ClusterRepairOps;
+
+  beforeEach(async () => {
+    root = await mkdtemp(path.join(tmpdir(), "pg-repair-"));
+    dataDir = path.join(root, "data");
+    await mkdir(dataDir, { mode: 0o700 });
+    await writeFile(path.join(dataDir, "PG_VERSION"), "16\n");
+    ops = {
+      lstat: vi.fn(lstat),
+      chmod: vi.fn(chmod),
+      mkdir: vi.fn(mkdir),
+      readFile: vi.fn(readFile),
+    };
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const uid = process.getuid?.();
+
+  it("refuses a symlink data directory before any write", async () => {
+    const link = path.join(root, "link");
+    await symlink(dataDir, link);
+    await expect(repairExistingCluster(link, { uid, ops })).rejects.toMatchObject({
+      code: "data-dir-unsafe",
+    });
+    expect(ops.chmod).not.toHaveBeenCalled();
+    expect(ops.mkdir).not.toHaveBeenCalled();
+  });
+
+  it("refuses a data directory owned by another uid", async () => {
+    await expect(
+      repairExistingCluster(dataDir, { uid: (uid ?? 0) + 1, ops }),
+    ).rejects.toMatchObject({
+      code: "data-dir-unsafe",
+    });
+    expect(ops.chmod).not.toHaveBeenCalled();
+  });
+
+  it("refuses another major version without touching the cluster", async () => {
+    await writeFile(path.join(dataDir, "PG_VERSION"), "15\n");
+    await chmod(dataDir, 0o755);
+    await expect(repairExistingCluster(dataDir, { uid, ops })).rejects.toMatchObject({
+      code: "version-mismatch",
+    });
+    expect(ops.chmod).not.toHaveBeenCalled();
+    expect(ops.mkdir).not.toHaveBeenCalled();
+    expect((await stat(dataDir)).mode & 0o777).toBe(0o755);
+  });
+
+  it("refuses an empty version before repairing the cluster", async () => {
+    await writeFile(path.join(dataDir, "PG_VERSION"), " \n");
+    await expect(repairExistingCluster(dataDir, { uid, ops })).rejects.toMatchObject({
+      code: "data-dir-version-empty",
+    });
+    expect(ops.chmod).not.toHaveBeenCalled();
+    expect(ops.mkdir).not.toHaveBeenCalled();
+  });
+
+  it("leaves a 0750 data directory and existing directories alone", async () => {
+    await chmod(dataDir, 0o750);
+    await mkdir(path.join(dataDir, "pg_notify"), { mode: 0o750 });
+    await repairExistingCluster(dataDir, { uid, ops });
+    expect(ops.chmod).not.toHaveBeenCalled();
+    expect(ops.mkdir).not.toHaveBeenCalledWith(path.join(dataDir, "pg_notify"), expect.anything());
+    expect((await stat(path.join(dataDir, "pg_notify"))).mode & 0o777).toBe(0o750);
+  });
+
+  it("rejects an existing non-directory instead of replacing it", async () => {
+    await writeFile(path.join(dataDir, "pg_notify"), "keep");
+    await expect(repairExistingCluster(dataDir, { uid, ops })).rejects.toMatchObject({
+      code: "data-dir-unsafe",
+    });
+    expect(await readFile(path.join(dataDir, "pg_notify"), "utf8")).toBe("keep");
+  });
+
+  it("creates pg_logical before its missing child directories", async () => {
+    await repairExistingCluster(dataDir, { uid, ops });
+    expect((await stat(path.join(dataDir, "pg_logical"))).mode & 0o777).toBe(0o700);
+    expect((await stat(path.join(dataDir, "pg_logical", "snapshots"))).mode & 0o777).toBe(0o700);
+    expect((await stat(path.join(dataDir, "pg_logical", "mappings"))).mode & 0o777).toBe(0o700);
+  });
+
+  it("repairs a restored fixture while preserving all existing bytes", async () => {
+    const original = Buffer.from([0, 1, 2, 255, 10]);
+    await writeFile(path.join(dataDir, "base-file"), original);
+    await mkdir(path.join(dataDir, "pg_logical"), { mode: 0o750 });
+    await writeFile(path.join(dataDir, "pg_logical", "state"), original);
+    await chmod(dataDir, 0o755);
+    const stages: string[] = [];
+    await repairExistingCluster(dataDir, { uid, ops, onRepair: (stage) => stages.push(stage) });
+    expect((await stat(dataDir)).mode & 0o777).toBe(0o700);
+    for (const directory of [
+      "pg_notify",
+      "pg_tblspc",
+      "pg_twophase",
+      "pg_snapshots",
+      "pg_replslot",
+      "pg_serial",
+      "pg_commit_ts",
+      "pg_dynshmem",
+      "pg_stat_tmp",
+      "pg_logical/snapshots",
+      "pg_logical/mappings",
+    ]) {
+      expect((await stat(path.join(dataDir, directory))).mode & 0o777).toBe(0o700);
+      expect(stages).toContain(`postgres-repair-directory:${directory}`);
+    }
+    expect((await stat(path.join(dataDir, "pg_logical"))).mode & 0o777).toBe(0o750);
+    expect(await readFile(path.join(dataDir, "base-file"))).toEqual(original);
+    expect(await readFile(path.join(dataDir, "pg_logical", "state"))).toEqual(original);
+    expect(stages).toContain("postgres-repair-permissions");
+  });
+});
 
 describe("Windows layout", () => {
   const win = path.win32;
@@ -294,6 +426,8 @@ describe("NativePostgres lifecycle", () => {
         const scratch = args[args.indexOf("-D") + 1] as string;
         await mkdir(scratch, { recursive: true });
         await writeFile(path.join(scratch, "PG_VERSION"), "16\n");
+        await mkdir(path.join(scratch, "base"));
+        await mkdir(path.join(scratch, "global"));
         return OK;
       }
       if (tool.startsWith("pg_ctl")) {
@@ -301,6 +435,8 @@ describe("NativePostgres lifecycle", () => {
           const scratch = args[args.indexOf("-D") + 1] as string;
           await mkdir(scratch, { recursive: true });
           await writeFile(path.join(scratch, "PG_VERSION"), "16\n");
+          await mkdir(path.join(scratch, "base"));
+          await mkdir(path.join(scratch, "global"));
           return OK;
         }
         if (args[0] === "status") return { ...OK, code: running ? 0 : 3 };
@@ -336,6 +472,129 @@ describe("NativePostgres lifecycle", () => {
       ...options,
     });
   }
+
+  async function snapshotDataDir(directory: string): Promise<string[]> {
+    const snapshot: string[] = [];
+    async function visit(current: string, relative: string): Promise<void> {
+      const info = await lstat(current);
+      const mode = info.mode & 0o7777;
+      if (info.isDirectory()) {
+        snapshot.push(`${relative}/ ${mode}`);
+        for (const name of (await readdir(current)).sort()) {
+          await visit(path.join(current, name), path.join(relative, name));
+        }
+      } else {
+        const digest = createHash("sha256")
+          .update(await readFile(current))
+          .digest("hex");
+        snapshot.push(`${relative} ${digest} ${mode}`);
+      }
+    }
+    await visit(directory, ".");
+    return snapshot;
+  }
+
+  it.runIf(process.platform !== "win32" && process.getuid?.() !== 0)(
+    "refuses an unreadable PG_VERSION without changing cluster bytes or invoking initdb",
+    async () => {
+      const dataDir = path.join(userData, "pg", "data");
+      await mkdir(path.join(dataDir, "base"), { recursive: true });
+      await writeFile(path.join(dataDir, "base", "saved"), "original rows");
+      const versionFile = path.join(dataDir, "PG_VERSION");
+      await writeFile(versionFile, "16\n");
+      const before = await snapshotDataDir(dataDir);
+      const originalMode = (await stat(versionFile)).mode & 0o7777;
+      await chmod(versionFile, 0o000);
+      try {
+        await expect(create().start()).rejects.toMatchObject({
+          code: "data-dir-version-unreadable",
+        });
+        expect((await stat(versionFile)).mode & 0o777).toBe(0);
+        expect(calls).toHaveLength(0);
+      } finally {
+        await chmod(versionFile, originalMode);
+      }
+      expect(await snapshotDataDir(dataDir)).toEqual(before);
+    },
+  );
+
+  it("refuses a foreign-owned data dir before reading PG_VERSION or invoking initdb", async () => {
+    const dataDir = path.join(userData, "pg", "data");
+    await mkdir(dataDir, { recursive: true });
+    await writeFile(path.join(dataDir, "PG_VERSION"), "16\n");
+    await writeFile(path.join(dataDir, "saved"), "original rows");
+    const before = await snapshotDataDir(dataDir);
+    const readVersion = vi.fn(readFile);
+    await expect(
+      create({
+        dataDirOps: {
+          lstat: async (file) => {
+            const info = await lstat(file);
+            if (file === dataDir) Object.defineProperty(info, "uid", { value: 1001 });
+            return info;
+          },
+          readFile: readVersion,
+          readdir,
+        },
+      }).start(),
+    ).rejects.toMatchObject({ code: "data-dir-not-owned" });
+    expect(readVersion).not.toHaveBeenCalled();
+    expect(calls).toHaveLength(0);
+    expect(await snapshotDataDir(dataDir)).toEqual(before);
+  });
+
+  it("refuses a nonempty data dir without PG_VERSION without changing any file", async () => {
+    const dataDir = path.join(userData, "pg", "data");
+    await mkdir(path.join(dataDir, "base"), { recursive: true });
+    await writeFile(path.join(dataDir, "base", "saved"), "original rows");
+    const before = await snapshotDataDir(dataDir);
+    await expect(create().start()).rejects.toMatchObject({ code: "data-dir-version-missing" });
+    expect(calls).toHaveLength(0);
+    expect(await snapshotDataDir(dataDir)).toEqual(before);
+  });
+
+  it.each([
+    [" \n", "data-dir-version-empty"],
+    [" ".repeat(32), "data-dir-version-empty"],
+    ["15\n", "version-mismatch"],
+  ])("refuses PG_VERSION content %j before starting", async (version, code) => {
+    const dataDir = path.join(userData, "pg", "data");
+    await mkdir(dataDir, { recursive: true });
+    await writeFile(path.join(dataDir, "PG_VERSION"), version);
+    const before = await snapshotDataDir(dataDir);
+    await expect(create().start()).rejects.toMatchObject({ code });
+    expect(calls).toHaveLength(0);
+    expect(await snapshotDataDir(dataDir)).toEqual(before);
+  });
+
+  it.each(["base", "global"])(
+    "refuses a cluster missing %s without starting or deleting",
+    async (missing) => {
+      const dataDir = path.join(userData, "pg", "data");
+      await mkdir(dataDir, { recursive: true });
+      await writeFile(path.join(dataDir, "PG_VERSION"), "16\n");
+      await mkdir(path.join(dataDir, missing === "base" ? "global" : "base"));
+      const before = await snapshotDataDir(dataDir);
+      await expect(create().start()).rejects.toMatchObject({ code: "data-dir-incomplete" });
+      expect(calls).toHaveLength(0);
+      expect(await snapshotDataDir(dataDir)).toEqual(before);
+    },
+  );
+
+  it("initializes an existing empty data dir", async () => {
+    const dataDir = path.join(userData, "pg", "data");
+    await mkdir(dataDir, { recursive: true });
+    await create().start();
+    expect(calls.some((call) => path.basename(call.file) === "initdb")).toBe(true);
+    expect(await readFile(path.join(dataDir, "PG_VERSION"), "utf8")).toBe("16\n");
+  });
+
+  it("initializes a nonexistent data dir", async () => {
+    const dataDir = path.join(userData, "pg", "data");
+    await create().start();
+    expect(calls.some((call) => path.basename(call.file) === "initdb")).toBe(true);
+    expect(await readFile(path.join(dataDir, "PG_VERSION"), "utf8")).toBe("16\n");
+  });
 
   it("creates the cluster once, starts it on the allocated port and reports URLs", async () => {
     const pg = create();
@@ -677,12 +936,28 @@ describe("NativePostgres lifecycle", () => {
     expect(calls.map((call) => call.args[0]).slice(0, 2)).toEqual(["status", "start"]);
   });
 
+  it("rejects an existing cluster from another major version before pg_ctl runs", async () => {
+    await create().start();
+    await writeFile(path.join(userData, "pg", "data", "PG_VERSION"), "15\n");
+    calls.length = 0;
+    await expect(create().start()).rejects.toMatchObject({ code: "version-mismatch" });
+    expect(calls).toEqual([]);
+  });
+
   it("keeps a postmaster.pid whose process is a live PostgreSQL server", async () => {
     await create().start();
     const pidFile = path.join(userData, "pg", "data", "postmaster.pid");
     await writeFile(pidFile, "4242\n/data\n");
     await create({ isPostgresProcess: (pid) => pid === 4242 }).start();
     await expect(stat(pidFile)).resolves.toBeDefined();
+  });
+
+  it("removes a postmaster.pid when its live PID belongs to another process", async () => {
+    await create().start();
+    const pidFile = path.join(userData, "pg", "data", "postmaster.pid");
+    await writeFile(pidFile, "4242\n/data\n");
+    await create({ isPostgresProcess: () => false }).start();
+    await expect(stat(pidFile)).rejects.toBeDefined();
   });
 
   it("stopSync runs a fast pg_ctl stop only when a live postmaster.pid exists", async () => {
@@ -749,6 +1024,20 @@ describe("postmaster.pid helpers", () => {
     expect(isPostgresProcess(7, { platform: "linux", kill: alive, readComm: () => null })).toBe(
       true,
     );
+  });
+
+  it("on macOS, a reused id belonging to another program is stale", () => {
+    const alive = () => undefined;
+    expect(
+      isPostgresProcess(7, {
+        platform: "darwin",
+        kill: alive,
+        readComm: () => "/bundle/bin/postgres\n",
+      }),
+    ).toBe(true);
+    expect(
+      isPostgresProcess(7, { platform: "darwin", kill: alive, readComm: () => "/bin/other\n" }),
+    ).toBe(false);
   });
 });
 

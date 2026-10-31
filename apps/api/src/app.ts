@@ -150,7 +150,7 @@ import { configuredEmailProvider } from "./email.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
-import { mountLocalComputerHost } from "./local-settings.js";
+import { mountLocalComputerHost, mountLocalNodeSession } from "./local-settings.js";
 import { marketingEmailRoutes, sendWelcomeEmail } from "./marketing-email.js";
 import {
   createMessagingInboundHandler,
@@ -494,6 +494,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   const auth = createAuth(prisma, {
     analytics,
     passwordAuth: env.passwordAuth,
+    localNodeSessions: Boolean(env.desktopStackToken),
     emailCodeOnly: env.emailCodeOnly,
     emailAllowlist: env.emailAllowlist,
     breachedPasswordCheck: env.breachedPasswordCheck,
@@ -849,6 +850,11 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     token: env.desktopStackToken,
     sandboxProvider: env.sandboxProvider,
     prisma,
+  });
+  mountLocalNodeSession(app, {
+    token: env.desktopStackToken,
+    webOrigin: env.webOrigin,
+    mint: auth.mintLocalNodeSession,
   });
   const requestSession = async (request: Request) => {
     // The bearer plugin turns a signed `Authorization: Bearer` into the session cookie.

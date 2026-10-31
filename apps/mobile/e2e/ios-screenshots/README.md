@@ -6,6 +6,8 @@ One command signs into disposable fixture accounts, runs the Maestro flows in
 `catalog.json`, and writes PNGs plus a static `index.html` gallery. Add a screen
 by dropping a flow under `flows/` and appending one entry to `catalog.json`.
 
+For local code delivery, start the API with `EMAIL_EMULATOR=true`. The sign-in flow reads its one-time code from the local `/api/dev/emails` endpoint; no mail provider is needed.
+
 The app under test must already be installed on the simulator in `SIM_UDID`.
 This command does not create or boot a simulator. Point the app at a running
 API (`RAKAZO_API_URL`) and Metro bundler before you start. `DATABASE_URL` must
@@ -17,7 +19,6 @@ RAKAZO_API_URL=http://127.0.0.1:3110 \
 DATABASE_URL=postgres://USER:PASSWORD@127.0.0.1:5432/rakazo \
 RAKAZO_SCREENSHOT_EMAIL=ios-screenshots@example.test \
 RAKAZO_SCREENSHOT_EMPTY_EMAIL=ios-screenshots-empty@example.test \
-RAKAZO_SCREENSHOT_PASSWORD='replace-with-a-disposable-password' \
 pnpm ios:screenshots
 ```
 

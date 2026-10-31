@@ -16,11 +16,9 @@ import {
   vnbotBodyTone,
 } from "@rakazo/core";
 import { tokens } from "@rakazo/ui-tokens";
-import type { ComponentProps, CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { memo, useId, useMemo, useSyncExternalStore } from "react";
-import { useBotAvatarActivity } from "./bot-avatar-activity.js";
 import { cn } from "./lib/utils.js";
-import { LogoAvatar } from "./logo-avatar.js";
 import { VNBOT_SHAPES, VnbotAvatar, vnbotShape } from "./vnbot-avatar.js";
 import "./styles.css";
 
@@ -93,7 +91,6 @@ export interface BotAvatarProps {
 export const BotAvatar = memo(function BotAvatar({
   color,
   avatarSet,
-  activity,
   size = 36,
   status,
   identity = "",
@@ -147,7 +144,7 @@ export const BotAvatar = memo(function BotAvatar({
     );
   }
 
-  if (avatarSet === "vnbot") {
+  if (avatarSet === "vnbot" || avatarSet === "rakazo") {
     return (
       <div
         className={cn("rakazo-bot-avatar relative shrink-0 select-none", className)}
@@ -188,19 +185,6 @@ export const BotAvatar = memo(function BotAvatar({
           </svg>
         ) : null}
       </div>
-    );
-  }
-  if (parsed.shapeIndex === undefined && avatarSet === "rakazo") {
-    const Avatar = activity === undefined ? LiveLogoAvatar : LogoAvatar;
-    return (
-      <Avatar
-        avatarValue={color ? colorDef.hex : undefined}
-        identity={effectiveId}
-        size={size}
-        activity={activity}
-        status={status}
-        className={className}
-      />
     );
   }
   if (parsed.shapeIndex === undefined) {
@@ -292,15 +276,6 @@ export const BotAvatar = memo(function BotAvatar({
     </div>
   );
 });
-
-/** Only live Rakazo consumers subscribe to public activity updates. */
-function LiveLogoAvatar({
-  status,
-  ...props
-}: ComponentProps<typeof LogoAvatar> & { status?: string }) {
-  const activity = useBotAvatarActivity(props.identity ?? "", status);
-  return <LogoAvatar {...props} activity={activity} />;
-}
 
 function OrganicAvatar({
   color,

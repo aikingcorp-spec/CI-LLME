@@ -51,6 +51,8 @@ const NOT_PASSED: Record<string, string> = {
   GIT_SHA: "baked into the image at build time; a pass-through entry would unset it",
   BUILT_AT: "baked into the image with a timestamp file fallback; not a runtime Compose setting",
   SHELL: "host shell for the desktop computer, which only the Electron app runs",
+  RAKAZO_HOST_COMMANDS_ELEVATED:
+    "the native desktop sets this for its child API and worker; Compose runs without elevated host commands",
   CLOUDFLARE_ACCOUNT_ID: "written into Pi's environment from stored gateway settings",
   CLOUDFLARE_GATEWAY_ID: "written into Pi's environment from stored gateway settings",
   COMPOSE_PROJECT_NAME: "read by the updater sidecar, which has its own environment",
@@ -107,6 +109,8 @@ const INDIRECT = {
     "no_proxy",
   ],
   api: [
+    // Account server deployment policy is supplied through Compose.
+    "AUTH_SINGLE_OWNER",
     // core/secrets-guard.ts resolves these by name.
     "SCREEN_PROXY_SECRET",
   ],
