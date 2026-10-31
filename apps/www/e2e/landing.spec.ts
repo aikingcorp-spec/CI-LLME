@@ -27,6 +27,10 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     await expect(page.getByRole("link", { name: /release notes|ghi chú phát hành/i })).toHaveCount(0);
     await expect(page.locator('img[src*="non.svg"], img[src*="flag"], img[src*="_rejects"]')).toHaveCount(0);
     await expect(page.locator('.nav .lang')).toHaveAttribute('href', locale.lang === 'vi' ? '/en/' : '/');
+    const languageLink = page.locator(".nav .lang");
+    await expect(languageLink).toHaveAttribute("lang", locale.lang === "vi" ? "en" : "vi");
+    await expect(languageLink).toHaveAttribute("hreflang", locale.lang === "vi" ? "en" : "vi");
+    await expect(languageLink).toHaveAttribute("aria-label", locale.lang === "vi" ? "English" : "Tiếng Việt");
     for (const chip of await page.locator(".chip").all()) {
       await expect(chip).toHaveAttribute("aria-disabled", "true");
       await expect(chip).not.toHaveAttribute("href");
@@ -34,8 +38,49 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
       expect(await chip.evaluate(el => el.tagName)).toBe("SPAN");
     }
     const note = page.locator(".hero .ss");
-    await expect(note).toContainText(locale.lang === "vi" ? "có thể hiện cảnh báo" : "may show a SmartScreen warning");
+    await expect(note).toContainText(locale.lang === "vi" ? "có thể hiện cảnh báo" : "Windows SmartScreen may show a warning");
     await expect(page.locator("body")).not.toContainText("sẽ cảnh báo");
+  });
+
+  test(`${locale.lang}: mascot WebP images stay within the full-page image budget`, async ({ page }) => {
+    const transfers: Promise<number>[] = [];
+    page.on("response", response => {
+      if (response.request().resourceType() !== "image") return;
+      transfers.push((async () => {
+        expect(response.ok(), response.url()).toBe(true);
+        expect(await response.finished()).toBeNull();
+        const sizes = await response.request().sizes();
+        return sizes.responseBodySize + sizes.responseHeadersSize;
+      })());
+    });
+    await page.goto(locale.path);
+    // Visit each viewport so native lazy loading also fetches the lower sections.
+    await page.evaluate(async () => {
+      for (let y = 0; y < document.documentElement.scrollHeight; y += window.innerHeight) {
+        window.scrollTo(0, y);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    });
+    const mascots = page.locator('img[src*="/landing/img/mascots/"]');
+    expect(await mascots.count()).toBeGreaterThan(0);
+    for (const mascot of await mascots.all()) {
+      const source = mascot.locator('..').locator('source[type="image/webp"]');
+      await expect(source).toHaveCount(1);
+      const fallback = await mascot.getAttribute("src");
+      expect(fallback).not.toBeNull();
+      if (!fallback) throw new Error("Missing mascot PNG fallback");
+      await expect(source).toHaveAttribute("srcset", fallback.replace(/\.png$/, ".webp"));
+      await expect(mascot).toHaveAttribute("width", /^[1-9]\d*$/);
+      await expect(mascot).toHaveAttribute("height", /^[1-9]\d*$/);
+      await expect.poll(() => mascot.evaluate(img =>
+        img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0
+          && img.currentSrc.endsWith(".webp"),
+      )).toBe(true);
+    }
+    await page.waitForLoadState("networkidle");
+    const bytes = (await Promise.all(transfers)).reduce((sum, size) => sum + size, 0);
+    expect(bytes).toBeGreaterThan(0);
+    expect(bytes).toBeLessThan(1_500_000);
   });
 
   test(`${locale.lang}: SHA copy announces success for two seconds`, async ({ page, context }) => {
@@ -59,7 +104,7 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
       for (const button of await buttons.all()) {
         const label = button.locator(".lbl");
         expect(await label.evaluate(el => el.firstChild?.textContent)).toBe(
-          locale.lang === "en" ? "Get Windows app" : "Tải cho Windows",
+          locale.lang === "en" ? "Download for Windows" : "Tải cho Windows",
         );
         for (const element of [button, label]) {
           await expect(element).toHaveCSS("font-size", "19px");
@@ -105,6 +150,35 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
       }
     });
   }
+
+  test(`${locale.lang}: compact copy and commands fit at 390px`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(locale.path);
+    await page.evaluate(() => document.fonts.ready);
+    await page.locator(".faq details").evaluateAll(items => {
+      for (const item of items) item.setAttribute("open", "");
+    });
+    const command = page.locator(".faq details").nth(3).locator("pre > code");
+    await expect(command).toHaveText("Get-FileHash .\\VNBot-Setup-0.3.6-x64.exe -Algorithm SHA256");
+    await expect(command).toBeVisible();
+    const overflow = await page.locator("body *").evaluateAll(elements => elements
+      .filter(el => el.getClientRects().length && el.getBoundingClientRect().right > window.innerWidth)
+      .map(el => ({ tag: el.tagName, className: el.className })));
+    expect(overflow).toEqual([]);
+    for (const label of await page.locator(".eyebrow, .mate .tag").all()) {
+      const lines = await label.evaluate(el => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return new Set(Array.from(range.getClientRects(), rect => Math.round(rect.top))).size;
+      });
+      expect(lines).toBe(1);
+    }
+    for (const label of await page.locator(".hero .btn .lbl").all()) {
+      await expect(label).toHaveCSS("font-size", "19px");
+      await expect(label).toHaveCSS("font-weight", "700");
+    }
+  });
 
   test(`${locale.lang}: reduced motion leaves content visible`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });

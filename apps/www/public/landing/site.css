@@ -10,6 +10,8 @@ html{background:var(--bg)}
 body{font:400 16px/1.6 "Be Vietnam Pro",system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:var(--green-ink);text-underline-offset:3px}
 img{display:block;max-width:100%}
+picture{display:contents}
+picture img{height:auto}
 .wrap{max-width:1200px;margin:0 auto;padding:0 40px}
 section{padding:112px 0;position:relative}
 h1{font-size:64px;line-height:1.08;font-weight:800;letter-spacing:-.02em}
@@ -28,7 +30,7 @@ h3{font-size:20px;line-height:1.35;font-weight:700}
 .nav .lang{font-size:14px;color:var(--muted);font-weight:600}
 .nav .navcta{height:40px;padding:0 16px;border-radius:12px;border:1.5px solid var(--line);display:inline-flex;align-items:center;font-size:15px;font-weight:600;color:var(--ink);text-decoration:none}
 /* buttons */
-.ctas{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:600px;margin-top:32px}
+.ctas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;width:100%;max-width:640px;margin-top:32px}
 .btn{display:flex;align-items:center;justify-content:center;gap:12px;min-height:60px;padding:0 24px;border-radius:14px;font-size:19px;font-weight:700;text-decoration:none;transition:transform .18s var(--ease),box-shadow .18s var(--ease),filter .18s;outline-offset:3px}
 .btn svg{width:22px;height:22px;flex:none}
 .btn-win{background:var(--green);color:var(--on-green)}
@@ -55,7 +57,7 @@ h3{font-size:20px;line-height:1.35;font-weight:700}
 .chip em{font-style:normal;font-weight:500;opacity:.85}
 /* hero */
 .hero{padding:72px 0 96px;overflow:hidden}
-.hero .wrap{display:grid;grid-template-columns:600px 1fr;gap:40px;align-items:center}
+.hero .wrap{display:grid;grid-template-columns:640px 1fr;gap:40px;align-items:center}
 .hero h1{margin-top:18px}
 .hero .sub{margin-top:18px}
 .stage{position:relative;height:560px}
@@ -195,7 +197,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var
 .copy.copied{border-color:var(--green-ink);color:var(--green-ink)}
 .copy{font-size:13px;font-weight:600;line-height:1}
 .btn .lbl{white-space:nowrap}
-.hero .wrap{grid-template-columns:minmax(0,600px) minmax(0,1fr)}
+.hero .wrap{grid-template-columns:minmax(0,640px) minmax(0,1fr)}
 .hcopy,.dl .card>div,.webb .card>div{min-width:0}
 .nav .wrap{gap:24px}.nav ul{gap:20px}
 .reveal-marker{position:absolute;top:0;left:0;width:1px;height:80px;pointer-events:none}
@@ -212,7 +214,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var
 @supports(animation-timeline:view()){
 .js .steps[data-revealed="true"] .bar i{animation:fill linear both;animation-timeline:view();animation-range:entry 20% cover 50%}
 }
-@media(max-width:1100px) and (min-width:761px){.nav ul{gap:12px;font-size:13px}.nav .wrap{gap:16px}.hero .wrap{grid-template-columns:minmax(0,600px) minmax(0,1fr)}.stage-in{transform:scale(.7);transform-origin:top left}.ctas{gap:12px}.btn{padding:0 16px}}
+@media(max-width:1100px) and (min-width:761px){.nav ul{gap:12px;font-size:13px}.nav .wrap{gap:16px}.hero .wrap{grid-template-columns:minmax(0,640px) minmax(0,1fr)}.stage-in{transform:scale(.7);transform-origin:top left}.ctas{gap:12px}.btn{padding:0 16px}}
 @media(max-width:760px){
 html{scroll-padding-top:76px}
 .hero .wrap{grid-template-columns:1fr}
@@ -236,3 +238,13 @@ html{scroll-padding-top:76px}
 }
 
 .btn-win,.btn-win .lbl{font-size:19px;font-weight:700}
+
+/* Copy review: keep commands readable and compact labels on one line. */
+pre{max-width:100%;margin-top:10px;padding:12px;border-radius:8px;background:var(--code);white-space:pre-wrap;overflow-wrap:anywhere}
+pre code{font:500 13px/1.6 ui-monospace,Menlo,monospace}
+.eyebrow{display:inline-block;white-space:nowrap}
+@media(max-width:760px){
+.mate{padding-inline:6px}.mate .tag{padding-inline:4px;white-space:nowrap;font-size:10px}
+.marq .row{width:100%;gap:0;justify-content:space-around;animation:none}
+.marq .row picture:nth-child(n+9){display:none}.marq img{width:32px}
+}

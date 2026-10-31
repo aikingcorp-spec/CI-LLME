@@ -8,7 +8,7 @@
   const en = root.lang === 'en';
   const labels = {
     vi: { windowsDownload: 'Tải cho Windows' },
-    en: { windowsDownload: 'Get Windows app' },
+    en: { windowsDownload: 'Download for Windows' },
   };
   document.querySelectorAll('.btn-win .lbl').forEach(label => {
     label.firstChild.textContent = labels[en ? 'en' : 'vi'].windowsDownload;
@@ -75,16 +75,26 @@
   if (non) {
     const bounce = non.src;
     const base = new URL(non.dataset.blinkPose || 'base.png', bounce).href;
-    const pose = new Image();
+    const source = non.parentElement.querySelector('source[type="image/webp"]');
+    const swap = (src) => {
+      source.srcset = src.replace(/\.png$/, '.webp');
+      non.src = src;
+    };
+    const pose = document.createElement('picture');
+    const poseSource = document.createElement('source');
+    const poseImage = new Image();
+    poseSource.type = 'image/webp';
+    poseSource.srcset = base.replace(/\.png$/, '.webp');
+    pose.append(poseSource, poseImage);
     let timer;
-    pose.src = base;
+    poseImage.src = base;
     const schedule = () => {
       clearTimeout(timer);
       if (motion.matches) return;
       timer = setTimeout(() => {
-        if (!motion.matches && pose.complete && pose.naturalWidth) {
-          non.src = base;
-          setTimeout(() => { non.src = bounce; }, 160);
+        if (!motion.matches && poseImage.complete && poseImage.naturalWidth) {
+          swap(base);
+          setTimeout(() => { swap(bounce); }, 160);
         }
         schedule();
       }, 4000 + Math.random() * 2000);
