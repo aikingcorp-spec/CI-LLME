@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
@@ -13,6 +15,7 @@ import { SIGN_IN_PROGRESS_KEY } from "../lib/sign-in-progress";
 import { EMAIL_NOT_INVITED } from "../lib/user-error";
 import { VNBOT_CONTACT_URL } from "../lib/vnbot-links";
 import { AuthPage } from "./Auth";
+import { WelcomePage } from "./Welcome";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
@@ -81,10 +84,14 @@ const emailCapabilities: AuthCapabilities = {
   emailCode: true,
 };
 
+i18n.load("en", {});
+i18n.activate("en");
+
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -93,15 +100,19 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   sessionStorage.clear();
+  window.history.replaceState(null, "", "/");
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   delete window.rakazoDesktop;
 });
 async function render() {
   await act(async () =>
     root.render(
-      <MemoryRouter>
-        <AuthPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter>
+          <AuthPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
 }
@@ -181,6 +192,7 @@ it("sends a code, masks it, and signs in with a name taken from the email", asyn
   vi.mocked(authClient.signIn.emailOtp).mockResolvedValue({ data: {}, error: null } as never);
   await render();
   expect(host.querySelector("h1")!.textContent).toBe("Get started with VNBot");
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
   await enter(host.querySelector('input[name="email"]'), " person@example.com ");
   await submit();
   expect(authClient.emailOtp.sendVerificationOtp).toHaveBeenCalledWith({
@@ -192,6 +204,7 @@ it("sends a code, masks it, and signs in with a name taken from the email", asyn
   });
   expect(host.querySelector("h1")!.textContent).toBe("Check your email");
   const code = host.querySelector('input[aria-label="6-digit sign-in code"]')!;
+  expect(document.activeElement).toBe(code);
   expect(code.getAttribute("autocomplete")).toBe("one-time-code");
   await enter(code, "123456");
   expect(host.textContent).not.toContain("123456");
@@ -235,6 +248,38 @@ it("shows the not-invited panel for EMAIL_NOT_INVITED and keeps the email", asyn
   expect(host.querySelector('[role="status"]')).toBeNull();
 });
 
+it("returns focus to the code input after a wrong code is rejected", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+    data: { success: true },
+    error: null,
+  } as never);
+  let rejectCode!: (result: never) => void;
+  vi.mocked(authClient.signIn.emailOtp).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        rejectCode = resolve;
+      }),
+  );
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "ada@example.com");
+  await submit();
+  const code = host.querySelector<HTMLInputElement>('input[aria-label="6-digit sign-in code"]')!;
+  await enter(code, "111111");
+  host.querySelector<HTMLButtonElement>('[data-testid="language-switch"]')!.focus();
+  expect(document.activeElement).not.toBe(code);
+  await act(async () =>
+    rejectCode({
+      data: null,
+      error: { code: "INVALID_OTP", message: "Invalid code", status: 400, statusText: "" },
+    } as never),
+  );
+  expect(code.disabled).toBe(false);
+  expect(code.value).toBe("");
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  expect(document.activeElement).toBe(code);
+});
+
 it("rejects a bad code without leaving the digits on the page, and offers a new code when it expires", async () => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
@@ -256,6 +301,191 @@ it("rejects a bad code without leaving the digits on the page, and offers a new 
   expect(host.querySelector<HTMLInputElement>('input[name="email"]')!.value).toBe(
     "ada@example.com",
   );
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
+});
+
+describe("focus across real browser navigation", () => {
+  const emailInput = () => host.querySelector<HTMLInputElement>('input[name="email"]');
+  const codeInput = () => host.querySelector('input[aria-label="6-digit sign-in code"]');
+
+  // The routes App.tsx declares for a signed-out visitor, on the router main.tsx uses.
+  async function renderFromLanding() {
+    window.history.replaceState(null, "", "/");
+    await act(async () =>
+      root.render(
+        <I18nProvider i18n={i18n}>
+          <BrowserRouter useTransitions={false}>
+            <Routes>
+              <Route path="/" element={<WelcomePage />} />
+              <Route path="/sign-in" element={<AuthPage key="in" />} />
+            </Routes>
+          </BrowserRouter>
+        </I18nProvider>,
+      ),
+    );
+  }
+  async function followSignInLink() {
+    await act(async () => host.querySelector<HTMLAnchorElement>('a[href="/sign-in"]')!.click());
+  }
+  async function traverse(delta: number) {
+    await act(async () => {
+      const landed = new Promise((resolve) =>
+        window.addEventListener("popstate", resolve, { once: true }),
+      );
+      window.history.go(delta);
+      await landed;
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+  }
+
+  beforeEach(() => {
+    vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
+    vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+      data: { success: true },
+      error: null,
+    } as never);
+  });
+
+  it("focuses email after following the landing page's sign-in link", async () => {
+    await renderFromLanding();
+    expect(emailInput()).toBeNull();
+    await followSignInLink();
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("focuses email again after going back to the landing page and forward", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/");
+    expect(emailInput()).toBeNull();
+    await traverse(1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("returns from the code step to the prefilled, focused email step on back", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    expect(document.activeElement).toBe(codeInput());
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(codeInput()).toBeNull();
+    expect(emailInput()!.value).toBe("history@example.com");
+    expect(document.activeElement).toBe(emailInput());
+    expect(JSON.parse(sessionStorage.getItem(SIGN_IN_PROGRESS_KEY)!)).toMatchObject({
+      email: "history@example.com",
+      step: "email",
+    });
+  });
+
+  it("restores and focuses the code step on forward, then email on a different email", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    expect(document.activeElement).toBe(codeInput());
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(codeInput()).toBeNull();
+    await traverse(1);
+    expect(document.activeElement).toBe(codeInput());
+    await act(async () => button("Use a different email").click());
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("returns on forward to the email the code went to, not one edited since", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    await traverse(-1);
+    await enter(emailInput(), "edited@example.com");
+    await traverse(1);
+    expect(host.textContent).toContain("history@example.com");
+    expect(host.textContent).not.toContain("edited@example.com");
+    expect(document.activeElement).toBe(codeInput());
+  });
+
+  it("leaves the page from the email step reached by back", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    await traverse(-1);
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/");
+    expect(emailInput()).toBeNull();
+  });
+
+  it("keeps back on the email step for a code step restored on a later visit", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    await traverse(-2);
+    expect(window.location.pathname).toBe("/");
+    await followSignInLink();
+    expect(document.activeElement).toBe(codeInput());
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(emailInput()!.value).toBe("history@example.com");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("keeps back on the email step after reloading the code step", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    // Simulate F5: a fresh mount on the same history entry and sessionStorage.
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await act(async () =>
+      root.render(
+        <I18nProvider i18n={i18n}>
+          <BrowserRouter useTransitions={false}>
+            <Routes>
+              <Route path="/sign-in" element={<AuthPage key="in" />} />
+            </Routes>
+          </BrowserRouter>
+        </I18nProvider>,
+      ),
+    );
+    expect(document.activeElement).toBe(codeInput());
+    await traverse(-1);
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(emailInput()!.value).toBe("history@example.com");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("refocuses email when history moves within the mounted sign-in page", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    await act(async () => button("Use a different email").click());
+    window.history.pushState(null, "", "/sign-in?next=%2Fapp");
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    await traverse(-1);
+    expect(window.location.search).toBe("");
+    expect(document.activeElement).toBe(emailInput());
+  });
+
+  it("refocuses the code field when history moves within the mounted sign-in page", async () => {
+    await renderFromLanding();
+    await followSignInLink();
+    await enter(emailInput(), "history@example.com");
+    await submit();
+    window.history.pushState(null, "", "/sign-in?next=%2Fapp");
+    (document.activeElement as HTMLElement).blur();
+    await traverse(-1);
+    expect(document.activeElement).toBe(codeInput());
+  });
 });
 
 it("does not submit an unfinished code", async () => {
@@ -344,9 +574,11 @@ it("shows the not-invited state for ?error=EMAIL_NOT_INVITED (OIDC callback / re
   );
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/sign-in?error=EMAIL_NOT_INVITED"]}>
-        <AuthPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/sign-in?error=EMAIL_NOT_INVITED"]}>
+          <AuthPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
   const status = host.querySelector('[role="status"]')!;
@@ -364,9 +596,11 @@ it("shows the link-SSO-from-Settings copy for ?error=ACCOUNT_NOT_LINKED (SSO cal
   vi.mocked(fetchAuthCapabilities).mockResolvedValue(emailCapabilities);
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/sign-in?error=ACCOUNT_NOT_LINKED"]}>
-        <AuthPage />
-      </MemoryRouter>,
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/sign-in?error=ACCOUNT_NOT_LINKED"]}>
+          <AuthPage />
+        </MemoryRouter>
+      </I18nProvider>,
     ),
   );
   expect(host.querySelector('[role="alert"]')!.textContent).toBe(
