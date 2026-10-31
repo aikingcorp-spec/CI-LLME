@@ -1,4 +1,5 @@
 # VNBot BRAND: bộ file đã chốt (nguồn duy nhất)
+> Cập nhật 2026-10-31 22:49 (ICT), D012: icon app = bé Nón len cầm cờ (2870083f1918), được dùng trên landing; khối cam là Rakazo, cấm.
 Cập nhật: 2026-10-30 (giờ Sài Gòn, UTC+7). Anh AIKING duyệt lần cuối 30/10 lúc 17:26.
 Mọi bot dùng ĐÚNG các file dưới đây. Không vẽ lại, không làm bản mới, không lấy file ở chỗ khác.
 Trước khi dùng file, kiểm sha256 (12 ký tự đầu) khớp bảng. Lệch là sai file: dừng lại, hỏi Maya.
@@ -51,7 +52,7 @@ Lời anh: "Cái landing thì 8 còn trên app thì 5 con trước".
 | Landing vnbot.run | 8 bé len (Nón, Sen, Sương, Lồng Đèn, Rằn, Chưng, Áo Dài, Tre), đã duyệt | mascot-felt-v1/ (tree 4d8826bf85f8) → handoffs/VNB-015/mascots → apps/www/public/landing/img/mascots/ |
 | App (web app, desktop, mobile) | giữ 5 bé icons-v2 (Nón, Chưng, Áo Dài, Rằn, Sen) cho tới khi anh chốt khác | icons-v2/svg/ (tree c2e3a01d56b2) |
 - Không đưa Lồng Đèn, Sương, Tre vào app khi anh chưa nói.
-- Icon app (bé Nón cầm cờ) không dùng trên landing.
+- Icon app (bé Nón cầm cờ, 2870083f1918) ĐƯỢC dùng trên landing làm logo/nav icon (D012). Không dùng nó làm mascot.
 
 ## Lời duyệt của anh AIKING
 - Icon:
@@ -78,6 +79,7 @@ Lời anh: "Cái landing thì 8 còn trên app thì 5 con trước".
 - <box-Maya>/vnbot-brand/_archive/ (mọi thứ trong đó: logo/ cũ, android-icon/ vẽ lại phẳng đã bị loại, wordmark v2, v3, vnbot-run/, fontopt-*, compare-*).
 - wordmark/vnbot-wordmark-{light,dark}.svg/png và wordmark/vnbot-wordmark-powered-{light,dark}.* (tên không có v4): bản cũ, KHÁC v4. Còn để tại chỗ chỉ vì mockup UI và ui/welcome-auth/build.py đang trỏ tới. Không dùng cho việc mới.
 - Icon Rakazo cũ trong repo apps/www/public (md5 d4b9edf6…).
+- **Mọi icon Rakazo** (sản phẩm khác, D012): khối cam 99c3a0e9d34a (`apps/desktop/assets/icon.png` trên main), `packages/ui-tokens/assets/Rakazo.icon/` (orange-bot.png 06048b034dca). Cấm dùng cho VNBot ở mọi nơi.
 - Bất kỳ icon/wordmark nào tự vẽ lại hoặc tự sinh.
 - icons-v2/svg/*.svg (bộ 5 phẳng) cho landing: landing dùng mascot-felt-v1. Riêng app vẫn giữ bộ 5 này theo D011 (apps/web VnbotMascotRow.tsx).
 - Pose bị loại: VNB-015/mascots/_rejects/.
@@ -96,11 +98,12 @@ Lời anh: "Cái landing thì 8 còn trên app thì 5 con trước".
 
 ## Icon ≠ mascot
 - Icon app là **bé Nón len cầm cờ Việt Nam**: master sha **2870083f1918**.
-  - Chỉ dùng làm icon app/web/store. Bé Nón cầm cờ **không bao giờ** là mascot.
+  - Dùng làm icon app/desktop/web/store và logo trên landing (nav, footer) — anh Hùng chốt 31/10 22:49 (D012): "Brand ghi sai khúc đó á, icon app mà khối màu cam là sai cái đó là rakazo".
+  - Bé Nón cầm cờ **không bao giờ** là mascot hay pose.
 - Mascot và pose **không bao giờ** được:
   - cầm hay mang cờ;
   - đặt trong ô vuông bo góc hoặc vòng tròn nền kiểu icon;
   - dùng bố cục chính diện nửa người cắt sát giống icon.
-- Không dùng mascot làm icon, và không dùng icon làm mascot trên landing.
-- Không có khối cam (orange blob) ở bất cứ đâu.
+- Không dùng mascot làm icon, và không dùng icon làm mascot (logo nav/footer thì được).
+- Không có khối cam (orange blob) ở bất cứ đâu: đó là icon Rakazo 99c3a0e9d34a, không phải VNBot (D012).
 - QC mỗi pose của Nón: đặt cạnh icon 2870083f1918 và kiểm 3 điều trên.
