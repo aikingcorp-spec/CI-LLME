@@ -29,6 +29,7 @@ for (const os of ["windows", "linux", "mac", "ios", "android", "unknown"]) {
     const block = page.locator("#download");
     await expect(block).toBeVisible();
     if (os === "windows") {
+      await expect(block.getByRole("link", { name: "Ghi chú phát hành", exact: true })).toHaveCount(0);
       await expect(block.locator(".dl-primary")).toHaveAttribute(
         "href",
         "https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe",
@@ -180,13 +181,13 @@ test("standalone #requirements is removed and install steps match origin/main", 
   await expect(page.locator('[data-i="s3"]')).toHaveText("Connect your model and give your first bot a job");
 });
 
-test("release notes is omitted when gated and a link when enabled", async ({ page }) => {
+test("release notes is omitted until notes are published", async ({ page }) => {
   await page.goto("/?os=linux");
   await expect(page.locator("#download .dl-links").getByText("Ghi chú phát hành")).toHaveCount(0);
   await expect(page.locator("#download .dl-links a", { hasText: "Ghi chú phát hành" })).toHaveCount(0);
 
   await page.goto("/?os=windows");
-  await expect(page.locator("#download .dl-links a", { hasText: "Ghi chú phát hành" })).toHaveCount(1);
+  await expect(page.locator("#download .dl-links a", { hasText: "Ghi chú phát hành" })).toHaveCount(0);
 });
 
 test("Windows icon in .dl-other is monochrome and matches Linux icon colour", async ({ page }) => {
