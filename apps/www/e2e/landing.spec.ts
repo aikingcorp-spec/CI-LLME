@@ -42,6 +42,56 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     await expect(page.locator("body")).not.toContainText("sẽ cảnh báo");
   });
 
+  for (const width of [1440, 1280]) {
+    test(`${locale.lang}: hero heading has two lines at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(locale.path);
+      await page.evaluate(() => document.fonts.ready);
+      const lines = await page.locator(".hero h1").evaluate(heading => {
+        const walker = document.createTreeWalker(heading, NodeFilter.SHOW_TEXT);
+        const rows: { top: number; words: string[] }[] = [];
+        let node = walker.nextNode();
+        while (node) {
+          for (const match of (node.textContent ?? "").matchAll(/\S+/g)) {
+            const range = document.createRange();
+            range.setStart(node, match.index);
+            range.setEnd(node, match.index + match[0].length);
+            for (const rect of range.getClientRects()) {
+              const row = rows.find(row => Math.abs(row.top - rect.top) < 1);
+              if (row) row.words.push(match[0]);
+              else rows.push({ top: rect.top, words: [match[0]] });
+            }
+          }
+          node = walker.nextNode();
+        }
+        return rows.sort((a, b) => a.top - b.top).map(row => row.words.join(" "));
+      });
+      console.log("HERO HEADING", locale.lang, `${width}x900`, lines);
+      expect(lines).toHaveLength(2);
+      if (locale.lang === "vi") expect(lines).toEqual(["Đội nhân viên AI", "của riêng bạn"]);
+    });
+  }
+
+  test(`${locale.lang}: mobile hero stage and actions fit at 390x844`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(locale.path);
+    await page.evaluate(() => document.fonts.ready);
+    const stage = await page.locator(".hero .stage").boundingBox();
+    expect(stage).not.toBeNull();
+    expect(stage?.height).toBe(168);
+    const boxes = [];
+    for (const selector of [".hero .ss", ".hero .ctas .btn-win", ".hero .ctas .btn-web"]) {
+      const box = await page.locator(selector).boundingBox();
+      if (!box) throw new Error(`Missing ${selector}`);
+      boxes.push({ selector, ...box });
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(844);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(390);
+    }
+    console.log("MOBILE HERO", locale.lang, { stageHeight: stage?.height, boxes });
+  });
+
   test(`${locale.lang}: mascot WebP images stay within the full-page image budget`, async ({ page }) => {
     const transfers: Promise<number>[] = [];
     page.on("response", response => {
