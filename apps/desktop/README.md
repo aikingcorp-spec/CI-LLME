@@ -16,7 +16,7 @@ VNBot uses `%APPDATA%\VNBot` on Windows and `~/.config/VNBot` on Linux
 (or `$XDG_CONFIG_HOME/VNBot`). The local web address is in `stack/.desktop-web-url`.
 Explicit `--user-data-dir` and performance test profiles override the default.
 
-Earlier builds may have used a directory named `rakazo` or `@rakazo/desktop`.
+Earlier builds may have used a different application data directory.
 Those profiles can contain Docker setup and persistent native data; this change
 does not move them automatically. To reuse one, launch with `--user-data-dir`
 pointing to that existing profile. Docker volumes remain owned by Docker.

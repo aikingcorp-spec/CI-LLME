@@ -56,6 +56,7 @@ jobs:
       - name: Check packaged server resources
         run: |
           $resources = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/out/win-unpacked/resources'
+          $modules = Join-Path $resources 'app.asar.unpacked/node_modules'
           # The P2P bundles load from inside the archive; the native addon stays unpacked.
           $archive = Join-Path $resources 'app.asar'
           $asarFiles = @(npx --yes @electron/asar@3.4.1 list $archive) -replace '\\', '/'
