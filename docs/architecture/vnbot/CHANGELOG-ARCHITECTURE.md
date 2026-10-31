@@ -336,16 +336,6 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/www` (pages, `astro.config.mjs`, `vercel.json`, e2e, removed content), `packages/auth/src/sign-in-code-templates.ts`, `packages/auth/src/index.test.ts`, `packages/ui-tokens` (brand export no longer writes a marketing mark).
 - Invariants affected: sign-in code generation, verification and delivery are unchanged; only email markup dimensions differ. The signed-in product, API and database are unchanged.
 - ADR: none.
-## 2026-10-30 — Add isolated P2P gateway test environment
-
-- Date: 2026-10-30
-- Pull request: pending (VNB-014).
-- What changed versus baseline: added a workers.dev-only `p2p-test` Wrangler environment with separate D1 and NodeRoom Durable Object bindings.
-- Why: provide an isolated deployment target for owner-approved P2P validation without changing existing gateway routes.
-- Modules and files: `apps/p2p-gateway/wrangler.toml`, `packages/p2p-prototype/package.json`.
-- Invariants affected: production gateway bindings and routes remain unchanged; room topology remains node-hub with no client relay.
-- ADR: none.
-
 
 ## 2026-10-30 — Native desktop local node orchestration
 
@@ -356,6 +346,17 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/desktop/src/main.ts`, `main-app.ts`, `native-postgres.test.ts`, `native-stack.ts`, `native-services.ts`, `native-migrate.ts`, `native-smoke.ts`, `native-local-stack.ts`, related tests, and `apps/desktop/NOTES-FOR-KAI.md`.
 - Invariants affected: data stays on the customer node; migration owner credentials remain separate from the runtime role; RLS, shared UI and existing host-command permissions are retained. Loopback endpoints and private files remain local. Original SQL files and baseline documentation are unchanged.
 - ADR: [0009](adr/0009-native-desktop-local-runtime.md).
+
+## 2026-10-30 — Add isolated P2P gateway test environment
+
+- Date: 2026-10-30
+- Pull request: pending (VNB-014).
+- What changed versus baseline: added a workers.dev-only `p2p-test` Wrangler environment with separate D1 and NodeRoom Durable Object bindings.
+- Why: provide an isolated deployment target for owner-approved P2P validation without changing existing gateway routes.
+- Modules and files: `apps/p2p-gateway/wrangler.toml`, `packages/p2p-prototype/package.json`.
+- Invariants affected: production gateway bindings and routes remain unchanged; room topology remains node-hub with no client relay.
+- ADR: none.
+
 
 ## 2026-10-30 — Native desktop stack starts on Linux
 
