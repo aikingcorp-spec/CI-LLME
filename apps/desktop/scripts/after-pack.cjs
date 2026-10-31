@@ -55,15 +55,16 @@ async function hydratePostgresSymlinks(appOutDir) {
       throw error;
     }
     if (!Array.isArray(entries)) throw new Error(`Invalid Postgres symlink manifest: ${manifest}`);
+    const realRoot = await realpath(root);
 
     for (const entry of entries) {
       const source = packagePath(root, entry?.source);
       const target = packagePath(root, entry?.target);
       if (await exists(target)) continue;
-      if (!within(root, await realpath(source))) {
+      if (!within(realRoot, await realpath(source))) {
         throw new Error(`Postgres symlink source escapes package: ${entry.source}`);
       }
-      if (!within(root, await realpath(path.dirname(target)))) {
+      if (!within(realRoot, await realpath(path.dirname(target)))) {
         throw new Error(`Postgres symlink target escapes package: ${entry.target}`);
       }
       await symlink(path.relative(path.dirname(target), source), target);

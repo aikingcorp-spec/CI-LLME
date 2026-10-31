@@ -464,7 +464,7 @@ describe("NativePostgres lifecycle", () => {
       // The lifecycle tests touch the real temp directory and compare against host `path.join`,
       // so the code under test must build host-native paths whatever platform it is told.
       path,
-      getuid: () => 1000,
+      getuid: () => process.getuid?.() ?? 0,
       exists: () => true,
       run: fakeRun(),
       allocatePort: async () => next++,

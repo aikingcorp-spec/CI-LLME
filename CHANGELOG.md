@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- Desktop: fix Windows-only unit test failures (after-pack realpath of package root; native-postgres test uid) so desktop-windows CI passes.
+
 ### Changed
 
 - Legacy orange bot avatar artwork is removed; web and mobile use the uncropped owner bé Nón master where that art appeared.
