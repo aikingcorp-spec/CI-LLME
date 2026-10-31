@@ -184,7 +184,7 @@ export function forwardChannelHandler(target: string): NodeChannelHandler {
     fetch(new URL(`/rpc/${procedure.split("/").map(encodeURIComponent).join("/")}`, target), {
       method: "POST",
       headers,
-      body,
+      body: new Uint8Array(body),
       signal,
     });
   return {

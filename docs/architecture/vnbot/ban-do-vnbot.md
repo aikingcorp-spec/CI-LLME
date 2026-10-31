@@ -1,6 +1,6 @@
 # Bản đồ VNBot
 
-VNBot hôm nay vẫn chạy hệ Rakazo trên máy khách. Web đã đổi lớp nhìn thấy: màu ôliu, đăng nhập bằng email rồi mã 6 số, và tiếng Việt là ngôn ngữ mặc định. Cổng vnbot.run và kênh WebRTC vẫn là đề xuất, chưa có trong mã đang chạy. Bản đóng băng tại commit `c4b24547` nằm ở `docs/architecture/rakazo-baseline/ban-do-rakazo-goc.md`. Những gì đã đổi được ghi ở `docs/architecture/vnbot/CHANGELOG-ARCHITECTURE.md`.
+VNBot hôm nay vẫn chạy hệ Rakazo trên máy khách. Web đã đổi lớp nhìn thấy: màu ôliu, đăng nhập bằng email rồi mã 6 số, và tiếng Việt là ngôn ngữ mặc định. Đường ghép nối và kênh dữ liệu WebRTC đã có mã cho web và desktop; triển khai thực tế và đường qua TURN chưa được kiểm chứng trong thay đổi này. Bản đóng băng tại commit `c4b24547` nằm ở `docs/architecture/rakazo-baseline/ban-do-rakazo-goc.md`. Những gì đã đổi được ghi ở `docs/architecture/vnbot/CHANGELOG-ARCHITECTURE.md`.
 
 Đăng nhập có thể chỉ còn mã email: `AUTH_EMAIL_CODE_ONLY` đóng đường mật khẩu, passkey vẫn dùng được. `AUTH_EMAIL_ALLOWLIST=on` thì chỉ email trong bảng `auth_email_allowlist` nhận được mã, tạo được tài khoản, hoặc mở được phiên. Địa chỉ không có trong danh sách nhận HTTP 403 `EMAIL_NOT_INVITED` và không có email. Bot mới mặc định bộ avatar `vnbot`; bot cũ giữ bộ đã lưu.
 
@@ -10,7 +10,7 @@ Ví thanh toán đã được gỡ khỏi giao diện và RPC của node. Bảng
 
 Desktop Linux và Windows đã có mã chạy node cục bộ không cần Docker: PostgreSQL 16 đi kèm, API và worker chạy bằng Electron utility process, giao diện web dùng lại bản chung. macOS vẫn dùng Docker. Bản phát hành native còn chờ đóng gói binary và tài nguyên server; chưa phải bản cài đặt đã kiểm chứng. Quyền chạy lệnh trên máy vẫn theo thiết lập hiện có. Xem [ADR 0009](adr/0009-native-desktop-local-runtime.md).
 
-## Đề xuất: cổng vnbot.run và máy của khách
+## Cổng vnbot.run và máy của khách: đã có đường web P2P
 
 Khách chạy cả hệ thống trên máy của họ (Mac mini ở nhà, máy văn phòng, hoặc VPS của họ). Máy đó là một nút: API, worker, cơ sở dữ liệu, và máy tính của bot. Dữ liệu chat ở lại đó.
 
@@ -33,8 +33,10 @@ Nút không cần mở cổng vào. Một chương trình nhỏ trên nút tự 
 
 Quyền: đăng nhập ở vnbot.run chỉ đủ để xin nối vào nút của mình. Nút tự kiểm tra chữ ký và người đó đã được ghép chưa, rồi mới cho gọi API. Mật khẩu và phiên của nút không gửi lên cổng.
 
-Hôm nay web gọi `/rpc` và `/api/auth` ngay trên trang đang mở. Điện thoại gọi một địa chỉ https. Cả hai đều là HTTP tới một máy. Đề xuất thêm một lớp vận chuyển để cùng những lời gọi đó chạy trên kênh WebRTC khi người dùng đang ở vnbot.run. Máy ở nhà vẫn dùng https trực tiếp.
+Bản web có cấu hình cổng P2P (`VITE_P2P_GATEWAY_URL`) mở màn hình ghép nối trước khi vào ứng dụng. Web xin token từ `/api/auth/p2p-token`, lấy mã ghép và danh sách máy từ cổng đã cấu hình, rồi bắt tay qua WebSocket. Các lời gọi RPC và luồng sự kiện tới máy đã chọn đi trên kênh dữ liệu WebRTC; mất kết nối thì quay lại màn hình ghép nối, không gửi RPC sang cổng. Bản web chưa cấu hình cổng thì P2P tắt hẳn: không có cổng mặc định, menu tài khoản ẩn mục ghép nối, `/app/pairing` chỉ báo lỗi cấu hình, không xin token và không gọi cổng nào. Bản đó và Electron vẫn gọi API trực tiếp như trước. Web và desktop xin thông tin xác thực TURN ngắn hạn từ cổng khi đã cấu hình; nếu chưa bật hoặc có lỗi thì giữ STUN mặc định. Máy desktop xin lại trước mỗi kết nối mới. Đường TURN thực tế chưa được kiểm chứng ngoài mạng cục bộ.
 
 Ba bước: trước hết https tới nút qua đường hầm; rồi kênh dữ liệu WebRTC; sau cùng mới tới hình và tiếng trên cùng kết nối đó. Ảnh màn hình bot bên trong nút không phải việc của đề xuất này.
 
 Quyết định đang ở trạng thái đề xuất: `docs/architecture/vnbot/adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md`.
+
+VNB-044 chỉ bổ sung giao diện web (dùng được ở chiều rộng 360px); Expo chưa có màn hình này. Các đường HTTP ngoài RPC như tệp và màn hình máy tính chưa được chuyển sang kênh dữ liệu.

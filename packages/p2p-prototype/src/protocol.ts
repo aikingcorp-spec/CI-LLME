@@ -1,3 +1,17 @@
+/** Browser WebSocket authentication shared with the gateway. */
+export const SIGNAL_SUBPROTOCOL = "vnbot.v1";
+export const ASSERTION_SUBPROTOCOL_PREFIX = "assertion.";
+export const NODE_KINDS = ["windows", "linux", "macos", "vps", "unknown"] as const;
+export type NodeKind = (typeof NODE_KINDS)[number];
+export interface PairedNode {
+  nodeId: string;
+  name: string;
+  kind: NodeKind;
+  pairedAt: number;
+  lastSeenAt: number | null;
+  online: boolean;
+}
+
 export type NodeId = string;
 export type RelayRequest = {
   kind: "request";

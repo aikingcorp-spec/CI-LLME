@@ -1,6 +1,11 @@
 import type { NodeRoom } from "./node-room.js";
 
 export interface Env {
+  /** coturn use-auth-secret shared secret; optional. */
+  TURN_SECRET?: string;
+  /** Comma-separated TURN/TURNS URLs. */
+  TURN_URLS?: string;
+  TURN_TTL_SECONDS?: string;
   DB: D1Database;
   NODE_ROOM: DurableObjectNamespace<NodeRoom>;
   /** Secret. Raw 32-byte Ed25519 private key, base64url. */

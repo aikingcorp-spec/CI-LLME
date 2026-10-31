@@ -368,6 +368,9 @@ importers:
       '@rakazo/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@rakazo/p2p-prototype':
+        specifier: workspace:*
+        version: link:../../packages/p2p-prototype
       '@rakazo/logging':
         specifier: workspace:*
         version: link:../../packages/logging

@@ -1,7 +1,15 @@
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fetchNodeTurnServers } from "../../../packages/p2p-prototype/src/gateway-client.js";
+import {
+  generateKeyPair,
+  nodeProofMessage,
+  parseNodeProof,
+  verify,
+} from "../../../packages/p2p-prototype/src/pairing.js";
 import type { P2PChild, P2PNodeKeyFile, P2PPairingModule } from "./p2p-node.js";
 import {
+  desktopIceServers,
   hasNativeAddon,
   nodeDatachannelBinaryDir,
   P2P_AGENT_MODULE_ENV,
@@ -14,6 +22,67 @@ import {
 } from "./p2p-node.js";
 
 const WIN_RESOURCES = "C:\\Users\\Ada\\AppData\\Local\\Programs\\VNBot\\resources";
+
+describe("desktop TURN discovery", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const key = generateKeyPair();
+  const gatewayUrl = "https://gateway.example.test";
+  const turn = {
+    urls: [
+      "turn:relay.example.test:3479?transport=udp",
+      "turn:relay.example.test:3479?transport=tcp",
+      "turns:relay.example.test:5350",
+    ],
+    username: "test-expiry:node-1",
+    credential: "dummy-turn-credential",
+    ttl: 600,
+  };
+  it("authenticates with the node key and merges UDP, TCP and TLS TURN with STUN", async () => {
+    const request = vi.fn<typeof fetch>(async () => Response.json(turn));
+    vi.stubGlobal("fetch", request);
+    const servers = await desktopIceServers(gatewayUrl, "node-1", key, fetchNodeTurnServers);
+    expect(servers).toEqual([
+      "stun:stun.l.google.com:19302",
+      ...["TurnUdp", "TurnTcp", "TurnTls"].map((relayType) => ({
+        hostname: "relay.example.test",
+        port: relayType === "TurnTls" ? 5350 : 3479,
+        username: turn.username,
+        password: turn.credential,
+        relayType,
+      })),
+    ]);
+    const [url, init] = request.mock.calls[0]!;
+    expect(url).toBe(`${gatewayUrl}/turn-credentials?peer=node-1`);
+    const header = new Headers(init?.headers).get("authorization")!;
+    expect(header.startsWith("Node ")).toBe(true);
+    const proof = parseNodeProof(header.slice(5))!;
+    expect(
+      verify(key.publicKey, nodeProofMessage("signal", proof.nodeId, proof.ts), proof.sig),
+    ).toBe(true);
+    expect(init).toMatchObject({ credentials: "omit", cache: "no-store", redirect: "error" });
+    await desktopIceServers(gatewayUrl, "node-1", key, fetchNodeTurnServers);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+  it.each(["501", "500", "network", "malformed"])(
+    "keeps configured STUN on TURN %s",
+    async (failure) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          if (failure === "network") throw new Error("offline");
+          return failure === "malformed"
+            ? Response.json({ ...turn, urls: [] })
+            : new Response(null, { status: Number(failure) });
+        }),
+      );
+      await expect(
+        desktopIceServers(gatewayUrl, "node-1", key, fetchNodeTurnServers, [
+          "stun:stun.example.test:3478",
+        ]),
+      ).resolves.toEqual(["stun:stun.example.test:3478"]);
+    },
+  );
+});
 
 describe("nodeDatachannelBinaryDir", () => {
   it("points at the unpacked addon directory with Windows separators", () => {

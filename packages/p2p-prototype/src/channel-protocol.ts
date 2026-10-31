@@ -23,9 +23,10 @@ export type ChannelFrame =
   | { t: "end" | "cancel"; bearer: string; id: string }
   | { t: "error"; bearer: string; id: string; message: string };
 
-export const encodeBytes = (body: Uint8Array): string => Buffer.from(body).toString("base64");
+export const encodeBytes = (body: Uint8Array): string =>
+  btoa(Array.from(body, (byte) => String.fromCharCode(byte)).join(""));
 export const decodeBytes = (body: string): Uint8Array =>
-  new Uint8Array(Buffer.from(body, "base64"));
+  Uint8Array.from(atob(body), (char) => char.charCodeAt(0));
 
 export function decodeChannelFrame(raw: string): ChannelFrame {
   const value: unknown = JSON.parse(raw);
@@ -38,7 +39,7 @@ export function decodeChannelFrame(raw: string): ChannelFrame {
   };
   const bytes = (key: string): string => {
     const s = str(key);
-    if (Buffer.from(s, "base64").toString("base64") !== s) throw new Error("invalid base64");
+    if (encodeBytes(decodeBytes(s)) !== s) throw new Error("invalid base64");
     return s;
   };
   const headers = (): Record<string, string> => {

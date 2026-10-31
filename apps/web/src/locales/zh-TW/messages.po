@@ -22,7 +22,7 @@ msgstr ""
 #. js-lingui-explicit-id
 #: src/App.tsx
 msgid "Go home"
-msgstr ""
+msgstr "返回首頁"
 
 #: src/pages/shell/sidebar-roster.tsx
 msgid " (unread)"
@@ -1173,6 +1173,7 @@ msgstr "無法讀取影像"
 #: src/pages/model-settings/space-bots-model.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/agent-import-undo.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1611,6 +1612,7 @@ msgstr "請確認此瀏覽器工作階段可以存取該 URL，然後重新測�
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/model-settings/role-model-picker.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "連線"
@@ -1679,6 +1681,7 @@ msgstr ""
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1699,6 +1702,7 @@ msgstr ""
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connecting…"
@@ -1872,6 +1876,10 @@ msgstr "無法連接此語音供應商"
 msgid "Could not connect to the computer screen"
 msgstr "無法連線至電腦螢幕"
 
+#: src/pages/Pairing.tsx
+msgid "Could not connect. Try another network."
+msgstr "無法連線。請嘗試其他網路。"
+
 #: src/components/AccountAccess.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/PasskeyOffer.tsx
@@ -2022,6 +2030,10 @@ msgstr "無法載入 MCP 伺服器"
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Could not load model settings"
 msgstr "無法載入模型設定"
+
+#: src/pages/Pairing.tsx
+msgid "Could not load pairing information"
+msgstr "無法載入配對資訊"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
@@ -2602,6 +2614,7 @@ msgstr "捨棄錄製內容"
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect"
 msgstr "中斷"
@@ -2613,6 +2626,10 @@ msgstr "要中斷 {disconnectName} 的連線嗎？"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect Self-hosted"
 msgstr "中斷自架服務的連線"
+
+#: src/pages/Pairing.tsx
+msgid "Disconnected"
+msgstr "已中斷連線"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Disconnected {disconnectName}."
@@ -2795,6 +2812,10 @@ msgstr "測試前請輸入 API 金鑰。"
 #: src/pages/Auth.tsx
 msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
 msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Enter this code in the desktop app. It expires in two minutes."
+msgstr "請在桌面應用程式中輸入此代碼。代碼將在兩分鐘後到期。"
 
 #: src/pages/Auth.tsx
 msgid "Enter your email to get a 6-digit sign-in code."
@@ -3086,6 +3107,10 @@ msgstr ""
 msgid "Get in touch (opens in new tab)"
 msgstr ""
 
+#: src/pages/Pairing.tsx
+msgid "Get pairing code"
+msgstr "取得配對碼"
+
 #: src/pages/Welcome.tsx
 msgid "Get started"
 msgstr ""
@@ -3109,6 +3134,10 @@ msgstr "正在準備"
 #: src/pages/RoutineEditor.tsx
 msgid "Git event"
 msgstr "Git 事件"
+
+#: src/pages/Pairing.tsx
+msgid "Go home"
+msgstr "返回首頁"
 
 #: src/lib/identity-display.ts
 #: src/pages/MessagingSettingsPanel.tsx
@@ -3573,6 +3602,10 @@ msgstr "載入更早的執行紀錄"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Load web images automatically"
 msgstr "自動載入網路圖片"
+
+#: src/pages/Pairing.tsx
+msgid "Loading"
+msgstr "載入中"
 
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
@@ -4183,6 +4216,10 @@ msgstr "未列出模型。"
 msgid "No OpenClaw, Hermes or agent document found."
 msgstr "找不到 OpenClaw、Hermes 或代理程式文件。"
 
+#: src/pages/Pairing.tsx
+msgid "No paired computers"
+msgstr "沒有已配對的電腦"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr "找不到遠端 MCP 伺服器"
@@ -4306,8 +4343,9 @@ msgid "OAuth expired"
 msgstr "OAuth 已過期"
 
 #: src/components/ComputerDeviceSettings.tsx
+#: src/pages/Pairing.tsx
 msgid "Offline"
-msgstr ""
+msgstr "離線"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4335,6 +4373,10 @@ msgstr "每月 1 日 {0}"
 #: src/lib/cron.ts
 msgid "One-time"
 msgstr "一次性"
+
+#: src/pages/Pairing.tsx
+msgid "Online"
+msgstr "線上"
 
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/shell/computer-panel.tsx
@@ -4366,6 +4408,10 @@ msgstr "開啟通話"
 #: src/components/call/CallCard.tsx
 msgid "Open chat with {0}"
 msgstr "開啟與 {0} 的對話"
+
+#: src/pages/Pairing.tsx
+msgid "Open computer"
+msgstr "開啟電腦"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
@@ -4462,6 +4508,10 @@ msgstr "輸出"
 msgid "Owner"
 msgstr "擁有者"
 
+#: src/pages/Pairing.tsx
+msgid "P2P gateway is not configured for this web build."
+msgstr "此網頁版尚未設定 P2P 閘道。"
+
 #: src/components/markdown-copy.tsx
 msgid "Page {page} of {count}"
 msgstr "第 {page} 頁，共 {count} 頁"
@@ -4469,6 +4519,19 @@ msgstr "第 {page} 頁，共 {count} 頁"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty 事件"
+
+#: src/components/SidebarFooter.tsx
+#: src/pages/Pairing.tsx
+msgid "Pair a computer"
+msgstr "配對電腦"
+
+#: src/pages/Pairing.tsx
+msgid "Paired computers"
+msgstr "已配對的電腦"
+
+#: src/pages/Pairing.tsx
+msgid "Pairing code"
+msgstr "配對碼"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4841,6 +4904,7 @@ msgstr "重新導向 URI"
 
 #: src/App.tsx
 #: src/components/lazy-overlay.tsx
+#: src/pages/Pairing.tsx
 msgid "Refresh"
 msgstr "重新整理"
 

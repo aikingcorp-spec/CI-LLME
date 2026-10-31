@@ -55,7 +55,7 @@ if (
 const now = Date.now();
 const issuedAt =
   expiredSeconds === undefined ? now : now - (expiredSeconds + CREDENTIAL_TTL_SECONDS) * 1000;
-const credentials = mintTurnCredentials(
+const credentials = await mintTurnCredentials(
   {
     secret: readFileSync(secretFile, "utf8").trim(),
     urls: [],

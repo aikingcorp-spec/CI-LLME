@@ -35,8 +35,16 @@ describe("app content security policy", () => {
     expect(policy.get("frame-ancestors")).toEqual(["'none'"]);
   });
 
-  it("talks only to its own origin, which hosts the API, RPC, monitoring tunnel and screen proxy", () => {
+  it("allows only its own origin until a P2P gateway is configured", () => {
     expect(policy.get("connect-src")).toEqual(["'self'"]);
+    expect(directives(appContentSecurityPolicy({ p2pGatewayUrl: " " })).get("connect-src")).toEqual(
+      ["'self'"],
+    );
+    expect(
+      directives(appContentSecurityPolicy({ p2pGatewayUrl: "https://gateway.example.test" })).get(
+        "connect-src",
+      ),
+    ).toEqual(["'self'", "https://gateway.example.test", "wss://gateway.example.test"]);
     expect(policy.get("frame-src")).toEqual(["'self'", "blob:"]);
   });
 
@@ -69,6 +77,22 @@ describe("app content security policy", () => {
 });
 
 describe("operator-added origins", () => {
+  it("allows loopback HTTP/WSS signaling only through the explicit connect setting", () => {
+    const origins = parseContentSecuritySources(
+      "RAKAZO_CSP_CONNECT_SRC",
+      "http://127.0.0.1:8787 http://localhost:8787",
+    );
+    expect(origins).toHaveLength(2);
+    expect(
+      directives(appContentSecurityPolicy({ connectSrc: origins })).get("connect-src"),
+    ).toContain("ws://127.0.0.1:8787");
+    expect(() =>
+      parseContentSecuritySources("RAKAZO_CSP_SCRIPT_SRC", "http://127.0.0.1:8787"),
+    ).toThrow();
+    expect(() =>
+      parseContentSecuritySources("RAKAZO_CSP_CONNECT_SRC", "http://example.test"),
+    ).toThrow();
+  });
   it("parses space- or comma-separated https origins, deduplicated and lowercased", () => {
     expect(parseContentSecuritySources("SETTING", undefined)).toEqual([]);
     expect(parseContentSecuritySources("SETTING", "  ")).toEqual([]);
@@ -128,7 +152,9 @@ describe("operator-added origins", () => {
     expect(extended.get("connect-src")).toEqual([
       "'self'",
       "https://beacon.example.com",
+      "wss://beacon.example.com",
       "https://*.example.net",
+      "wss://*.example.net",
     ]);
     const base = directives(APP_CONTENT_SECURITY_POLICY);
     for (const [name, sources] of base) {

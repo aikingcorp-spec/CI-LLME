@@ -32,6 +32,8 @@ import { getTicketBoardEnabled, subscribeTicketBoardEnabled } from "./lib/bootst
 import { desktopBridge } from "./lib/desktop";
 import { syncWebLogoAvatarIdentity } from "./lib/logo-avatar-activity";
 import { identifyMonitoringUser } from "./lib/monitoring";
+import type { WebP2PClient } from "./lib/p2p-client";
+import { resetP2PClient, webP2PClient } from "./lib/p2p-client";
 import { markAfterPaint, markOnce } from "./lib/performance";
 import { lazyComponent } from "./lib/preload-recovery";
 import { QueryUserProvider, setQueryUser } from "./lib/query";
@@ -98,6 +100,8 @@ const McpOAuthCallbackPage = lazyPage(() =>
   import("./pages/McpOAuthCallback").then((module) => module.McpOAuthCallbackPage),
 );
 
+const PairingPage = lazyPage(() => import("./pages/Pairing").then((module) => module.PairingPage));
+
 const ShellPage = lazyPage(() => import("./pages/Shell").then((module) => module.ShellPage));
 
 function SsoCallbackPage() {
@@ -145,6 +149,16 @@ export function App() {
 
 const MCP_OAUTH_CALLBACK_PATH = "/mcp/oauth/callback";
 
+function RemoteNodeGate({ client }: { client: WebP2PClient }) {
+  const connection = useSyncExternalStore(client.subscribe, client.getSnapshot);
+  const { pathname } = useLocation();
+  return pathname === "/app/pairing" || connection.state === "connected" ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/app/pairing" replace />
+  );
+}
+
 function SessionApp() {
   const [searchParams] = useSearchParams();
   const next = searchParams.get("next") ?? "";
@@ -163,6 +177,11 @@ function SessionApp() {
   const screen = analyticsScreen(pathname);
   const analyticsUserId = session.data?.user.id;
   const lastScreen = useRef<string | undefined>(undefined);
+  const p2pUser = useRef(analyticsUserId);
+  useLayoutEffect(() => {
+    if (p2pUser.current !== analyticsUserId) resetP2PClient();
+    p2pUser.current = analyticsUserId;
+  }, [analyticsUserId]);
   useEffect(() => {
     // A pending session is not a sign-out; startup already tagged the signed-in user.
     if (session.isPending) return;
@@ -182,6 +201,9 @@ function SessionApp() {
       .catch(() => undefined);
   }, [analyticsUserId, screen]);
   const gate = sessionGate(session);
+  useEffect(() => {
+    if (gate === "anonymous") resetP2PClient();
+  }, [gate]);
   useLayoutEffect(() => {
     if (gate === "authenticated" || gate === "anonymous")
       syncWebLogoAvatarIdentity(analyticsUserId ?? null);
@@ -210,6 +232,8 @@ function SessionApp() {
   }
 
   const user = session.data?.user;
+  // A build with a configured gateway starts at node selection; any other web keeps direct API access.
+  const remoteClient = user && !desktopBridge() ? webP2PClient() : undefined;
   return (
     <QueryUserProvider value={user?.id ?? null}>
       <MarkdownLinkPrompt>
@@ -250,7 +274,11 @@ function SessionApp() {
               <Route
                 element={
                   user ? (
-                    <Outlet />
+                    remoteClient ? (
+                      <RemoteNodeGate client={remoteClient} />
+                    ) : (
+                      <Outlet />
+                    )
                   ) : (
                     <Navigate
                       to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
@@ -260,6 +288,7 @@ function SessionApp() {
                 }
               >
                 <Route path="/onboarding/:step?" element={<OnboardingPage />} />
+                <Route path="/app/pairing" element={<PairingPage />} />
                 <Route path="/app" element={<ShellPage />} />
                 <Route path="/app/g/:groupId" element={<ShellPage />} />
                 <Route path="/app/artifacts" element={<ArtifactsPage />} />

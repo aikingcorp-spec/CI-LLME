@@ -8,7 +8,7 @@ import type { KeyPair } from "./pairing.js";
 import { signNodeProof } from "./pairing.js";
 import type { NodeId, RelayRequest, SignalPayload } from "./protocol.js";
 import { decodeGatewayFrame, encodeFrame, toWsUrl } from "./protocol.js";
-import type { DataPeer } from "./webrtc-peer.js";
+import type { DataPeer, PeerOptions } from "./webrtc-peer.js";
 import { connectPeer } from "./webrtc-peer.js";
 
 export type LocalHandler = (req: {
@@ -24,6 +24,8 @@ export interface NodeAgentOptions {
   nodeId: NodeId;
   /** The node's own key pair; the hello is signed with it on every connect. */
   keyPair: KeyPair;
+  /** Fresh relay credentials for each incoming attempt, resolved before constructing RTC. */
+  iceServers?: () => Promise<NonNullable<PeerOptions["iceServers"]>>;
   handler: LocalHandler;
   channel?: {
     gatewayPublicKey: string;
@@ -116,27 +118,36 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
       receivers.delete(from);
     }, attemptTimeoutMs);
     attempts.set(from, { id: attemptId, timer });
-    void connectPeer({
-      signalUrl: `${o.gatewayUrl}/signal`,
-      selfId: o.nodeId,
-      remoteId: from,
-      initiator: false,
-      attemptId,
-      signaling: {
-        send: (answer) => {
-          if (ws.readyState === WebSocket.OPEN)
-            ws.send(encodeFrame({ kind: "signal", from: o.nodeId, to: from, payload: answer }));
+    const pending: SignalPayload[] = [payload];
+    receivers.set(from, (next) => pending.push(next));
+    void (async () => {
+      const iceServers = await o.iceServers?.();
+      if (stopped || attempts.get(from)?.id !== attemptId || ws.readyState !== WebSocket.OPEN)
+        return undefined;
+      return connectPeer({
+        iceServers,
+        signalUrl: `${o.gatewayUrl}/signal`,
+        selfId: o.nodeId,
+        remoteId: from,
+        initiator: false,
+        attemptId,
+        signaling: {
+          send: (answer) => {
+            if (ws.readyState === WebSocket.OPEN)
+              ws.send(encodeFrame({ kind: "signal", from: o.nodeId, to: from, payload: answer }));
+          },
+          listen: (listener) => {
+            receivers.set(from, listener);
+            for (const queued of pending) listener(queued);
+            return () => {
+              if (receivers.get(from) === listener) receivers.delete(from);
+            };
+          },
         },
-        listen: (listener) => {
-          receivers.set(from, listener);
-          listener(payload);
-          return () => {
-            if (receivers.get(from) === listener) receivers.delete(from);
-          };
-        },
-      },
-    })
+      });
+    })()
       .then(async (peer) => {
+        if (!peer) return;
         const current = attempts.get(from);
         if (current?.id !== attemptId) {
           clearTimeout(timer);
@@ -161,7 +172,10 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
       })
       .catch(() => {
         clearTimeout(timer);
-        if (attempts.get(from)?.id === attemptId) attempts.delete(from);
+        if (attempts.get(from)?.id === attemptId) {
+          attempts.delete(from);
+          receivers.delete(from);
+        }
       });
   };
 
@@ -248,7 +262,7 @@ export function httpForwardHandler(targetOrigin: string): LocalHandler {
       method: req.method,
       signal: req.signal,
       headers,
-      body: BODYLESS_METHODS.has(req.method) ? undefined : req.body,
+      body: BODYLESS_METHODS.has(req.method) ? undefined : new Uint8Array(req.body),
     });
     const out: Record<string, string> = {};
     res.headers.forEach((v, k) => {
