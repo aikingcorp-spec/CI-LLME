@@ -90,7 +90,7 @@ jobs:
           # node-datachannel must load from the unpacked resources of the installed app.
           $env:NDC_PATH = Join-Path $installDir 'resources\app.asar.unpacked\node_modules\node-datachannel'
           $env:ELECTRON_RUN_AS_NODE = '1'
-          & $exe -e "require(process.env.NDC_PATH); console.log('node-datachannel loaded')"
+          & $exe -e "require(process.env.NDC_PATH); console.log('node-datachannel loaded')" | Out-Host
           if ($LASTEXITCODE -ne 0) { throw 'node-datachannel failed to load from the installed app' }
           Remove-Item Env:ELECTRON_RUN_AS_NODE
 
@@ -108,6 +108,8 @@ jobs:
               $app | Wait-Process -Timeout 180 -ErrorAction Stop
             } catch {
               Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+              Get-Content -LiteralPath $stdout -ErrorAction SilentlyContinue | Out-Host
+              Get-Content -LiteralPath $stderr -ErrorAction SilentlyContinue | Out-Host
               throw 'App did not exit within the 180-second smoke budget'
             }
             $app.WaitForExit()
@@ -121,6 +123,8 @@ jobs:
             }
           } finally {
             taskkill /F /T /PID $app.Id 2>&1 | Out-Null
+            # Best-effort cleanup may fail if the smoke app already exited.
+            $global:LASTEXITCODE = 0
             Get-Process -Name postgres -ErrorAction SilentlyContinue | Stop-Process -Force
           }
 

@@ -59,6 +59,8 @@ export interface RunProcessOptions {
   signal?: AbortSignal;
   stdin?: string;
   shell?: boolean;
+  /** Disable pipes when a daemon would inherit them beyond the launcher lifetime. */
+  captureOutput?: boolean;
   onLine?: (line: string) => void;
 }
 
@@ -84,12 +86,13 @@ function appendCapped(current: string, chunk: string): string {
 /** Fixed argv, no shell unless asked, bounded capture, killed on timeout or abort. */
 export const runProcess: RunProcess = (file, args, options) =>
   new Promise((resolve, reject) => {
+    const output = options.captureOutput === false ? "ignore" : "pipe";
     const child = spawn(file, args, {
       cwd: options.cwd,
       env: options.env,
       shell: options.shell ?? false,
       windowsHide: true,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", output, output],
     });
     let stdout = "";
     let stderr = "";
@@ -103,8 +106,8 @@ export const runProcess: RunProcess = (file, args, options) =>
       partial[name] = lines.pop() ?? "";
       for (const line of lines) if (line.trim() !== "") options.onLine(line);
     };
-    child.stdout.setEncoding("utf8").on("data", (chunk: string) => feed("stdout", chunk));
-    child.stderr.setEncoding("utf8").on("data", (chunk: string) => feed("stderr", chunk));
+    child.stdout?.setEncoding("utf8").on("data", (chunk: string) => feed("stdout", chunk));
+    child.stderr?.setEncoding("utf8").on("data", (chunk: string) => feed("stderr", chunk));
     const kill = () => child.kill("SIGKILL");
     const timer = setTimeout(() => {
       timedOut = true;
@@ -124,8 +127,8 @@ export const runProcess: RunProcess = (file, args, options) =>
       }
       resolve({ code, stdout, stderr, timedOut });
     });
-    child.stdin.on("error", () => undefined);
-    child.stdin.end(options.stdin ?? "");
+    child.stdin?.on("error", () => undefined);
+    child.stdin?.end(options.stdin ?? "");
   });
 
 /** Synchronous variant for `process.on("exit")`, where nothing async can finish. */
@@ -784,7 +787,13 @@ export class NativePostgres {
   }
 
   private ctl(paths: PostgresPaths, args: string[], timeoutMs = 90_000) {
-    return this.run(paths.pgCtl, args, { env: this.childEnv(), timeoutMs });
+    return this.run(paths.pgCtl, args, {
+      env: this.childEnv(),
+      timeoutMs,
+      // Windows descendants can retain pg_ctl's pipes after it exits, preventing `close`.
+      // Server output already goes to postgres.log via -l.
+      captureOutput: !(this.platform === "win32" && args[0] === "start"),
+    });
   }
 
   private childEnv() {
