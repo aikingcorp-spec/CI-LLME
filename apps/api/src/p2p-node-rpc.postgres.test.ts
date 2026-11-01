@@ -127,6 +127,7 @@ it.skipIf(!databaseUrl)(
         appPath: fileURLToPath(new URL("../../desktop/", import.meta.url)),
         userDataDir: desktopData,
         env: { ...process.env, [P2P_GATEWAY_ENV]: gateway.url },
+        stunServers: [],
         localSession: async () => ({ cookie }),
         spawnAgent: async (entry, env) => {
           const child = fork(entry, [], {
@@ -164,6 +165,7 @@ it.skipIf(!databaseUrl)(
                 assertion: session.assertion,
                 relay,
                 turnHost: process.env.P2P_TEST_TURN_HOST,
+                turnTransport: process.env.P2P_TEST_TURN_TRANSPORT === "tcp" ? "tcp" : "udp",
               })
             : await DataChannelClientTransport.connect({
                 signalUrl: `${gateway.url}/signal`,

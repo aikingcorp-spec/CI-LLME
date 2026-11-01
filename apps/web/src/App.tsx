@@ -159,14 +159,19 @@ function RemoteNodeGate({ client }: { client: WebP2PClient }) {
   useEffect(() => {
     if (userId) void client.restore(userId).catch(() => undefined);
   }, [client, userId]);
-  if (pathname === "/app/pairing" || connection.state === "connected") return <Outlet />;
+  const outlet = (
+    <QueryUserProvider value={client.getNodeUserId() ?? userId ?? null}>
+      <Outlet />
+    </QueryUserProvider>
+  );
+  if (pathname === "/app/pairing" || connection.state === "connected") return outlet;
   if (connection.state === "connecting")
     return wasConnected.current ? (
       <>
         <p role="status" className="bg-muted p-2 text-center text-sm">
           <Trans>Reconnecting…</Trans>
         </p>
-        <Outlet />
+        {outlet}
       </>
     ) : (
       <PageLoading />

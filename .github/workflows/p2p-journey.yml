@@ -43,11 +43,12 @@ jobs:
         env:
           P2P_TEST_BROWSER: '1'
         run: pnpm exec tsx packages/testkit/src/cli/harness.ts --integration --spec=p2p-node-rpc
-      - name: Real chat over TURN TCP
+      - name: Real chat over TURN
         if: runner.os == 'Linux'
         env:
           P2P_TEST_BROWSER: '1'
           P2P_TEST_TURN: '1'
+          P2P_DEBUG: '1'
         run: |
           export P2P_TEST_TURN_HOST="$(hostname -I | awk '{print $1}')"
           turnserver -n --pidfile="$RUNNER_TEMP/vnbot-turn.pid" --log-file=stdout --simple-log --verbose --no-cli --no-tls --no-dtls --fingerprint --lt-cred-mech --realm=vnbot-test --user=test:test --listening-ip="$P2P_TEST_TURN_HOST" --relay-ip="$P2P_TEST_TURN_HOST" --listening-port=3479 --min-port=49160 --max-port=49170 --allow-loopback-peers > "$RUNNER_TEMP/coturn.log" 2>&1 &

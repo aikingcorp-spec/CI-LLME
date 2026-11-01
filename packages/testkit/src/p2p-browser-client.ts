@@ -13,6 +13,7 @@ export async function browserP2PClient(input: {
   assertion: string;
   relay: boolean;
   turnHost?: string;
+  turnTransport?: "udp" | "tcp";
 }) {
   const bundle = await build({
     entryPoints: [fileURLToPath(new URL("../../p2p-prototype/src/browser.ts", import.meta.url))],
@@ -39,7 +40,7 @@ export async function browserP2PClient(input: {
       const peer = await P2PLibrary.connectBrowserPeer({ signalUrl: options.gatewayUrl + '/signal', selfId: options.peerId,
         remoteId: options.nodeId, assertion: options.assertion, initiator: true,
         iceTransportPolicy: options.relay ? 'relay' : 'all',
-        iceServers: options.relay ? [{ urls: 'turn:' + (options.turnHost || '127.0.0.1') + ':3479?transport=tcp', username: 'test', credential: 'test' }] : [],
+        iceServers: options.relay ? [{ urls: 'turn:' + (options.turnHost || '127.0.0.1') + ':3479?transport=' + (options.turnTransport || 'udp'), username: 'test', credential: 'test' }] : [],
         connectTimeoutMs: 10000 });
       window.testClient = new P2PLibrary.DataChannelClientTransport(peer, options.assertion);
       const report = setInterval(async () => {

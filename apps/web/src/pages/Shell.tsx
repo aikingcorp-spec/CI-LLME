@@ -55,7 +55,14 @@ import {
 import { desktopBridge } from "../lib/desktop";
 import { markAfterPaint, markOnce } from "../lib/performance";
 import { usePreloadRecoveryState } from "../lib/preload-recovery";
-import { lastChatKey, lastChatOf, queryClient, spaceQueries, spaceSeedKey } from "../lib/query";
+import {
+  lastChatKey,
+  lastChatOf,
+  queryClient,
+  spaceQueries,
+  spaceSeedKey,
+  useQueryUserId,
+} from "../lib/query";
 import { rightPanelStorageKey } from "../lib/right-panel-state";
 import { createSpaceRpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { markShellReady, useSpaceEpoch } from "../lib/space-switch";
@@ -114,7 +121,7 @@ function SpaceShell() {
   const [shellSpaceId] = useState(selectedSpaceId);
   const [rpc] = useState(() => createSpaceRpc(shellSpaceId));
   const session = authClient.useSession();
-  const userId = session.data?.user.id;
+  const userId = useQueryUserId() ?? session.data?.user.id;
   const [createMenuOpen, setCreateMenuOpen] = useCreateMenu();
   // A revisited space, or the shell reopened from another page, starts from what it showed
   // last time while its fresh bootstrap loads.

@@ -141,6 +141,12 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
     const handler = {
       async call(...args: Parameters<typeof demo.call>) {
         calls.push(args[0]);
+        if (args[0] === "me")
+          return {
+            status: 200,
+            headers: { "content-type": "application/json" },
+            body: new TextEncoder().encode('{"json":{"userId":"node-user"}}'),
+          };
         if (args[0] === "bots/list")
           return {
             status: 200,

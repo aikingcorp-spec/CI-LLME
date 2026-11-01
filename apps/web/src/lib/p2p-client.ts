@@ -1,3 +1,4 @@
+import { MeSchema } from "@rakazo/contracts";
 import { p2pGatewayOrigin } from "@rakazo/contracts/content-security-policy";
 import type { PairedNode } from "@rakazo/p2p-prototype/browser";
 import {
@@ -69,6 +70,8 @@ export class WebP2PClient {
   private retryCount = 0;
   private retryEpoch = 0;
   private accountId?: string;
+  private nodeUserId?: string;
+  getNodeUserId = () => this.nodeUserId;
   constructor(private readonly config: P2PConfig) {}
   getSnapshot = (): P2PSnapshot => this.snapshot;
   subscribe = (listener: () => void) => {
@@ -153,7 +156,9 @@ export class WebP2PClient {
     }, delay);
   }
   async connect(nodeId: string): Promise<void> {
+    const previousUserId = this.snapshot.nodeId === nodeId ? this.nodeUserId : undefined;
     this.disconnect();
+    this.nodeUserId = previousUserId;
     const attempt = new AbortController();
     this.attempt = attempt;
     const timeout = setTimeout(() => attempt.abort(), 20_000);
@@ -198,11 +203,24 @@ export class WebP2PClient {
       attempt.signal.addEventListener("abort", abort, { once: true });
       if (attempt.signal.aborted) transport.close();
       await transport.ready;
+      const identity = await transport.call({
+        procedure: "me",
+        headers: { "content-type": "application/json" },
+        body: new TextEncoder().encode(JSON.stringify({ json: {} })),
+        signal: attempt.signal,
+      });
+      if (identity.status !== 200)
+        throw new Error("The computer refused its local account session");
+      const payload: unknown = JSON.parse(new TextDecoder().decode(identity.body));
+      if (!payload || typeof payload !== "object" || !("json" in payload))
+        throw new Error("Invalid node identity");
+      const nodeUser = MeSchema.pick({ userId: true }).parse(payload.json);
       attempt.signal.throwIfAborted();
       if (this.attempt !== attempt) {
         transport.close();
         return;
       }
+      this.nodeUserId = nodeUser.userId;
       this.retryCount = 0;
       if (this.accountId) {
         try {
@@ -224,6 +242,7 @@ export class WebP2PClient {
     }
   }
   disconnect = () => {
+    this.nodeUserId = undefined;
     this.retryEpoch++;
     clearTimeout(this.retry);
     this.retry = undefined;

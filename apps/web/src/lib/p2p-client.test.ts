@@ -27,7 +27,7 @@ const turn = {
   ttl: 60,
 };
 let turnResponse: () => Promise<Response>;
-function peer(denied = false): DataPeer {
+function peer(denied = false, identity: unknown = { userId: "node-user" }): DataPeer {
   let receive: ((value: IteratorResult<string>) => void) | undefined;
   const queue: string[] = [];
   let ended = false;
@@ -57,7 +57,7 @@ function peer(denied = false): DataPeer {
           id: frame.id,
           status: 200,
           headers: { "content-type": "application/json" },
-          body: frame.body,
+          body: frame.procedure === "me" ? btoa(JSON.stringify({ json: identity })) : frame.body,
         });
       if (frame.t === "subscribe")
         push({ t: "chunk", bearer: frame.bearer, id: frame.id, data: btoa("data: hello\n\n") });
@@ -216,9 +216,17 @@ it("signals with the scoped assertion and only connects after the authenticated 
       iceServers: [],
     }),
   );
+  expect(client.getNodeUserId()).toBe("node-user");
   expect(JSON.parse(sent[0] ?? "")).toEqual({ t: "hello", assertion: "signed-assertion" });
   expect(listener).toHaveBeenCalled();
 });
+it("does not report connected when the channel cannot identify the authenticated node user", async () => {
+  vi.mocked(connectBrowserPeer).mockResolvedValueOnce(peer(false, {}));
+  await expect(client.connect("node-1")).rejects.toThrow();
+  expect(client.getSnapshot().state).toBe("failed");
+  expect(client.getNodeUserId()).toBeUndefined();
+});
+
 it("fetches TURN with the session assertion and merges it with configured STUN", async () => {
   const stunConfig = { ...config, iceServers: [{ urls: "stun:stun.example.test:3478" }] };
   client = new WebP2PClient(stunConfig);

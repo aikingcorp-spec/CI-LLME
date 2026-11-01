@@ -15,6 +15,7 @@ interface Start {
   gatewayUrl: string;
   nodeId: string;
   webUrl: string;
+  stunServers?: string[];
   localHeaders?: Record<string, string>;
   key: { publicKey: string; privateKey: string; gatewayPublicKey: string; user: string };
 }
@@ -39,7 +40,8 @@ listen(async (message) => {
         gatewayUrl: m.gatewayUrl,
         nodeId: m.nodeId,
         keyPair: m.key,
-        iceServers: () => desktopIceServers(m.gatewayUrl, m.nodeId, m.key, fetchNodeTurnServers),
+        iceServers: () =>
+          desktopIceServers(m.gatewayUrl, m.nodeId, m.key, fetchNodeTurnServers, m.stunServers),
         // The gateway's plaintext HTTP relay is off; only the data channel carries requests.
         handler: async () => ({ status: 404, headers: {}, body: new Uint8Array() }),
         channel: {

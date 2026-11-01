@@ -12,6 +12,8 @@ Native host-computer listeners bind loopback. Docker mode explicitly retains hos
 
 The hosted app Worker serves the real web build. It forwards only the required account endpoints to an explicitly configured account service. Product API, arbitrary auth endpoints, screen routes and source maps are refused. The existing landing deployment is separate and unchanged.
 
+The browser verifies RPC `me` over the authenticated channel before reporting connected. Product query/author identity uses that node user ID; the gateway account ID remains the login and discovery identity. They are never assumed equal.
+
 The browser remembers only a node ID under the signed-in account's session-storage key. Restoration checks the account's current node list before connecting. Closed channels retry with fresh assertions and bounded backoff. Existing assertion expiry and revocation remain authoritative.
 
 This work does not certify Internet NAT/TURN behavior or publish new desktop installers. The account service must have its application signing key configured, the gateway must trust that public key, and the public gateway/relay must be available before production acceptance.

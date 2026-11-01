@@ -1,3 +1,4 @@
+import type { DataChannel } from "node-datachannel";
 import { cleanup, PeerConnection } from "node-datachannel";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startFakeAuthServer } from "./fake-auth-server.js";
@@ -101,13 +102,20 @@ describe("webrtc peer", () => {
     );
     raw.onLocalCandidate((candidate, mid) => toPeer({ type: "candidate", candidate, mid }));
     const received: unknown[] = [];
-    raw.onDataChannel((dc) => dc.onMessage((m) => received.push(m)));
+    // Keep the native wrapper alive while intentionally withholding BYE_ACK.
+    let rawChannel: DataChannel | undefined;
+    raw.onDataChannel((dc) => {
+      rawChannel = dc;
+      dc.onMessage((m) => received.push(m));
+    });
     await a.open;
 
     const started = Date.now();
     await a.closeGracefully();
     expect(Date.now() - started).toBeGreaterThanOrEqual(250);
     expect((await a.messages[Symbol.asyncIterator]().next()).done).toBe(true);
+    expect(received.length).toBeGreaterThan(0);
+    rawChannel?.close();
     raw.close();
   }, 20_000);
 });

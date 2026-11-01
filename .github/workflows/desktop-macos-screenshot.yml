@@ -44,12 +44,16 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY=false pnpm --filter @rakazo/desktop exec electron-builder --mac --dir --publish never -c.mac.identity=null -c.mac.notarize=false
           product_name="$(node -p "require('./apps/desktop/package.json').productName")"
           app_bundle="apps/desktop/out/mac-arm64/$product_name.app"
-          xcrun assetutil --info "$app_bundle/Contents/Resources/Assets.car" > "$RUNNER_TEMP/icon-assets.json"
-          jq -e 'any(.[]; .Name == "Icon" and .AssetType == "IconImageStack") and any(.[]; .Name == "Icon_Assets/orange-bot" and .AssetType == "Image")' "$RUNNER_TEMP/icon-assets.json"
+          # Validate Icon Composer only when selected; main currently packages an ICNS icon.
+          icon_source="$(node -p "require('./apps/desktop/package.json').build.mac.icon")"
+          if [[ "$icon_source" == *.icon ]]; then
+            xcrun assetutil --info "$app_bundle/Contents/Resources/Assets.car" > "$RUNNER_TEMP/icon-assets.json"
+            jq -e 'any(.[]; .Name == "Icon" and .AssetType == "IconImageStack") and any(.[]; .Name == "Icon_Assets/orange-bot" and .AssetType == "Image")' "$RUNNER_TEMP/icon-assets.json"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$app_bundle/Contents/Info.plist")" = Icon
+          fi
           iconutil -c iconset "$app_bundle/Contents/Resources/icon.icns" -o "$RUNNER_TEMP/fallback.iconset"
           sips -s format png "$RUNNER_TEMP/fallback.iconset/icon_128x128@2x.png" --out "$RUNNER_TEMP/fallback-decoded.png"
           test -s "$RUNNER_TEMP/fallback-decoded.png"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$app_bundle/Contents/Info.plist")" = Icon
         env:
           RAKAZO_ALLOW_DEV_SECRETS: "1"
       - name: Capture packaged macOS setup window and Dock

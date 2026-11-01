@@ -175,6 +175,7 @@ export interface P2PNodeOptions extends InstallLayout {
   env: NodeJS.ProcessEnv;
   /** Gateway URL from saved settings; the environment variable wins. */
   gatewayUrl?: string;
+  stunServers?: string[];
   localSession?: (userId: string) => Promise<Record<string, string>>;
   loadPairing?: (file: string) => Promise<P2PPairingModule>;
   spawnAgent?: (entry: string, env: Record<string, string>) => Promise<P2PChild>;
@@ -290,6 +291,7 @@ export class P2PNode {
       bundles.agent,
       {
         localHeaders,
+        ...(this.options.stunServers ? { stunServers: this.options.stunServers } : {}),
         type: "start",
         gatewayUrl,
         nodeId: identity.nodeId,
