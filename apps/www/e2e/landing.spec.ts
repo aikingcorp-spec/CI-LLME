@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const exe = "https://dl.vnbot.run/desktop/VNBot-Setup-0.3.6-x64.exe";
-const msi = "https://dl.vnbot.run/desktop/VNBot-0.3.6-win-x64.msi";
-const sha = "8682aa010f9280cb21c88473022073b61e00694da365b4766309c7e093c9dde3";
+const exe = "https://dl.vnbot.run/desktop/VNBot-Setup-0.3.7-x64.exe";
+const msi = "https://dl.vnbot.run/desktop/VNBot-0.3.7-win-x64.msi";
+const sha = "1670dc906f10f8e3c5848f01f9f61659fb784336d3627a631cfcbf1a16eb9786";
 const sections = ["hero", "tinh-nang", "doi-bot", "cach-dung", "tai-ve", "ban-web", "hoi-dap"];
 
 for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao chép" },
@@ -14,13 +14,13 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     await expect(page.locator(".hero .btn-win")).toHaveAttribute("href", exe);
     await expect(page.locator(".hero .btn-win")).toHaveAttribute("download", "");
     await expect(page.locator(".hero .btn-web")).toHaveAttribute("href", "https://app.vnbot.run");
-    await expect(page.locator(".hero .msi a")).toHaveAttribute("href", msi);
-    await expect(page.locator(".hero .msi a")).toHaveAttribute("download", "");
-    await expect(page.locator(".hero .msi")).toContainText("185 MB");
-    await expect(page.locator(".hero .meta")).toContainText("170 MB");
+    await expect(page.locator(".hero .msi a").first()).toHaveAttribute("href", msi);
+    await expect(page.locator(".hero .msi a").first()).toHaveAttribute("download", "");
+    await expect(page.locator(".hero .msi").first()).toContainText("183 MB");
+    await expect(page.locator(".hero .meta")).toContainText("168 MB");
     await expect(page.locator(".facts [data-sha]")).toHaveText(sha);
     await expect(page.locator(".hero [data-sha]")).toHaveAttribute("title", sha);
-    await expect(page.locator(".hero [data-sha]")).toHaveText("8682aa01…c9dde3");
+    await expect(page.locator(".hero [data-sha]")).toHaveText("1670dc90…eb9786");
     await expect(page.locator(".faq details")).toHaveCount(7);
     await expect(page.locator(".faq details").nth(1)).toHaveAttribute("open", "");
     await expect(page.locator('a[href*="notes"], a[href*="releases"]')).toHaveCount(0);
@@ -282,7 +282,7 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
       for (const item of items) item.setAttribute("open", "");
     });
     const command = page.locator(".faq details").nth(3).locator("pre > code");
-    await expect(command).toHaveText("Get-FileHash .\\VNBot-Setup-0.3.6-x64.exe -Algorithm SHA256");
+    await expect(command).toHaveText("Get-FileHash .\\VNBot-Setup-0.3.7-x64.exe -Algorithm SHA256");
     await expect(command).toBeVisible();
     const overflow = await page.locator("body *").evaluateAll(elements => elements
       .filter(el => !el.closest(".marq") && el.getClientRects().length
@@ -332,7 +332,7 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     for (const element of await page.locator("[data-reveal], .hero .m").all()) {
       await expect(element).toHaveCSS("opacity", "1");
     }
-    await expect(page.locator(".hero .meta")).toContainText("170 MB");
+    await expect(page.locator(".hero .meta")).toContainText("168 MB");
     await context.close();
   });
 }
