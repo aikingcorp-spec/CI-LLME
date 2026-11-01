@@ -13,7 +13,8 @@
   document.querySelectorAll('.btn-win .lbl').forEach(label => {
     label.firstChild.textContent = labels[en ? 'en' : 'vi'].windowsDownload;
   });
-  const downloads = { windows, msi: windows.msi };
+  const linux = data.downloads.linux;
+  const downloads = { windows, msi: windows.msi, linux, deb: linux.deb };
   document.querySelectorAll('[data-size]').forEach(el => {
     el.textContent = data.sizeMB(downloads[el.dataset.size]);
   });
