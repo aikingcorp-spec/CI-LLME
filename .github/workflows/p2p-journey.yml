@@ -49,13 +49,21 @@ jobs:
           P2P_TEST_BROWSER: '1'
           P2P_TEST_TURN: '1'
         run: |
-          turnserver -n --no-cli --no-tls --no-dtls --fingerprint --lt-cred-mech --realm=vnbot-test --user=test:test --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 --listening-port=3479 --min-port=49160 --max-port=49170 --allow-loopback-peers > "$RUNNER_TEMP/coturn.log" 2>&1 &
+          export P2P_TEST_TURN_HOST="$(hostname -I | awk '{print $1}')"
+          turnserver -n --no-cli --no-tls --no-dtls --fingerprint --lt-cred-mech --realm=vnbot-test --user=test:test --listening-ip="$P2P_TEST_TURN_HOST" --relay-ip="$P2P_TEST_TURN_HOST" --listening-port=3479 --min-port=49160 --max-port=49170 --allow-loopback-peers > "$RUNNER_TEMP/coturn.log" 2>&1 &
           relay_pid=$!
           trap 'kill "$relay_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 50); do
+            kill -0 "$relay_pid" || { cat "$RUNNER_TEMP/coturn.log"; exit 1; }
+            if (echo > "/dev/tcp/$P2P_TEST_TURN_HOST/3479") 2>/dev/null; then ready=1; break; fi
+            sleep 0.1
+          done
+          test "$ready" = 1 || { cat "$RUNNER_TEMP/coturn.log"; exit 1; }
           pnpm exec tsx packages/testkit/src/cli/harness.ts --integration --spec=p2p-node-rpc
       - name: Browser pairing screenshot
         if: runner.os == 'Linux'
-        run: pnpm --filter @rakazo/web exec playwright test e2e/p2p-pairing.spec.ts --workers=1
+        run: pnpm --filter @rakazo/web exec playwright test e2e/p2p-pairing.spec.ts e2e/p2p-desktop-enrollment.spec.ts --workers=1
       - uses: actions/upload-artifact@v4
         if: always() && runner.os == 'Linux'
         with:
@@ -63,4 +71,5 @@ jobs:
           path: |
             apps/web/test-results/
             test-report/
+            ${{ runner.temp }}/coturn.log
           if-no-files-found: ignore

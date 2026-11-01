@@ -1,11 +1,11 @@
 # Cloudflare: vnbot.run và app.vnbot.run
 
-Hai Worker tĩnh, chỉ dùng gói Free. Không có VPS hay môi trường staging nào tham gia.
+Landing tĩnh và ứng dụng Vite có Worker riêng. Gateway P2P triển khai riêng; dữ liệu ứng dụng vẫn ở node.
 
 | Worker | Tên miền | Phục vụ |
 | --- | --- | --- |
 | `vnbot-landing` | `vnbot.run`, `www.vnbot.run` | Landing (vi tại `/`, en tại `/en/`), `robots.txt`, `llms.txt`, `sitemap.xml`. `www.vnbot.run` được 301 về `vnbot.run`. |
-| `vnbot-app` | `app.vnbot.run` | Trang đăng nhập tĩnh ("Sắp có"), nguồn ở `app-site/`. |
+| `vnbot-app` | `app.vnbot.run` | Ứng dụng Vite thật và proxy endpoint tài khoản, cấu hình ở `app/`. |
 
 ## Ghép thư mục tĩnh
 
@@ -15,7 +15,7 @@ Không cần chạy astro. Từ thư mục gốc repo:
 deploy/cloudflare/assemble-landing.sh
 ```
 
-Kết quả nằm trong `deploy/cloudflare/.out/landing` và `deploy/cloudflare/.out/app` (đã được `.gitignore`).
+Landing nằm trong `deploy/cloudflare/.out/landing`. Script vẫn tạo bản app tĩnh cũ trong `.out/app` cho tương thích công cụ cũ; không deploy bản đó. Ứng dụng thật dùng `apps/web/dist` sau khi build Vite.
 
 ## Deploy bằng wrangler
 
@@ -32,7 +32,6 @@ Dùng khi endpoint upload assets không có sẵn qua Cloudflare API connector. 
 
 ```bash
 python3 build-worker.py .out/landing vnbot-landing www.vnbot.run
-python3 build-worker.py .out/app vnbot-app -
 ```
 
 Mỗi lệnh ghi `.out/deploy2-<tên>.js`, một hàm async để chạy qua connector.

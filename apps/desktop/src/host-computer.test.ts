@@ -23,7 +23,7 @@ describe("desktop local computer consent", () => {
     const port = Number(new URL(previous.url).port);
     await computer.close();
     const occupied = createServer();
-    await new Promise<void>((resolve) => occupied.listen(port, "0.0.0.0", resolve));
+    await new Promise<void>((resolve) => occupied.listen(port, "127.0.0.1", resolve));
     try {
       computer = await prepareHostComputer(root);
       expect(computer.connection.token).not.toBe(previous.token);

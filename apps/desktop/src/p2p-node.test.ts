@@ -284,6 +284,61 @@ const SAVED: P2PNodeKeyFile = {
 const WEB = "http://127.0.0.1:4000";
 
 describe("P2PNode", () => {
+  it.each(["linux", "win32"])(
+    "binds the registered %s machine to its local account session",
+    async (platform) => {
+      const child = fakeChild();
+      const localSession = vi.fn(async () => ({ cookie: "local-session=fixture" }));
+      const { instance } = node(
+        {
+          pairing: fakePairing({ ...SAVED, nodeId: "desktop-registered", localUser: "local-user" }),
+          child,
+        },
+        { platform, localSession },
+      );
+      expect((await instance.start(WEB)).state).toBe("running");
+      expect(localSession).toHaveBeenCalledWith("local-user");
+      expect(child.sent[0]).toMatchObject({
+        nodeId: "desktop-registered",
+        localHeaders: { cookie: "local-session=fixture" },
+      });
+      await instance.stop();
+    },
+  );
+
+  it("does not launch an agent when its local session was removed or changed", async () => {
+    const { instance, spawnAgent } = node(
+      { pairing: fakePairing({ ...SAVED, nodeId: "registered", localUser: "local-user" }) },
+      {
+        localSession: async () => {
+          throw new Error("Signed out");
+        },
+      },
+    );
+    expect((await instance.start(WEB)).state).toBe("unavailable");
+    expect(spawnAgent).not.toHaveBeenCalled();
+  });
+
+  it("a stop during local session validation prevents a stale agent launch", async () => {
+    let resolve!: (headers: Record<string, string>) => void;
+    const localSession = vi.fn(
+      () =>
+        new Promise<Record<string, string>>((done) => {
+          resolve = done;
+        }),
+    );
+    const { instance, spawnAgent } = node(
+      { pairing: fakePairing({ ...SAVED, nodeId: "registered", localUser: "local-user" }) },
+      { localSession },
+    );
+    const pending = instance.start(WEB);
+    await vi.waitFor(() => expect(localSession).toHaveBeenCalled());
+    await instance.stop();
+    resolve({ cookie: "local-session=fixture" });
+    expect((await pending).state).toBe("off");
+    expect(spawnAgent).not.toHaveBeenCalled();
+  });
+
   it("stays off without a gateway URL and spawns nothing", async () => {
     const { instance, log, spawnAgent } = node({}, {}, {});
     await expect(instance.start(WEB)).resolves.toEqual({ state: "off" });

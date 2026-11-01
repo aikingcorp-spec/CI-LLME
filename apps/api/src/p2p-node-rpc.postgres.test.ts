@@ -102,7 +102,7 @@ it.skipIf(!databaseUrl)(
       const paired = await completePairing(gateway.url, code, nodeId, keyPair);
       const relay = process.env.P2P_TEST_TURN === "1";
       const turn = {
-        hostname: "127.0.0.1",
+        hostname: process.env.P2P_TEST_TURN_HOST || "127.0.0.1",
         port: 3479,
         username: "test",
         password: "test",
@@ -163,6 +163,7 @@ it.skipIf(!databaseUrl)(
                 peerId,
                 assertion: session.assertion,
                 relay,
+                turnHost: process.env.P2P_TEST_TURN_HOST,
               })
             : await DataChannelClientTransport.connect({
                 signalUrl: `${gateway.url}/signal`,
