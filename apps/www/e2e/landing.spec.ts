@@ -3,6 +3,10 @@ import { expect, test } from "@playwright/test";
 const exe = "https://dl.vnbot.run/desktop/VNBot-Setup-0.3.7-x64.exe";
 const msi = "https://dl.vnbot.run/desktop/VNBot-0.3.7-win-x64.msi";
 const sha = "1670dc906f10f8e3c5848f01f9f61659fb784336d3627a631cfcbf1a16eb9786";
+const appImage = "https://dl.vnbot.run/desktop/VNBot-0.3.7-linux-x86_64.AppImage";
+const deb = "https://dl.vnbot.run/desktop/VNBot-0.3.7-linux-amd64.deb";
+const appImageSha = "51d8d17b5bacee48994c3950e1fd28b94d06ab6d1eb418a0bd718cf8d2e28db9";
+const debSha = "c4ee007b834a46ab4ca43a4151ce720cd2be54d5638650564ad176c47a9d7a90";
 const sections = ["hero", "tinh-nang", "doi-bot", "cach-dung", "tai-ve", "ban-web", "hoi-dap"];
 
 for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao chép" },
@@ -14,9 +18,9 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     await expect(page.locator(".hero .btn-win")).toHaveAttribute("href", exe);
     await expect(page.locator(".hero .btn-win")).toHaveAttribute("download", "");
     await expect(page.locator(".hero .btn-web")).toHaveAttribute("href", "https://app.vnbot.run");
-    await expect(page.locator(".hero .msi a").first()).toHaveAttribute("href", msi);
-    await expect(page.locator(".hero .msi a").first()).toHaveAttribute("download", "");
-    await expect(page.locator(".hero .msi").first()).toContainText("183 MB");
+    await expect(page.locator(".hero .msi a")).toHaveAttribute("href", msi);
+    await expect(page.locator(".hero .msi a")).toHaveAttribute("download", "");
+    await expect(page.locator(".hero .msi")).toContainText("183 MB");
     await expect(page.locator(".hero .meta")).toContainText("168 MB");
     await expect(page.locator(".facts [data-sha]")).toHaveText(sha);
     await expect(page.locator(".hero [data-sha]")).toHaveAttribute("title", sha);
@@ -35,7 +39,7 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
     await expect(languageLink).toHaveAttribute("lang", locale.lang === "vi" ? "en" : "vi");
     await expect(languageLink).toHaveAttribute("hreflang", locale.lang === "vi" ? "en" : "vi");
     await expect(languageLink).toHaveAttribute("aria-label", locale.lang === "vi" ? "English" : "Tiếng Việt");
-    for (const chip of await page.locator(".chip").all()) {
+    for (const chip of await page.locator(".chip:not(a)").all()) {
       await expect(chip).toHaveAttribute("aria-disabled", "true");
       await expect(chip).not.toHaveAttribute("href");
       expect(await chip.evaluate(el => el instanceof HTMLElement && el.tabIndex)).toBe(-1);
@@ -301,6 +305,49 @@ for (const locale of [{ path: "/", lang: "vi", copied: "Đã chép", copy: "Sao 
       await expect(label).toHaveCSS("font-size", "19px");
       await expect(label).toHaveCSS("font-weight", "700");
     }
+  });
+
+  test(`${locale.lang}: Linux chip, downloads, checksums and install notes`, async ({ page }) => {
+    await page.goto(locale.path);
+    await expect(page.locator(".hero .msi")).toHaveCount(1);
+    const chips = page.locator(".hero .soon .chip");
+    await expect(chips.first()).toHaveAttribute("href", appImage);
+    await expect(chips.first()).toHaveAttribute("download", "");
+    await expect(chips.first()).toContainText("Linux");
+    await expect(page.locator(".hero a.chip")).toHaveCount(1);
+
+    const linux = page.locator(".alt").filter({ hasText: "Linux x86_64" });
+    await expect(linux).toHaveCount(1);
+    await expect(linux.locator(".btn-out")).toHaveAttribute("href", appImage);
+    await expect(linux.locator(".btn-out")).toHaveAttribute("download", "");
+    await expect(linux.locator(`a[href="${deb}"]`)).toHaveAttribute("download", "");
+    await expect(linux.locator('[data-size="linux"]')).toHaveText("191 MB");
+    await expect(linux.locator('[data-size="deb"]')).toHaveText("151 MB");
+    await expect(linux.locator('[data-sha="linux"]')).toHaveAttribute("title", appImageSha);
+    await expect(linux.locator('[data-sha="linux"]')).toHaveText("51d8d17b…e28db9");
+    await expect(linux.locator('[data-sha="deb"]')).toHaveAttribute("title", debSha);
+    await expect(linux.locator('[data-sha="deb"]')).toHaveText("c4ee007b…9d7a90");
+
+    await expect(linux.locator("code")).toHaveText([
+      "chmod +x VNBot-0.3.7-linux-x86_64.AppImage",
+      "sudo apt install ./VNBot-0.3.7-linux-amd64.deb",
+    ]);
+    await expect(linux).toContainText(locale.lang === "vi" ? "rồi chạy tệp" : "then run it");
+    await expect(linux).toContainText("glibc ≥ 2.30 (Ubuntu 20.04+/Debian 11+)");
+    await expect(linux).toContainText(locale.lang === "vi" ? "Bản thử chưa ký số" : "Preview build, unsigned");
+  });
+
+  test(`${locale.lang}: Linux install notes fit at 390px`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(locale.path);
+    await page.evaluate(() => document.fonts.ready);
+    const linux = page.locator(".alt").filter({ hasText: "Linux x86_64" });
+    for (const command of await linux.locator("code").all()) {
+      await expect(command).toBeVisible();
+      const rights = await command.evaluate(el => Array.from(el.getClientRects(), rect => rect.right));
+      for (const right of rights) expect(right).toBeLessThanOrEqual(390);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 
   test(`${locale.lang}: reduced motion leaves content visible`, async ({ page }) => {
