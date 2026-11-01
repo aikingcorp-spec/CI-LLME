@@ -45,6 +45,8 @@ export interface RakazoDesktopDevice {
 
 export interface RakazoDesktop {
   p2p?: {
+    /** Routing hint from main; IPC still independently checks the managed frame. */
+    local?: boolean;
     isLocal: () => Promise<boolean>;
     signIn: (email: string, otp: string) => Promise<boolean>;
     sendCode: (email: string) => Promise<void>;

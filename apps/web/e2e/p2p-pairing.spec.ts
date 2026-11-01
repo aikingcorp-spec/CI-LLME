@@ -186,6 +186,16 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
     await captureScreenshot(page, testInfo, "pairing-connected-vi-360");
+    await page.reload();
+    await expect(page.getByRole("status")).toContainText("Đã kết nối");
+    expect(
+      await page.evaluate(async () => {
+        const entry = "/src/lib/rpc.ts";
+        const { rpc } = await import(/* @vite-ignore */ entry);
+        return rpc.bots.list();
+      }),
+    ).toEqual([]);
+    expect(calls.filter((procedure) => procedure === "bots/list")).toHaveLength(2);
     await agent.close();
     agent = undefined;
     await expect(page.getByRole("status")).toContainText("Đang kết nối");

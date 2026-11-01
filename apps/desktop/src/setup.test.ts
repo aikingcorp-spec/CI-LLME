@@ -167,6 +167,12 @@ async function boot(saved: DesktopSetup | null, locale: Locale = "vi"): Promise<
 const text = stringsFor("vi").setup;
 
 describe("setup", () => {
+  it("defaults to this computer for a new install and keeps a saved cloud choice", async () => {
+    await boot(null);
+    expect(element<HTMLInputElement>("mode-new").checked).toBe(true);
+    await boot({ mode: "existing", serverUrl: CLOUD_URL });
+    expect(element<HTMLInputElement>("mode-cloud").checked).toBe(true);
+  });
   afterEach(() => {
     document.body.innerHTML = "";
     delete (window as { rakazoSetup?: RakazoSetup }).rakazoSetup;

@@ -81,7 +81,7 @@
 
   function selectedMode() {
     const checked = form.querySelector('input[name="mode"]:checked');
-    return checked === null ? "cloud" : checked.value;
+    return checked === null ? "new" : checked.value;
   }
 
   function setStatus(message, tone) {

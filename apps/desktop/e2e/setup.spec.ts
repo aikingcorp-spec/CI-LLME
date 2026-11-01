@@ -88,7 +88,7 @@ function launch(extraEnv: Record<string, string> = {}) {
   });
 }
 
-test("first run offers VNBot Cloud first, with local and existing instances", async () => {
+test("first run defaults to this computer and offers cloud and existing instances", async () => {
   app = await launch();
   if (process.env.RAKAZO_E2E_EXECUTABLE) {
     expect(await app.evaluate(({ app }) => app.isPackaged)).toBe(true);
@@ -102,7 +102,10 @@ test("first run offers VNBot Cloud first, with local and existing instances", as
   await expect(setup.getByText("Máy chủ có sẵn")).toBeVisible();
   await expect(setup.locator(".card")).toHaveCount(0);
 
-  // Cloud is the default: one click opens the hosted app, with nothing to fill in.
+  await expect(setup.getByRole("radio", { name: /Máy tính này/ })).toBeChecked();
+  await expect(setup.locator("#panel-new")).toHaveJSProperty("hidden", false);
+  // Cloud remains available for using a node hosted on another computer.
+  await setup.getByRole("radio", { name: /VNBot Cloud/ }).check();
   await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeChecked();
   await expect(setup.locator("#panel-new")).toBeHidden();
   await expect(setup.locator("#panel-existing")).toBeHidden();
@@ -156,6 +159,7 @@ test("first run offers VNBot Cloud first, with local and existing instances", as
 test("VNBot Cloud saves the hosted address and is reselected when saved", async () => {
   app = await launch();
   const setup = await app.firstWindow();
+  await setup.getByRole("radio", { name: /VNBot Cloud/ }).check();
   await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeChecked();
   await expect(setup.getByRole("button", { name: "Tiếp tục" })).toBeEnabled();
 

@@ -21,6 +21,7 @@ import {
 } from "../../../packages/p2p-prototype/src/gateway-client.js";
 import { writeKeyFile } from "../../../packages/p2p-prototype/src/key-file.js";
 import { generateKeyPair } from "../../../packages/p2p-prototype/src/pairing.js";
+import { waitFor } from "../../../packages/p2p-prototype/src/test-util.js";
 import { sessionCookieHeader } from "../../../packages/testkit/src/index.js";
 import { browserP2PClient } from "../../../packages/testkit/src/p2p-browser-client.js";
 import { P2P_GATEWAY_ENV, P2PNode } from "../../desktop/src/p2p-node.js";
@@ -208,6 +209,15 @@ it.skipIf(!databaseUrl)(
         if (relay) expect(JSON.stringify(await transport.selectedPair())).toContain("typ relay");
         await unpairNode(gateway.url, "token", nodeId);
         await expect(openSession(gateway.url, "token", nodeId, randomUUID())).rejects.toThrow();
+        await waitFor(() => !gateway.connectedNodes().includes(nodeId));
+        await expect(
+          transport.call({
+            procedure: "me",
+            headers: { "content-type": "application/json" },
+            body: new TextEncoder().encode('{"json":{}}'),
+            signal: AbortSignal.timeout(3000),
+          }),
+        ).rejects.toThrow();
       } finally {
         await transport?.close();
         await node.stop();

@@ -253,7 +253,7 @@ function SessionApp() {
 
   const user = session.data?.user;
   // A build with a configured gateway starts at node selection; any other web keeps direct API access.
-  const remoteClient = user && !desktopBridge() ? webP2PClient() : undefined;
+  const remoteClient = user && !desktopBridge()?.p2p?.local ? webP2PClient() : undefined;
   return (
     <QueryUserProvider value={user?.id ?? null}>
       <MarkdownLinkPrompt>

@@ -9,6 +9,7 @@ import {
   openSession,
   startPairing,
 } from "@rakazo/p2p-prototype/browser";
+import { authClient } from "./auth";
 import { desktopBridge } from "./desktop";
 
 export type ConnectionState = "disconnected" | "connecting" | "connected" | "failed";
@@ -93,6 +94,7 @@ export class WebP2PClient {
       body: JSON.stringify({ scope: [scope], ...(nodeId ? { nodeId } : {}) }),
       signal,
     });
+    if (res.status === 401) authClient.$store.notify("$sessionSignal");
     if (!res.ok) throw new Error("P2P authorization failed");
     const body = (await res.json()) as { token: string };
     return body.token;
@@ -318,7 +320,7 @@ export function webP2PClient(): WebP2PClient | undefined {
   return client;
 }
 export function activeP2PClient(): WebP2PClient | undefined {
-  if (typeof window !== "undefined" && !desktopBridge()) return webP2PClient();
+  if (typeof window !== "undefined" && !desktopBridge()?.p2p?.local) return webP2PClient();
   return client?.getSnapshot().nodeId ? client : undefined;
 }
 export function resetP2PClient(): void {

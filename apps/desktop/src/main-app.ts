@@ -301,6 +301,8 @@ function createWindow(url: string, partition: string | null) {
     ...(icon ? { icon } : {}),
     webPreferences: {
       preload: path.join(import.meta.dirname, "preload.cjs"),
+      additionalArguments:
+        currentSetup?.mode === "new" && url === localStack?.webUrl() ? ["--rakazo-local-node"] : [],
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,

@@ -15,6 +15,8 @@ vi.mock("@rakazo/p2p-prototype/browser", async (original) => ({
   ...(await original<typeof BrowserModule>()),
   connectBrowserPeer: vi.fn(),
 }));
+const sessionSignal = vi.hoisted(() => vi.fn());
+vi.mock("./auth", () => ({ authClient: { $store: { notify: sessionSignal } } }));
 const config = { gatewayUrl: "http://127.0.0.1:8123", iceServers: [] };
 let client: WebP2PClient;
 let request: ReturnType<typeof vi.fn<typeof fetch>>;
@@ -84,6 +86,7 @@ function peer(denied = false, identity: unknown = { userId: "node-user" }): Data
   };
 }
 beforeEach(() => {
+  sessionSignal.mockClear();
   client = new WebP2PClient(config);
   vi.mocked(connectBrowserPeer).mockClear();
   sent = [];
@@ -105,6 +108,12 @@ beforeEach(() => {
   });
   vi.stubGlobal("fetch", request);
   vi.mocked(connectBrowserPeer).mockImplementation(async () => peer());
+});
+it("rechecks the hosted session when an expired account cannot authorize discovery", async () => {
+  request.mockResolvedValueOnce(new Response(null, { status: 401 }));
+  await expect(client.nodes()).rejects.toThrow("authorization");
+  expect(sessionSignal).toHaveBeenCalledWith("$sessionSignal");
+  expect(connectBrowserPeer).not.toHaveBeenCalled();
 });
 afterEach(() => {
   client.reset();
@@ -343,6 +352,17 @@ it("sends tokens only to the explicitly configured gateway", async () => {
     "https://gateway.example.test/nodes",
   ]);
 });
+it.each([true, false])(
+  "keeps local desktop RPC local while hosted desktop uses P2P (%s)",
+  async (local) => {
+    vi.stubEnv("VITE_P2P_GATEWAY_URL", "https://gateway.example.test");
+    vi.stubGlobal("window", { rakazoDesktop: { p2p: { local } } });
+    vi.resetModules();
+    const fresh = await import("./p2p-client");
+    expect(Boolean(fresh.activeP2PClient())).toBe(!local);
+    expect(request).not.toHaveBeenCalled();
+  },
+);
 it("bounds a stalled authorization request and leaves RPC disconnected", async () => {
   vi.useFakeTimers();
   request.mockImplementationOnce(
