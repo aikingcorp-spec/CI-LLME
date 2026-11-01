@@ -44,6 +44,12 @@ export interface RakazoDesktopDevice {
 }
 
 export interface RakazoDesktop {
+  p2p?: {
+    isLocal: () => Promise<boolean>;
+    signIn: (email: string, otp: string) => Promise<boolean>;
+    sendCode: (email: string) => Promise<void>;
+    enroll: (email: string, otp: string) => Promise<boolean>;
+  };
   /** Optional for compatibility with older desktop releases. */
   badge?: {
     set: (count: number) => Promise<boolean>;

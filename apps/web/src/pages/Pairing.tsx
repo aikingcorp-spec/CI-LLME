@@ -1,11 +1,15 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { PairedNode } from "@rakazo/p2p-prototype/browser";
 import { Button } from "@rakazo/ui-web/components/ui/button";
+import { Input } from "@rakazo/ui-web/components/ui/input";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { LoadingState } from "../components/ai/primitives";
 import { LanguageSwitch } from "../components/LanguageSwitch";
+import { authClient } from "../lib/auth";
+import { desktopBridge } from "../lib/desktop";
+import { useDesktopNodeAuth } from "../lib/desktop-node-auth";
 import type { WebP2PClient } from "../lib/p2p-client";
 import { webP2PClient } from "../lib/p2p-client";
 import { queryClient } from "../lib/query";
@@ -14,7 +18,8 @@ import { clearSpaceSelection } from "../lib/rpc";
 type PairingClient = Pick<
   WebP2PClient,
   "getSnapshot" | "subscribe" | "nodes" | "pair" | "connect" | "disconnect"
->;
+> &
+  Partial<Pick<WebP2PClient, "revoke">>;
 
 function PairingLayout({ children }: { children: ReactNode }) {
   return (
@@ -34,7 +39,9 @@ function PairingLayout({ children }: { children: ReactNode }) {
 }
 
 export function PairingPage({ client: supplied }: { client?: PairingClient }) {
+  const native = useDesktopNodeAuth();
   const [client] = useState(() => supplied ?? webP2PClient());
+  if (native) return <DesktopEnrollment />;
   return client ? (
     <ConfiguredPairing client={client} />
   ) : (
@@ -88,12 +95,10 @@ function ConfiguredPairing({ client }: { client: PairingClient }) {
     };
   }, [client, refresh, pairing]);
   useEffect(() => {
-    if (!pairing) return;
-    const poll = setInterval(() => setRefresh((value) => value + 1), 3_000);
-    const expiry = setTimeout(
-      () => setPairing(undefined),
-      Math.max(0, pairing.expiresAt - Date.now()),
-    );
+    const poll = setInterval(() => setRefresh((value) => value + 1), pairing ? 3_000 : 5_000);
+    const expiry = pairing
+      ? setTimeout(() => setPairing(undefined), Math.max(0, pairing.expiresAt - Date.now()))
+      : undefined;
     return () => {
       clearInterval(poll);
       clearTimeout(expiry);
@@ -213,6 +218,20 @@ function ConfiguredPairing({ client }: { client: PairingClient }) {
                     <Trans>Connect</Trans>
                   </Button>
                 )}
+                {client.revoke ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      if (!window.confirm(t`Revoke remote access to this computer?`)) return;
+                      void client
+                        .revoke?.(node.nodeId)
+                        .then(() => setRefresh((value) => value + 1))
+                        .catch(() => setError(true));
+                    }}
+                  >
+                    <Trans>Revoke access</Trans>
+                  </Button>
+                ) : null}
               </li>
             );
           })}
@@ -221,6 +240,81 @@ function ConfiguredPairing({ client }: { client: PairingClient }) {
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           <Trans>Could not load pairing information</Trans>
+        </p>
+      ) : null}
+    </PairingLayout>
+  );
+}
+
+function DesktopEnrollment() {
+  const session = authClient.useSession();
+  const email = session.data?.user.email ?? "";
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"idle" | "code" | "done">("idle");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  async function submit() {
+    setBusy(true);
+    setError(false);
+    try {
+      const bridge = desktopBridge()?.p2p;
+      if (!bridge) throw new Error("Desktop unavailable");
+      if (step === "idle") {
+        await bridge.sendCode(email);
+        setStep("code");
+      } else {
+        await bridge.enroll(email, code);
+        setStep("done");
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <PairingLayout>
+      {step === "done" ? (
+        <p role="status">
+          <Trans>Remote access is enabled for this account.</Trans>
+        </p>
+      ) : (
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
+          <p>
+            <Trans>Verify your account to access this computer from another device.</Trans>
+          </p>
+          <p className="text-sm text-muted-foreground">{email}</p>
+          {step === "code" ? (
+            <label htmlFor="remote-access-code" className="flex flex-col gap-2">
+              <Trans>Email code</Trans>
+              <Input
+                id="remote-access-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                required
+                pattern="[0-9]{6}"
+              />
+            </label>
+          ) : null}
+          <Button disabled={busy || !email} type="submit">
+            {step === "idle" ? <Trans>Send code</Trans> : <Trans>Enable remote access</Trans>}
+          </Button>
+        </form>
+      )}
+      {error ? (
+        <p role="alert">
+          <Trans>
+            Could not enable remote access. Check your code and connection, then try again.
+          </Trans>
         </p>
       ) : null}
     </PairingLayout>

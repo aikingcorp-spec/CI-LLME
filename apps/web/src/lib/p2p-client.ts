@@ -65,6 +65,10 @@ export class WebP2PClient {
   private listeners = new Set<() => void>();
   private attempt?: AbortController;
   private transport?: DataChannelClientTransport;
+  private retry?: ReturnType<typeof setTimeout>;
+  private retryCount = 0;
+  private retryEpoch = 0;
+  private accountId?: string;
   constructor(private readonly config: P2PConfig) {}
   getSnapshot = (): P2PSnapshot => this.snapshot;
   subscribe = (listener: () => void) => {
@@ -95,9 +99,58 @@ export class WebP2PClient {
     return (await listNodes(this.config.gatewayUrl, await this.token("nodes", signal), signal))
       .nodes;
   }
+  async revoke(nodeId: string) {
+    const signal = AbortSignal.timeout(10_000);
+    const token = await this.token("nodes", signal, nodeId);
+    const response = await fetch(`${this.config.gatewayUrl}/nodes/${encodeURIComponent(nodeId)}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${token}` },
+      signal,
+      credentials: "omit",
+      redirect: "error",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Could not revoke computer");
+    if (this.snapshot.nodeId === nodeId) {
+      this.disconnect();
+      if (this.accountId) {
+        try {
+          sessionStorage.removeItem(`vnbot:p2p:${this.accountId}`);
+        } catch {
+          /* Optional preference. */
+        }
+      }
+    }
+  }
   async pair() {
     const signal = AbortSignal.timeout(10_000);
     return startPairing(this.config.gatewayUrl, await this.token("pair", signal), signal);
+  }
+  async restore(accountId: string) {
+    if (this.accountId === accountId) return;
+    this.accountId = accountId;
+    let nodeId: string | null = null;
+    try {
+      nodeId = sessionStorage.getItem(`vnbot:p2p:${accountId}`);
+    } catch {
+      /* Optional preference. */
+    }
+    if (!nodeId) return;
+    const nodes = await this.nodes();
+    if (this.accountId !== accountId) return;
+    if (nodes.some((node) => node.nodeId === nodeId && node.online)) await this.connect(nodeId);
+  }
+  private reconnect(nodeId: string) {
+    if (this.retryCount >= 5) return;
+    const delay = Math.min(1000 * 2 ** this.retryCount++, 15_000);
+    this.retry = setTimeout(() => {
+      this.retry = undefined;
+      const pending = this.connect(nodeId);
+      const epoch = this.retryEpoch;
+      void pending.catch(() => {
+        if (epoch === this.retryEpoch) this.reconnect(nodeId);
+      });
+    }, delay);
   }
   async connect(nodeId: string): Promise<void> {
     this.disconnect();
@@ -135,7 +188,8 @@ export class WebP2PClient {
           if (this.attempt === attempt && !attempt.signal.aborted) {
             attempt.abort();
             this.transport = undefined;
-            this.set({ state: "failed", nodeId });
+            this.set({ state: "connecting", nodeId });
+            this.reconnect(nodeId);
           }
         },
       });
@@ -148,6 +202,14 @@ export class WebP2PClient {
       if (this.attempt !== attempt) {
         transport.close();
         return;
+      }
+      this.retryCount = 0;
+      if (this.accountId) {
+        try {
+          sessionStorage.setItem(`vnbot:p2p:${this.accountId}`, nodeId);
+        } catch {
+          /* Optional preference. */
+        }
       }
       this.transport = transport;
       this.set({ state: "connected", nodeId });
@@ -162,6 +224,9 @@ export class WebP2PClient {
     }
   }
   disconnect = () => {
+    this.retryEpoch++;
+    clearTimeout(this.retry);
+    this.retry = undefined;
     this.attempt?.abort();
     this.attempt = undefined;
     this.transport?.close();
@@ -170,6 +235,7 @@ export class WebP2PClient {
   };
   reset = () => {
     this.disconnect();
+    this.accountId = undefined;
     this.set({ state: "disconnected" });
   };
 

@@ -4,7 +4,10 @@ import { startHostComputerServer } from "@rakazo/adapters/host-computer-server";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
 
 /** App-private credentials and consent, never sent to a renderer or a connected remote server. */
-export async function prepareHostComputer(userDataDir: string) {
+export async function prepareHostComputer(
+  userDataDir: string,
+  networking: "native" | "docker" = "native",
+) {
   const configFile = path.join(userDataDir, "host-computer.json");
   const consentFile = path.join(userDataDir, "host-computer-consent");
   const raw = await readPrivateFile(configFile, 1024);
@@ -19,7 +22,12 @@ export async function prepareHostComputer(userDataDir: string) {
     /* Invalid local configuration is replaced. */
   }
   let server: Awaited<ReturnType<typeof startHostComputerServer>>;
-  const options = { root: path.join(userDataDir, "computers"), token };
+  const options = {
+    root: path.join(userDataDir, "computers"),
+    token,
+    // Docker Desktop forwards through its host gateway; native services stay on loopback.
+    hostname: networking === "docker" ? "0.0.0.0" : "127.0.0.1",
+  };
   try {
     server = await startHostComputerServer({ ...options, port });
   } catch (error) {
@@ -45,7 +53,10 @@ export async function prepareHostComputer(userDataDir: string) {
     return write;
   }
   return {
-    connection: { url: `http://host.docker.internal:${server.port}`, token },
+    connection: {
+      url: `http://${networking === "docker" ? "host.docker.internal" : "127.0.0.1"}:${server.port}`,
+      token,
+    },
     isEnabled: server.isEnabled,
     activate(value: boolean) {
       active = value;

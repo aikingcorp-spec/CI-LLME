@@ -1,4 +1,5 @@
 name = "vnbot-app"
+main = "../../../apps/p2p-gateway/src/hosted-app.ts"
 compatibility_date = "2026-10-01"
 
 routes = [
@@ -6,6 +7,15 @@ routes = [
 ]
 
 [assets]
-directory = "../.out/app"
+binding = "ASSETS"
+run_worker_first = true
+directory = "../../../apps/web/dist"
 html_handling = "auto-trailing-slash"
-not_found_handling = "404-page"
+not_found_handling = "single-page-application"
+
+# Set these explicitly at deployment. AUTH_ORIGIN must be the existing account service,
+# never a customer node. Its public auth URL/trusted origin must be https://app.vnbot.run.
+# The web bundle must be built with the same gateway value as P2P_GATEWAY_URL.
+# [vars]
+# AUTH_ORIGIN = "https://accounts.example.com"
+# P2P_GATEWAY_URL = "https://p2p.example.com"

@@ -152,11 +152,26 @@ const MCP_OAUTH_CALLBACK_PATH = "/mcp/oauth/callback";
 function RemoteNodeGate({ client }: { client: WebP2PClient }) {
   const connection = useSyncExternalStore(client.subscribe, client.getSnapshot);
   const { pathname } = useLocation();
-  return pathname === "/app/pairing" || connection.state === "connected" ? (
-    <Outlet />
-  ) : (
-    <Navigate to="/app/pairing" replace />
-  );
+  const session = authClient.useSession();
+  const userId = session.data?.user.id;
+  const wasConnected = useRef(false);
+  if (connection.state === "connected") wasConnected.current = true;
+  useEffect(() => {
+    if (userId) void client.restore(userId).catch(() => undefined);
+  }, [client, userId]);
+  if (pathname === "/app/pairing" || connection.state === "connected") return <Outlet />;
+  if (connection.state === "connecting")
+    return wasConnected.current ? (
+      <>
+        <p role="status" className="bg-muted p-2 text-center text-sm">
+          <Trans>Reconnecting…</Trans>
+        </p>
+        <Outlet />
+      </>
+    ) : (
+      <PageLoading />
+    );
+  return <Navigate to="/app/pairing" replace />;
 }
 
 function SessionApp() {

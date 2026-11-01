@@ -264,9 +264,10 @@ export async function connectPeer(o: PeerOptions, runtime: PeerRuntime): Promise
     else if (ws?.isOpen()) sendSignal(payload);
     else outbox.push(payload);
   };
-  pc.onLocalDescription((sdp, type) =>
-    signal({ type: type === "offer" ? "offer" : "answer", sdp, attemptId }),
-  );
+  pc.onLocalDescription((sdp, type) => {
+    debug(`local description ${type}`);
+    signal({ type: type === "offer" ? "offer" : "answer", sdp, attemptId });
+  });
   pc.onLocalCandidate((candidate, mid) => {
     localCandidates.push(candidate);
     signal({ type: "candidate", candidate, mid, attemptId });

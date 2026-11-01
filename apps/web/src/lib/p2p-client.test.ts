@@ -302,7 +302,7 @@ it("ignores a stale token response after cancel and permits retry", async () => 
 it("reflects remote disconnection and reset removes the remote selection", async () => {
   await client.connect("node-1");
   vi.mocked(connectBrowserPeer).mock.calls[0]?.[0].onClose?.();
-  expect(client.getSnapshot()).toEqual({ state: "failed", nodeId: "node-1" });
+  expect(client.getSnapshot()).toEqual({ state: "connecting", nodeId: "node-1" });
   client.reset();
   expect(client.getSnapshot()).toEqual({ state: "disconnected" });
 });

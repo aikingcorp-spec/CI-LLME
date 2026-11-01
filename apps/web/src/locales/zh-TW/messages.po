@@ -1979,6 +1979,10 @@ msgstr "無法下載 {0}。請重試。"
 msgid "Could not download {name}. Try again."
 msgstr "無法下載 {name}。請重試。"
 
+#: src/pages/Pairing.tsx
+msgid "Could not enable remote access. Check your code and connection, then try again."
+msgstr ""
+
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
 msgstr ""
@@ -2222,6 +2226,10 @@ msgstr "無法顯示憑證"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not sign in"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Could not sign in. Check your code and connection, then try again."
 msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
@@ -2753,6 +2761,10 @@ msgstr "編輯資料"
 msgid "Email"
 msgstr "電子信箱"
 
+#: src/pages/Pairing.tsx
+msgid "Email code"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "該電子信箱不允許註冊"
@@ -2769,6 +2781,10 @@ msgstr "需要驗證電子信箱"
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "啟用 {0}"
+
+#: src/pages/Pairing.tsx
+msgid "Enable remote access"
+msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4838,6 +4854,10 @@ msgstr "重新連線 OAuth"
 msgid "Reconnecting"
 msgstr "正在重新連線"
 
+#: src/App.tsx
+msgid "Reconnecting…"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
 msgstr "錄製可能已開始，但無法重新整理畫面"
@@ -4930,6 +4950,10 @@ msgstr "重新載入"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Remember"
+msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Remote access is enabled for this account."
 msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
@@ -5198,6 +5222,14 @@ msgstr "請檢查供應商設定並重新測試。"
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
 msgstr "撤銷授權"
+
+#: src/pages/Pairing.tsx
+msgid "Revoke access"
+msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Revoke remote access to this computer?"
+msgstr ""
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5504,6 +5536,7 @@ msgid "Send as file"
 msgstr "以檔案傳送"
 
 #: src/pages/Auth.tsx
+#: src/pages/Pairing.tsx
 msgid "Send code"
 msgstr ""
 
@@ -6601,6 +6634,10 @@ msgstr "保管庫"
 #: src/pages/PluginsOverlay.tsx
 msgid "Verify and add"
 msgstr "驗證並新增"
+
+#: src/pages/Pairing.tsx
+msgid "Verify your account to access this computer from another device."
+msgstr ""
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx

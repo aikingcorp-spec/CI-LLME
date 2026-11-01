@@ -49,3 +49,30 @@ curl -sI https://vnbot.run/khong-co | head -n 1                                 
 curl -sI https://www.vnbot.run/en/ | grep -i -e '^HTTP' -e '^location'           # 301 -> https://vnbot.run/en/
 curl -sI https://app.vnbot.run/ | head -n 1
 ```
+
+## Real remote application
+
+`app/wrangler.toml` now points at the real Vite output and the account-only Worker entry.
+Do not deploy `app-site` or the generated static app wrapper over it. Landing assembly/deployment
+is unchanged; it does not publish the application.
+
+1. Configure the existing account service's public auth URL/trusted origin as the app origin.
+   Configure its existing P2P token signer. Configure the gateway's matching application public
+   keys, gateway signing key, origins, D1 migrations and optional TURN secret/URLs. Preserve
+   existing keys and databases. No new account database is introduced by the app Worker.
+2. From the repository root, build `pnpm --filter @rakazo/web build` with
+   `VITE_P2P_GATEWAY_URL` set to the deployed HTTPS gateway origin.
+3. Set app Worker `AUTH_ORIGIN` to the existing HTTPS account service origin and
+   `P2P_GATEWAY_URL` to that same gateway origin used at build time. These are public settings,
+   not credentials. The proxy refuses a self-referential or non-HTTPS account origin.
+4. From `deploy/cloudflare/app`, run `wrangler deploy --dry-run`, inspect its bindings and assets,
+   then deploy only the app Worker after the account and gateway prerequisites are verified.
+   Do not run the landing deploy for this change.
+5. Verify OTP delivery and verification, two-device discovery, real node RPC/chat, foreign-account
+   refusal, revocation, refresh/reconnect, and direct/relay paths through the public HTTPS domain.
+   An unauthenticated capabilities response or a successful asset upload does not verify these.
+
+Native desktop enrollment uses the app account origin and the configured
+`RAKAZO_P2P_GATEWAY_URL`, defaulting to the planned public P2P origin. Desktop installers must
+be rebuilt for Linux and Windows to contain enrollment and local-session binding. Existing
+installers do not gain these changes from a web deployment.

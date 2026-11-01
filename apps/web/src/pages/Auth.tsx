@@ -14,6 +14,7 @@ import { VnbotWordmark } from "../components/VnbotWordmark";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
+import { useDesktopNodeAuth } from "../lib/desktop-node-auth";
 import { getActiveUiLocale } from "../lib/i18n";
 import { clearSpaceSelection } from "../lib/rpc";
 import {
@@ -64,6 +65,7 @@ function formatResend(seconds: number): string {
 }
 
 export function AuthPage() {
+  const native = useDesktopNodeAuth();
   const { t } = useLingui();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -189,16 +191,19 @@ export function AuthPage() {
     setError(null);
     setNotInvited(false);
     try {
-      const request = await authClient.emailOtp.sendVerificationOtp({
-        email: trimmedEmail,
-        type: "sign-in",
-        // The send-code body schema drops unknown fields. Locale travels on this header.
-        fetchOptions: {
-          headers: {
-            "x-rakazo-locale": getActiveUiLocale() === "vi" ? "vi" : "en",
-          },
-        },
-      });
+      if (native) await native.sendCode(trimmedEmail);
+      const request = native
+        ? { error: null }
+        : await authClient.emailOtp.sendVerificationOtp({
+            email: trimmedEmail,
+            type: "sign-in",
+            // The send-code body schema drops unknown fields. Locale travels on this header.
+            fetchOptions: {
+              headers: {
+                "x-rakazo-locale": getActiveUiLocale() === "vi" ? "vi" : "en",
+              },
+            },
+          });
       if (request.error) {
         if (request.error?.code === EMAIL_NOT_INVITED) {
           setNotInvited(true);
@@ -219,7 +224,11 @@ export function AuthPage() {
       writeSignInProgress({ email: trimmedEmail, step: "code", sentAt });
       pushCodeEntry({ email: trimmedEmail, sentAt }, isResend);
     } catch {
-      setError(t`Couldn't reach the server. Try again.`);
+      setError(
+        native
+          ? t`Could not sign in. Check your code and connection, then try again.`
+          : t`Couldn't reach the server. Try again.`,
+      );
     } finally {
       if (!entering.current) setPending(false);
     }
@@ -231,11 +240,14 @@ export function AuthPage() {
     setError(null);
     setCodeInvalid(false);
     try {
-      const result = await authClient.signIn.emailOtp({
-        email: trimmedEmail,
-        otp,
-        name: trimmedEmail.split("@")[0] || "User",
-      });
+      if (native) await native.signIn(trimmedEmail, otp);
+      const result = native
+        ? { error: null }
+        : await authClient.signIn.emailOtp({
+            email: trimmedEmail,
+            otp,
+            name: trimmedEmail.split("@")[0] || "User",
+          });
       if (result.error) {
         const codeName = authErrorCode(result.error);
         if (codeName === EMAIL_NOT_INVITED) {
@@ -252,9 +264,14 @@ export function AuthPage() {
         if (codeName === "OTP_EXPIRED" || codeName === "TOO_MANY_ATTEMPTS") setNeedsNewCode(true);
         return;
       }
+      if (native) authClient.$store.notify("$sessionSignal");
       enterApp();
     } catch {
-      setError(t`Couldn't reach the server. Try again.`);
+      setError(
+        native
+          ? t`Could not sign in. Check your code and connection, then try again.`
+          : t`Couldn't reach the server. Try again.`,
+      );
     } finally {
       if (!entering.current) setPending(false);
     }

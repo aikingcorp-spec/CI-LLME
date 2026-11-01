@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { isLoopbackHost } from "@rakazo/contracts/network-host";
 import type { IceServer } from "node-datachannel";
+import { enrollDesktop } from "./p2p-enrollment.js";
 
 /** Resolve just before each incoming connection, so an idle node never reuses expired TURN. */
 export async function desktopIceServers(
@@ -29,10 +30,13 @@ export interface P2PKeyPair {
   privateKey: string;
 }
 export interface P2PNodeKeyFile extends P2PKeyPair {
+  nodeId?: string;
+  localUser?: string;
   gatewayPublicKey?: string;
   user?: string;
 }
 export interface P2PPairingModule {
+  sign?: (key: P2PKeyPair, message: string) => string;
   completePairing(
     gatewayUrl: string,
     code: string,
@@ -171,6 +175,7 @@ export interface P2PNodeOptions extends InstallLayout {
   env: NodeJS.ProcessEnv;
   /** Gateway URL from saved settings; the environment variable wins. */
   gatewayUrl?: string;
+  localSession?: (userId: string) => Promise<Record<string, string>>;
   loadPairing?: (file: string) => Promise<P2PPairingModule>;
   spawnAgent?: (entry: string, env: Record<string, string>) => Promise<P2PChild>;
   list?: (dir: string) => Promise<string[]>;
@@ -217,12 +222,32 @@ export class P2PNode {
     return this.current;
   }
 
+  async enroll(webUrl: string, appToken: string, localUser: string, name: string) {
+    const gatewayUrl = this.options.env[P2P_GATEWAY_ENV] || this.options.gatewayUrl || "";
+    const pairing = await (this.options.loadPairing ?? loadPairingFromFile)(
+      p2pBundlePaths(this.options).pairing,
+    );
+    await enrollDesktop({
+      pairing,
+      gatewayUrl,
+      appToken,
+      localUser,
+      name,
+      userDataDir: this.options.userDataDir,
+      platform: this.options.platform,
+    });
+    await this.stop();
+    return this.start(webUrl);
+  }
+
   async start(webUrl: string): Promise<P2PStatus> {
     const configured = (this.options.env[P2P_GATEWAY_ENV] || this.options.gatewayUrl || "").trim();
     if (!configured) return this.set({ state: "off" });
     if (this.startedFor === webUrl && this.current.state === "running") return this.current;
-    await this.stop();
-    const generation = ++this.generation;
+    const stopped = this.stop();
+    const generation = this.generation;
+    await stopped;
+    if (generation !== this.generation) return this.current;
     const stale = () => generation !== this.generation;
     this.set({ state: "starting" });
     const unavailable = (reason: P2PUnavailableReason) => this.fail(reason);
@@ -252,22 +277,33 @@ export class P2PNode {
     const key = identity?.key;
     if (!identity || !key?.gatewayPublicKey || !key.user) return unavailable("not-paired");
 
-    const outcome = await this.launch(bundles.agent, {
-      type: "start",
-      gatewayUrl,
-      nodeId: identity.nodeId,
-      webUrl,
-      key: {
-        publicKey: key.publicKey,
-        privateKey: key.privateKey,
-        gatewayPublicKey: key.gatewayPublicKey,
-        user: key.user,
-      },
-    });
-    if (stale()) {
-      this.child?.kill();
-      return this.current;
+    let localHeaders: Record<string, string> = {};
+    if (key.localUser) {
+      try {
+        localHeaders = await this.options.localSession!(key.localUser);
+      } catch {
+        return unavailable("start-failed");
+      }
     }
+    if (stale()) return this.current;
+    const outcome = await this.launch(
+      bundles.agent,
+      {
+        localHeaders,
+        type: "start",
+        gatewayUrl,
+        nodeId: identity.nodeId,
+        webUrl,
+        key: {
+          publicKey: key.publicKey,
+          privateKey: key.privateKey,
+          gatewayPublicKey: key.gatewayPublicKey,
+          user: key.user,
+        },
+      },
+      generation,
+    );
+    if (stale()) return this.current;
     if (outcome !== "started") return unavailable(outcome);
     this.startedFor = webUrl;
     this.options.log?.(`P2P node ${identity.nodeId} is dialing the gateway.`);
@@ -298,6 +334,7 @@ export class P2PNode {
   private async launch(
     entry: string,
     message: unknown,
+    generation: number,
   ): Promise<"started" | "load-failed" | "start-failed"> {
     const env: Record<string, string> = {};
     for (const name of CHILD_ENV_KEYS) {
@@ -309,6 +346,10 @@ export class P2PNode {
       child = await (this.options.spawnAgent ?? forkUtility)(entry, env);
     } catch {
       return "load-failed";
+    }
+    if (generation !== this.generation) {
+      child.kill();
+      return "start-failed";
     }
     this.child = child;
     return new Promise((resolve) => {
@@ -358,7 +399,7 @@ export class P2PNode {
     const idFile = p.join(dir, NODE_ID_FILE_NAME);
     const read = this.options.readText ?? readTextOrNull;
     const saved = pairing.readKeyFile(keyFile);
-    const savedId = (await read(idFile))?.trim();
+    const savedId = saved?.nodeId || (await read(idFile))?.trim();
     if (saved && savedId) return { nodeId: savedId, key: saved };
 
     const code = this.options.env[P2P_PAIR_CODE_ENV]?.trim();

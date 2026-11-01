@@ -15,6 +15,7 @@ interface Start {
   gatewayUrl: string;
   nodeId: string;
   webUrl: string;
+  localHeaders?: Record<string, string>;
   key: { publicKey: string; privateKey: string; gatewayPublicKey: string; user: string };
 }
 
@@ -44,9 +45,14 @@ listen(async (message) => {
         channel: {
           gatewayPublicKey: m.key.gatewayPublicKey,
           allowedUsers: [m.key.user],
-          handler: desktopChannelHandler(m.webUrl, forwardChannelHandler(m.webUrl)),
+          handler: desktopChannelHandler(m.webUrl, forwardChannelHandler(m.webUrl, m.localHeaders)),
         },
       });
+      const current = agent;
+      const deadline = Date.now() + 15_000;
+      while (agent === current && !current.connected() && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      if (agent !== current || !current.connected()) throw new Error("Gateway unavailable");
       post({ type: "started" });
     } catch {
       post({ type: "error" });

@@ -174,25 +174,74 @@ export function channelHttpHandler(handler: NodeChannelHandler): LocalHandler {
 }
 
 /** Shares a local HTTP API across the relay and data-channel seams. */
-export function forwardChannelHandler(target: string): NodeChannelHandler {
+export function forwardChannelHandler(
+  target: string,
+  localHeaders: Record<string, string> = {},
+): NodeChannelHandler {
   const request = (
     procedure: string,
     headers: Record<string, string>,
     body: Uint8Array,
     signal?: AbortSignal,
-  ) =>
-    fetch(new URL(`/rpc/${procedure.split("/").map(encodeURIComponent).join("/")}`, target), {
-      method: "POST",
-      headers,
-      body: new Uint8Array(body),
-      signal,
-    });
+  ) => {
+    if (!/^[A-Za-z][A-Za-z0-9_]*(?:\/[A-Za-z][A-Za-z0-9_]*)*$/.test(procedure))
+      throw new Error("Invalid RPC procedure");
+    return fetch(
+      new URL(`/rpc/${procedure.split("/").map(encodeURIComponent).join("/")}`, target),
+      {
+        method: "POST",
+        headers: (() => {
+          const safe = new Headers();
+          for (const [key, value] of Object.entries(headers)) {
+            if (
+              [
+                "content-type",
+                "accept",
+                "x-rakazo-space-id",
+                "x-vnbot-ui-locale",
+                "x-rakazo-client-build",
+                "x-rakazo-identity-confirmation",
+              ].includes(key.toLowerCase())
+            )
+              safe.set(key, value);
+          }
+          // A remote caller never chooses the local account or supplies host credentials.
+          for (const key of [
+            "authorization",
+            "cookie",
+            "host",
+            "origin",
+            "x-rakazo-local-settings-token",
+          ])
+            safe.delete(key);
+          for (const [key, value] of Object.entries(localHeaders)) safe.set(key, value);
+          return safe;
+        })(),
+        redirect: "error",
+        body: new Uint8Array(body),
+        signal,
+      },
+    );
+  };
   return {
     async call(procedure, headers, body) {
       const res = await request(procedure, headers, body);
       return {
         status: res.status,
-        headers: Object.fromEntries(res.headers),
+        headers: Object.fromEntries(
+          [...res.headers].filter(
+            ([name]) =>
+              ![
+                "set-cookie",
+                "authorization",
+                "www-authenticate",
+                "connection",
+                "transfer-encoding",
+                "content-length",
+                "content-encoding",
+              ].includes(name),
+          ),
+        ),
         body: new Uint8Array(await res.arrayBuffer()),
       };
     },

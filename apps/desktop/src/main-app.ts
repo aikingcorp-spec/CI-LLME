@@ -25,6 +25,7 @@ import { createBadgeHandler } from "./badge.js";
 import { openBrowserAuth } from "./browser-auth.js";
 import { DOCKER_INSTALL_LINKS, isDesktopSetupLink, runDocker } from "./docker-cli.js";
 import { prepareHostComputer } from "./host-computer.js";
+import { ensureLocalNodeSession } from "./local-node-session.js";
 import { saveLocalComputerHost } from "./local-settings.js";
 import {
   LocalStackController,
@@ -45,11 +46,13 @@ import { logNativeFailure } from "./native-diagnostics.js";
 import { NativeLocalStackController } from "./native-local-stack.js";
 import { nativeMigrationsDir } from "./native-migrate.js";
 import { NativePostgres } from "./native-postgres.js";
-import { createNativeServices } from "./native-services.js";
+import { createNativeServices, readNativeStackToken } from "./native-services.js";
 import { installNativeShutdown } from "./native-shutdown.js";
 import { runNativeSmoke } from "./native-smoke.js";
 import { NativeStack } from "./native-stack.js";
 import { oauthCallbackFrom } from "./oauth-callback.js";
+import { remoteAccount } from "./p2p-account.js";
+import { localP2PUser } from "./p2p-local-session.js";
 import { P2PNode } from "./p2p-node.js";
 import { associatedPasskeyRpIds } from "./passkeys.js";
 import {
@@ -361,6 +364,17 @@ function createWindow(url: string, partition: string | null) {
     popup.webContents.on("will-redirect", (details) => capture(details));
     popup.webContents.on("will-navigate", (details) => capture(details));
   });
+  const resumeP2P = () => {
+    if (nativeP2P && localStack && appWindowTargets.get(win) === localStack.webUrl())
+      void nativeP2P.start(localStack.webUrl());
+  };
+  const refreshP2P = () => {
+    void nativeP2P?.stop().then(resumeP2P);
+  };
+  win.webContents.on("did-finish-load", resumeP2P);
+  const p2pCookies = win.webContents.session.cookies;
+  p2pCookies.on("changed", refreshP2P);
+  win.once("closed", () => p2pCookies.removeListener("changed", refreshP2P));
   win.on("close", (event) => {
     if (
       process.platform === "darwin" &&
@@ -1175,7 +1189,12 @@ app.whenReady().then(async () => {
   installSessionPermissions(session.defaultSession, permissionTarget);
   const userDataDir = app.getPath("userData");
   try {
-    hostComputer = await prepareHostComputer(userDataDir);
+    hostComputer = await prepareHostComputer(
+      userDataDir,
+      chooseRuntime({ platform: process.platform, env: process.env }) === "native"
+        ? "native"
+        : "docker",
+    );
   } catch {
     /* Local access fails closed; Docker remains available. */
   }
@@ -1248,6 +1267,21 @@ app.whenReady().then(async () => {
       appPath: app.getAppPath(),
       userDataDir,
       env: process.env,
+      gatewayUrl: "https://p2p.vnbot.run",
+      localSession: async (userId) => {
+        if (!mainWindow || mainWindow.isDestroyed()) throw new Error("Local session unavailable");
+        const origin = localStack!.webUrl();
+        const cookies = await mainWindow.webContents.session.cookies.get({ url: origin });
+        const cookie = cookies.map(({ name, value }) => `${name}=${value}`).join("; ");
+        const response = await fetch(`${origin}/api/auth/get-session`, {
+          headers: { cookie },
+          redirect: "error",
+          signal: AbortSignal.timeout(5000),
+        });
+        const session = await localP2PUser(response);
+        if (session.id !== userId) throw new Error("Local account changed");
+        return { cookie };
+      },
       log: (message) => console.warn(message),
     });
     if (process.env.RAKAZO_DESKTOP_SMOKE === "1") {
@@ -1368,6 +1402,99 @@ app.whenReady().then(async () => {
     currentSetup?.mode === "new" &&
     appWindowTargets.get(mainWindow!) === localStack.webUrl() &&
     safeOrigin(event.senderFrame.url) === safeOrigin(localStack.webUrl());
+  ipcMain.handle(
+    "desktop.p2p.isLocal",
+    (event) => isManagedComputerRequest(event) && Boolean(nativeP2P),
+  );
+  const account = remoteAccount();
+  let enrolling = false;
+  ipcMain.handle("desktop.p2p.sendCode", async (event, email: unknown) => {
+    if (
+      !isManagedComputerRequest(event) ||
+      typeof email !== "string" ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+$/.test(email)
+    )
+      throw new Error("Invalid enrollment request");
+    await account.send(email.trim().toLowerCase());
+  });
+  ipcMain.handle("desktop.p2p.signIn", async (event, email: unknown, otp: unknown) => {
+    if (
+      !isManagedComputerRequest(event) ||
+      !nativeP2P ||
+      enrolling ||
+      typeof email !== "string" ||
+      email.length > 254 ||
+      typeof otp !== "string" ||
+      !/^\d{6}$/.test(otp)
+    )
+      throw new Error("Invalid sign-in request");
+    enrolling = true;
+    try {
+      const normalized = email.trim().toLowerCase();
+      const credential = await account.authorize(normalized, otp);
+      if (!isManagedComputerRequest(event)) throw new Error("Sign-in cancelled");
+      const token = await readNativeStackToken(app.getPath("userData"));
+      if (!token) throw new Error("Local stack unavailable");
+      await ensureLocalNodeSession({
+        origin: new URL(localStack.webUrl()).origin,
+        token,
+        email: normalized,
+        cookies: event.sender.session.cookies,
+        request: fetch,
+      });
+      const response = await event.sender.session.fetch(
+        `${localStack.webUrl()}/api/auth/get-session`,
+        { redirect: "error", signal: AbortSignal.timeout(5000) },
+      );
+      const user = await localP2PUser(response);
+      // A previous pairing keeps its owner; signing in cannot silently replace it.
+      const keyFile = path.join(app.getPath("userData"), "p2p", "node-key.json");
+      if (!existsSync(keyFile))
+        await nativeP2P.enroll(localStack.webUrl(), credential, user.id, await deviceName());
+      else await nativeP2P.start(localStack.webUrl());
+      return true;
+    } finally {
+      enrolling = false;
+    }
+  });
+  ipcMain.handle("desktop.p2p.enroll", async (event, email: unknown, otp: unknown) => {
+    if (
+      !isManagedComputerRequest(event) ||
+      !nativeP2P ||
+      enrolling ||
+      typeof email !== "string" ||
+      typeof otp !== "string" ||
+      !/^\d{6}$/.test(otp)
+    )
+      throw new Error("Invalid enrollment request");
+    enrolling = true;
+    try {
+      const response = await event.sender.session.fetch(
+        `${localStack.webUrl()}/api/auth/get-session`,
+        { redirect: "error", signal: AbortSignal.timeout(5000) },
+      );
+      const local = await localP2PUser(response);
+      if (
+        !response.ok ||
+        typeof local.id !== "string" ||
+        local.email.toLowerCase() !== email.trim().toLowerCase()
+      )
+        throw new Error("Sign in to this computer with the same account first");
+      const token = await account.authorize(email.trim().toLowerCase(), otp);
+      if (!isManagedComputerRequest(event)) throw new Error("Enrollment cancelled");
+      const result = await nativeP2P.enroll(
+        localStack.webUrl(),
+        token,
+        local.id,
+        await deviceName(),
+      );
+      if (result.state !== "running") throw new Error("Could not start remote access");
+      return true;
+    } finally {
+      enrolling = false;
+    }
+  });
   const persistHostChoice = async (computerHost: "docker" | "this-mac") => {
     const origin = new URL(localStack.webUrl()).origin;
     const token = await readStackToken(stackDir(app.getPath("userData")));

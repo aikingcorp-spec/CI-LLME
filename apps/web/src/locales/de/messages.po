@@ -1978,6 +1978,10 @@ msgstr "{0} konnte nicht heruntergeladen werden. Versuche es erneut."
 msgid "Could not download {name}. Try again."
 msgstr "{name} konnte nicht heruntergeladen werden. Versuche es erneut."
 
+#: src/pages/Pairing.tsx
+msgid "Could not enable remote access. Check your code and connection, then try again."
+msgstr ""
+
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
 msgstr ""
@@ -2221,6 +2225,10 @@ msgstr "Zugangsdaten konnten nicht angezeigt werden"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not sign in"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Could not sign in. Check your code and connection, then try again."
 msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
@@ -2752,6 +2760,10 @@ msgstr "Profil bearbeiten"
 msgid "Email"
 msgstr "E-Mail"
 
+#: src/pages/Pairing.tsx
+msgid "Email code"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "Diese E-Mail-Adresse ist nicht zur Registrierung zugelassen"
@@ -2768,6 +2780,10 @@ msgstr "E-Mail-Verifizierung erforderlich"
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "{0} aktivieren"
+
+#: src/pages/Pairing.tsx
+msgid "Enable remote access"
+msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4837,6 +4853,10 @@ msgstr "OAuth erneut verbinden"
 msgid "Reconnecting"
 msgstr "Verbindung wird wiederhergestellt"
 
+#: src/App.tsx
+msgid "Reconnecting…"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
 msgstr ""
@@ -4929,6 +4949,10 @@ msgstr "Neu laden"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Remember"
+msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Remote access is enabled for this account."
 msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
@@ -5197,6 +5221,14 @@ msgstr "Prüfe die Anbietereinstellungen und teste erneut."
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
 msgstr "Widerrufen"
+
+#: src/pages/Pairing.tsx
+msgid "Revoke access"
+msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Revoke remote access to this computer?"
+msgstr ""
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5503,6 +5535,7 @@ msgid "Send as file"
 msgstr "Als Datei senden"
 
 #: src/pages/Auth.tsx
+#: src/pages/Pairing.tsx
 msgid "Send code"
 msgstr ""
 
@@ -6600,6 +6633,10 @@ msgstr "Tresor"
 #: src/pages/PluginsOverlay.tsx
 msgid "Verify and add"
 msgstr "Prüfen und hinzufügen"
+
+#: src/pages/Pairing.tsx
+msgid "Verify your account to access this computer from another device."
+msgstr ""
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx

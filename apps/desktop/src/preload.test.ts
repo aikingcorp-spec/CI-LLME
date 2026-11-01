@@ -37,6 +37,7 @@ describe("desktop preload bridge", () => {
       "computer",
       "device",
       "oauth",
+      "p2p",
       "passkeys",
       "platform",
       "update",

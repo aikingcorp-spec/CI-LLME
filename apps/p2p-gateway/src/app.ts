@@ -164,6 +164,47 @@ async function pairComplete(request: Request, deps: Deps): Promise<Response> {
   });
 }
 
+/** Account authentication and possession of the machine key are both required. */
+async function registerNode(request: Request, deps: Deps): Promise<Response> {
+  const { nodeId, nodePublicKey, sig, name, kind } = (await readJson(request)) ?? {};
+  if (
+    typeof nodeId !== "string" ||
+    !ID_PATTERN.test(nodeId) ||
+    typeof nodePublicKey !== "string" ||
+    !(await isPublicKey(nodePublicKey)) ||
+    typeof sig !== "string" ||
+    (name !== undefined && (typeof name !== "string" || name.length > MAX_NAME_CHARS)) ||
+    (kind !== undefined && !NODE_KINDS.includes(kind as NodeKind))
+  )
+    return text(400, "bad request");
+  const token = credential(request, "Bearer");
+  if (!token || !(await verify(nodePublicKey, `register|${nodeId}|${token}`, sig)))
+    return unauthorized("NO_SESSION");
+  const user = await authenticate(request, deps, "pair", { once: true, nodeId });
+  if (user instanceof Response) return user;
+  const existing = await ownedActiveNode(deps.db, user.id, nodeId);
+  if (existing?.node_pubkey !== nodePublicKey) {
+    const inserted = await insertNode(
+      deps.db,
+      {
+        nodeId,
+        user,
+        publicKey: nodePublicKey,
+        name: typeof name === "string" ? name.trim() : "",
+        kind: (kind as NodeKind | undefined) ?? "unknown",
+        gatewayKeyId: deps.config.gatewayKeyId,
+      },
+      deps.now(),
+    );
+    if (!inserted) return text(409, "node id taken");
+  }
+  return json(200, {
+    gatewayPublicKey: deps.config.gatewayKey.publicKey,
+    gatewayKeyId: deps.config.gatewayKeyId,
+    user: user.id,
+  });
+}
+
 async function openSession(request: Request, deps: Deps): Promise<Response> {
   const body = await readJson(request);
   const { nodeId, peerId } = body ?? {};
@@ -322,6 +363,7 @@ async function route(request: Request, url: URL, deps: Deps): Promise<Response> 
   if (path === "/pair/start" && method === "POST") return pairStart(request, deps);
   if (path === "/pair/complete" && method === "POST") return pairComplete(request, deps);
   if (path === "/sessions" && method === "POST") return openSession(request, deps);
+  if (path === "/nodes/register" && method === "POST") return registerNode(request, deps);
   if (path === "/nodes" && method === "GET") return listNodes(request, deps);
   if (path === "/turn-credentials" && method === "GET") return turnCredentials(request, url, deps);
   const node = /^\/nodes\/([^/]+)$/.exec(path)?.[1];

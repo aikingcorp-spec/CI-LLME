@@ -333,7 +333,7 @@ export function ShellSidebarFooter({
         navigate("/app/artifacts");
       }}
       onPairing={
-        desktopBridge() || !webP2PClient()
+        (desktopBridge() ? !desktopBridge()?.p2p : !webP2PClient())
           ? undefined
           : () => {
               setMenuOpen(false);

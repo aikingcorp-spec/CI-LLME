@@ -428,3 +428,12 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/web/src/pages/shell/shell-sidebar.tsx` and test; `apps/web/src/lib/p2p-client.ts` and test; `apps/web/src/p2p-build-env.ts` and test; `apps/web/vite.config.ts`; `.env.example`; `apps/p2p-gateway/README.md`; `packages/p2p-prototype/README.md`; `docs/architecture/vnbot/ban-do-vnbot.md`.
 - Invariants affected: web ICE configuration still admits STUN only, and configuration values are not logged. An invalid gateway URL still throws. No deployment, and hosted P2P stays off until the container build passes the value.
 - ADR: none (configuration boundary of the existing P2P path).
+
+## 2026-11-01 — Desktop account enrollment and hosted remote app
+
+- Pull request: pending, branch `feat/p2p-web-desktop`.
+- What changed versus baseline: hosted OTP can open a native local session and register a machine key; the channel adapter binds requests to that local user instead of forwarding remote credentials. The app Worker serves the real SPA with an account-only proxy and the shared CSP. Browser connections restore the selected account-owned node and retry closed channels. Native host-computer listeners default to loopback; Docker explicitly retains host-gateway reachability.
+- Why: the previous desktop agent required an environment pairing code and could answer health without supplying a local authenticated session for product RPC. The hosted static page could not enter the product.
+- Modules and files: desktop main/preload, OTP/enrollment/session helpers and native services; API local-settings and auth composition; auth local-node-session plugin reused from PR #29; contracts desktop/local-settings; gateway registration and hosted-app Worker; web Auth, Pairing, session gate and P2P client; shared key-file and node-channel-server; Cloudflare app configuration. Marketplace and Composio code are unchanged.
+- Invariants affected: enrollment needs an account credential plus possession of the machine key; remote RPC uses a pinned local user session; credentials never reach the gateway or renderer. Canonical RPC paths prevent traversal. Revoked machine identities cannot re-register. Existing HTTP/local usage and Docker networking remain separate. No product records move to D1. No deployment or cross-network certification is implied by this entry.
+- ADR: [0010](adr/0010-desktop-account-enrollment.md).

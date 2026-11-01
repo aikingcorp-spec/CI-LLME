@@ -4,6 +4,8 @@ import { isPublicKey } from "./pairing.js";
 
 /** What a node keeps after pairing: its key pair, the pinned gateway key and the paired user. */
 export interface NodeKeyFile extends KeyPair {
+  nodeId?: string;
+  localUser?: string;
   gatewayPublicKey?: string;
   user?: string;
 }
@@ -19,6 +21,8 @@ export function readKeyFile(path: string): NodeKeyFile | undefined {
   }
   if (!isPublicKey(f.publicKey)) throw new Error(`${path} holds an invalid public key`);
   return {
+    nodeId: typeof f.nodeId === "string" ? f.nodeId : undefined,
+    localUser: typeof f.localUser === "string" ? f.localUser : undefined,
     publicKey: f.publicKey,
     privateKey: f.privateKey,
     gatewayPublicKey: typeof f.gatewayPublicKey === "string" ? f.gatewayPublicKey : undefined,

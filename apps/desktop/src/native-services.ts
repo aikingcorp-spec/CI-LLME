@@ -47,6 +47,7 @@ const SECRET_BYTES: Record<string, number> = {
   ENCRYPTION_KEY: 32,
   SCREEN_PROXY_SECRET: 32,
   SANDBOX_SUPERVISOR_TOKEN: 32,
+  RAKAZO_DESKTOP_STACK_TOKEN: 32,
 };
 const ENV_FILE = "native-stack-env";
 
@@ -74,6 +75,21 @@ async function loadEnv(
   values = { ...values, ...supplied };
   await writePrivateFile(file, JSON.stringify(values));
   return { ...base, ...values };
+}
+
+export async function readNativeStackToken(userDataDir: string): Promise<string | null> {
+  const raw = await readPrivateFile(path.join(userDataDir, ENV_FILE), 64 * 1024);
+  try {
+    const value: unknown = raw === null ? null : JSON.parse(raw);
+    return value &&
+      typeof value === "object" &&
+      "RAKAZO_DESKTOP_STACK_TOKEN" in value &&
+      typeof value.RAKAZO_DESKTOP_STACK_TOKEN === "string"
+      ? value.RAKAZO_DESKTOP_STACK_TOKEN
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function resolveNativeEntryPath(

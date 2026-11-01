@@ -1,0 +1,66 @@
+name: p2p-journey
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  node-and-web:
+    if: github.repository == 'aikingcorp-spec/CI-LLME'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm --filter @rakazo/desktop check && pnpm --filter @rakazo/web check && pnpm --filter @rakazo/p2p-gateway check
+      - run: pnpm exec vitest run apps/desktop/src apps/p2p-gateway/src apps/web/src/lib/p2p-client.test.ts apps/web/src/pages/Auth.test.tsx packages/p2p-prototype/src --maxWorkers=4
+      - run: pnpm --filter @rakazo/web build
+        env:
+          VITE_P2P_GATEWAY_URL: https://gateway.example.test
+      - name: Build isolated desktop agent
+        run: node apps/desktop/scripts/build-p2p-agent.mjs
+      - name: Install browser and local relay
+        if: runner.os == 'Linux'
+        run: |
+          pnpm --filter @rakazo/web exec playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y coturn
+      - name: Real Chromium, desktop agent and node database
+        if: runner.os == 'Linux'
+        env:
+          P2P_TEST_BROWSER: '1'
+        run: pnpm exec tsx packages/testkit/src/cli/harness.ts --integration --spec=p2p-node-rpc
+      - name: Real chat over TURN TCP
+        if: runner.os == 'Linux'
+        env:
+          P2P_TEST_BROWSER: '1'
+          P2P_TEST_TURN: '1'
+        run: |
+          turnserver -n --no-cli --no-tls --no-dtls --fingerprint --lt-cred-mech --realm=vnbot-test --user=test:test --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 --listening-port=3479 --min-port=49160 --max-port=49170 --allow-loopback-peers > "$RUNNER_TEMP/coturn.log" 2>&1 &
+          relay_pid=$!
+          trap 'kill "$relay_pid" 2>/dev/null || true' EXIT
+          pnpm exec tsx packages/testkit/src/cli/harness.ts --integration --spec=p2p-node-rpc
+      - name: Browser pairing screenshot
+        if: runner.os == 'Linux'
+        run: pnpm --filter @rakazo/web exec playwright test e2e/p2p-pairing.spec.ts --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Linux'
+        with:
+          name: p2p-browser-evidence
+          path: |
+            apps/web/test-results/
+            test-report/
+          if-no-files-found: ignore

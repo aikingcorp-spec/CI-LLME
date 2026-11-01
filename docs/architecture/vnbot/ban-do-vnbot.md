@@ -40,3 +40,7 @@ Ba bước: trước hết https tới nút qua đường hầm; rồi kênh d�
 Quyết định đang ở trạng thái đề xuất: `docs/architecture/vnbot/adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md`.
 
 VNB-044 chỉ bổ sung giao diện web (dùng được ở chiều rộng 360px); Expo chưa có màn hình này. Các đường HTTP ngoài RPC như tệp và màn hình máy tính chưa được chuyển sang kênh dữ liệu.
+
+### Desktop và web từ xa
+
+Desktop native xác minh email OTP ở dịch vụ tài khoản, mở phiên trên node qua capability riêng của main và đăng ký khóa máy bằng token tài khoản cộng chữ ký máy. RPC qua WebRTC dùng phiên local đã gắn với tài khoản đó. Worker app phục vụ SPA thật, chỉ chuyển endpoint tài khoản; chat vẫn ở node. Xem [ADR 0010](adr/0010-desktop-account-enrollment.md) về giới hạn kiểm chứng và cấu hình cần triển khai.

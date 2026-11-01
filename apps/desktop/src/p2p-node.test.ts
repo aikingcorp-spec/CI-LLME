@@ -416,6 +416,7 @@ describe("P2PNode", () => {
     expect(files.get("/data/p2p/node-id")).toBe("desktop-abcd1234abcd1234\n");
     expect(spawnAgent).toHaveBeenCalledWith("/app/dist/p2p-agent.js", expect.any(Object));
     expect(child.sent[0]).toEqual({
+      localHeaders: {},
       type: "start",
       gatewayUrl: "http://127.0.0.1:8787",
       nodeId: "desktop-abcd1234abcd1234",

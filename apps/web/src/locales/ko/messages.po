@@ -1978,6 +1978,10 @@ msgstr "{0}을 다운로드하지 못했습니다. 다시 시도해 주세요."
 msgid "Could not download {name}. Try again."
 msgstr "{name}을 다운로드하지 못했습니다. 다시 시도해 주세요."
 
+#: src/pages/Pairing.tsx
+msgid "Could not enable remote access. Check your code and connection, then try again."
+msgstr ""
+
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
 msgstr ""
@@ -2221,6 +2225,10 @@ msgstr "자격 증명을 표시할 수 없습니다"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not sign in"
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Could not sign in. Check your code and connection, then try again."
 msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
@@ -2752,6 +2760,10 @@ msgstr "Bot 정보 수정"
 msgid "Email"
 msgstr "이메일"
 
+#: src/pages/Pairing.tsx
+msgid "Email code"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "이 이메일은 가입이 허용되지 않습니다"
@@ -2768,6 +2780,10 @@ msgstr "이메일 인증이 필요합니다"
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "{0} 활성화"
+
+#: src/pages/Pairing.tsx
+msgid "Enable remote access"
+msgstr ""
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4837,6 +4853,10 @@ msgstr "OAuth 다시 연결"
 msgid "Reconnecting"
 msgstr "다시 연결 중"
 
+#: src/App.tsx
+msgid "Reconnecting…"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
 msgstr "녹화가 시작됐을 수 있지만 화면을 새로고침하지 못했습니다"
@@ -4929,6 +4949,10 @@ msgstr "새로고침"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Remember"
+msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Remote access is enabled for this account."
 msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
@@ -5197,6 +5221,14 @@ msgstr "서비스 설정을 확인한 뒤 다시 테스트하세요."
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
 msgstr "연결 해제"
+
+#: src/pages/Pairing.tsx
+msgid "Revoke access"
+msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Revoke remote access to this computer?"
+msgstr ""
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5503,6 +5535,7 @@ msgid "Send as file"
 msgstr "파일로 보내기"
 
 #: src/pages/Auth.tsx
+#: src/pages/Pairing.tsx
 msgid "Send code"
 msgstr ""
 
@@ -6600,6 +6633,10 @@ msgstr "보관함"
 #: src/pages/PluginsOverlay.tsx
 msgid "Verify and add"
 msgstr "확인 후 추가"
+
+#: src/pages/Pairing.tsx
+msgid "Verify your account to access this computer from another device."
+msgstr ""
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx

@@ -2,6 +2,12 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("rakazoDesktop", {
   platform: process.platform,
+  p2p: {
+    isLocal: () => ipcRenderer.invoke("desktop.p2p.isLocal"),
+    signIn: (email, otp) => ipcRenderer.invoke("desktop.p2p.signIn", email, otp),
+    sendCode: (email) => ipcRenderer.invoke("desktop.p2p.sendCode", email),
+    enroll: (email, otp) => ipcRenderer.invoke("desktop.p2p.enroll", email, otp),
+  },
   badge: {
     set: (count) => ipcRenderer.invoke("desktop.badge.set", count),
   },

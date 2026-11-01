@@ -1104,6 +1104,9 @@ importers:
       '@rakazo/api':
         specifier: workspace:*
         version: link:../../apps/api
+      '@rakazo/p2p-prototype':
+        specifier: workspace:*
+        version: link:../p2p-prototype
       '@rakazo/sandbox-supervisor':
         specifier: workspace:*
         version: link:../../infra/sandboxes/supervisor

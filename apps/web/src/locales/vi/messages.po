@@ -1978,6 +1978,10 @@ msgstr "Không thể tải {0}. Bạn hãy thử lại."
 msgid "Could not download {name}. Try again."
 msgstr "Không thể tải {name}. Bạn hãy thử lại."
 
+#: src/pages/Pairing.tsx
+msgid "Could not enable remote access. Check your code and connection, then try again."
+msgstr "Không bật được truy cập từ xa. Kiểm tra mã và kết nối rồi thử lại."
+
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
 msgstr "Không thể bật công cụ"
@@ -2222,6 +2226,10 @@ msgstr "Không thể hiển thị thông tin xác thực"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not sign in"
 msgstr "Không thể đăng nhập"
+
+#: src/pages/Auth.tsx
+msgid "Could not sign in. Check your code and connection, then try again."
+msgstr "Không đăng nhập được. Kiểm tra mã và kết nối rồi thử lại."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not start OAuth"
@@ -2752,6 +2760,10 @@ msgstr "Chỉnh sửa hồ sơ"
 msgid "Email"
 msgstr "Thư điện tử"
 
+#: src/pages/Pairing.tsx
+msgid "Email code"
+msgstr "Mã email"
+
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "Email này không được phép đăng ký"
@@ -2768,6 +2780,10 @@ msgstr "Cần xác minh email"
 #: src/pages/shell/bot-panel.tsx
 msgid "Enable {0}"
 msgstr "Bật {0}"
+
+#: src/pages/Pairing.tsx
+msgid "Enable remote access"
+msgstr "Bật truy cập từ xa"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4837,6 +4853,10 @@ msgstr "Kết nối lại OAuth"
 msgid "Reconnecting"
 msgstr "Đang kết nối lại"
 
+#: src/App.tsx
+msgid "Reconnecting…"
+msgstr "Đang kết nối lại…"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
 msgstr "Có thể đã bắt đầu ghi nhưng không thể làm mới màn hình"
@@ -4930,6 +4950,10 @@ msgstr "Tải lại"
 #: src/lib/builtin-tool-labels.ts
 msgid "Remember"
 msgstr "Ghi nhớ"
+
+#: src/pages/Pairing.tsx
+msgid "Remote access is enabled for this account."
+msgstr "Đã bật truy cập từ xa cho tài khoản này."
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -5197,6 +5221,14 @@ msgstr "Bạn hãy xem lại cài đặt nhà cung cấp rồi kiểm tra lại.
 #: src/pages/MessagingSettingsPanel.tsx
 msgid "Revoke"
 msgstr "Thu hồi"
+
+#: src/pages/Pairing.tsx
+msgid "Revoke access"
+msgstr "Thu hồi truy cập"
+
+#: src/pages/Pairing.tsx
+msgid "Revoke remote access to this computer?"
+msgstr "Thu hồi quyền truy cập từ xa vào máy tính này?"
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5503,6 +5535,7 @@ msgid "Send as file"
 msgstr "Gửi dưới dạng tệp"
 
 #: src/pages/Auth.tsx
+#: src/pages/Pairing.tsx
 msgid "Send code"
 msgstr "Gửi mã"
 
@@ -6600,6 +6633,10 @@ msgstr "Kho bảo mật"
 #: src/pages/PluginsOverlay.tsx
 msgid "Verify and add"
 msgstr "Xác minh và thêm"
+
+#: src/pages/Pairing.tsx
+msgid "Verify your account to access this computer from another device."
+msgstr "Xác minh tài khoản để truy cập máy tính này từ thiết bị khác."
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx

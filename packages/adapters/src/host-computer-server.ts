@@ -89,7 +89,7 @@ export async function startHostComputerServer(options: {
   server.maxHeadersCount = 32;
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
-    server.listen(options.port ?? 0, options.hostname ?? "0.0.0.0", () => {
+    server.listen(options.port ?? 0, options.hostname ?? "127.0.0.1", () => {
       server.removeListener("error", reject);
       resolve();
     });
