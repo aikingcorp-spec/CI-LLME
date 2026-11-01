@@ -4,7 +4,7 @@ Status: **Proposed**
 
 Date: 2026-10-28
 
-This decision sits in the VNBot layer. It does not change `docs/architecture/rakazo-baseline/`. Nothing in it is implemented. An earlier draft of this number treated WebRTC as a way to view the bot's desktop. That was the wrong problem. The in-node screen relay stays as the baseline describes it and is not this decision.
+This decision sits in the VNBot layer. It does not change `docs/architecture/rakazo-baseline/`. The pairing/signaling stack and web RPC data-channel seam have a partial implementation (VNB-044); optional TURN credential issuance and web/desktop ICE integration are implemented; real network validation, Expo and non-RPC media remain pending. An earlier draft of this number treated WebRTC as a way to view the bot's desktop. That was the wrong problem. The in-node screen relay stays as the baseline describes it and is not this decision.
 
 ## Problem
 
@@ -38,7 +38,7 @@ The gateway does not run Postgres for bots, threads, runs, or vault rows. It doe
 
 **Node.** One self-hosted Rakazo deployment: API, worker, database, and sandboxes, as the baseline map describes. Plus a **node agent** on that same machine. The agent keeps an outbound connection to the gateway's signaling endpoint so the node never needs a listening public port. The agent carries pairing and signaling only. Chat bytes go on the WebRTC data channel between the client and the node, or through TURN as encrypted relay, not through the agent's control messages and not through the gateway's database.
 
-The node agent does not exist in this tree. It would be a new process or a composition-root task next to `apps/api/src/index.ts`, not a change to the baseline documents.
+The existing prototype node agent is now hosted by the desktop utility process (`apps/desktop/src/p2p-node.ts`). The web client reuses its transport through the browser entrypoint in `packages/p2p-prototype`; the baseline documents remain frozen.
 
 ## Trust
 

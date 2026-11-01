@@ -10,37 +10,37 @@ const cfg: TurnConfig = {
 const NOW_MS = 1_700_000_000_500;
 
 describe("mintTurnCredentials", () => {
-  it("matches a known HMAC-SHA1 vector", () => {
-    const c = mintTurnCredentials(cfg, "peer-a", NOW_MS);
+  it("matches a known HMAC-SHA1 vector", async () => {
+    const c = await mintTurnCredentials(cfg, "peer-a", NOW_MS);
     expect(c.username).toBe("1700000600:peer-a");
     expect(c.credential).toBe("BFsFv2AUU6n7zdKuHP9tq0VL8QI=");
   });
 
-  it("computes expiry from now plus ttl in whole seconds", () => {
-    const c = mintTurnCredentials({ ...cfg, ttlSeconds: 60 }, "p", NOW_MS);
+  it("computes expiry from now plus ttl in whole seconds", async () => {
+    const c = await mintTurnCredentials({ ...cfg, ttlSeconds: 60 }, "p", NOW_MS);
     expect(c.expiresAt).toBe(1_700_000_060);
     expect(c.ttlSeconds).toBe(60);
     expect(c.urls).toEqual(cfg.urls);
   });
 
-  it("rejects bad ttl and peer ids", () => {
+  it("rejects bad ttl and peer ids", async () => {
     for (const ttlSeconds of [0, -1, 3601, 1.5, Number.NaN]) {
-      expect(() => mintTurnCredentials({ ...cfg, ttlSeconds }, "p", NOW_MS)).toThrow(/ttl/);
+      await expect(mintTurnCredentials({ ...cfg, ttlSeconds }, "p", NOW_MS)).rejects.toThrow(/ttl/);
     }
-    expect(() => mintTurnCredentials(cfg, "", NOW_MS)).toThrow(/peerId/);
-    expect(() => mintTurnCredentials(cfg, "a:b", NOW_MS)).toThrow(/peerId/);
+    await expect(mintTurnCredentials(cfg, "", NOW_MS)).rejects.toThrow(/peerId/);
+    await expect(mintTurnCredentials(cfg, "a:b", NOW_MS)).rejects.toThrow(/peerId/);
   });
 
-  it("never exposes the secret", () => {
-    const c = mintTurnCredentials(cfg, "peer-a", NOW_MS);
+  it("never exposes the secret", async () => {
+    const c = await mintTurnCredentials(cfg, "peer-a", NOW_MS);
     const out = JSON.stringify([c, toNodeDatachannelIceServers(c)]);
     expect(out).not.toContain(cfg.secret);
   });
 });
 
 describe("toNodeDatachannelIceServers", () => {
-  it("maps urls to structured ice servers", () => {
-    const c = mintTurnCredentials(cfg, "peer-a", NOW_MS);
+  it("maps urls to structured ice servers", async () => {
+    const c = await mintTurnCredentials(cfg, "peer-a", NOW_MS);
     expect(toNodeDatachannelIceServers(c)).toEqual([
       {
         hostname: "192.0.2.10",
@@ -59,8 +59,8 @@ describe("toNodeDatachannelIceServers", () => {
     ]);
   });
 
-  it("handles tcp transport, default port and bracketed ipv6", () => {
-    const c = mintTurnCredentials(
+  it("handles tcp transport, default port and bracketed ipv6", async () => {
+    const c = await mintTurnCredentials(
       { ...cfg, urls: ["turn:turn.example.test?transport=tcp", "turn:[2001:db8::1]:3479"] },
       "p",
       NOW_MS,
@@ -70,8 +70,23 @@ describe("toNodeDatachannelIceServers", () => {
     expect(v6).toMatchObject({ hostname: "2001:db8::1", port: 3479, relayType: "TurnUdp" });
   });
 
-  it("rejects non-turn urls", () => {
-    const c = mintTurnCredentials({ ...cfg, urls: ["stun:192.0.2.10:3478"] }, "p", NOW_MS);
+  it("rejects non-turn urls", async () => {
+    const c = await mintTurnCredentials({ ...cfg, urls: ["stun:192.0.2.10:3478"] }, "p", NOW_MS);
     expect(() => toNodeDatachannelIceServers(c)).toThrow(/invalid TURN url/);
+  });
+  it.each([
+    "turn:host:0",
+    "turn:host:65536",
+    "turn:bad host:3479",
+    "turn:host/path",
+    "turns:host?transport=udp",
+  ])("rejects invalid TURN address %s", (url) => {
+    expect(() =>
+      toNodeDatachannelIceServers({
+        urls: [url],
+        username: "dummy-user",
+        credential: "dummy-credential",
+      }),
+    ).toThrow();
   });
 });

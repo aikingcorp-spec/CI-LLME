@@ -4,7 +4,7 @@
 
 > **Relay transport.** Production relays over UDP only (node-datachannel, which uses libjuice). TURN over TCP and TURNS over TLS work only in tests, through werift. Migrating production to werift is planned for stage 2. See [TURN over TCP and TLS](#turn-over-tcp-and-tls).
 
-Throwaway prototype for [ADR 0001](../../docs/architecture/vnbot/adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md): a loopback gateway, an outbound node agent, and a WebRTC data channel. It touches no app and no other package.
+Throwaway prototype for [ADR 0001](../../docs/architecture/vnbot/adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md): a loopback gateway, an outbound node agent, and a WebRTC data channel. The web and desktop apps now reuse its transport; real network validation remains incomplete.
 
 ## Run it
 
@@ -113,7 +113,7 @@ The probe handles the 401 realm/nonce challenge and long-term MESSAGE-INTEGRITY.
 
 `pnpm check` and `pnpm test` run the type check and offline tests, including published STUN integrity vectors. No live TURN server is required for the suite.
 
-Without TURN, `iceServers` defaults to `[]`: host candidates work on the same machine or LAN. The transports implement the ADR seam inside this prototype; the production app transports are not integrated. The gateway verifies sign-in against the existing Better Auth API. HTTP relay subscriptions are buffered. The gateway stores no chat and logs method, status, and a fixed route name only (`/nodes/*` for any node path). Pairing assumes a trusted gateway connection (loopback here; HTTPS/WSS for remote use).
+In the Node entrypoint, `iceServers` defaults to `[]`: host candidates work on the same machine or LAN. The transports implement the ADR seam inside this prototype; the web RPC transport now reuses the shared core (see Browser entrypoint below). The gateway verifies sign-in against the existing Better Auth API. HTTP relay subscriptions are buffered. The gateway stores no chat and logs method, status, and a fixed route name only (`/nodes/*` for any node path). Pairing assumes a trusted gateway connection (loopback here; HTTPS/WSS for remote use).
 
 ## ClientTransport
 
@@ -249,3 +249,40 @@ All runs below were on one Linux box with network namespaces. Peers reach a real
 Earlier TURN/TCP batches were discarded or superseded: one because another session tore down the same namespaces mid-run, one reran under heavy load (18/20) and then again at load below 5 (20/20). TCP and TLS were proven with werift in the test path only; production uses node-datachannel (libjuice), which gathers UDP relay candidates only.
 
 **Not tested:** real NAT on two real machines behind different NATs (carrier-grade NAT, hairpinning, other filtering behaviours); a cone peer against a symmetric peer; the STUN server in the NAT runs is local to the emulated internet; mixed stacks (a libjuice peer with a werift peer); IPv6; networks that block UDP, with the production stack.
+
+## Browser entrypoint
+
+`@rakazo/p2p-prototype/browser` exports `connectBrowserPeer`, the shared
+`DataChannelClientTransport`, and the unsigned gateway HTTP operations. `peer-core.ts`
+contains the existing offer/candidate/attempt/cancellation lifecycle. `browser.ts`
+only adapts native `RTCPeerConnection` and browser `WebSocket`; Node callers continue
+using `webrtc-peer.ts` and `client-transport.ts`. Browser bundles do not load Node
+crypto, ws, Buffer, or node-datachannel. Gateway authentication uses the shared
+`vnbot.v1` and assertion subprotocol constants; assertions never go in URLs.
+
+The web screen is `/app/pairing`, accessible from the account menu. A web build with
+`VITE_P2P_GATEWAY_URL` set requires a node connection before opening the app. Any other
+web build and Electron keep their existing flow. `VITE_P2P_GATEWAY_URL` accepts a secure
+origin or loopback HTTP for development and has no default: unset or blank turns P2P off,
+the account menu hides the entry, and `/app/pairing` shows a configuration error without requesting a token. The shared CSP allows the same origin and its WSS or WS counterpart. Set it both when the
+bundle is built and when it is served.
+
+`VITE_P2P_ICE_SERVERS` is a JSON array of standard RTC ICE server objects, for example
+`[{"urls":"stun:stun.example.test:3478"}]`. The browser defaults to
+`[{"urls":"stun:stun.l.google.com:19302"}]`; `[]` restricts it to host candidates.
+A malformed or non-STUN value logs a warning without the value and uses that default.
+This web flow accepts STUN only, never requests TURN credentials, and keeps tokens
+and the selected connection in memory. Reloading requires reconnection. The existing
+desktop still receives a pairing code through its environment configuration.
+
+The browser bridge carries RPC and event subscriptions only. HTTP uploads, downloads,
+voice and remote screen streaming are not ported here. NAT/CGNAT connectivity is
+unproven and can fail without TURN; a failure leaves RPC disconnected.
+
+Run offline unit checks with `pnpm --filter @rakazo/web test`,
+`pnpm --filter @rakazo/p2p-prototype test` and `pnpm --filter @rakazo/p2p-gateway test`.
+Run the existing web harness with
+`pnpm --filter @rakazo/web exec playwright test e2e/p2p-pairing.spec.ts --workers=1`.
+It intercepts all public-origin traffic, uses a loopback gateway/prototype node and
+real Chromium RTC with host candidates only, and attaches Vietnamese screenshots at
+360px. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can select an already installed Chromium.

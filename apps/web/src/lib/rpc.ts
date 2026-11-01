@@ -10,6 +10,7 @@ import { CLIENT_BUILD } from "./client-build";
 import { i18n } from "./i18n";
 import { identityLabels } from "./identity-display";
 import { reportClientError } from "./monitoring";
+import { activeP2PClient } from "./p2p-client";
 import { EMAIL_NOT_INVITED } from "./user-error";
 
 const SPACE_STORAGE_KEY = "rakazo:space-id";
@@ -82,12 +83,14 @@ const link = new RPCLink<RpcClientContext>({
     for (const [key, value] of Object.entries(correlation)) headers.set(key, value);
     let response: Response;
     try {
-      response = await fetch(request, {
-        headers,
-        credentials: "include",
-        // Keep cancellation attached directly to fetch rather than only a cloned Request.
-        signal: options.signal,
-      });
+      const peer = activeP2PClient();
+      response = peer
+        ? await peer.fetch(new Request(request, { headers }), options.signal ?? request.signal)
+        : await fetch(request, {
+            headers,
+            credentials: "include",
+            signal: options.signal,
+          });
     } catch (error) {
       if (!options.signal?.aborted)
         reportClientError(error, "rpc.transport", responseCorrelation(new Headers(correlation)));

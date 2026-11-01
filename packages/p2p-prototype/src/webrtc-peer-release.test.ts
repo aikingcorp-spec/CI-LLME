@@ -2,6 +2,7 @@ import type { AddressInfo } from "node:net";
 import { cleanup } from "node-datachannel";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { WebSocketServer } from "ws";
+import { connectPeer as connectCore } from "./peer-core.js";
 import type { SignalPayload } from "./protocol.js";
 import { waitFor } from "./test-util.js";
 import { connectPeer } from "./webrtc-peer.js";
@@ -30,6 +31,29 @@ const signaling = () => ({
 
 // TURN allocations live as long as the PeerConnection; every exit path must close it.
 describe("PeerConnection release", () => {
+  it("closes signaling when the native RTC constructor fails", async () => {
+    const close = vi.fn();
+    await expect(
+      connectCore(
+        { signalUrl: "http://127.0.0.1:8787/signal", selfId: "a", remoteId: "b", initiator: true },
+        {
+          socket: () => ({
+            ready: Promise.resolve(),
+            isOpen: () => true,
+            send: () => {},
+            close,
+            onMessage: () => {},
+            onClose: () => {},
+            onError: () => {},
+          }),
+          connection: () => {
+            throw new Error("RTC unavailable");
+          },
+        },
+      ),
+    ).rejects.toThrow("RTC unavailable");
+    expect(close).toHaveBeenCalledOnce();
+  });
   it("closes the PeerConnection exactly once on close()", async () => {
     const peer = await connectPeer({
       signalUrl: "",

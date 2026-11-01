@@ -1,3 +1,7 @@
+import { ASSERTION_SUBPROTOCOL_PREFIX, SIGNAL_SUBPROTOCOL } from "@rakazo/p2p-prototype/protocol";
+
+import { mintTurnCredentials } from "../../../packages/p2p-prototype/src/turn-credentials.js";
+
 import type { TokenScope } from "./app-token.js";
 import { verifyAppToken } from "./app-token.js";
 import type { Config } from "./config.js";
@@ -13,6 +17,7 @@ import {
   verifyAssertion,
   verifyNodeProof,
 } from "./pairing.js";
+import { turnRateLimit } from "./rate-limit.js";
 import { withAdmission } from "./room-link.js";
 import type { NodeKind, PairedUser } from "./store.js";
 import {
@@ -27,6 +32,8 @@ import {
   useTokenId,
 } from "./store.js";
 
+export { ASSERTION_SUBPROTOCOL_PREFIX, SIGNAL_SUBPROTOCOL } from "@rakazo/p2p-prototype/protocol";
+
 /** The room of one node, as the Worker sees it. */
 export interface RoomStub {
   fetch(request: Request): Promise<Response>;
@@ -40,9 +47,6 @@ export interface Deps {
   now(): number;
 }
 
-/** Browsers cannot set headers on a WebSocket, so a client may carry its assertion in a subprotocol. */
-export const SIGNAL_SUBPROTOCOL = "vnbot.v1";
-export const ASSERTION_SUBPROTOCOL_PREFIX = "assertion.";
 const MAX_BODY_CHARS = 4096;
 const MAX_NAME_CHARS = 64;
 const MAX_CODE_CHARS = 32;
@@ -197,7 +201,12 @@ async function listNodes(request: Request, deps: Deps): Promise<Response> {
   if (user instanceof Response) return user;
   const rows = await listUserNodes(deps.db, user.id);
   const online = await Promise.all(
-    rows.map((row) => deps.room(row.node_id).online().catch(() => false)),
+    rows.map((row) =>
+      deps
+        .room(row.node_id)
+        .online()
+        .catch(() => false),
+    ),
   );
   return json(200, {
     nodes: rows.map((row, i) => ({
@@ -257,7 +266,7 @@ async function signal(request: Request, url: URL, deps: Deps): Promise<Response>
     role: "signal",
     nodeId: caller.nodeId,
     peerId: caller.peerId,
-    ..."user" in caller ? { user: caller.user, exp: caller.exp } : {},
+    ...("user" in caller ? { user: caller.user, exp: caller.exp } : {}),
   });
   // The credential rode in the subprotocol; the room only sees the neutral name.
   if (request.headers.has("sec-websocket-protocol")) {
@@ -277,6 +286,33 @@ async function agent(request: Request, url: URL, deps: Deps): Promise<Response> 
     .fetch(withAdmission(request, { role: "agent", nodeId, nodeKey: node.node_pubkey }));
 }
 
+async function turnCredentials(request: Request, url: URL, deps: Deps): Promise<Response> {
+  const caller = await signalCaller(request, deps);
+  if (caller === undefined) return unauthorized("NO_SESSION");
+  if (deps.config.turn === undefined) return text(501, "not enabled");
+  if (url.searchParams.get("peer") !== caller.peerId) return forbidden();
+  const now = deps.now();
+  const identity = "user" in caller ? `user:${caller.user}` : `node:${caller.nodeId}`;
+  const retryAfter = await turnRateLimit(deps.db, identity, now);
+  if (retryAfter > 0) {
+    const response = json(429, { code: "RATE_LIMITED" });
+    response.headers.set("retry-after", String(retryAfter));
+    return response;
+  }
+  const ttlSeconds =
+    "exp" in caller
+      ? Math.min(deps.config.turn.ttlSeconds, Math.floor((caller.exp - now) / 1000))
+      : deps.config.turn.ttlSeconds;
+  if (ttlSeconds < 1) return unauthorized("NO_SESSION");
+  const {
+    urls,
+    username,
+    credential,
+    ttlSeconds: ttl,
+  } = await mintTurnCredentials({ ...deps.config.turn, ttlSeconds }, caller.peerId, now);
+  return json(200, { urls, username, credential, ttl });
+}
+
 async function route(request: Request, url: URL, deps: Deps): Promise<Response> {
   const method = request.method;
   const path = url.pathname;
@@ -287,7 +323,7 @@ async function route(request: Request, url: URL, deps: Deps): Promise<Response> 
   if (path === "/pair/complete" && method === "POST") return pairComplete(request, deps);
   if (path === "/sessions" && method === "POST") return openSession(request, deps);
   if (path === "/nodes" && method === "GET") return listNodes(request, deps);
-  if (path === "/turn-credentials" && method === "GET") return text(501, "not enabled");
+  if (path === "/turn-credentials" && method === "GET") return turnCredentials(request, url, deps);
   const node = /^\/nodes\/([^/]+)$/.exec(path)?.[1];
   if (node !== undefined && method === "DELETE") {
     const nodeId = decodeURIComponent(node);
@@ -308,6 +344,8 @@ function withCors(request: Request, response: Response, config: Config): Respons
 }
 
 export async function handle(request: Request, deps: Deps): Promise<Response> {
+  const origin = request.headers.get("origin");
+  if (origin !== null && !deps.config.allowedOrigins.includes(origin)) return forbidden();
   if (request.method === "OPTIONS") {
     return withCors(
       request,

@@ -49,6 +49,11 @@
       "types": "./src/pairing.ts",
       "development": "./src/pairing.ts",
       "default": "./src/pairing.ts"
+    },
+    "./browser": {
+      "types": "./src/browser.ts",
+      "development": "./src/browser.ts",
+      "default": "./src/browser.ts"
     }
   },
   "scripts": {

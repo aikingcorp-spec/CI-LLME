@@ -60,7 +60,11 @@ vi.mock("./lib/remote-images-preference", () => ({
   subscribeRemoteImages: () => () => {},
 }));
 vi.mock("./lib/performance", () => ({ markOnce: () => {}, markAfterPaint: () => {} }));
-vi.mock("./lib/rpc", () => ({ rpc: { analytics: { screen: capability.screen } } }));
+vi.mock("./lib/rpc", () => ({
+  clearSpaceSelection: vi.fn(),
+  rpc: { analytics: { screen: capability.screen } },
+}));
+vi.mock("./components/LanguageSwitch", () => ({ LanguageSwitch: () => null }));
 vi.mock("./components/TooltipScope", () => ({
   TooltipScope: ({ children }: { children: ReactNode }) => children,
 }));
@@ -265,5 +269,76 @@ it.each([
     capability.locale = "en";
     await act(async () => root.unmount());
     vi.unstubAllGlobals();
+  }
+});
+
+// Startup asks the app's own API for monitoring settings, with no P2P involvement.
+function requestsBeyondMonitoring(request: ReturnType<typeof vi.fn<typeof fetch>>) {
+  return request.mock.calls.map(([url]) => url).filter((url) => url !== "/api/monitoring/config");
+}
+
+it.each([
+  ["unset", undefined],
+  ["empty", ""],
+  ["blank", "   "],
+])("keeps P2P off in the app when the gateway is %s", async (_, url) => {
+  vi.stubEnv("VITE_P2P_GATEWAY_URL", url);
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const request = vi.fn<typeof fetch>();
+  const socket = vi.fn();
+  vi.stubGlobal("fetch", request);
+  vi.stubGlobal("WebSocket", socket);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  const open = (path: string) => (
+    <MemoryRouter key={path} initialEntries={[path]}>
+      <App />
+    </MemoryRouter>
+  );
+  try {
+    await act(async () => {
+      root.render(open("/app/pairing"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await vi.waitFor(() =>
+      expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+        "P2P gateway is not configured for this web build.",
+      ),
+    );
+    await act(async () => root.render(open("/app")));
+    expect(container.textContent).toBe("Shell");
+    expect(requestsBeyondMonitoring(request)).toEqual([]);
+    expect(socket).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  }
+});
+
+it("sends a configured build to node selection before the app", async () => {
+  vi.stubEnv("VITE_P2P_GATEWAY_URL", "https://gateway.example.test");
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const request = vi.fn<typeof fetch>(async () => new Response(null, { status: 401 }));
+  vi.stubGlobal("fetch", request);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={["/app"]}>
+          <App />
+        </MemoryRouter>,
+      ),
+    );
+    await vi.waitFor(() =>
+      expect(container.querySelector("h1")?.textContent).toBe("Pair a computer"),
+    );
+    expect(container.textContent).not.toContain("Shell");
+    expect(requestsBeyondMonitoring(request)).toEqual(["/api/auth/p2p-token"]);
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   }
 });

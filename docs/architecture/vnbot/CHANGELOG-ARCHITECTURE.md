@@ -1,5 +1,15 @@
 # Architecture changelog
 
+## 2026-11-01 — Web pairing and desktop RPC over the shared P2P transport
+
+- Date: 2026-11-01.
+- Pull request: none (local commits, VNB-044).
+- What changed versus baseline: hosted web opens a pairing screen, mints scoped tokens from the existing auth endpoint, lists paired nodes, and connects with browser RTC through the existing gateway. Once selected, RPC calls and subscriptions use the authenticated desktop data channel. Hosted web requires a connected node before opening the app. The shared CSP allows the P2P gateway's HTTPS/WSS origins and the WSS counterparts of explicit operator connect origins.
+- Why: web had neither a pairing code screen nor a browser transport, so a signed-in user could not reach a paired desktop from a phone.
+- Modules and files: `packages/p2p-prototype/src/{peer-core,browser,data-channel-client,gateway-http-client,protocol}.ts` extract and reuse the existing RTC lifecycle, channel protocol, and gateway HTTP operations; existing Node entrypoints remain compatible. `apps/p2p-gateway/src/{app,store}.ts` share browser authentication constants and node types. `apps/web/src/lib/{p2p-client,rpc}.ts`, `App.tsx`, `pages/Pairing.tsx`, sidebar entrypoints and all web locale catalogs add the browser flow. `packages/contracts/src/content-security-policy.ts` permits the narrow signaling destinations. Unit tests and `apps/web/e2e/p2p-pairing.spec.ts` cover offline flows and a local prototype peer.
+- Invariants affected: gateway keeps pairing/signaling only; chat/RPC bytes stay on the data channel; selected-node disconnects fail closed. Tokens, codes, assertions, and node responses are not persisted by the client. Auth sessions remain on the web origin. Self-hosted local web and Electron retain direct RPC. ICE defaults to STUN only; no TURN is enabled. No schema, desktop packaging, deployment, or product version changes.
+- ADR: [0001](adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md), partial implementation of the proposed transport seam; real NAT/TURN and non-RPC media remain outside this change.
+
 ## 2026-10-30 — Source maps answer 404 in the web server
 
 - Date: 2026-10-30.
@@ -367,3 +377,44 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: `apps/desktop/src/native-stack.ts`, `native-services.ts`, `native-diagnostics.ts`, `screenshot-hook.ts`, `main-app.ts`, related tests, ADR 0009 and `apps/desktop/NOTES-FOR-KAI.md`.
 - Invariants affected: migration owner credentials stay separate from the runtime role; logs never contain URLs, passwords or tokens. No API, worker, database or migration changes.
 - ADR: [0009](adr/0009-native-desktop-local-runtime.md).
+
+
+## 2026-11-01 — Optional TURN credentials for web and desktop (VNB-044)
+
+- Date: 2026-11-01.
+- Pull request: none (local commit).
+- What changed versus baseline: the P2P gateway issues coturn REST credentials through its authenticated `/turn-credentials` endpoint when optional TURN environment settings exist. Web merges the returned ICE entry with configured STUN; desktop resolves and translates fresh credentials per incoming connection. The existing prototype issuer now uses portable Web Crypto so the Worker shares its HMAC and expiry logic without Node compatibility configuration.
+- Why: direct ICE may fail across NAT; an optional relay path lets paired peers attempt the same encrypted data channel.
+- Modules and files: `apps/p2p-gateway/src/{app,config,env,turn-config}.ts` and gateway README/tests; `apps/web/src/lib/p2p-client.ts` and tests; `apps/desktop/src/p2p-node.ts`, `apps/desktop/p2p/agent-process.ts` and tests; `packages/p2p-prototype/src/{turn-credentials,gateway-http-client,gateway-client,gateway,browser,node-agent}.ts`, issuer probe caller and tests.
+- Invariants affected: signaling assertions or node proofs authorize credential issuance; peer identity, ownership and revocation remain enforced. TTL defaults to 600 seconds, caps at 3600, and browser credentials also cap at assertion expiry. Missing configuration returns 501 after authentication. Clients retain STUN on discovery failure; no secret reaches clients or logs, and no chat or RPC storage moves to the gateway.
+- ADR: [0001](adr/0001-hosted-gateway-and-self-hosted-node-over-webrtc.md); implementation of its existing optional TURN boundary, no new decision. No deployment or real NAT certification.
+
+## 2026-11-01 — P2P review hardening (VNB-044)
+
+- Date: 2026-11-01.
+- Pull request: #33.
+- What changed versus baseline: web gateway configuration and CSP share the same validated `VITE_P2P_GATEWAY_URL`, defaulting to loopback. Gateway HTTP and WebSocket admission reject Origins outside `ALLOWED_ORIGINS`; native callers without Origin retain authentication. TURN issuance uses an atomic D1 counter allowing ten requests per minute per authenticated user or node, with HTTP 429 and Retry-After on exhaustion. Node selection now follows the configured gateway instead of the `app.vnbot.run` hostname.
+- Why: local builds must not contact a hosted gateway implicitly, browser Origins need explicit admission, and authenticated callers must not mint unlimited relay credentials. An image built without the gateway value must keep working instead of locking users behind a pairing screen aimed at loopback.
+- Modules and files: `packages/contracts/src/content-security-policy.ts`; `apps/web/src/lib/p2p-client.ts`, `apps/web/src/App.tsx`, `apps/web/vite.config.ts`, pairing catalogs and tests; `.env.example`; `packages/p2p-prototype/README.md`; `docs/architecture/vnbot/ban-do-vnbot.md`; `apps/web/e2e/p2p-{pairing.spec,network}.ts`; `apps/p2p-gateway/src/{app,rate-limit,test-util,turn-credentials.test}.ts` and additive migration `0002_turn_rate_limits.sql`.
+- Invariants affected: gateway configuration permits HTTPS or loopback HTTP only. Browser and CSP destinations agree; the browser test blocks nonlocal HTTP before fetching and refuses nonlocal redirects. Rate counters use authenticated identity rather than tokens or transient peers and are shared across Worker isolates. The new table is additive and compatible with the previous gateway release. Authentication, ownership, revocation, credential expiry and node-owned chat/RPC remain enforced. No deployment or real NAT certification. The container build does not yet pass `VITE_P2P_GATEWAY_URL`, so hosted P2P stays off until that build argument is added.
+- ADR: none (hardening of the existing P2P boundary).
+
+## 2026-11-01 — P2P is off without an explicit gateway (VNB-044)
+
+- Date: 2026-11-01.
+- Pull request: #33.
+- What changed versus baseline: an unset or blank `VITE_P2P_GATEWAY_URL` now disables web P2P. The loopback default from the previous entry is gone. `p2pGatewayOrigin` and `p2pConfig` return nothing, `webP2PClient` creates no client, and `/app/pairing` shows a configuration error while other routes keep direct API access. The CSP adds no gateway origin in that case. The pairing e2e starts its own dev server with an explicit gateway and also covers the disabled build.
+- Why: a build with no gateway must never mint a P2P token or send one anywhere. A gateway, including production, is reached only through an explicit build-time URL.
+- Modules and files: `packages/contracts/src/content-security-policy.ts` and test; `apps/web/src/lib/p2p-client.ts`, `apps/web/src/App.tsx`, `apps/web/src/pages/Pairing.tsx`, `apps/web/vite.config.ts`, pairing catalogs and tests; `apps/web/e2e/p2p-pairing.spec.ts`; `.env.example`; `apps/p2p-gateway/README.md`; `packages/p2p-prototype/README.md`; `docs/architecture/vnbot/ban-do-vnbot.md`.
+- Invariants affected: with no configured gateway there is no client, no call to `/api/auth/p2p-token`, no gateway request and no signaling socket. Validation of a configured gateway, node-owned chat and RPC, and fail-closed RPC after node selection are unchanged. Hosted P2P stays off until the container build passes the value.
+- ADR: none (configuration boundary of the existing P2P path).
+
+## 2026-11-01 — Pairing entry and ICE configuration fail safe (VNB-044)
+
+- Date: 2026-11-01.
+- Pull request: #33.
+- What changed versus baseline: the account menu hides "Pair a computer" when `webP2PClient` has no gateway. A malformed or non-STUN `VITE_P2P_ICE_SERVERS` now logs a warning without the value and uses the default STUN server instead of throwing. The Vite config reads that variable from `apps/web` or the root env files, the same way as the gateway URL. The gateway README gives the D1 migration command; it was not run.
+- Why: an unconfigured build should not offer a screen that can only report an error, and an optional ICE setting must not break every route that resolves the P2P client.
+- Modules and files: `apps/web/src/pages/shell/shell-sidebar.tsx` and test; `apps/web/src/lib/p2p-client.ts` and test; `apps/web/src/p2p-build-env.ts` and test; `apps/web/vite.config.ts`; `.env.example`; `apps/p2p-gateway/README.md`; `packages/p2p-prototype/README.md`; `docs/architecture/vnbot/ban-do-vnbot.md`.
+- Invariants affected: web ICE configuration still admits STUN only, and configuration values are not logged. An invalid gateway URL still throws. No deployment, and hosted P2P stays off until the container build passes the value.
+- ADR: none (configuration boundary of the existing P2P path).

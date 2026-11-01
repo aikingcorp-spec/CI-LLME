@@ -1,20 +1,24 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { URL as NodeURL, fileURLToPath } from "node:url";
+import { fileURLToPath, URL as NodeURL } from "node:url";
 import type { KeyPair } from "@rakazo/p2p-prototype/pairing";
+import type { Deps, RoomStub } from "./app.js";
 import type { AppTokenClaims } from "./app-token.js";
 import { TOKEN_TYP } from "./app-token.js";
-import type { Deps, RoomStub } from "./app.js";
 import type { Config } from "./config.js";
 import { sign, toBase64Url, utf8 } from "./crypto.js";
 
-const MIGRATION = fileURLToPath(new NodeURL("../migrations/0001_init.sql", import.meta.url));
+const MIGRATIONS = fileURLToPath(new NodeURL("../migrations/", import.meta.url));
 type SqlValue = null | number | bigint | string;
 
 /** A D1 look-alike over a real in-memory SQLite database with the shipped migration applied. */
 export function createD1(): { d1: D1Database; sql: DatabaseSync } {
   const sql = new DatabaseSync(":memory:");
-  sql.exec(readFileSync(MIGRATION, "utf8"));
+  for (const file of readdirSync(MIGRATIONS)
+    .filter((file) => file.endsWith(".sql"))
+    .sort()) {
+    sql.exec(readFileSync(`${MIGRATIONS}/${file}`, "utf8"));
+  }
 
   class Statement {
     constructor(

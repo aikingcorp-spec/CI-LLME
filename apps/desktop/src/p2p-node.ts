@@ -3,6 +3,22 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { isLoopbackHost } from "@rakazo/contracts/network-host";
+import type { IceServer } from "node-datachannel";
+
+/** Resolve just before each incoming connection, so an idle node never reuses expired TURN. */
+export async function desktopIceServers(
+  gatewayUrl: string,
+  nodeId: string,
+  key: P2PKeyPair,
+  resolveTurn: (gatewayUrl: string, nodeId: string, key: P2PKeyPair) => Promise<IceServer[]>,
+  stunServers: string[] = ["stun:stun.l.google.com:19302"],
+) {
+  try {
+    return [...stunServers, ...(await resolveTurn(gatewayUrl, nodeId, key))];
+  } catch {
+    return [...stunServers];
+  }
+}
 
 /**
  * The slice of `@rakazo/p2p-prototype` used for pairing. Desktop does not depend on that
