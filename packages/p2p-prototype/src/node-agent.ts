@@ -200,7 +200,8 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
   };
 
   const connect = (): void => {
-    const ws = new WebSocket(`${toWsUrl(o.gatewayUrl)}/agent`);
+    // Workers selects the node's Durable Object before accepting the signed hello.
+    const ws = new WebSocket(`${toWsUrl(o.gatewayUrl)}/agent?node=${encodeURIComponent(o.nodeId)}`);
     socket = ws;
     ws.on("open", () => {
       const { ts, sig } = signNodeProof(o.keyPair, "agent", o.nodeId, clock());

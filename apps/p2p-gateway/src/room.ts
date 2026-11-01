@@ -168,11 +168,7 @@ export class Room {
   }
 
   // A client may only signal the node its assertion names; a node may answer any peer.
-  private clientFrame(
-    sock: RoomSocket,
-    a: SignalAttachment,
-    data: string,
-  ): void {
+  private clientFrame(sock: RoomSocket, a: SignalAttachment, data: string): void {
     const isClient = a.user !== undefined;
     if (isClient && (a.exp ?? 0) <= this.host.now()) {
       sock.close(CLOSE_UNAUTHORIZED, "unauthorized");
@@ -187,7 +183,8 @@ export class Room {
   }
 
   private relay(from: string, nodeId: string, frame: NodeFrame): void {
-    if (frame.kind === "signal") this.deliver(from, frame.to, encodeFrame({ ...frame, from }), nodeId);
+    if (frame.kind === "signal")
+      this.deliver(from, frame.to, encodeFrame({ ...frame, from }), nodeId);
   }
 
   private deliver(from: string, to: string, raw: string, nodeId: string): void {
@@ -250,7 +247,11 @@ export class Room {
     let next: number | null = null;
     for (const { attachment: a } of this.host.sockets()) {
       const at =
-        a.role === "agent" && "deadline" in a ? a.deadline : a.role === "signal" ? a.exp : undefined;
+        a.role === "agent" && "deadline" in a
+          ? a.deadline
+          : a.role === "signal"
+            ? a.exp
+            : undefined;
       if (at !== undefined && (next === null || at < next)) next = at;
     }
     this.host.setAlarm(next);

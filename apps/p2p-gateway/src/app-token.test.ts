@@ -2,7 +2,7 @@ import { generateKeyPair } from "@rakazo/p2p-prototype/pairing";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { AppTokenOptions } from "./app-token.js";
 import { MAX_TOKEN_LENGTH, verifyAppToken } from "./app-token.js";
-import { T0, TEST_AUDIENCE, TEST_ISSUER, signAppToken } from "./test-util.js";
+import { signAppToken, T0, TEST_AUDIENCE, TEST_ISSUER } from "./test-util.js";
 
 const appKey = generateKeyPair();
 const otherKey = generateKeyPair();
@@ -128,7 +128,10 @@ describe("verifyAppToken", () => {
   });
 
   it("rejects oversized and malformed tokens", async () => {
-    const huge = await signAppToken(appKey, { nowMs: T0, claims: { email: "x".repeat(MAX_TOKEN_LENGTH) } });
+    const huge = await signAppToken(appKey, {
+      nowMs: T0,
+      claims: { email: "x".repeat(MAX_TOKEN_LENGTH) },
+    });
     expect(await verifyAppToken(huge, options())).toBeUndefined();
     for (const junk of ["", "a.b", "a.b.c.d", "...", "not a token", "e30.e30.e30"]) {
       expect(await verifyAppToken(junk, options())).toBeUndefined();

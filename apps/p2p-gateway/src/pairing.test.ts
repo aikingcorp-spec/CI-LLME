@@ -5,10 +5,11 @@ import {
   nodeProofMessage as protoNodeProofMessage,
   sign as protoSign,
   signAssertion as protoSignAssertion,
-  signNodeProof,
   verifyAssertion as protoVerifyAssertion,
+  signNodeProof,
 } from "@rakazo/p2p-prototype/pairing";
 import { describe, expect, it } from "vitest";
+import { handle } from "./app.js";
 import { isPublicKey, sha256Hex, sign, verify } from "./crypto.js";
 import {
   hashPairingCode,
@@ -20,7 +21,6 @@ import {
   verifyAssertion,
   verifyNodeProof,
 } from "./pairing.js";
-import { handle } from "./app.js";
 import { createD1, signAppToken, T0, testConfig } from "./test-util.js";
 
 const node = generateKeyPair();
@@ -107,9 +107,9 @@ describe("assertions", () => {
     const token = await signAssertion(gateway, payload);
     expect(await verifyAssertion(gateway.publicKey, token, T0)).toEqual(payload);
     expect(protoVerifyAssertion(gateway.publicKey, token, T0)).toEqual(payload);
-    expect(await verifyAssertion(gateway.publicKey, protoSignAssertion(gateway, payload), T0)).toEqual(
-      payload,
-    );
+    expect(
+      await verifyAssertion(gateway.publicKey, protoSignAssertion(gateway, payload), T0),
+    ).toEqual(payload);
   });
 
   it("rejects an expired, tampered or foreign assertion", async () => {
@@ -127,18 +127,50 @@ describe("assertions", () => {
 describe("D1-backed pairing flow", () => {
   it("applies the migration and persists a redeemed pairing", async () => {
     const { d1, sql } = createD1();
-    expect(sql.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'nodes'").get()).toBeTruthy();
+    expect(
+      sql.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'nodes'").get(),
+    ).toBeTruthy();
     const app = generateKeyPair();
     const gateway = generateKeyPair();
     const node = generateKeyPair();
     const token = await signAppToken(app, { nowMs: T0, claims: { scope: ["pair"] } });
-    const deps = { db: d1, config: testConfig(gateway, { "app-test": app.publicKey }), room: () => ({ fetch: async () => new Response(null, { status: 101 }), online: async () => false, kick: async () => {} }), now: () => T0 };
-    const start = await handle(new Request("https://gw.test/pair/start", { method: "POST", headers: { authorization: `Bearer ${token}` } }), deps);
+    const deps = {
+      db: d1,
+      config: testConfig(gateway, { "app-test": app.publicKey }),
+      room: () => ({
+        fetch: async () => new Response(null, { status: 101 }),
+        online: async () => false,
+        kick: async () => {},
+      }),
+      now: () => T0,
+    };
+    const start = await handle(
+      new Request("https://gw.test/pair/start", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+      }),
+      deps,
+    );
     expect(start.status).toBe(200);
     const { code } = (await start.json()) as { code: string };
     const sig = await sign(node, pairingMessage(code, "node-1"));
-    const complete = await handle(new Request("https://gw.test/pair/complete", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code, nodeId: "node-1", nodePublicKey: node.publicKey, sig, kind: "unknown" }) }), deps);
+    const complete = await handle(
+      new Request("https://gw.test/pair/complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          code,
+          nodeId: "node-1",
+          nodePublicKey: node.publicKey,
+          sig,
+          kind: "unknown",
+        }),
+      }),
+      deps,
+    );
     expect(complete.status).toBe(200);
-    expect(sql.prepare("SELECT user_id FROM nodes WHERE node_id = 'node-1'").get()).toMatchObject({ user_id: "user-1" });
+    expect(sql.prepare("SELECT user_id FROM nodes WHERE node_id = 'node-1'").get()).toMatchObject({
+      user_id: "user-1",
+    });
   });
 });

@@ -89,6 +89,10 @@ afterEach(async () => {
   await agent.close();
 });
 
+it("routes the signed agent connection to the hosted node room", () => {
+  expect(vi.mocked(WebSocket).mock.calls[0]?.[0]).toBe("ws://127.0.0.1:1/agent?node=node");
+});
+
 it("waits for fresh ICE servers and preserves candidates received during discovery", async () => {
   const candidate = {
     type: "candidate",

@@ -8,6 +8,8 @@ Registration requires both the application signer's token and a machine signatur
 
 The data-channel handshake still verifies the gateway assertion, owner, node, expiry and bearer. The local HTTP adapter discards remote credentials and injects the node's local session inside the isolated agent process. Only canonical RPC procedure names and selected RPC headers pass. The gateway never sees the local cookie or product data. Gateway revocation closes the agent link, which closes its data channels. No HTTP product fallback is introduced.
 
+The agent names its node in the WebSocket query so the hosted Worker can select its Durable Object before accepting the signed hello. This routing value grants no access; the room still verifies the machine's signature. Local Workers runtime acceptance verifies registration, online/offline discovery, native RTC and revocation with the shipped D1 migrations and Durable Object implementation.
+
 Native host-computer listeners bind loopback. Docker mode explicitly retains host-gateway networking and its existing secret/consent checks. Linux and Windows use the same enrollment protocol, native process boundary and user-data storage. Windows execution must be verified in its CI runner; Linux tests alone cannot certify it.
 
 The hosted app Worker serves the real web build. It forwards only the required account endpoints to an explicitly configured account service. Product API, arbitrary auth endpoints, screen routes and source maps are refused. The existing landing deployment is separate and unchanged.

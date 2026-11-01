@@ -87,7 +87,9 @@ export async function sign(key: SigningKey, message: string): Promise<string> {
     false,
     ["sign"],
   );
-  return toBase64Url(new Uint8Array(await crypto.subtle.sign("Ed25519", privateKey, utf8(message))));
+  return toBase64Url(
+    new Uint8Array(await crypto.subtle.sign("Ed25519", privateKey, utf8(message))),
+  );
 }
 
 export async function sha256Hex(text: string): Promise<string> {
