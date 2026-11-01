@@ -4,10 +4,10 @@
 
 - Date: 2026-11-01.
 - Pull request: #34.
-- What changed versus baseline: `infra/compose/Dockerfile` copies the package manifests of `packages/p2p-prototype` and `apps/p2p-gateway` for the frozen-lockfile install, and takes build args `VITE_P2P_GATEWAY_URL` and `VITE_P2P_ICE_SERVERS` (empty defaults) passed into the web build like `VITE_VNBOT_CONTACT_URL`.
+- What changed versus baseline: `infra/compose/Dockerfile` copies the package manifests of `packages/p2p-prototype` and `apps/p2p-gateway` for the frozen-lockfile install, and takes build args `VITE_P2P_GATEWAY_URL` and `VITE_P2P_ICE_SERVERS` (empty defaults) passed into the web build like `VITE_VNBOT_CONTACT_URL`. The `web` service environment in `infra/compose/docker-compose.prod.yml` and `infra/compose/docker-compose.images.yml` passes `VITE_P2P_GATEWAY_URL` (empty default).
 - Why: web (PR #33) depends on `@rakazo/p2p-prototype` and reads those vars.
-- Modules and files: `infra/compose/Dockerfile`.
-- Invariants affected: only public bundle-bound values; compose files and other build stages unchanged; an empty or blank `VITE_P2P_GATEWAY_URL` makes `p2pGatewayOrigin` (`packages/contracts/src/content-security-policy.ts`) return undefined, so `apps/web/src/lib/p2p-client.ts` returns no P2P config and hosted P2P is disabled with no production fallback; set the ARG to a gateway origin to enable it.
+- Modules and files: `infra/compose/Dockerfile`; `web` service environment in `infra/compose/docker-compose.prod.yml` and `infra/compose/docker-compose.images.yml`.
+- Invariants affected: only public bundle-bound values; other compose files, services and build stages unchanged; an empty or blank `VITE_P2P_GATEWAY_URL` disables hosted P2P (no production fallback); to enable, set the same gateway origin both as the image build ARG and in the runtime `web` environment, because `vite preview` builds CSP `connect-src` at runtime from env (`apps/web/vite.config.ts`) and an ARG alone leaves `connect-src 'self'` so the browser blocks the calls.
 - ADR: none.
 
 ## 2026-11-01 — Web pairing and desktop RPC over the shared P2P transport
