@@ -2,7 +2,7 @@ import path from "node:path";
 import type { Route } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { startFakeAuthServer } from "../../../packages/p2p-prototype/src/fake-auth-server";
-import { startGateway } from "../../../packages/p2p-prototype/src/gateway";
+import { type NodeRecord, startGateway } from "../../../packages/p2p-prototype/src/gateway";
 import { completePairing } from "../../../packages/p2p-prototype/src/gateway-client";
 import { startNodeAgent } from "../../../packages/p2p-prototype/src/node-agent";
 import {
@@ -32,7 +32,8 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
     "http://127.0.0.1:8787",
   );
   const auth = await startFakeAuthServer();
-  const gateway = await startGateway({ port: 0, userVerifier: auth.verifier });
+  const registry = new Map<string, NodeRecord>();
+  const gateway = await startGateway({ port: 0, userVerifier: auth.verifier, registry });
   let agent: ReturnType<typeof startNodeAgent> | undefined;
   const calls: string[] = [];
   const hostedRpc: string[] = [];
@@ -103,13 +104,13 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
         await route.fulfill({
           headers: cors,
           json: {
-            nodes: gateway.connectedNodes().map((nodeId) => ({
+            nodes: [...registry.keys()].map((nodeId) => ({
               nodeId,
               name: "Máy tính thử",
               kind: "linux",
               pairedAt: Date.now(),
               lastSeenAt: null,
-              online: true,
+              online: gateway.connectedNodes().includes(nodeId),
             })),
           },
         });
@@ -157,13 +158,15 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
       },
       subscribe: demo.subscribe,
     };
-    agent = startNodeAgent({
-      gatewayUrl: gateway.url,
-      nodeId: "local-desktop",
-      keyPair: key,
-      handler: channelHttpHandler(handler),
-      channel: { gatewayPublicKey: gateway.publicKey, allowedUsers: ["user"], handler },
-    });
+    const startAgent = () =>
+      startNodeAgent({
+        gatewayUrl: gateway.url,
+        nodeId: "local-desktop",
+        keyPair: key,
+        handler: channelHttpHandler(handler),
+        channel: { gatewayPublicKey: gateway.publicKey, allowedUsers: ["user"], handler },
+      });
+    agent = startAgent();
     await waitFor(() => agent?.connected() === true);
     await page.getByRole("button", { name: "Tải lại", exact: true }).click();
     await expect(page.getByText("Máy tính thử", { exact: true })).toBeVisible();
@@ -185,8 +188,16 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
     await captureScreenshot(page, testInfo, "pairing-connected-vi-360");
     await agent.close();
     agent = undefined;
-    await expect(page.getByRole("status")).toContainText("Không kết nối được");
+    await expect(page.getByRole("status")).toContainText("Đang kết nối");
     await captureScreenshot(page, testInfo, "pairing-disconnected-vi-360");
+    // Registry ownership survives an offline node; returning with the same identity restores RTC.
+    expect(registry.has("local-desktop")).toBe(true);
+    agent = startAgent();
+    await waitFor(() => agent?.connected() === true);
+    await expect(page.getByRole("status")).toContainText("Đã kết nối");
+    await page.getByRole("button", { name: "Ngắt kết nối", exact: true }).click();
+    await expect(page.getByRole("status")).toContainText("Đã ngắt kết nối");
+    expect(hostedRpc).toEqual([]);
   } finally {
     await page.close();
     await agent?.close();
