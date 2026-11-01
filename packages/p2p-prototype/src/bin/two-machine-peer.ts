@@ -273,6 +273,10 @@ function crash(error: unknown): void {
   process.exit(1);
 }
 
+process.on("message", (message: unknown) => {
+  if (message && typeof message === "object" && "type" in message && message.type === "stop")
+    void shutdown();
+});
 process.on("SIGTERM", () => void shutdown());
 process.on("uncaughtException", crash);
 process.on("unhandledRejection", crash);

@@ -50,13 +50,13 @@ jobs:
           P2P_TEST_TURN: '1'
         run: |
           export P2P_TEST_TURN_HOST="$(hostname -I | awk '{print $1}')"
-          turnserver -n --no-cli --no-tls --no-dtls --fingerprint --lt-cred-mech --realm=vnbot-test --user=test:test --listening-ip="$P2P_TEST_TURN_HOST" --relay-ip="$P2P_TEST_TURN_HOST" --listening-port=3479 --min-port=49160 --max-port=49170 --allow-loopback-peers > "$RUNNER_TEMP/coturn.log" 2>&1 &
+          turnserver -n --pidfile="$RUNNER_TEMP/vnbot-turn.pid" --log-file=stdout --simple-log --verbose --no-cli --no-tls --no-dtls --fingerprint --lt-cred-mech --realm=vnbot-test --user=test:test --listening-ip="$P2P_TEST_TURN_HOST" --relay-ip="$P2P_TEST_TURN_HOST" --listening-port=3479 --min-port=49160 --max-port=49170 --allow-loopback-peers > "$RUNNER_TEMP/coturn.log" 2>&1 &
           relay_pid=$!
           trap 'kill "$relay_pid" 2>/dev/null || true' EXIT
           ready=0
           for attempt in $(seq 1 50); do
             kill -0 "$relay_pid" || { cat "$RUNNER_TEMP/coturn.log"; exit 1; }
-            if (echo > "/dev/tcp/$P2P_TEST_TURN_HOST/3479") 2>/dev/null; then ready=1; break; fi
+            if test -s "$RUNNER_TEMP/vnbot-turn.pid" && (echo > "/dev/tcp/$P2P_TEST_TURN_HOST/3479") 2>/dev/null; then ready=1; break; fi
             sleep 0.1
           done
           test "$ready" = 1 || { cat "$RUNNER_TEMP/coturn.log"; exit 1; }

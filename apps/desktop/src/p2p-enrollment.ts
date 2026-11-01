@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { P2PPairingModule } from "./p2p-node.js";
 import { parseGatewayUrl } from "./p2p-node.js";
-import { writePrivateFile } from "./setup-store.js";
+import { readPrivateFile, writePrivateFile } from "./setup-store.js";
 
 /** Main-process only. Both the hosted account and local node session must already be verified. */
 export async function enrollDesktop(input: {
@@ -20,11 +20,16 @@ export async function enrollDesktop(input: {
   const dir = path.join(input.userDataDir, "p2p");
   await mkdir(dir, { recursive: true, mode: 0o700 });
   const keyFile = path.join(dir, "node-key.json");
-  // Registration is explicit. Never silently replace another paired account's identity.
-  if (input.pairing.readKeyFile(keyFile)) throw new Error("This computer is already registered");
-  const key = input.pairing.generateKeyPair();
+  const saved = input.pairing.readKeyFile(keyFile);
+  if (saved?.localUser && saved.localUser !== input.localUser)
+    throw new Error("This computer belongs to another local account");
+  const key = saved ?? input.pairing.generateKeyPair();
   if (!input.pairing.sign) throw new Error("Registration module unavailable");
-  const nodeId = `desktop-${crypto.randomUUID()}`;
+  const previousId =
+    saved?.nodeId ||
+    (saved ? (await readPrivateFile(path.join(dir, "node-id"), 128))?.trim() : undefined);
+  if (saved && !previousId) throw new Error("Incomplete machine identity");
+  const nodeId = previousId || `desktop-${crypto.randomUUID()}`;
   const response = await (input.request ?? fetch)(`${gateway}/nodes/register`, {
     method: "POST",
     redirect: "error",
@@ -51,6 +56,8 @@ export async function enrollDesktop(input: {
     !/^[A-Za-z0-9_-]{43}$/.test(result.gatewayPublicKey)
   )
     throw new Error("Invalid registration response");
+  if (saved?.gatewayPublicKey && saved.gatewayPublicKey !== result.gatewayPublicKey)
+    throw new Error("Gateway identity changed");
   // Keep the identity and ID in one atomic file so interrupted writes cannot split them.
   await writePrivateFile(
     keyFile,

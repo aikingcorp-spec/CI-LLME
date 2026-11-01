@@ -431,7 +431,7 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 
 ## 2026-11-01 — Desktop account enrollment and hosted remote app
 
-- Pull request: pending, branch `feat/p2p-web-desktop`.
+- Pull request: [#38](https://github.com/aikingcorp-spec/vnbot/pull/38), branch `feat/p2p-web-desktop`.
 - What changed versus baseline: hosted OTP can open a native local session and register a machine key; the channel adapter binds requests to that local user instead of forwarding remote credentials. The app Worker serves the real SPA with an account-only proxy and the shared CSP. Browser connections restore the selected account-owned node and retry closed channels. Native host-computer listeners default to loopback; Docker explicitly retains host-gateway reachability.
 - Why: the previous desktop agent required an environment pairing code and could answer health without supplying a local authenticated session for product RPC. The hosted static page could not enter the product.
 - Modules and files: desktop main/preload, OTP/enrollment/session helpers and native services; API local-settings and auth composition; auth local-node-session plugin reused from PR #29; contracts desktop/local-settings; gateway registration and hosted-app Worker; web Auth, Pairing, session gate and P2P client; shared key-file and node-channel-server; Cloudflare app configuration. Marketplace and Composio code are unchanged.

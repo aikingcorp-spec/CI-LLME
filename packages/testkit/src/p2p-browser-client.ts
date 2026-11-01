@@ -42,7 +42,12 @@ export async function browserP2PClient(input: {
         iceServers: options.relay ? [{ urls: 'turn:' + (options.turnHost || '127.0.0.1') + ':3479?transport=tcp', username: 'test', credential: 'test' }] : [],
         connectTimeoutMs: 10000 });
       window.testClient = new P2PLibrary.DataChannelClientTransport(peer, options.assertion);
-      try { await window.testClient.ready; } catch (error) { console.log("RTC state", window.testRTC.connectionState, window.testRTC.iceConnectionState, window.testRTC.remoteDescription?.type, error.cause?.message); throw error; }
+      const report = setInterval(async () => {
+        for (const entry of (await window.testRTC.getStats()).values()) {
+          if (entry.type === 'candidate-pair') console.log('ICE pair', entry.state, entry.requestsSent, entry.responsesReceived, entry.requestsReceived, entry.responsesSent);
+        }
+      }, 2000);
+      try { await window.testClient.ready; } catch (error) { console.log("RTC state", window.testRTC.connectionState, window.testRTC.iceConnectionState, window.testRTC.remoteDescription?.type, error.cause?.message); throw error; } finally { clearInterval(report); }
     }`);
     await page.evaluate((options) => Reflect.get(window, "P2PConnect")(options), input);
     return {

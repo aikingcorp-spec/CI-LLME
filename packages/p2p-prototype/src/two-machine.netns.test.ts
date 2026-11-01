@@ -298,8 +298,13 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
           )
         : spawn(process.execPath, nodeArgs, {
             env: { ...process.env, ...vars },
-            stdio: ["ignore", "pipe", "pipe"],
+            stdio:
+              process.platform === "win32"
+                ? ["ignore", "pipe", "pipe", "ipc"]
+                : ["ignore", "pipe", "pipe"],
           });
+      if (!child.stdout || !child.stderr)
+        throw new Error("P2P harness requires piped stdout and stderr");
       const events: PeerEvent[] = [];
       const stderr: string[] = [];
       let exitCode: number | null | undefined;
@@ -329,6 +334,11 @@ describe.skipIf(NETNS_MODE && !netnsAvailable())(
         pid: () => events.find((e) => e.event === "started")?.pid ?? child.pid ?? 0,
         signal: (signal) => {
           try {
+            // Windows SIGTERM is forceful termination; desktop uses cooperative IPC shutdown.
+            if (process.platform === "win32" && signal === "SIGTERM" && child.connected) {
+              child.send({ type: "stop" });
+              return;
+            }
             process.kill(proc.pid(), signal);
           } catch {}
         },

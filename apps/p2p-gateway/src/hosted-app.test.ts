@@ -85,4 +85,11 @@ describe("hosted app boundary", () => {
       ).status,
     ).toBe(503);
   });
+  it("does not serve an apparently working app without account and gateway configuration", async () => {
+    const before = assets.fetch.mock.calls.length;
+    for (const missing of [{ AUTH_ORIGIN: "" }, { P2P_GATEWAY_URL: "" }]) {
+      expect((await serveHostedApp(request("/app"), { ...env, ...missing })).status).toBe(503);
+    }
+    expect(assets.fetch.mock.calls.length).toBe(before);
+  });
 });

@@ -1448,11 +1448,8 @@ app.whenReady().then(async () => {
         { redirect: "error", signal: AbortSignal.timeout(5000) },
       );
       const user = await localP2PUser(response);
-      // A previous pairing keeps its owner; signing in cannot silently replace it.
-      const keyFile = path.join(app.getPath("userData"), "p2p", "node-key.json");
-      if (!existsSync(keyFile))
-        await nativeP2P.enroll(localStack.webUrl(), credential, user.id, await deviceName());
-      else await nativeP2P.start(localStack.webUrl());
+      // Registration verifies the existing account/key before upgrading a legacy pairing.
+      await nativeP2P.enroll(localStack.webUrl(), credential, user.id, await deviceName());
       return true;
     } finally {
       enrolling = false;

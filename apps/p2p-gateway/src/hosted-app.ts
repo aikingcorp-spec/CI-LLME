@@ -1,4 +1,7 @@
-import { appContentSecurityPolicy } from "../../../packages/contracts/src/content-security-policy.js";
+import {
+  appContentSecurityPolicy,
+  p2pGatewayOrigin,
+} from "../../../packages/contracts/src/content-security-policy.js";
 
 interface HostedAppEnv {
   ASSETS: Fetcher;
@@ -18,32 +21,43 @@ const AUTH_PATHS = new Set([
 /** Only account traffic reaches the account service. Product traffic must use a data channel. */
 export async function serveHostedApp(request: Request, env: HostedAppEnv): Promise<Response> {
   const url = new URL(request.url);
+  const accountPath = AUTH_PATHS.has(url.pathname);
   if (
-    url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/rpc") ||
-    url.pathname.startsWith("/novnc")
-  ) {
-    if (!AUTH_PATHS.has(url.pathname)) return new Response("Not found", { status: 404 });
+    !accountPath &&
+    (url.pathname === "/api" ||
+      url.pathname.startsWith("/api/") ||
+      url.pathname.startsWith("/rpc") ||
+      url.pathname.startsWith("/novnc"))
+  )
+    return new Response("Not found", { status: 404 });
+  let upstream: URL;
+  let gateway: string;
+  try {
+    upstream = new URL(env.AUTH_ORIGIN);
+    const configuredGateway = p2pGatewayOrigin(env.P2P_GATEWAY_URL);
+    if (
+      !configuredGateway ||
+      upstream.protocol !== "https:" ||
+      upstream.origin === url.origin ||
+      upstream.username ||
+      upstream.password ||
+      upstream.pathname !== "/" ||
+      upstream.search ||
+      upstream.hash
+    )
+      throw new Error("Invalid hosted app configuration");
+    gateway = configuredGateway;
+  } catch {
+    return new Response("Remote access is not configured", {
+      status: 503,
+      headers: { "cache-control": "no-store" },
+    });
+  }
+  if (accountPath) {
     const origin = request.headers.get("origin");
     if (origin && origin !== url.origin) return new Response("Forbidden", { status: 403 });
     if (request.method !== "GET" && request.method !== "POST")
       return new Response(null, { status: 405 });
-    let upstream: URL;
-    try {
-      upstream = new URL(env.AUTH_ORIGIN);
-      if (
-        upstream.protocol !== "https:" ||
-        upstream.origin === url.origin ||
-        upstream.username ||
-        upstream.password ||
-        upstream.pathname !== "/" ||
-        upstream.search ||
-        upstream.hash
-      )
-        throw new Error("Invalid origin");
-    } catch {
-      return new Response("Account service is not configured", { status: 503 });
-    }
     upstream.pathname = url.pathname;
     upstream.search = url.search;
     const headers = new Headers();
@@ -70,10 +84,7 @@ export async function serveHostedApp(request: Request, env: HostedAppEnv): Promi
   if (url.pathname.endsWith(".map")) return new Response(null, { status: 404 });
   const response = await env.ASSETS.fetch(request);
   const out = new Response(response.body, response);
-  out.headers.set(
-    "content-security-policy",
-    appContentSecurityPolicy({ p2pGatewayUrl: env.P2P_GATEWAY_URL }),
-  );
+  out.headers.set("content-security-policy", appContentSecurityPolicy({ p2pGatewayUrl: gateway }));
   out.headers.set("x-content-type-options", "nosniff");
   out.headers.set("referrer-policy", "same-origin");
   if (out.headers.get("content-type")?.includes("text/html"))
