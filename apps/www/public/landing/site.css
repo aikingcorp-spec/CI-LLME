@@ -58,6 +58,7 @@ h3{font-size:20px;line-height:1.35;font-weight:700}
 .chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;background:var(--chip-off);color:var(--chip-off-ink);border:1px dashed color-mix(in srgb,var(--chip-off-ink) 45%,transparent);cursor:not-allowed}
 .chip svg{width:14px;height:14px}
 .chip em{font-style:normal;font-weight:500;opacity:.85}
+a.chip{background:var(--card);color:var(--ink);border-style:solid;cursor:pointer;text-decoration:none}
 /* hero */
 .hero{padding:72px 0 96px;overflow:hidden}
 .hero .wrap{display:grid;grid-template-columns:600px 1fr;gap:40px;align-items:center}
@@ -110,6 +111,7 @@ h3{font-size:20px;line-height:1.35;font-weight:700}
 .alt .t{flex:1}
 .alt .t b{display:block;font-size:15px}
 .alt .t span{color:var(--muted)}
+.alt code{font:500 12.5px/1.6 ui-monospace,Menlo,monospace;background:var(--code);border-radius:8px;padding:1px 6px;overflow-wrap:anywhere}
 .btn-out{height:44px;padding:0 16px;border-radius:12px;border:1.5px solid var(--line);display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:15px;color:var(--green-ink);text-decoration:none;background:var(--card);white-space:nowrap}
 .btn-out svg{width:18px;height:18px}
 .btn-out:hover,.btn-out.is-hover{border-color:var(--green-ink)}

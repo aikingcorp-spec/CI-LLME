@@ -19,7 +19,7 @@ describe("associatedPasskeyRpIds", () => {
   });
 
   it("lists the hosted domain only for a packaged macOS app with an embedded profile", () => {
-    const exists = (file: string) => file === profile;
+    const exists = (file: string) => path.normalize(file) === path.normalize(profile);
     expect(
       associatedPasskeyRpIds({ platform: "darwin", packaged: true, resourcesPath, exists }),
     ).toEqual([PASSKEY_RP_ID]);

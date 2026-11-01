@@ -1,9 +1,10 @@
+import type { NodeKind } from "@rakazo/p2p-prototype/protocol";
 import { PAIR_CODE_TTL_MS } from "./pairing.js";
 
 /** All SQL of the gateway. Timestamps are epoch milliseconds. Pairing data lives here, never in a Durable Object. */
 
-export const NODE_KINDS = ["windows", "linux", "macos", "vps", "unknown"] as const;
-export type NodeKind = (typeof NODE_KINDS)[number];
+export type { NodeKind } from "@rakazo/p2p-prototype/protocol";
+export { NODE_KINDS } from "@rakazo/p2p-prototype/protocol";
 
 export interface NodeRow {
   node_id: string;
@@ -133,7 +134,10 @@ export async function revokeNode(
 }
 
 export async function touchLastSeen(db: D1Database, nodeId: string, nowMs: number): Promise<void> {
-  await db.prepare("UPDATE nodes SET last_seen_at = ?1 WHERE node_id = ?2").bind(nowMs, nodeId).run();
+  await db
+    .prepare("UPDATE nodes SET last_seen_at = ?1 WHERE node_id = ?2")
+    .bind(nowMs, nodeId)
+    .run();
 }
 
 /** Records a token id once. False when it was already used. Expired ids are dropped on the way. */

@@ -1,10 +1,16 @@
-import { createHmac } from "node:crypto";
 import type { IceServer } from "node-datachannel";
 
 export interface TurnConfig {
   secret: string;
   urls: string[];
   ttlSeconds: number;
+}
+/** Gateway wire response, directly usable as a browser ICE server. */
+export interface TurnIceServer {
+  urls: string[];
+  username: string;
+  credential: string;
+  ttl: number;
 }
 export interface TurnCredentials {
   username: string;
@@ -14,16 +20,16 @@ export interface TurnCredentials {
   urls: string[];
 }
 
-const MAX_TTL_SECONDS = 3600;
+export const MAX_TTL_SECONDS = 3600;
 const DEFAULT_TURN_PORT = 3478;
 const DEFAULT_TURNS_PORT = 5349;
 
 /** coturn `use-auth-secret` / TURN REST API: username is `<expiry>:<peer>`, credential is HMAC-SHA1 of it. */
-export function mintTurnCredentials(
+export async function mintTurnCredentials(
   cfg: TurnConfig,
   peerId: string,
   nowMs = Date.now(),
-): TurnCredentials {
+): Promise<TurnCredentials> {
   if (
     !Number.isInteger(cfg.ttlSeconds) ||
     cfg.ttlSeconds <= 0 ||
@@ -36,24 +42,35 @@ export function mintTurnCredentials(
   }
   const expiresAt = Math.floor(nowMs / 1000) + cfg.ttlSeconds;
   const username = `${expiresAt}:${peerId}`;
-  const credential = createHmac("sha1", cfg.secret).update(username).digest("base64");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(cfg.secret),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(username));
+  const credential = btoa(String.fromCharCode(...new Uint8Array(signature)));
   return { username, credential, ttlSeconds: cfg.ttlSeconds, expiresAt, urls: [...cfg.urls] };
 }
 
 function parseTurnUrl(url: string, username: string, password: string): IceServer {
-  const match = /^(turns?):(?:\[([^\]]+)\]|([^:?/]+))(?::(\d+))?(?:\?transport=(udp|tcp))?$/.exec(
-    url,
-  );
+  const match =
+    /^(turns?):(?:\[([^\]\s]+)\]|([^:?/#@\s]+))(?::(\d+))?(?:\?transport=(udp|tcp))?$/.exec(url);
   const scheme = match?.[1];
   const hostname = match?.[2] ?? match?.[3];
   if (scheme === undefined || hostname === undefined) throw new Error(`invalid TURN url: ${url}`);
   const secure = scheme === "turns";
   const port = match?.[4] ? Number(match[4]) : secure ? DEFAULT_TURNS_PORT : DEFAULT_TURN_PORT;
+  if (port < 1 || port > 65535 || (secure && match?.[5] === "udp"))
+    throw new Error("invalid TURN transport or port");
   const relayType = secure ? "TurnTls" : match?.[5] === "tcp" ? "TurnTcp" : "TurnUdp";
   return { hostname, port, username, password, relayType };
 }
 
 /** node-datachannel 0.32 accepts structured `IceServer` objects, so no URL-embedded credentials. */
-export function toNodeDatachannelIceServers(c: TurnCredentials): IceServer[] {
+export function toNodeDatachannelIceServers(
+  c: Pick<TurnCredentials, "urls" | "username" | "credential">,
+): IceServer[] {
   return c.urls.map((url) => parseTurnUrl(url, c.username, c.credential));
 }

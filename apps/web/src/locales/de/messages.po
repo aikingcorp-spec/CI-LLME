@@ -21,7 +21,7 @@ msgstr ""
 #. js-lingui-explicit-id
 #: src/App.tsx
 msgid "Go home"
-msgstr ""
+msgstr "Zur Startseite"
 
 #: src/pages/shell/sidebar-roster.tsx
 msgid " (unread)"
@@ -1172,6 +1172,7 @@ msgstr "Kann keine Bilder lesen"
 #: src/pages/model-settings/space-bots-model.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/agent-import-undo.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1610,6 +1611,7 @@ msgstr "Prüfe, ob die URL aus dieser Browsersitzung erreichbar ist, und teste e
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/model-settings/role-model-picker.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Verbinden"
@@ -1678,6 +1680,7 @@ msgstr ""
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1698,6 +1701,7 @@ msgstr ""
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connecting…"
@@ -1871,6 +1875,10 @@ msgstr "Stimmanbieter konnte nicht verbunden werden"
 msgid "Could not connect to the computer screen"
 msgstr ""
 
+#: src/pages/Pairing.tsx
+msgid "Could not connect. Try another network."
+msgstr "Verbindung fehlgeschlagen. Versuche ein anderes Netzwerk."
+
 #: src/components/AccountAccess.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/PasskeyOffer.tsx
@@ -2021,6 +2029,10 @@ msgstr "MCP-Server konnten nicht geladen werden"
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Could not load model settings"
 msgstr "Modelleinstellungen konnten nicht geladen werden"
+
+#: src/pages/Pairing.tsx
+msgid "Could not load pairing information"
+msgstr "Kopplungsinformationen konnten nicht geladen werden"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
@@ -2601,6 +2613,7 @@ msgstr "Aufnahme verwerfen"
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect"
 msgstr "Trennen"
@@ -2612,6 +2625,10 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect Self-hosted"
 msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Disconnected"
+msgstr "Getrennt"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Disconnected {disconnectName}."
@@ -2794,6 +2811,10 @@ msgstr "Gib vor dem Test einen API-Schlüssel ein."
 #: src/pages/Auth.tsx
 msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
 msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Enter this code in the desktop app. It expires in two minutes."
+msgstr "Gib diesen Code in der Desktop-App ein. Er läuft nach zwei Minuten ab."
 
 #: src/pages/Auth.tsx
 msgid "Enter your email to get a 6-digit sign-in code."
@@ -3085,6 +3106,10 @@ msgstr ""
 msgid "Get in touch (opens in new tab)"
 msgstr ""
 
+#: src/pages/Pairing.tsx
+msgid "Get pairing code"
+msgstr "Kopplungscode abrufen"
+
 #: src/pages/Welcome.tsx
 msgid "Get started"
 msgstr ""
@@ -3108,6 +3133,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Git event"
 msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Go home"
+msgstr "Zur Startseite"
 
 #: src/lib/identity-display.ts
 #: src/pages/MessagingSettingsPanel.tsx
@@ -3572,6 +3601,10 @@ msgstr "Ältere Ausführungen laden"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Load web images automatically"
 msgstr "Webbilder automatisch laden"
+
+#: src/pages/Pairing.tsx
+msgid "Loading"
+msgstr "Wird geladen"
 
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
@@ -4182,6 +4215,10 @@ msgstr "Keine Modelle aufgelistet."
 msgid "No OpenClaw, Hermes or agent document found."
 msgstr "Keine OpenClaw-, Hermes- oder Agent-Dateien gefunden."
 
+#: src/pages/Pairing.tsx
+msgid "No paired computers"
+msgstr "Keine gekoppelten Computer"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr ""
@@ -4305,8 +4342,9 @@ msgid "OAuth expired"
 msgstr "OAuth abgelaufen"
 
 #: src/components/ComputerDeviceSettings.tsx
+#: src/pages/Pairing.tsx
 msgid "Offline"
-msgstr ""
+msgstr "Offline"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4334,6 +4372,10 @@ msgstr "am 1. um {0}"
 #: src/lib/cron.ts
 msgid "One-time"
 msgstr "Einmalig"
+
+#: src/pages/Pairing.tsx
+msgid "Online"
+msgstr "Online"
 
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/shell/computer-panel.tsx
@@ -4365,6 +4407,10 @@ msgstr "Anruf öffnen"
 #: src/components/call/CallCard.tsx
 msgid "Open chat with {0}"
 msgstr "Chat mit {0} öffnen"
+
+#: src/pages/Pairing.tsx
+msgid "Open computer"
+msgstr "Computer öffnen"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
@@ -4461,6 +4507,10 @@ msgstr "Ausgabe"
 msgid "Owner"
 msgstr "Inhaber"
 
+#: src/pages/Pairing.tsx
+msgid "P2P gateway is not configured for this web build."
+msgstr "Für diese Web-Version ist kein P2P-Gateway konfiguriert."
+
 #: src/components/markdown-copy.tsx
 msgid "Page {page} of {count}"
 msgstr "Seite {page} von {count}"
@@ -4468,6 +4518,19 @@ msgstr "Seite {page} von {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr ""
+
+#: src/components/SidebarFooter.tsx
+#: src/pages/Pairing.tsx
+msgid "Pair a computer"
+msgstr "Computer koppeln"
+
+#: src/pages/Pairing.tsx
+msgid "Paired computers"
+msgstr "Gekoppelte Computer"
+
+#: src/pages/Pairing.tsx
+msgid "Pairing code"
+msgstr "Kopplungscode"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4840,6 +4903,7 @@ msgstr "Weiterleitungs-URI"
 
 #: src/App.tsx
 #: src/components/lazy-overlay.tsx
+#: src/pages/Pairing.tsx
 msgid "Refresh"
 msgstr "Aktualisieren"
 

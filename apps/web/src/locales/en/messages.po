@@ -1172,6 +1172,7 @@ msgstr "Can't read images"
 #: src/pages/model-settings/space-bots-model.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/agent-import-undo.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1610,6 +1611,7 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/model-settings/role-model-picker.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Connect"
@@ -1678,6 +1680,7 @@ msgstr "Connect your own API key in Models."
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1698,6 +1701,7 @@ msgstr "Connecting MCP server: {detail}"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connecting…"
@@ -1871,6 +1875,10 @@ msgstr "Could not connect this voice provider"
 msgid "Could not connect to the computer screen"
 msgstr "Could not connect to the computer screen"
 
+#: src/pages/Pairing.tsx
+msgid "Could not connect. Try another network."
+msgstr "Could not connect. Try another network."
+
 #: src/components/AccountAccess.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/PasskeyOffer.tsx
@@ -2021,6 +2029,10 @@ msgstr "Could not load MCP servers"
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Could not load model settings"
 msgstr "Could not load model settings"
+
+#: src/pages/Pairing.tsx
+msgid "Could not load pairing information"
+msgstr "Could not load pairing information"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
@@ -2601,6 +2613,7 @@ msgstr "Discard recording"
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect"
 msgstr "Disconnect"
@@ -2612,6 +2625,10 @@ msgstr "Disconnect {disconnectName}?"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect Self-hosted"
 msgstr "Disconnect Self-hosted"
+
+#: src/pages/Pairing.tsx
+msgid "Disconnected"
+msgstr "Disconnected"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Disconnected {disconnectName}."
@@ -2794,6 +2811,10 @@ msgstr "Enter an API key before testing."
 #: src/pages/Auth.tsx
 msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
 msgstr "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
+
+#: src/pages/Pairing.tsx
+msgid "Enter this code in the desktop app. It expires in two minutes."
+msgstr "Enter this code in the desktop app. It expires in two minutes."
 
 #: src/pages/Auth.tsx
 msgid "Enter your email to get a 6-digit sign-in code."
@@ -3085,6 +3106,10 @@ msgstr "Generate video"
 msgid "Get in touch (opens in new tab)"
 msgstr "Get in touch (opens in new tab)"
 
+#: src/pages/Pairing.tsx
+msgid "Get pairing code"
+msgstr "Get pairing code"
+
 #: src/pages/Welcome.tsx
 msgid "Get started"
 msgstr "Get started"
@@ -3108,6 +3133,10 @@ msgstr "Getting ready"
 #: src/pages/RoutineEditor.tsx
 msgid "Git event"
 msgstr "Git event"
+
+#: src/pages/Pairing.tsx
+msgid "Go home"
+msgstr "Go home"
 
 #: src/lib/identity-display.ts
 #: src/pages/MessagingSettingsPanel.tsx
@@ -3572,6 +3601,10 @@ msgstr "Load older runs"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Load web images automatically"
 msgstr "Load web images automatically"
+
+#: src/pages/Pairing.tsx
+msgid "Loading"
+msgstr "Loading"
 
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
@@ -4182,6 +4215,10 @@ msgstr "No models listed."
 msgid "No OpenClaw, Hermes or agent document found."
 msgstr "No OpenClaw, Hermes or agent document found."
 
+#: src/pages/Pairing.tsx
+msgid "No paired computers"
+msgstr "No paired computers"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr "No remote MCP servers found"
@@ -4305,6 +4342,7 @@ msgid "OAuth expired"
 msgstr "OAuth expired"
 
 #: src/components/ComputerDeviceSettings.tsx
+#: src/pages/Pairing.tsx
 msgid "Offline"
 msgstr "Offline"
 
@@ -4334,6 +4372,10 @@ msgstr "on the 1st at {0}"
 #: src/lib/cron.ts
 msgid "One-time"
 msgstr "One-time"
+
+#: src/pages/Pairing.tsx
+msgid "Online"
+msgstr "Online"
 
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/shell/computer-panel.tsx
@@ -4365,6 +4407,10 @@ msgstr "Open call"
 #: src/components/call/CallCard.tsx
 msgid "Open chat with {0}"
 msgstr "Open chat with {0}"
+
+#: src/pages/Pairing.tsx
+msgid "Open computer"
+msgstr "Open computer"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
@@ -4461,6 +4507,10 @@ msgstr "Output"
 msgid "Owner"
 msgstr "Owner"
 
+#: src/pages/Pairing.tsx
+msgid "P2P gateway is not configured for this web build."
+msgstr "P2P gateway is not configured for this web build."
+
 #: src/components/markdown-copy.tsx
 msgid "Page {page} of {count}"
 msgstr "Page {page} of {count}"
@@ -4468,6 +4518,19 @@ msgstr "Page {page} of {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty incident"
+
+#: src/components/SidebarFooter.tsx
+#: src/pages/Pairing.tsx
+msgid "Pair a computer"
+msgstr "Pair a computer"
+
+#: src/pages/Pairing.tsx
+msgid "Paired computers"
+msgstr "Paired computers"
+
+#: src/pages/Pairing.tsx
+msgid "Pairing code"
+msgstr "Pairing code"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4840,6 +4903,7 @@ msgstr "Redirect URI"
 
 #: src/App.tsx
 #: src/components/lazy-overlay.tsx
+#: src/pages/Pairing.tsx
 msgid "Refresh"
 msgstr "Refresh"
 

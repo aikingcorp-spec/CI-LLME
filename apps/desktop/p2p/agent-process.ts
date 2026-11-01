@@ -1,7 +1,9 @@
 import { cleanup } from "node-datachannel";
+import { fetchNodeTurnServers } from "../../../packages/p2p-prototype/src/gateway-client.js";
 import { startNodeAgent } from "../../../packages/p2p-prototype/src/node-agent.js";
 import { forwardChannelHandler } from "../../../packages/p2p-prototype/src/node-channel-server.js";
 import { desktopChannelHandler } from "../src/p2p-channel-handler.js";
+import { desktopIceServers } from "../src/p2p-node.js";
 
 /**
  * Runs the node agent in an Electron utility process. libdatachannel misparses SDP once koffi
@@ -36,6 +38,7 @@ listen(async (message) => {
         gatewayUrl: m.gatewayUrl,
         nodeId: m.nodeId,
         keyPair: m.key,
+        iceServers: () => desktopIceServers(m.gatewayUrl, m.nodeId, m.key, fetchNodeTurnServers),
         // The gateway's plaintext HTTP relay is off; only the data channel carries requests.
         handler: async () => ({ status: 404, headers: {}, body: new Uint8Array() }),
         channel: {

@@ -14,6 +14,8 @@ import { useState } from "react";
 import { PasskeyOffer } from "../../components/PasskeyOffer";
 import { SidebarFooter } from "../../components/SidebarFooter";
 import type { BotsSidebarDensity } from "../../lib/bots-sidebar-density-pref";
+import { desktopBridge } from "../../lib/desktop";
+import { webP2PClient } from "../../lib/p2p-client";
 import type { Panel } from "../../lib/right-panel-state";
 import { clearSpaceSelection } from "../../lib/rpc";
 import { useSignOut } from "../../lib/sign-out";
@@ -258,7 +260,7 @@ export function ShellSidebar({
   );
 }
 
-function ShellSidebarFooter({
+export function ShellSidebarFooter({
   mini,
   logos,
   user,
@@ -330,6 +332,15 @@ function ShellSidebarFooter({
         closeMobileSidebar();
         navigate("/app/artifacts");
       }}
+      onPairing={
+        desktopBridge() || !webP2PClient()
+          ? undefined
+          : () => {
+              setMenuOpen(false);
+              closeMobileSidebar();
+              navigate("/app/pairing");
+            }
+      }
       onSettings={() => {
         setMenuOpen(false);
         openSettings("general");

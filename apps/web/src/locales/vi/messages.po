@@ -1172,6 +1172,7 @@ msgstr "Không đọc được ảnh"
 #: src/pages/model-settings/space-bots-model.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/agent-import-undo.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1610,6 +1611,7 @@ msgstr "Bạn hãy xác nhận URL truy cập được từ phiên trình duyệ
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/model-settings/role-model-picker.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Kết nối"
@@ -1678,6 +1680,7 @@ msgstr "Hãy kết nối API key của bạn trong Mô hình."
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1698,6 +1701,7 @@ msgstr "Đang kết nối máy chủ MCP: {detail}"
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connecting…"
@@ -1871,6 +1875,10 @@ msgstr "Không thể kết nối nhà cung cấp giọng nói này"
 msgid "Could not connect to the computer screen"
 msgstr "Không thể kết nối tới màn hình máy tính"
 
+#: src/pages/Pairing.tsx
+msgid "Could not connect. Try another network."
+msgstr "Không kết nối được. Hãy thử mạng khác."
+
 #: src/components/AccountAccess.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/PasskeyOffer.tsx
@@ -2021,6 +2029,10 @@ msgstr "Không thể tải máy chủ MCP"
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Could not load model settings"
 msgstr "Không thể tải cài đặt mô hình"
+
+#: src/pages/Pairing.tsx
+msgid "Could not load pairing information"
+msgstr "Không tải được thông tin ghép nối"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
@@ -2601,6 +2613,7 @@ msgstr "Bỏ bản ghi âm"
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect"
 msgstr "Ngắt kết nối"
@@ -2612,6 +2625,10 @@ msgstr "Ngắt kết nối {disconnectName}?"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect Self-hosted"
 msgstr "Ngắt kết nối dịch vụ tự lưu trữ"
+
+#: src/pages/Pairing.tsx
+msgid "Disconnected"
+msgstr "Đã ngắt kết nối"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Disconnected {disconnectName}."
@@ -2794,6 +2811,10 @@ msgstr "Nhập khóa API trước khi kiểm tra."
 #: src/pages/Auth.tsx
 msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
 msgstr "Nhập mã 6 số vừa được gửi tới <0>{trimmedEmail}</0>. Mã có hiệu lực trong 10 phút."
+
+#: src/pages/Pairing.tsx
+msgid "Enter this code in the desktop app. It expires in two minutes."
+msgstr "Nhập mã này trong ứng dụng máy tính. Mã hết hạn sau hai phút."
 
 #: src/pages/Auth.tsx
 msgid "Enter your email to get a 6-digit sign-in code."
@@ -3085,6 +3106,10 @@ msgstr "Tạo video"
 msgid "Get in touch (opens in new tab)"
 msgstr "Liên hệ (mở trong thẻ mới)"
 
+#: src/pages/Pairing.tsx
+msgid "Get pairing code"
+msgstr "Lấy mã ghép nối"
+
 #: src/pages/Welcome.tsx
 msgid "Get started"
 msgstr "Bắt đầu"
@@ -3108,6 +3133,10 @@ msgstr "Đang chuẩn bị"
 #: src/pages/RoutineEditor.tsx
 msgid "Git event"
 msgstr "Sự kiện Git"
+
+#: src/pages/Pairing.tsx
+msgid "Go home"
+msgstr "Về trang chủ"
 
 #: src/lib/identity-display.ts
 #: src/pages/MessagingSettingsPanel.tsx
@@ -3572,6 +3601,10 @@ msgstr "Tải các lần chạy cũ hơn"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Load web images automatically"
 msgstr "Tự động tải ảnh trên web"
+
+#: src/pages/Pairing.tsx
+msgid "Loading"
+msgstr "Đang tải"
 
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
@@ -4182,6 +4215,10 @@ msgstr "Chưa có mô hình trong danh sách."
 msgid "No OpenClaw, Hermes or agent document found."
 msgstr "Không thấy tài liệu OpenClaw, Hermes hoặc bot."
 
+#: src/pages/Pairing.tsx
+msgid "No paired computers"
+msgstr "Chưa có máy tính được ghép nối"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr "Không tìm thấy máy chủ MCP từ xa"
@@ -4305,6 +4342,7 @@ msgid "OAuth expired"
 msgstr "OAuth đã hết hạn"
 
 #: src/components/ComputerDeviceSettings.tsx
+#: src/pages/Pairing.tsx
 msgid "Offline"
 msgstr "Ngoại tuyến"
 
@@ -4334,6 +4372,10 @@ msgstr "vào ngày 1 lúc {0}"
 #: src/lib/cron.ts
 msgid "One-time"
 msgstr "Một lần"
+
+#: src/pages/Pairing.tsx
+msgid "Online"
+msgstr "Trực tuyến"
 
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/shell/computer-panel.tsx
@@ -4365,6 +4407,10 @@ msgstr "Mở cuộc gọi"
 #: src/components/call/CallCard.tsx
 msgid "Open chat with {0}"
 msgstr "Mở trò chuyện với {0}"
+
+#: src/pages/Pairing.tsx
+msgid "Open computer"
+msgstr "Mở máy tính"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
@@ -4461,6 +4507,10 @@ msgstr "Đầu ra"
 msgid "Owner"
 msgstr "Chủ sở hữu"
 
+#: src/pages/Pairing.tsx
+msgid "P2P gateway is not configured for this web build."
+msgstr "Chưa cấu hình cổng P2P cho bản web này."
+
 #: src/components/markdown-copy.tsx
 msgid "Page {page} of {count}"
 msgstr "Trang {page} / {count}"
@@ -4468,6 +4518,19 @@ msgstr "Trang {page} / {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "Sự cố PagerDuty"
+
+#: src/components/SidebarFooter.tsx
+#: src/pages/Pairing.tsx
+msgid "Pair a computer"
+msgstr "Ghép nối máy tính"
+
+#: src/pages/Pairing.tsx
+msgid "Paired computers"
+msgstr "Máy tính đã ghép nối"
+
+#: src/pages/Pairing.tsx
+msgid "Pairing code"
+msgstr "Mã ghép nối"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4840,6 +4903,7 @@ msgstr "URI chuyển hướng"
 
 #: src/App.tsx
 #: src/components/lazy-overlay.tsx
+#: src/pages/Pairing.tsx
 msgid "Refresh"
 msgstr "Tải lại"
 

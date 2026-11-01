@@ -18,7 +18,12 @@ import {
   verifyAssertion,
 } from "./pairing.js";
 import type { Hello, NodeFrame, NodeId, RelayRequest, RelayResponse } from "./protocol.js";
-import { decodeNodeFrame, encodeFrame } from "./protocol.js";
+import {
+  ASSERTION_SUBPROTOCOL_PREFIX,
+  decodeNodeFrame,
+  encodeFrame,
+  SIGNAL_SUBPROTOCOL,
+} from "./protocol.js";
 import type { UserVerifier } from "./session-verifier.js";
 import type { TurnConfig } from "./turn-credentials.js";
 import { mintTurnCredentials } from "./turn-credentials.js";
@@ -271,7 +276,16 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
   };
 
   const authenticate = (req: IncomingMessage): Caller | undefined => {
-    const assertion = credential(req, "Assertion");
+    const protocols = (req.headers["sec-websocket-protocol"] ?? "")
+      .split(",")
+      .map((value) => value.trim());
+    const assertion =
+      credential(req, "Assertion") ??
+      (protocols.includes(SIGNAL_SUBPROTOCOL)
+        ? protocols
+            .find((value) => value.startsWith(ASSERTION_SUBPROTOCOL_PREFIX))
+            ?.slice(ASSERTION_SUBPROTOCOL_PREFIX.length)
+        : undefined);
     if (assertion !== undefined) {
       const claims = verifyAssertion(gatewayKey.publicKey, assertion, clock());
       if (claims === undefined || ownedNode(claims.user, claims.nodeId) === undefined) {
@@ -479,7 +493,11 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
     return answer.response.status;
   };
 
-  const turnCredentials = (req: IncomingMessage, res: ServerResponse, peer: string | null) => {
+  const turnCredentials = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+    peer: string | null,
+  ) => {
     const caller = authenticate(req);
     if (caller === undefined) return respond(res, 401, "unauthorized");
     if (o.turn === undefined) return respond(res, 404, "turn not configured");
@@ -494,7 +512,8 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
       config = { ...config, ttlSeconds: Math.min(config.ttlSeconds, remainingSeconds) };
     }
     try {
-      return respondJson(res, 200, mintTurnCredentials(config, peer, now));
+      const credentials = await mintTurnCredentials(config, peer, now);
+      return respondJson(res, 200, { ...credentials, ttl: credentials.ttlSeconds });
     } catch {
       return respond(res, 400, "bad peer");
     }

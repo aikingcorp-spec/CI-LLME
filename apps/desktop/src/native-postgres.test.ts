@@ -1,4 +1,14 @@
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -306,6 +316,13 @@ describe("NativePostgres lifecycle", () => {
     };
   }
 
+  const TEST_UID = 1000;
+  const ownedLstat = async (file: Parameters<typeof lstat>[0]) => {
+    const info = await lstat(file);
+    Object.defineProperty(info, "uid", { value: TEST_UID });
+    return info;
+  };
+
   function create(options: Partial<ConstructorParameters<typeof NativePostgres>[0]> = {}) {
     let next = 40000;
     return new NativePostgres({
@@ -313,8 +330,12 @@ describe("NativePostgres lifecycle", () => {
       binDir,
       env: { PATH: "/usr/bin", DATABASE_URL: "postgres://leak:leak@x/y" },
       platform: "linux",
-      path: path.posix,
-      getuid: () => 1000,
+      // The lifecycle tests touch the real temp directory and compare against host `path.join`,
+      // so the code under test must build host-native paths whatever platform it is told.
+      path,
+      getuid: () => TEST_UID,
+      dataDirOps: { lstat: ownedLstat, readFile, readdir },
+      repairOps: { lstat: ownedLstat, chmod, mkdir, readFile },
       exists: () => true,
       run: fakeRun(),
       allocatePort: async () => next++,

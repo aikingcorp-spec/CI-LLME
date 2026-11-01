@@ -39,6 +39,7 @@ import {
   rewrittenNovncHeaders,
   shouldInjectNovncStorageShim,
 } from "./src/novnc-html.js";
+import { p2pBuildEnv } from "./src/p2p-build-env.js";
 import { rakazoPwa } from "./src/pwa/plugin.js";
 import type { ScreenTargetFailure } from "./src/screen-proxy.js";
 import {
@@ -456,6 +457,10 @@ export default defineConfig(({ command, mode }) => {
   // Names this build in every API request; the dev server has none, so the handshake stays off.
   const buildId = command === "build" ? buildIdAt(new Date()) : "";
   const rootEnv = loadEnv(mode, path.resolve(import.meta.dirname, "../.."), "");
+  const { gatewayUrl: configuredGateway, iceServers: configuredIceServers } = p2pBuildEnv(
+    loadEnv(mode, import.meta.dirname, "VITE_"),
+    rootEnv,
+  );
   const api = process.env.API_PROXY_TARGET ?? rootEnv.API_PROXY_TARGET ?? "http://127.0.0.1:3100";
   const apiProxy = Object.fromEntries(
     [
@@ -503,6 +508,7 @@ export default defineConfig(({ command, mode }) => {
   const imageTag = process.env.RAKAZO_IMAGE_TAG ?? rootEnv.RAKAZO_IMAGE_TAG ?? "edge";
   // Invalid origins throw here, so the server refuses to start rather than serve a wider policy.
   const appPolicy = appContentSecurityPolicy({
+    p2pGatewayUrl: configuredGateway,
     scriptSrc: parseContentSecuritySources(
       "RAKAZO_CSP_SCRIPT_SRC",
       process.env.RAKAZO_CSP_SCRIPT_SRC ?? rootEnv.RAKAZO_CSP_SCRIPT_SRC,
@@ -548,7 +554,11 @@ export default defineConfig(({ command, mode }) => {
         },
       },
     },
-    define: { "import.meta.env.RAKAZO_BUILD": JSON.stringify(buildId) },
+    define: {
+      "import.meta.env.RAKAZO_BUILD": JSON.stringify(buildId),
+      "import.meta.env.VITE_P2P_GATEWAY_URL": JSON.stringify(configuredGateway),
+      "import.meta.env.VITE_P2P_ICE_SERVERS": JSON.stringify(configuredIceServers),
+    },
     plugins: [
       {
         // The API reads this to name the deployed build, and a tab fetches it to confirm the

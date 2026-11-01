@@ -1,48 +1,18 @@
+import type { PairingResult } from "./gateway-http-client.js";
+import { fetchTurnCredentials, json, postJson } from "./gateway-http-client.js";
 import type { KeyPair } from "./pairing.js";
-import { pairingMessage, sign } from "./pairing.js";
+import { nodeAuthorization, pairingMessage, sign } from "./pairing.js";
 import type { NodeId } from "./protocol.js";
+import { toNodeDatachannelIceServers } from "./turn-credentials.js";
 
-export interface PairingResult {
-  gatewayPublicKey: string;
-  user: string;
-}
-export interface Session {
-  assertion: string;
-  nodeId: NodeId;
-  peerId: string;
-  exp: number;
+/** Native runtime adapter: signed node auth and structured ICE servers. */
+export async function fetchNodeTurnServers(gatewayUrl: string, nodeId: string, key: KeyPair) {
+  const turn = await fetchTurnCredentials(gatewayUrl, nodeAuthorization(key, nodeId), nodeId);
+  return turn ? toNodeDatachannelIceServers(turn) : [];
 }
 
-async function postJson(
-  url: string,
-  body: unknown,
-  headers: Record<string, string>,
-): Promise<Response> {
-  return fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json", ...headers },
-    body: JSON.stringify(body),
-  });
-}
-
-async function json<T>(res: Response, what: string): Promise<T> {
-  if (!res.ok) throw new Error(`${what} failed: ${res.status}`);
-  return (await res.json()) as T;
-}
-
-const bearer = (sessionToken: string): Record<string, string> => ({
-  authorization: `Bearer ${sessionToken}`,
-});
-
-/** Signed-in user: asks the gateway for a one-time pairing code. */
-export async function startPairing(
-  gatewayUrl: string,
-  sessionToken: string,
-): Promise<{ code: string; expiresAt: number }> {
-  const res = await postJson(`${gatewayUrl}/pair/start`, {}, bearer(sessionToken));
-  return json(res, "pair/start");
-}
-
+export type { PairingResult, Session } from "./gateway-http-client.js";
+export { listNodes, openSession, startPairing, unpairNode } from "./gateway-http-client.js";
 /** Node: registers its public key under the code's user and learns the gateway key to pin. */
 export async function completePairing(
   gatewayUrl: string,
@@ -61,27 +31,4 @@ export async function completePairing(
     {},
   );
   return json(res, "pair/complete");
-}
-
-/** Signed-in user: asks for a short-lived assertion to signal their node as `peerId`. */
-export async function openSession(
-  gatewayUrl: string,
-  sessionToken: string,
-  nodeId: NodeId,
-  peerId: string,
-): Promise<Session> {
-  const res = await postJson(`${gatewayUrl}/sessions`, { nodeId, peerId }, bearer(sessionToken));
-  return json(res, "sessions");
-}
-
-export async function unpairNode(
-  gatewayUrl: string,
-  sessionToken: string,
-  nodeId: NodeId,
-): Promise<void> {
-  const res = await fetch(`${gatewayUrl}/nodes/${encodeURIComponent(nodeId)}`, {
-    method: "DELETE",
-    headers: bearer(sessionToken),
-  });
-  if (!res.ok) throw new Error(`unpair failed: ${res.status}`);
 }

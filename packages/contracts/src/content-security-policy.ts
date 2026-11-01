@@ -1,8 +1,9 @@
+import { isLoopbackHost } from "@rakazo/contracts/network-host";
+
 /**
- * Content-Security-Policy for documents the web server (and the desktop bundled renderer) serves.
- * The app talks only to its own origin: /api, /rpc, the Sentry tunnel and the /novnc screen proxy
- * all live there, so 'self' covers fetches, WebSockets and screen frames in every deployment. The
- * web server may add operator-configured https origins for a script its CDN injects.
+ * CSP for web documents and the desktop bundled renderer. API, RPC, monitoring and screen
+ * frames use the app origin. The P2P gateway carries HTTPS control and WSS signaling only.
+ * Operators may add explicit HTTPS destinations; connect destinations also permit WSS.
  */
 
 /** Static shell for SandboxedHtmlViewer. It must load from the network so it does not inherit the
@@ -47,6 +48,7 @@ function serialize(directives: Record<string, string[]>) {
 export interface ContentSecurityPolicyExtensions {
   scriptSrc?: readonly string[];
   connectSrc?: readonly string[];
+  p2pGatewayUrl?: string;
   /** Allows the Crisp chat widget the paywall loads when `CRISP_WEBSITE_ID` is set. */
   crisp?: boolean;
 }
@@ -81,7 +83,20 @@ const EXTRA_SOURCE = new RegExp(
   "i",
 );
 
-function validSource(source: string) {
+function validSource(source: string, allowLoopback: boolean) {
+  if (allowLoopback) {
+    try {
+      const url = new URL(source);
+      if (
+        url.protocol === "http:" &&
+        isLoopbackHost(url.hostname) &&
+        url.origin === source.toLowerCase()
+      )
+        return true;
+    } catch {
+      /* Checked by the HTTPS origin validation below. */
+    }
+  }
   const match = EXTRA_SOURCE.exec(source);
   const port = match?.[1];
   return Boolean(match) && (port === undefined || (Number(port) >= 1 && Number(port) <= 65535));
@@ -90,10 +105,13 @@ function validSource(source: string) {
 /**
  * Parses an operator's space- or comma-separated list of extra origins. Anything but an https
  * origin throws, so a typo cannot widen the policy to a keyword, a scheme or every host.
+ * The connect setting also accepts explicit loopback HTTP origins for local development.
  */
 export function parseContentSecuritySources(setting: string, value: string | undefined) {
   const sources = (value ?? "").split(/[\s,]+/).filter(Boolean);
-  const invalid = sources.filter((source) => !validSource(source));
+  const invalid = sources.filter(
+    (source) => !validSource(source, setting === "RAKAZO_CSP_CONNECT_SRC"),
+  );
   if (invalid.length > 0) {
     throw new Error(
       `${setting} accepts only https:// origins such as https://cdn.example.com or https://*.example.com. Invalid: ${invalid.join(" ")}`,
@@ -102,11 +120,37 @@ export function parseContentSecuritySources(setting: string, value: string | und
   return [...new Set(sources.map((source) => source.toLowerCase()))];
 }
 
+/** Shared browser/CSP gateway configuration; a blank value means P2P is off, with no default. */
+export function p2pGatewayOrigin(value: string | undefined): string | undefined {
+  const configured = value?.trim();
+  if (!configured) return undefined;
+  const url = new URL(configured);
+  if (
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    url.pathname !== "/" ||
+    (url.protocol !== "https:" && !(url.protocol === "http:" && isLoopbackHost(url.hostname)))
+  )
+    throw new Error("Invalid P2P gateway origin");
+  return url.origin;
+}
+
 export function appContentSecurityPolicy(extensions: ContentSecurityPolicyExtensions = {}) {
+  const gateway = p2pGatewayOrigin(extensions.p2pGatewayUrl);
   const directives: Record<string, string[]> = {
     ...APP_DIRECTIVES,
     "script-src": ["'self'", ...(extensions.scriptSrc ?? [])],
-    "connect-src": ["'self'", ...(extensions.connectSrc ?? [])],
+    "connect-src": [
+      ...new Set([
+        "'self'",
+        ...[...(gateway ? [gateway] : []), ...(extensions.connectSrc ?? [])].flatMap((source) => [
+          source,
+          source.replace(/^http(s?):/, "ws$1:"),
+        ]),
+      ]),
+    ],
   };
   if (extensions.crisp) {
     for (const [name, sources] of Object.entries(CRISP_DIRECTIVES)) {

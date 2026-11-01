@@ -21,7 +21,7 @@ msgstr ""
 #. js-lingui-explicit-id
 #: src/App.tsx
 msgid "Go home"
-msgstr ""
+msgstr "Ana sayfaya git"
 
 #: src/pages/shell/sidebar-roster.tsx
 msgid " (unread)"
@@ -1172,6 +1172,7 @@ msgstr "Görselleri okuyamaz"
 #: src/pages/model-settings/space-bots-model.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/agent-import-undo.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1610,6 +1611,7 @@ msgstr "URL'nin bu tarayıcı oturumundan erişilebilir olduğunu doğrula, sonr
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/model-settings/role-model-picker.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Bağlan"
@@ -1678,6 +1680,7 @@ msgstr ""
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1698,6 +1701,7 @@ msgstr ""
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connecting…"
@@ -1871,6 +1875,10 @@ msgstr "Bu ses sağlayıcısı bağlanamadı"
 msgid "Could not connect to the computer screen"
 msgstr ""
 
+#: src/pages/Pairing.tsx
+msgid "Could not connect. Try another network."
+msgstr "Bağlanılamadı. Başka bir ağ deneyin."
+
 #: src/components/AccountAccess.tsx
 #: src/components/ConfirmIdentityDialog.tsx
 #: src/components/PasskeyOffer.tsx
@@ -2021,6 +2029,10 @@ msgstr "MCP sunucuları yüklenemedi"
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Could not load model settings"
 msgstr "Model ayarları yüklenemedi"
+
+#: src/pages/Pairing.tsx
+msgid "Could not load pairing information"
+msgstr "Eşleştirme bilgileri yüklenemedi"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
@@ -2601,6 +2613,7 @@ msgstr ""
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/MessagingSettingsPanel.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Pairing.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect"
 msgstr "Bağlantıyı kes"
@@ -2612,6 +2625,10 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Disconnect Self-hosted"
 msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Disconnected"
+msgstr "Bağlantı kesildi"
 
 #: src/pages/model-settings/use-model-settings.ts
 msgid "Disconnected {disconnectName}."
@@ -2794,6 +2811,10 @@ msgstr "Test etmeden önce bir API anahtarı gir."
 #: src/pages/Auth.tsx
 msgid "Enter the 6-digit code we sent to <0>{trimmedEmail}</0>. It expires in 10 minutes."
 msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Enter this code in the desktop app. It expires in two minutes."
+msgstr "Bu kodu masaüstü uygulamasına girin. İki dakika sonra süresi dolar."
 
 #: src/pages/Auth.tsx
 msgid "Enter your email to get a 6-digit sign-in code."
@@ -3085,6 +3106,10 @@ msgstr ""
 msgid "Get in touch (opens in new tab)"
 msgstr ""
 
+#: src/pages/Pairing.tsx
+msgid "Get pairing code"
+msgstr "Eşleştirme kodu al"
+
 #: src/pages/Welcome.tsx
 msgid "Get started"
 msgstr ""
@@ -3108,6 +3133,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Git event"
 msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Go home"
+msgstr "Ana sayfaya git"
 
 #: src/lib/identity-display.ts
 #: src/pages/MessagingSettingsPanel.tsx
@@ -3572,6 +3601,10 @@ msgstr "Daha eski çalıştırmaları yükle"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Load web images automatically"
 msgstr "Web görsellerini otomatik yükle"
+
+#: src/pages/Pairing.tsx
+msgid "Loading"
+msgstr "Yükleniyor"
 
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
@@ -4182,6 +4215,10 @@ msgstr "Listelenen model yok."
 msgid "No OpenClaw, Hermes or agent document found."
 msgstr "OpenClaw, Hermes veya agent belgesi bulunamadı."
 
+#: src/pages/Pairing.tsx
+msgid "No paired computers"
+msgstr "Eşleştirilmiş bilgisayar yok"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr ""
@@ -4305,8 +4342,9 @@ msgid "OAuth expired"
 msgstr "OAuth süresi doldu"
 
 #: src/components/ComputerDeviceSettings.tsx
+#: src/pages/Pairing.tsx
 msgid "Offline"
-msgstr ""
+msgstr "Çevrimdışı"
 
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4334,6 +4372,10 @@ msgstr "ayın 1'inde saat {0}"
 #: src/lib/cron.ts
 msgid "One-time"
 msgstr "Tek seferlik"
+
+#: src/pages/Pairing.tsx
+msgid "Online"
+msgstr "Çevrimiçi"
 
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/shell/computer-panel.tsx
@@ -4365,6 +4407,10 @@ msgstr ""
 #: src/components/call/CallCard.tsx
 msgid "Open chat with {0}"
 msgstr ""
+
+#: src/pages/Pairing.tsx
+msgid "Open computer"
+msgstr "Bilgisayarı aç"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
@@ -4461,6 +4507,10 @@ msgstr "Çıktı"
 msgid "Owner"
 msgstr "Sahip"
 
+#: src/pages/Pairing.tsx
+msgid "P2P gateway is not configured for this web build."
+msgstr "Bu web sürümü için P2P ağ geçidi yapılandırılmamış."
+
 #: src/components/markdown-copy.tsx
 msgid "Page {page} of {count}"
 msgstr "Sayfa {page} / {count}"
@@ -4468,6 +4518,19 @@ msgstr "Sayfa {page} / {count}"
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr ""
+
+#: src/components/SidebarFooter.tsx
+#: src/pages/Pairing.tsx
+msgid "Pair a computer"
+msgstr "Bilgisayar eşleştir"
+
+#: src/pages/Pairing.tsx
+msgid "Paired computers"
+msgstr "Eşleştirilmiş bilgisayarlar"
+
+#: src/pages/Pairing.tsx
+msgid "Pairing code"
+msgstr "Eşleştirme kodu"
 
 #: src/components/PasskeySettings.tsx
 msgid "Passkey"
@@ -4840,6 +4903,7 @@ msgstr "Yönlendirme URI'si"
 
 #: src/App.tsx
 #: src/components/lazy-overlay.tsx
+#: src/pages/Pairing.tsx
 msgid "Refresh"
 msgstr "Yenile"
 

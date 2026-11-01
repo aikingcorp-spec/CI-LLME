@@ -1,8 +1,11 @@
-import { fromBase64Url, isPublicKey, sign, verify } from "./crypto.js";
+import type { TurnConfig } from "../../../packages/p2p-prototype/src/turn-credentials.js";
 import type { SigningKey } from "./crypto.js";
+import { fromBase64Url, isPublicKey, sign, verify } from "./crypto.js";
 import type { Env } from "./env.js";
+import { loadTurnConfig } from "./turn-config.js";
 
 export interface Config {
+  turn?: TurnConfig;
   gatewayKey: SigningKey;
   gatewayKeyId: string;
   /** `kid` to base64url Ed25519 public key. */
@@ -44,12 +47,14 @@ export async function loadConfig(env: Env): Promise<Config | undefined> {
     return undefined;
   }
   return {
+    turn: loadTurnConfig(env),
     gatewayKey,
     gatewayKeyId: env.GATEWAY_KEY_ID,
     appKeys,
     issuer: env.APP_TOKEN_ISSUER,
     audience: env.APP_TOKEN_AUDIENCE,
-    allowedOrigins: (env.ALLOWED_ORIGINS ?? "").split(",")
+    allowedOrigins: (env.ALLOWED_ORIGINS ?? "")
+      .split(",")
       .map((o) => o.trim())
       .filter(Boolean),
   };
