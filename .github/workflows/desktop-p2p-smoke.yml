@@ -4,5 +4,38 @@ on:
 permissions:
   contents: read
 jobs:
-  journey:
-    uses: ./.github/workflows/p2p-journey.yml
+  protected-account:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: aikingcorp-spec/vnbot
+          ref: 13d9a86e80e459599cc4c5cbf2a4e0aed293f945
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Gateway type check
+        run: pnpm --filter @rakazo/p2p-gateway check
+      - name: Account proxy and gateway regression tests
+        run: pnpm exec vitest run apps/p2p-gateway/src --maxWorkers=4
+      - name: Check changed TypeScript
+        run: pnpm exec biome check apps/p2p-gateway/src/hosted-app.ts apps/p2p-gateway/src/hosted-app.test.ts
+      - name: Build real web application
+        env:
+          VITE_P2P_GATEWAY_URL: https://p2p.vnbot.run
+        run: pnpm --filter @rakazo/web build
+      - name: App Worker dry run
+        working-directory: apps/p2p-gateway
+        run: pnpm exec wrangler deploy --config ../../deploy/cloudflare/app/wrangler.toml --dry-run --outdir ../../.out/app-worker --var AUTH_ORIGIN:https://accounts.example.test --var P2P_GATEWAY_URL:https://p2p.vnbot.run
+      - uses: actions/upload-artifact@v4
+        with:
+          name: protected-account-build
+          path: |
+            .out/app-worker
+            apps/web/dist
+          retention-days: 7
