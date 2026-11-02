@@ -23,6 +23,9 @@ describe("app content security policy", () => {
   const policy = directives(APP_CONTENT_SECURITY_POLICY);
 
   it("allows only the app to frame its bundled P2P viewer with no network access", () => {
+    expect(contentSecurityPolicyFor("/p2p-screen")).toBe(
+      contentSecurityPolicyFor("/p2p-screen.html"),
+    );
     const screen = directives(contentSecurityPolicyFor("/p2p-screen.html")!);
     expect(screen.get("frame-ancestors")).toEqual(["'self'"]);
     expect(screen.get("connect-src")).toEqual(["'none'"]);

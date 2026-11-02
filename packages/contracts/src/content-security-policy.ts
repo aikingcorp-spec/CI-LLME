@@ -179,7 +179,7 @@ export function contentSecurityPolicyFor(
   )
     return null;
   if (pathname === HTML_VIEWER_PATH) return HTML_VIEWER_CONTENT_SECURITY_POLICY;
-  if (pathname === P2P_SCREEN_PATH)
+  if (pathname === P2P_SCREEN_PATH || pathname === P2P_SCREEN_PATH.replace(/\.html$/, ""))
     return serialize({
       "default-src": ["'none'"],
       "script-src": ["'self'"],
