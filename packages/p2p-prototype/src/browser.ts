@@ -142,3 +142,5 @@ export function connectBrowserPeer(options: BrowserPeerOptions) {
     },
   );
 }
+
+export { screenSocketPath } from "./screen-path.js";

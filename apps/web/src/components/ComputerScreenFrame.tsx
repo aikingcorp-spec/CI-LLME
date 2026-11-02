@@ -1,4 +1,5 @@
 import { P2P_SCREEN_PATH } from "@rakazo/contracts/content-security-policy";
+import { screenSocketPath } from "@rakazo/p2p-prototype/browser";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { activeP2PClient } from "../lib/p2p-client";
@@ -61,8 +62,10 @@ export function ComputerScreenFrame({ src, ref, onLoad, ...props }: ComponentPro
           };
           stopped.current = stop;
           const url = new URL(src, location.href);
-          const path = url.searchParams.get("path");
-          if (!path?.startsWith("/novnc/session/")) {
+          let path: string;
+          try {
+            path = screenSocketPath(src);
+          } catch {
             stop();
             return;
           }

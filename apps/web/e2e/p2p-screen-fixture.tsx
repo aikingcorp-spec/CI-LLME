@@ -13,7 +13,7 @@ export function mountScreen() {
   const root = createRoot(container);
   const path = "/novnc/session/view/1234567890000.fixturefixturefixture/websockify";
   const url = new URL(path.replace("websockify", "vnc.html"), location.href);
-  url.searchParams.set("path", path);
+  url.searchParams.set("path", "websockify");
   root.render(
     <ComputerScreenFrame
       title="P2P screen fixture"

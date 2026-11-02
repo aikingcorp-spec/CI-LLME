@@ -1,5 +1,6 @@
 import { once } from "node:events";
 import { createWebSocketStream, WebSocket } from "ws";
+import { isScreenSocketPath } from "./screen-path.js";
 import type { ScreenSocket } from "./socket-session.js";
 
 /** Only sealed screen capabilities at the configured local web service can be opened. */
@@ -9,12 +10,7 @@ export function createScreenConnector(webUrl: string, localHeaders: Record<strin
     throw new Error("invalid local screen origin");
   return async (path: string, signal: AbortSignal): Promise<ScreenSocket> => {
     signal.throwIfAborted();
-    if (
-      !/^\/novnc\/session\/(view|control)\/[0-9]{10,16}\.[A-Za-z0-9_-]{20,12000}\/websockify$/.test(
-        path,
-      )
-    )
-      throw new Error("invalid screen capability path");
+    if (!isScreenSocketPath(path)) throw new Error("invalid screen capability path");
     const target = new URL(path, origin);
     target.protocol = target.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(target, ["binary"], {
