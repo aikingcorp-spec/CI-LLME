@@ -1,6 +1,7 @@
 import { setTimeout } from "node:timers/promises";
+import { createChannelFraming } from "./channel-framing.js";
 import type { ChannelFrame } from "./channel-protocol.js";
-import { decodeBytes, decodeChannelFrame, encodeBytes } from "./channel-protocol.js";
+import { decodeBytes, encodeBytes } from "./channel-protocol.js";
 import type { ClientResponse } from "./client-transport.js";
 import type { LocalHandler } from "./node-agent.js";
 import type { NodeAuth, NodeSession } from "./node-auth.js";
@@ -36,7 +37,8 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
         closing ??= peer.closeGracefully();
         return closing;
       };
-      const send = (frame: ChannelFrame): void => peer.send(JSON.stringify(frame));
+      const framing = createChannelFraming((raw) => peer.send(raw));
+      const send = framing.send;
       const dispatch = async (
         frame: Extract<ChannelFrame, { t: "call" | "subscribe" }>,
         bearer: string,
@@ -77,7 +79,8 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
         await peer.open;
         for await (const raw of peer.messages) {
           if (closing) break;
-          const frame = decodeChannelFrame(raw);
+          const frame = framing.receive(raw);
+          if (!frame) continue;
           if (!session) {
             session = frame.t === "hello" ? auth.acceptAssertion(frame.assertion) : undefined;
             if (!session) {
@@ -88,7 +91,13 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
               void close().catch(() => {});
             });
             onAuthenticated?.();
-            send({ t: "welcome", bearer: session.bearer });
+            const fragmentation = frame.t === "hello" && frame.fragmentation === true;
+            send({
+              t: "welcome",
+              bearer: session.bearer,
+              ...(fragmentation ? { fragmentation: true } : {}),
+            });
+            if (fragmentation) framing.enable(session.bearer);
             continue;
           }
           if (
@@ -108,7 +117,11 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
             if (active.has(frame.id)) break;
             const controller = new AbortController();
             active.set(frame.id, controller);
-            void dispatch(frame, session.bearer, controller);
+            // A send can fail after a handler completes while the channel is closing.
+            // Own this task's rejection and terminate only this channel, not the node process.
+            void dispatch(frame, session.bearer, controller).catch(() => {
+              void close().catch(() => {});
+            });
           } else break;
         }
       } catch {

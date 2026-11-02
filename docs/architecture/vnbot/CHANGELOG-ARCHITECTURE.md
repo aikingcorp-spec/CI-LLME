@@ -1,5 +1,14 @@
 # Architecture changelog
 
+## 2026-11-02 — Fragment large authenticated channel frames
+
+- Pull request: #38.
+- What changed versus baseline: the channel handshake negotiates bounded fragmentation for RPC requests, responses and stream chunks. Both native and browser clients reassemble ordered fragments before decoding the existing authenticated frame. Detached handler failures close their channel without terminating the node process. Client cancellation also tolerates a concurrently closing channel.
+- Why: history snapshots can exceed the SCTP message limit even when small sidebar requests succeed; a failed send could then escape as an unhandled asynchronous rejection.
+- Modules and files: `packages/p2p-prototype/src/{channel-framing,channel-protocol,data-channel-client,node-channel-server}.ts` and regression tests.
+- Invariants affected: fragmentation is negotiated only after authentication; each fragment carries the channel bearer, reassembly is bounded, and the final frame still passes normal authorization. Older peers retain small-message compatibility. No HTTP fallback, credential or database changes.
+- ADR: [0010](adr/0010-desktop-account-enrollment.md).
+
 ## 2026-11-02 — Renew remote channel authorization in place
 
 - Pull request: #38.

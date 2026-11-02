@@ -23,3 +23,9 @@ The browser verifies RPC `me` over the authenticated channel before reporting co
 The browser remembers only a node ID under the signed-in account's session-storage key. Restoration checks the account's current node list before connecting. Closed channels retry with fresh assertions and bounded backoff. Existing assertion expiry and revocation remain authoritative.
 
 This work does not certify Internet NAT/TURN behavior or publish new desktop installers. The account service must have its application signing key configured, the gateway must trust that public key, and the public gateway/relay must be available before production acceptance.
+
+### Large RPC frames and concurrent channel closure
+
+Authenticated hello/welcome frames negotiate fragmentation support. Large JSON frames are split into ordered fragments of at most 8192 UTF-16 code units, each carrying the channel bearer, declared total and expected offset. Reassembly accepts one frame at a time with an 8 Mi-code-unit bound and rejects unauthenticated, interrupted, out-of-order or oversized fragments. The reconstructed frame still passes the existing frame decoder and authorization checks. Small frames remain compatible with older peers; large frames require negotiated support.
+
+The channel server owns asynchronous handler tasks: a response send failure terminates and revokes that channel instead of escaping as an unhandled rejection that terminates the node process. Cancellation uses the same failure containment on the client.

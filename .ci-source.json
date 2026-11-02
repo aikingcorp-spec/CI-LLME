@@ -1,1 +1,5 @@
-{"repository": "aikingcorp-spec/vnbot", "commit": "3bd3d167b75585ba32219eec9640543c007fb414"}
+{
+  "repository": "aikingcorp-spec/vnbot",
+  "ref": "feat/p2p-web-desktop",
+  "commit": "1ce0064187c233c85f4056c8d736a0fc4b39ddaf"
+}

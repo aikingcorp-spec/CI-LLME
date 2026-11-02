@@ -129,6 +129,14 @@ describe("ClientTransport over a real gateway and node agent", () => {
     expect(response.headers["content-type"]).toBe("text/plain");
     expect(response.body).toEqual(req.body);
   });
+  it("round-trips history-sized payloads and subsequent RPC over real SCTP", async () => {
+    const client = await transport();
+    const text = "Tin nhắn 🌴".repeat(30000);
+    const response = await client.call(request("echo", text));
+    expect(response.status).toBe(200);
+    expect(decode(response.body)).toBe(text);
+    expect(decode((await client.call(request())).body)).toBe("hello");
+  });
   it("keeps an authenticated subscription beyond negotiation timeout and renews its original lease", async () => {
     const { peer, session } = await peerConnection();
     const initialExpiry = Date.now() + 4000;

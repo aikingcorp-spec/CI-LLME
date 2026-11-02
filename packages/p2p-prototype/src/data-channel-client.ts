@@ -1,5 +1,6 @@
+import { createChannelFraming } from "./channel-framing.js";
 import type { ChannelFrame } from "./channel-protocol.js";
-import { decodeBytes, decodeChannelFrame, encodeBytes } from "./channel-protocol.js";
+import { decodeBytes, encodeBytes } from "./channel-protocol.js";
 import type { DataPeer } from "./peer-core.js";
 
 export interface ClientCall {
@@ -52,6 +53,7 @@ function inbox<T>() {
   };
 }
 export class DataChannelClientTransport implements ClientTransport {
+  private readonly framing;
   private bearer: string | undefined;
   private failure: Error | undefined;
   private readonly pending = new Map<string, ReturnType<typeof inbox<ChannelFrame>>>();
@@ -61,13 +63,15 @@ export class DataChannelClientTransport implements ClientTransport {
     private readonly peer: DataPeer,
     assertion: string,
   ) {
+    const framing = createChannelFraming((raw) => peer.send(raw));
+    this.framing = framing;
     this.ready = (async () => {
       try {
         await peer.open;
       } catch (cause) {
         throw new Error("denied: channel closed before welcome", { cause });
       }
-      peer.send(JSON.stringify({ t: "hello", assertion }));
+      framing.send({ t: "hello", assertion, fragmentation: true });
       for await (const bearer of this.handshake.read()) {
         this.bearer = bearer;
         return;
@@ -90,7 +94,7 @@ export class DataChannelClientTransport implements ClientTransport {
     signal.addEventListener("abort", abort, { once: true });
     this.pending.set(id, queue);
     try {
-      this.peer.send(JSON.stringify({ t: "renew", id, bearer: this.bearer, assertion }));
+      this.framing.send({ t: "renew", id, bearer: this.bearer!, assertion });
       for await (const frame of queue.read()) {
         if (frame.t !== "renewed") throw new Error("expected renewal acknowledgement");
         return;
@@ -113,9 +117,11 @@ export class DataChannelClientTransport implements ClientTransport {
   private async receive(): Promise<void> {
     try {
       for await (const raw of this.peer.messages) {
-        const frame = decodeChannelFrame(raw);
+        const frame = this.framing.receive(raw);
+        if (!frame) continue;
         if (frame.t === "denied") throw new Error("denied");
         if (frame.t === "welcome" && !this.bearer) {
+          if (frame.fragmentation) this.framing.enable(frame.bearer);
           this.handshake.push(frame.bearer);
           continue;
         }
@@ -144,8 +150,7 @@ export class DataChannelClientTransport implements ClientTransport {
     let sent = false;
     const cancel = (): void => {
       queue.end(req.signal.reason ?? new Error("aborted"));
-      if (sent && !this.failure)
-        this.peer.send(JSON.stringify({ t: "cancel", id, bearer: this.bearer }));
+      if (sent && !this.failure) this.sendCancel(id);
     };
     req.signal.addEventListener("abort", cancel, { once: true });
     this.pending.set(id, queue);
@@ -154,25 +159,30 @@ export class DataChannelClientTransport implements ClientTransport {
         .then(() => {
           req.signal.throwIfAborted();
           if (this.failure) throw this.failure;
-          this.peer.send(
-            JSON.stringify({
-              t,
-              id,
-              bearer: this.bearer,
-              procedure: req.procedure,
-              headers: req.headers,
-              body: encodeBytes(req.body),
-            }),
-          );
+          this.framing.send({
+            t,
+            id,
+            bearer: this.bearer!,
+            procedure: req.procedure,
+            headers: req.headers,
+            body: encodeBytes(req.body),
+          });
           sent = true;
         })
         .catch((error: unknown) => queue.end(error));
       for await (const frame of queue.read()) yield frame;
     } finally {
-      if (sent && !this.failure && !req.signal.aborted)
-        this.peer.send(JSON.stringify({ t: "cancel", id, bearer: this.bearer }));
+      if (sent && !this.failure && !req.signal.aborted) this.sendCancel(id);
       req.signal.removeEventListener("abort", cancel);
       this.pending.delete(id);
+    }
+  }
+  private sendCancel(id: string): void {
+    try {
+      this.framing.send({ t: "cancel", id, bearer: this.bearer! });
+    } catch {
+      this.fail(new Error("channel closed"));
+      this.peer.close();
     }
   }
   async call(req: ClientCall): Promise<ClientResponse> {

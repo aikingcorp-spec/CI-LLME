@@ -1,8 +1,8 @@
 /** JSON text frames. Every authenticated frame carries the channel's node bearer. */
 export type ChannelFrame =
-  | { t: "hello"; assertion: string }
+  | { t: "hello"; assertion: string; fragmentation?: true }
   | { t: "denied" }
-  | { t: "welcome"; bearer: string }
+  | { t: "welcome"; bearer: string; fragmentation?: true }
   | { t: "renew"; bearer: string; id: string; assertion: string }
   | { t: "renewed"; bearer: string; id: string }
   | {
@@ -54,10 +54,11 @@ export function decodeChannelFrame(raw: string): ChannelFrame {
     }
     return out;
   };
-  if (v.t === "hello") return { t: v.t, assertion: str("assertion") };
+  const fragmentation = v.fragmentation === true ? { fragmentation: true as const } : {};
+  if (v.t === "hello") return { t: v.t, assertion: str("assertion"), ...fragmentation };
   if (v.t === "denied") return { t: v.t };
   const bearer = str("bearer");
-  if (v.t === "welcome") return { t: v.t, bearer };
+  if (v.t === "welcome") return { t: v.t, bearer, ...fragmentation };
   const id = str("id");
   switch (v.t) {
     case "renew":
