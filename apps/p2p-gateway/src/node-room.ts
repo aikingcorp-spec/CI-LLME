@@ -62,10 +62,13 @@ export class NodeRoom extends DurableObject<Env> {
 
   override webSocketClose(ws: WebSocket): void {
     this.room.close(this.wrap(ws));
+    // Complete the peer's close handshake so the hibernation API releases the socket.
+    ws.close();
   }
 
   override webSocketError(ws: WebSocket): void {
     this.room.close(this.wrap(ws));
+    ws.close(1011, "socket error");
   }
 
   override alarm(): void {

@@ -1,5 +1,16 @@
 # Architecture changelog
 
+
+## 2026-11-02 — Retire closed signaling sockets and bound agent recovery
+
+- Date: 2026-11-02.
+- Pull request: #38.
+- What changed versus baseline: signaling retires socket attachments before closing and rescheduling; the Durable Object acknowledges socket closure. The gateway records bounded route failures and exposes a retry delay when its runtime quota is unavailable. Agent upgrade/welcome waits are bounded, reconnect owns one socket and its timers, and process startup no longer fails merely because the gateway is temporarily unavailable.
+- Why: sockets awaiting close acknowledgment could repeatedly schedule an expired alarm, exhaust the gateway quota and strand registered nodes; restarting the isolated agent also discarded reconnect backoff.
+- Modules and files: `apps/p2p-gateway/src/{app,index,node-room,room,route-log}.ts`; `packages/p2p-prototype/src/node-agent.ts`; `apps/desktop/p2p/agent-process.ts`; gateway and node-agent regression tests.
+- Invariants affected: account ownership, machine identity, pairing rows, assertion expiry and revocation remain authoritative. Outages close active data channels. No schema, secrets, public product HTTP fallback, release version or installer change.
+- ADR: [0010](adr/0010-desktop-account-enrollment.md).
+
 ## 2026-11-02 — Computer screen over the authenticated P2P channel
 
 - Pull request: #38.

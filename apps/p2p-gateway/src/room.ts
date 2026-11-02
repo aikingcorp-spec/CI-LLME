@@ -103,7 +103,7 @@ export class Room {
       else if (a.role === "agent") this.relay(a.nodeId, a.nodeId, decodeNodeFrame(data));
       else if (a.role === "signal") this.clientFrame(sock, a, data);
     } catch {
-      sock.close(CLOSE_BAD_FRAME, "bad frame");
+      this.end(sock, CLOSE_BAD_FRAME, "bad frame");
     }
   }
 
@@ -111,6 +111,7 @@ export class Room {
     const a = sock.attachment;
     if (a.role === "agent" && "ready" in a) this.host.agentSeen(a.nodeId, this.host.now());
     if (a.role === "signal") this.dropSignalsFrom(a.peerId);
+    sock.setAttachment({ role: "gone" });
     this.schedule();
   }
 
@@ -121,7 +122,7 @@ export class Room {
   /** The node was unpaired: end every connection. */
   kick(): void {
     for (const sock of this.host.sockets()) {
-      if (sock.attachment.role !== "gone") sock.close(CLOSE_UNAUTHORIZED, "unpaired");
+      if (sock.attachment.role !== "gone") this.end(sock, CLOSE_UNAUTHORIZED, "unpaired");
     }
     this.queued.clear();
   }
@@ -132,9 +133,9 @@ export class Room {
     for (const sock of this.host.sockets()) {
       const a = sock.attachment;
       if (a.role === "agent" && "deadline" in a && a.deadline <= now) {
-        sock.close(CLOSE_UNAUTHORIZED, "hello timeout");
+        this.end(sock, CLOSE_UNAUTHORIZED, "hello timeout");
       } else if (a.role === "signal" && a.exp !== undefined && a.exp <= now) {
-        sock.close(CLOSE_UNAUTHORIZED, "assertion expired");
+        this.end(sock, CLOSE_UNAUTHORIZED, "assertion expired");
       }
     }
     this.schedule();
@@ -152,7 +153,7 @@ export class Room {
       frame.nodeId !== a.nodeId ||
       !(await verifyNodeProof(a.nodeKey, "agent", frame, this.host.now()))
     ) {
-      sock.close(CLOSE_UNAUTHORIZED, "unauthorized");
+      this.end(sock, CLOSE_UNAUTHORIZED, "unauthorized");
       return;
     }
     for (const other of this.host.sockets()) {
@@ -171,12 +172,12 @@ export class Room {
   private clientFrame(sock: RoomSocket, a: SignalAttachment, data: string): void {
     const isClient = a.user !== undefined;
     if (isClient && (a.exp ?? 0) <= this.host.now()) {
-      sock.close(CLOSE_UNAUTHORIZED, "unauthorized");
+      this.end(sock, CLOSE_UNAUTHORIZED, "unauthorized");
       return;
     }
     const frame = decodeNodeFrame(data);
     if (isClient && frame.kind === "signal" && frame.to !== a.nodeId) {
-      sock.close(CLOSE_FORBIDDEN_TARGET, "forbidden target");
+      this.end(sock, CLOSE_FORBIDDEN_TARGET, "forbidden target");
       return;
     }
     this.relay(a.peerId, a.nodeId, frame);
@@ -228,9 +229,15 @@ export class Room {
     }
   }
 
+  private end(sock: RoomSocket, code: number, reason: string): void {
+    // Closing sockets remain in getWebSockets() until their close handshake finishes.
+    // Retire their routing and deadline first, or sweep re-arms an already expired alarm.
+    this.close(sock);
+    sock.close(code, reason);
+  }
+
   private replace(sock: RoomSocket): void {
-    sock.setAttachment({ role: "gone" });
-    sock.close(CLOSE_NORMAL, "replaced");
+    this.end(sock, CLOSE_NORMAL, "replaced");
   }
 
   private signalSockets(): SignalSocket[] {

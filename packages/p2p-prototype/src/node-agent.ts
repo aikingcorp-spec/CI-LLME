@@ -19,6 +19,11 @@ export type LocalHandler = (req: {
   signal?: AbortSignal;
 }) => Promise<{ status: number; headers: Record<string, string>; body: Uint8Array }>;
 
+export interface GatewayFailure {
+  kind: "handshake" | "welcome-timeout" | "heartbeat-timeout" | "transport";
+  status?: number;
+}
+
 export interface NodeAgentOptions {
   gatewayUrl: string;
   nodeId: NodeId;
@@ -34,6 +39,8 @@ export interface NodeAgentOptions {
   };
   reconnectMs?: number;
   clock?: () => number;
+  /** Bounded diagnostics only: never URLs, response bodies or credentials. */
+  onGatewayError?: (failure: GatewayFailure) => void;
   onGatewayState?: (state: "connected" | "closed", code?: number) => void;
 }
 export interface NodeAgent {
@@ -45,6 +52,7 @@ export interface NodeAgent {
 const DEFAULT_RECONNECT_MS = 500;
 const MAX_BACKOFF_MS = 10_000;
 const HEARTBEAT_INTERVAL_MS = 20_000;
+const HANDSHAKE_TIMEOUT_MS = 10_000;
 const CLOSE_UNAUTHORIZED = 4401;
 const BODYLESS_METHODS = new Set(["GET", "HEAD"]);
 const DECODED_RESPONSE_HEADERS = new Set([
@@ -59,7 +67,7 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
   const clock = o.clock ?? Date.now;
   let socket: WebSocket | undefined;
   let timer: NodeJS.Timeout | undefined;
-  let heartbeat: NodeJS.Timeout | undefined;
+  let cancelAttempt: (() => void) | undefined;
   let failures = 0;
   let welcomed = false;
   let stopped = false;
@@ -204,17 +212,39 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
   };
 
   const connect = (): void => {
+    if (stopped || socket !== undefined) return;
+    timer = undefined;
     // Workers selects the node's Durable Object before accepting the signed hello.
-    const ws = new WebSocket(`${toWsUrl(o.gatewayUrl)}/agent?node=${encodeURIComponent(o.nodeId)}`);
+    const ws = new WebSocket(
+      `${toWsUrl(o.gatewayUrl)}/agent?node=${encodeURIComponent(o.nodeId)}`,
+      { handshakeTimeout: HANDSHAKE_TIMEOUT_MS },
+    );
     socket = ws;
     let awaitingPong = false;
+    let heartbeat: NodeJS.Timeout | undefined;
+    let welcomeTimeout: NodeJS.Timeout | undefined;
+    let retryAfterMs = 0;
+    const current = () => !stopped && socket === ws;
+    const clearAttempt = () => {
+      clearInterval(heartbeat);
+      clearTimeout(welcomeTimeout);
+    };
+    cancelAttempt = clearAttempt;
     ws.on("pong", () => {
       awaitingPong = false;
     });
     ws.on("open", () => {
+      if (!current()) return;
+      welcomeTimeout = setTimeout(() => {
+        if (!current() || welcomed) return;
+        o.onGatewayError?.({ kind: "welcome-timeout" });
+        ws.terminate();
+      }, HANDSHAKE_TIMEOUT_MS);
+      welcomeTimeout.unref();
       heartbeat = setInterval(() => {
-        if (ws.readyState !== WebSocket.OPEN) return;
+        if (!current() || ws.readyState !== WebSocket.OPEN) return;
         if (awaitingPong) {
+          o.onGatewayError?.({ kind: "heartbeat-timeout" });
           ws.terminate();
           return;
         }
@@ -226,9 +256,15 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
       ws.send(encodeFrame({ kind: "hello", nodeId: o.nodeId, ts, sig }));
     });
     ws.on("message", (data: RawData) => {
+      if (!current()) return;
       try {
         const frame = decodeGatewayFrame(data.toString());
         if (frame.kind === "welcome") {
+          if (frame.nodeId !== o.nodeId || welcomed) {
+            ws.close(1003, "bad welcome");
+            return;
+          }
+          clearTimeout(welcomeTimeout);
           welcomed = true;
           failures = 0;
           o.onGatewayState?.("connected");
@@ -243,16 +279,31 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
         ws.close(1003, "bad frame");
       }
     });
-    ws.on("error", () => {});
+    ws.on("unexpected-response", (_request, response) => {
+      if (current()) {
+        const seconds = Number(response.headers["retry-after"]);
+        if (Number.isFinite(seconds) && seconds > 0)
+          retryAfterMs = Math.min(seconds * 1000, 300_000);
+        o.onGatewayError?.({ kind: "handshake", status: response.statusCode });
+      }
+      response.resume();
+      ws.terminate();
+    });
+    ws.on("error", () => {
+      if (current()) o.onGatewayError?.({ kind: "transport" });
+    });
     ws.on("close", (code) => {
-      clearInterval(heartbeat);
-      heartbeat = undefined;
+      clearAttempt();
+      if (socket !== ws) return;
+      socket = undefined;
+      cancelAttempt = undefined;
       o.onGatewayState?.("closed", code);
       welcomed = false;
       stopPeers();
       if (stopped || code === CLOSE_UNAUTHORIZED) return;
-      const delay = Math.min(baseMs * 2 ** failures, Math.max(baseMs, MAX_BACKOFF_MS));
-      failures += 1;
+      const backoff = Math.min(baseMs * 2 ** failures, Math.max(baseMs, MAX_BACKOFF_MS));
+      const delay = Math.max(retryAfterMs, Math.floor(backoff * (0.8 + Math.random() * 0.2)));
+      failures = Math.min(failures + 1, 20);
       timer = setTimeout(connect, delay);
     });
   };
@@ -266,7 +317,7 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
       stopped = true;
       stopPeers();
       clearTimeout(timer);
-      clearInterval(heartbeat);
+      cancelAttempt?.();
       const ws = socket;
       if (ws === undefined || ws.readyState === WebSocket.CLOSED) return;
       await new Promise<void>((resolve) => {

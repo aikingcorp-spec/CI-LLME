@@ -29,3 +29,9 @@ This work does not certify Internet NAT/TURN behavior or publish new desktop ins
 Authenticated hello/welcome frames negotiate fragmentation support. Large JSON frames are split into ordered fragments of at most 8192 UTF-16 code units, each carrying the channel bearer, declared total and expected offset. Reassembly accepts one frame at a time with an 8 Mi-code-unit bound and rejects unauthenticated, interrupted, out-of-order or oversized fragments. The reconstructed frame still passes the existing frame decoder and authorization checks. Small frames remain compatible with older peers; large frames require negotiated support.
 
 The channel server owns asynchronous handler tasks: a response send failure terminates and revokes that channel instead of escaping as an unhandled rejection that terminates the node process. Cancellation uses the same failure containment on the client.
+
+### Signaling deadlines and gateway outages
+
+Closing a signaling socket retires its attachment before scheduling another alarm. A socket awaiting the remote close acknowledgment has no routing authority or expiry deadline, even while the hibernation API still enumerates it. The Durable Object acknowledges remote closure and releases the socket. This prevents expired assertions from repeatedly scheduling an alarm in the past.
+
+Agent startup reports that the isolated process is running; only a matching gateway `welcome` marks the transport connected. Temporary gateway failures stay inside the agent's reconnect lifecycle instead of terminating the process and resetting backoff. Upgrade and welcome waits are bounded, heartbeat failure ends the current socket, and events from earlier attempts cannot reset a replacement connection. A revoked connection still closes data channels and does not reconnect. Gateway quota errors remain fail-closed and return a retry delay; diagnostics exclude credentials and query values.

@@ -1,6 +1,6 @@
 import { generateKeyPair, signNodeProof } from "@rakazo/p2p-prototype/pairing";
 import { decodeGatewayFrame, decodeNodeFrame, encodeFrame } from "@rakazo/p2p-prototype/protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type Attachment, Room, type RoomHost, type RoomSocket } from "./room.js";
 
 function harness() {
@@ -31,6 +31,48 @@ class FakeSocket implements RoomSocket {
 }
 
 describe("Room", () => {
+  it("retires expired sockets before scheduling even while their close handshake is pending", () => {
+    let now = 1_800_000_000_000;
+    const expired = new FakeSocket({ role: "signal", nodeId: "node", peerId: "old", exp: now });
+    const future = new FakeSocket({
+      role: "signal",
+      nodeId: "node",
+      peerId: "new",
+      exp: now + 60_000,
+    });
+    // Hibernatable sockets can remain enumerable until the remote acknowledges close.
+    const sockets = [expired, future];
+    const setAlarm = vi.fn();
+    const room = new Room({
+      sockets: () => sockets,
+      now: () => now,
+      setAlarm,
+      agentSeen: () => {},
+    });
+    room.sweep();
+    expect(expired.closed).toEqual([[4401, "assertion expired"]]);
+    expect(expired.attachment).toEqual({ role: "gone" });
+    expect(setAlarm).toHaveBeenLastCalledWith(now + 60_000);
+    room.sweep();
+    expect(expired.closed).toHaveLength(1);
+    now += 60_000;
+    room.sweep();
+    expect(setAlarm).toHaveBeenLastCalledWith(null);
+  });
+
+  it("removes a closed agent from discovery before the runtime drops its socket", () => {
+    const agent = new FakeSocket({ role: "agent", nodeId: "node", ready: true });
+    const room = new Room({
+      sockets: () => [agent],
+      now: () => 1,
+      setAlarm: () => {},
+      agentSeen: () => {},
+    });
+    expect(room.online()).toBe(true);
+    room.close(agent);
+    expect(room.online()).toBe(false);
+  });
+
   it("routes each client's offer/answer exchange with the node without cross-delivery", async () => {
     const h = harness();
     const node = generateKeyPair();

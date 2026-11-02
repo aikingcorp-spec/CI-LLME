@@ -41,6 +41,7 @@ listen(async (message) => {
         gatewayUrl: m.gatewayUrl,
         nodeId: m.nodeId,
         keyPair: m.key,
+        onGatewayError: (failure) => console.error(JSON.stringify({ gateway_error: failure })),
         onGatewayState: (state, code) => post({ type: "gateway", state, code }),
         iceServers: () =>
           desktopIceServers(m.gatewayUrl, m.nodeId, m.key, fetchNodeTurnServers, m.stunServers),
@@ -55,11 +56,8 @@ listen(async (message) => {
           },
         },
       });
-      const current = agent;
-      const deadline = Date.now() + 15_000;
-      while (agent === current && !current.connected() && Date.now() < deadline)
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      if (agent !== current || !current.connected()) throw new Error("Gateway unavailable");
+      // Startup means the isolated agent is running. Gateway outages belong to its reconnect
+      // lifecycle; killing it here resets backoff and can exhaust the service restart budget.
       post({ type: "started" });
     } catch {
       post({ type: "error" });

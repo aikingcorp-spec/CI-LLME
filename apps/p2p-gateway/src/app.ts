@@ -1,7 +1,5 @@
 import { ASSERTION_SUBPROTOCOL_PREFIX, SIGNAL_SUBPROTOCOL } from "@rakazo/p2p-prototype/protocol";
-
 import { mintTurnCredentials } from "../../../packages/p2p-prototype/src/turn-credentials.js";
-
 import type { TokenScope } from "./app-token.js";
 import { verifyAppToken } from "./app-token.js";
 import type { Config } from "./config.js";
@@ -19,6 +17,7 @@ import {
 } from "./pairing.js";
 import { turnRateLimit } from "./rate-limit.js";
 import { withAdmission } from "./room-link.js";
+import { loggedPath } from "./route-log.js";
 import type { NodeKind, PairedUser } from "./store.js";
 import {
   activeNode,
@@ -404,7 +403,27 @@ export async function handle(request: Request, deps: Deps): Promise<Response> {
   }
   try {
     return withCors(request, await route(request, new URL(request.url), deps), deps.config);
-  } catch {
-    return text(500, "request failed");
+  } catch (error) {
+    const path = new URL(request.url).pathname;
+    const message =
+      error instanceof Error
+        ? error.message
+            .replace(/https?:\/\/[^\s)]+/g, "[url]")
+            .replace(/\b(?:Bearer|Assertion|Node)\s+\S+/gi, "[credential]")
+            .replace(/\b[A-Za-z0-9_-]{40,}\b/g, "[identifier]")
+            .slice(0, 1024)
+        : "non-Error failure";
+    console.error("GATEWAY_ROUTE_ERROR", {
+      route: loggedPath(path),
+      name: error instanceof Error ? error.name : "UnknownError",
+      message,
+    });
+    const quotaExceeded = message.includes(
+      "Exceeded allowed volume of requests in Durable Objects free tier",
+    );
+    const response = text(quotaExceeded ? 503 : 500, "request failed");
+    response.headers.set("cache-control", "no-store");
+    if (quotaExceeded) response.headers.set("retry-after", "60");
+    return withCors(request, response, deps.config);
   }
 }

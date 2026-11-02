@@ -98,6 +98,7 @@ afterEach(async () => {
 it("keeps the agent link alive and reconnects when a heartbeat is not answered", async () => {
   vi.useFakeTimers();
   socket.emit("open");
+  socket.emit("message", Buffer.from(encodeFrame({ kind: "welcome", nodeId: "node" })));
   const current = socket as EventEmitter & { ping: ReturnType<typeof vi.fn> };
   await vi.advanceTimersByTimeAsync(20_000);
   expect(current.ping).toHaveBeenCalledTimes(1);
@@ -107,6 +108,40 @@ it("keeps the agent link alive and reconnects when a heartbeat is not answered",
   expect(vi.mocked(WebSocket)).toHaveBeenCalledTimes(1);
   await vi.advanceTimersByTimeAsync(20_500);
   expect(vi.mocked(WebSocket)).toHaveBeenCalledTimes(2);
+});
+
+it("retries an open socket that never receives welcome, ignoring events from the old attempt", async () => {
+  vi.useFakeTimers();
+  socket.emit("open");
+  expect(agent.connected()).toBe(false);
+  await vi.advanceTimersByTimeAsync(10_500);
+  expect(WebSocket).toHaveBeenCalledTimes(2);
+  const replacement = vi.mocked(WebSocket).mock.results[1]?.value as EventEmitter;
+  replacement.emit("open");
+  replacement.emit("message", Buffer.from(encodeFrame({ kind: "welcome", nodeId: "node" })));
+  expect(agent.connected()).toBe(true);
+  socket.emit("close", 1006);
+  socket.emit("message", Buffer.from("malformed stale frame"));
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(agent.connected()).toBe(true);
+  expect(WebSocket).toHaveBeenCalledTimes(2);
+});
+
+it("bounds upgrade time and honors service retry-after without adding parallel attempts", async () => {
+  vi.useFakeTimers();
+  expect(vi.mocked(WebSocket).mock.calls[0]?.[1]).toEqual({ handshakeTimeout: 10_000 });
+  socket.emit(
+    "unexpected-response",
+    {},
+    { statusCode: 503, headers: { "retry-after": "60" }, resume: vi.fn() },
+  );
+  await vi.advanceTimersByTimeAsync(59_999);
+  expect(WebSocket).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(WebSocket).toHaveBeenCalledTimes(2);
+  socket.emit("close", 1006);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(WebSocket).toHaveBeenCalledTimes(2);
 });
 
 it("routes the signed agent connection to the hosted node room", () => {

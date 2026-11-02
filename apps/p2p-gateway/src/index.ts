@@ -3,6 +3,7 @@ import { handle } from "./app.js";
 import type { Config } from "./config.js";
 import { loadConfig } from "./config.js";
 import type { Env } from "./env.js";
+import { loggedPath } from "./route-log.js";
 
 export { NodeRoom } from "./node-room.js";
 
@@ -15,22 +16,6 @@ function roomOf(env: Env, nodeId: string): RoomStub {
     online: () => stub.online(),
     kick: () => stub.kick(),
   };
-}
-
-/** Only fixed routes are logged by name: node ids and tokens never reach a log line. */
-function loggedPath(pathname: string): string {
-  if (pathname.startsWith("/nodes/")) return "/nodes/*";
-  return [
-    "/healthz",
-    "/agent",
-    "/signal",
-    "/pair/start",
-    "/pair/complete",
-    "/sessions",
-    "/nodes",
-  ].includes(pathname)
-    ? pathname
-    : "*";
 }
 
 export default {
