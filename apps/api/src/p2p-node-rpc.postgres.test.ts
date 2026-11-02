@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
-import { FakeSandboxProvider } from "@rakazo/adapters";
+import { EmailEmulator, FakeSandboxProvider } from "@rakazo/adapters";
 import { LOCAL_NODE_SESSION_PATH, LOCAL_SETTINGS_TOKEN_HEADER } from "@rakazo/contracts";
 import { expect, it } from "vitest";
 import { DataChannelClientTransport } from "../../../packages/p2p-prototype/src/client-transport.js";
@@ -24,12 +24,69 @@ import { generateKeyPair } from "../../../packages/p2p-prototype/src/pairing.js"
 import { waitFor } from "../../../packages/p2p-prototype/src/test-util.js";
 import { sessionCookieHeader } from "../../../packages/testkit/src/index.js";
 import { browserP2PClient } from "../../../packages/testkit/src/p2p-browser-client.js";
+import { remoteAccount } from "../../desktop/src/p2p-account.js";
 import { P2P_GATEWAY_ENV, P2PNode } from "../../desktop/src/p2p-node.js";
+import { verifyAppToken } from "../../p2p-gateway/src/app-token.js";
 import { createApp } from "./app.js";
 
 const databaseUrl = process.env.VERIFY_DATABASE === "1" ? process.env.DATABASE_URL : undefined;
 const token = "ab".repeat(32);
 const origin = "http://127.0.0.1:5173";
+
+it.skipIf(!databaseUrl)(
+  "native OTP obtains a gateway-verifiable enrollment credential",
+  async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "rakazo-account-otp-"));
+    const email = new EmailEmulator();
+    const key = generateKeyPair();
+    const accountOrigin = "https://accounts.example.test";
+    const audience = "gateway.example.test";
+    const kid = "acceptance-app";
+    const handles = await createApp({
+      databaseUrl: databaseUrl!,
+      dataDir,
+      sandboxProvider: "fake",
+      sandbox: new FakeSandboxProvider(),
+      email,
+      passwordAuth: true,
+      emailCodeOnly: true,
+      emailAllowlist: false,
+      agentRuntime: "scripted",
+      wakeupDriver: "memory",
+      signupsEnabled: "true",
+      signupAllowlist: "",
+      webOrigin: accountOrigin,
+      authUrl: accountOrigin,
+      p2pToken: { privateKey: key.privateKey, kid, issuer: accountOrigin, audience },
+    });
+    try {
+      // Real Better Auth OTP and bearer handling; only email delivery uses a local mailbox.
+      const account = remoteAccount(
+        async (input, init) => handles.app.fetch(new Request(input, init)),
+        accountOrigin,
+      );
+      const address = `otp-node-${randomUUID()}@example.test`;
+      await account.send(address);
+      await waitFor(() => email.sent.length > 0);
+      const otp = email.sent.at(-1)?.text.match(/\b\d{6}\b/)?.[0];
+      expect(otp).toBeDefined();
+      const credential = await account.authorize(address, otp!);
+      expect(
+        await verifyAppToken(credential, {
+          keys: { [kid]: key.publicKey },
+          issuer: accountOrigin,
+          audience,
+          nowMs: Date.now(),
+        }),
+      ).toMatchObject({ email: address, scope: ["pair"] });
+      await expect(account.authorize(address, otp!)).rejects.toThrow();
+    } finally {
+      await handles.stop();
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  },
+  30_000,
+);
 
 it.skipIf(!databaseUrl)(
   "real WebRTC carries authenticated node RPC, persists chat and rejects a foreign account",
