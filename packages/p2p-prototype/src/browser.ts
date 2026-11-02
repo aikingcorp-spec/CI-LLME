@@ -47,9 +47,7 @@ export function browserConnection(config: RTCConfiguration): PeerTransport {
   return {
     onStateChange(receive) {
       state = receive;
-      pc.addEventListener("connectionstatechange", () =>
-        receive(pc.connectionState === "disconnected" ? "failed" : pc.connectionState),
-      );
+      pc.addEventListener("connectionstatechange", () => receive(pc.connectionState));
     },
     onIceStateChange: (receive) =>
       pc.addEventListener("iceconnectionstatechange", () => receive(pc.iceConnectionState)),

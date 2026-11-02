@@ -1,6 +1,17 @@
 # Architecture changelog
 
 
+
+## 2026-11-02 — Recover transient ICE loss and share node TURN discovery
+
+- Date: 2026-11-02.
+- Pull request: #38.
+- What changed versus baseline: shared peer lifecycle retains established channels during a bounded transient ICE disconnection; browser adapters preserve the disconnected state. Each isolated node owns a TTL-aware TURN resolver with shared in-flight requests and independent configuration objects per peer.
+- Why: short network interruptions immediately discarded browser sessions, while concurrent incoming peers independently requested credentials and could exhaust the node's issuance rate limit.
+- Modules and files: `packages/p2p-prototype/src/{browser,peer-core,gateway-client}.ts` and recovery/relay discovery regression tests; `apps/desktop/p2p/agent-process.ts`; `apps/desktop/src/p2p-node.ts` and its test.
+- Invariants affected: grace applies only to established peers and ends on explicit close or terminal failure; account/lease expiry and revocation remain authoritative. Credentials remain process-local, scoped to one machine identity, and never reused past their conservative deadline. No schema, key, pairing, rate-limit, TTL, hosted HTTP fallback, billing-plan or release-version change.
+- ADR: [0010](adr/0010-desktop-account-enrollment.md).
+
 ## 2026-11-02 — Retire closed signaling sockets and bound agent recovery
 
 - Date: 2026-11-02.

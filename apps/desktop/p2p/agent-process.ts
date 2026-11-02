@@ -1,5 +1,5 @@
 import { cleanup } from "node-datachannel";
-import { fetchNodeTurnServers } from "../../../packages/p2p-prototype/src/gateway-client.js";
+import { createNodeTurnResolver } from "../../../packages/p2p-prototype/src/gateway-client.js";
 import { startNodeAgent } from "../../../packages/p2p-prototype/src/node-agent.js";
 import { forwardChannelHandler } from "../../../packages/p2p-prototype/src/node-channel-server.js";
 import { createScreenConnector } from "../../../packages/p2p-prototype/src/screen-connector.js";
@@ -37,14 +37,14 @@ listen(async (message) => {
   const m = message as Start | { type: "stop" };
   if (m.type === "start") {
     try {
+      const resolveTurn = createNodeTurnResolver(m.gatewayUrl, m.nodeId, m.key);
       agent = startNodeAgent({
         gatewayUrl: m.gatewayUrl,
         nodeId: m.nodeId,
         keyPair: m.key,
         onGatewayError: (failure) => console.error(JSON.stringify({ gateway_error: failure })),
         onGatewayState: (state, code) => post({ type: "gateway", state, code }),
-        iceServers: () =>
-          desktopIceServers(m.gatewayUrl, m.nodeId, m.key, fetchNodeTurnServers, m.stunServers),
+        iceServers: () => desktopIceServers(resolveTurn, m.stunServers),
         // The gateway's plaintext HTTP relay is off; only the data channel carries requests.
         handler: async () => ({ status: 404, headers: {}, body: new Uint8Array() }),
         channel: {

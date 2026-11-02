@@ -91,6 +91,7 @@ export interface DataPeer {
 }
 
 const CHANNEL_LABEL = "rakazo";
+const DISCONNECT_GRACE_MS = 15_000;
 // Control frames are binary; application messages are always strings, so they never collide.
 const BYE = 0x01;
 const BYE_ACK = 0x02;
@@ -154,11 +155,26 @@ export async function connectPeer(o: PeerOptions, runtime: PeerRuntime): Promise
   }
   const localCandidates: string[] = [];
   let remoteCandidateCount = 0;
+  let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
+  let closed = false;
+  let opened = false;
   pc.onStateChange((state) => {
     debug(`onStateChange ${state}`);
-    if (state === "closed" || state === "failed") {
+    if (closed) return;
+    if (state === "disconnected" && opened) {
+      // ICE can recover a brief interruption without replacing the authenticated channel.
+      // Repeated events keep the original deadline; auth expiry and explicit close still win.
+      recoveryTimer ??= globalThis.setTimeout(() => close(false), DISCONNECT_GRACE_MS);
+      return;
+    }
+    if (state === "connected") {
+      clearTimeout(recoveryTimer);
+      recoveryTimer = undefined;
+    }
+    const failed = state === "failed" || state === "disconnected";
+    if (state === "closed" || failed) {
       rejectOpen(
-        state === "failed"
+        failed
           ? // Without candidates on both sides there was never a pair to check.
             localCandidates.length > 0 && remoteCandidateCount > 0
             ? new P2PConnectError("ice_failed", "peer failed")
@@ -182,7 +198,6 @@ export async function connectPeer(o: PeerOptions, runtime: PeerRuntime): Promise
   let byeReceived = false;
   let markOpen = (): void => {};
   let rejectOpen = (_error: Error): void => {};
-  let opened = false;
   const open = new Promise<void>((resolve, reject) => {
     markOpen = () => {
       opened = true;
@@ -296,12 +311,13 @@ export async function connectPeer(o: PeerOptions, runtime: PeerRuntime): Promise
     for (const c of pendingCandidates.splice(0)) pc.addRemoteCandidate(c.candidate, c.mid);
   };
   let unlisten: (() => void) | undefined;
-  let closed = false;
   // Closing an attempt that never opened tells the remote to drop it too. Without this a
   // responder that adopted the attempt waits on it forever and ignores the caller's retries.
   const close = (cancelRemote = true): void => {
     if (closed) return;
     closed = true;
+    clearTimeout(recoveryTimer);
+    recoveryTimer = undefined;
     if (cancelRemote && !opened && attemptId !== undefined) signal({ type: "cancel", attemptId });
     o.signal?.removeEventListener("abort", onAbort);
     rejectOpen(new Error("peer closed"));

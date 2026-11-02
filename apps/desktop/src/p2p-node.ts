@@ -6,16 +6,13 @@ import { isLoopbackHost } from "@rakazo/contracts/network-host";
 import type { IceServer } from "node-datachannel";
 import { enrollDesktop } from "./p2p-enrollment.js";
 
-/** Resolve just before each incoming connection, so an idle node never reuses expired TURN. */
+/** Merge configured STUN with the node process's current relay credentials. */
 export async function desktopIceServers(
-  gatewayUrl: string,
-  nodeId: string,
-  key: P2PKeyPair,
-  resolveTurn: (gatewayUrl: string, nodeId: string, key: P2PKeyPair) => Promise<IceServer[]>,
+  resolveTurn: () => Promise<IceServer[]>,
   stunServers: string[] = ["stun:stun.l.google.com:19302"],
 ) {
   try {
-    return [...stunServers, ...(await resolveTurn(gatewayUrl, nodeId, key))];
+    return [...stunServers, ...(await resolveTurn())];
   } catch {
     return [...stunServers];
   }

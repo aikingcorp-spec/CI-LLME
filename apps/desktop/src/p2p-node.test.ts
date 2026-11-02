@@ -1,6 +1,6 @@
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchNodeTurnServers } from "../../../packages/p2p-prototype/src/gateway-client.js";
+import { createNodeTurnResolver } from "../../../packages/p2p-prototype/src/gateway-client.js";
 import {
   generateKeyPair,
   nodeProofMessage,
@@ -40,7 +40,8 @@ describe("desktop TURN discovery", () => {
   it("authenticates with the node key and merges UDP, TCP and TLS TURN with STUN", async () => {
     const request = vi.fn<typeof fetch>(async () => Response.json(turn));
     vi.stubGlobal("fetch", request);
-    const servers = await desktopIceServers(gatewayUrl, "node-1", key, fetchNodeTurnServers);
+    const resolveTurn = createNodeTurnResolver(gatewayUrl, "node-1", key);
+    const servers = await desktopIceServers(resolveTurn);
     expect(servers).toEqual([
       "stun:stun.l.google.com:19302",
       ...["TurnUdp", "TurnTcp", "TurnTls"].map((relayType) => ({
@@ -60,8 +61,8 @@ describe("desktop TURN discovery", () => {
       verify(key.publicKey, nodeProofMessage("signal", proof.nodeId, proof.ts), proof.sig),
     ).toBe(true);
     expect(init).toMatchObject({ credentials: "omit", cache: "no-store", redirect: "error" });
-    await desktopIceServers(gatewayUrl, "node-1", key, fetchNodeTurnServers);
-    expect(request).toHaveBeenCalledTimes(2);
+    await desktopIceServers(resolveTurn);
+    expect(request).toHaveBeenCalledTimes(1);
   });
   it.each(["501", "500", "network", "malformed"])(
     "keeps configured STUN on TURN %s",
@@ -76,7 +77,7 @@ describe("desktop TURN discovery", () => {
         }),
       );
       await expect(
-        desktopIceServers(gatewayUrl, "node-1", key, fetchNodeTurnServers, [
+        desktopIceServers(createNodeTurnResolver(gatewayUrl, "node-1", key), [
           "stun:stun.example.test:3478",
         ]),
       ).resolves.toEqual(["stun:stun.example.test:3478"]);
