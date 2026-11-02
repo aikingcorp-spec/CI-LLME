@@ -90,7 +90,7 @@ describe("remote computer access", () => {
       token: string;
       closed: boolean;
       cancelled: number;
-      revoke: () => void;
+      revoke: () => Promise<void>;
       authorize: () => Promise<boolean>;
     }[] = [];
     const access = createUserDeviceAccess({
@@ -219,7 +219,7 @@ describe("remote computer access", () => {
 
     const turningOn = access.setAllowed(origin, true);
     await vi.waitFor(() => expect(confirm).toHaveBeenCalledTimes(2));
-    clients[0]!.revoke();
+    await clients[0]!.revoke();
     answer(true);
     await turningOn;
     expect(await readDeviceConsent(userData, origin)).toBe("declined");
@@ -352,7 +352,7 @@ describe("remote computer access", () => {
     const confirm = vi.fn(async () => true);
     const { access, clients, requests } = setup({ confirm });
     await access.select(origin);
-    clients[0]!.revoke();
+    await clients[0]!.revoke();
     await vi.waitFor(async () =>
       expect(await readPairedDevice(userData, origin, cipher)).toBeNull(),
     );

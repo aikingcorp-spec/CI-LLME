@@ -121,7 +121,7 @@ export function createUserDeviceAccess(deps: {
   connect: (
     origin: string,
     token: string,
-    events: { onRevoked: () => void; authorize: () => Promise<boolean> },
+    events: { onRevoked: () => Promise<void>; authorize: () => Promise<boolean> },
   ) => { close(): void; cancelAll(): void };
 }) {
   let current: string | null = null;
@@ -149,11 +149,13 @@ export function createUserDeviceAccess(deps: {
     };
     const connection = deps.connect(origin, token, {
       // Revoked by the server or its token was rejected: stay unpaired until turned back on.
-      onRevoked: () => {
+      onRevoked: async () => {
         if (client === active) client = undefined;
         paired.delete(origin);
-        void deletePairedDevice(deps.userDataDir, origin).catch(() => undefined);
-        void decide(origin, "declined").catch(() => undefined);
+        await Promise.all([
+          deletePairedDevice(deps.userDataDir, origin).catch(() => undefined),
+          decide(origin, "declined").catch(() => undefined),
+        ]);
       },
       authorize: () => authorize(origin),
     });

@@ -1980,7 +1980,7 @@ msgstr "{name} konnte nicht heruntergeladen werden. Versuche es erneut."
 
 #: src/pages/Pairing.tsx
 msgid "Could not enable remote access. Check your code and connection, then try again."
-msgstr ""
+msgstr "Der Fernzugriff konnte nicht aktiviert werden. Prüfe deinen Code und deine Verbindung und versuche es erneut."
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
@@ -2229,7 +2229,7 @@ msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Could not sign in. Check your code and connection, then try again."
-msgstr ""
+msgstr "Anmeldung fehlgeschlagen. Prüfe deinen Code und deine Verbindung und versuche es erneut."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not start OAuth"
@@ -2762,7 +2762,7 @@ msgstr "E-Mail"
 
 #: src/pages/Pairing.tsx
 msgid "Email code"
-msgstr ""
+msgstr "E-Mail-Code"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2783,7 +2783,7 @@ msgstr "{0} aktivieren"
 
 #: src/pages/Pairing.tsx
 msgid "Enable remote access"
-msgstr ""
+msgstr "Fernzugriff aktivieren"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4855,7 +4855,7 @@ msgstr "Verbindung wird wiederhergestellt"
 
 #: src/App.tsx
 msgid "Reconnecting…"
-msgstr ""
+msgstr "Verbindung wird wiederhergestellt…"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
@@ -4953,7 +4953,7 @@ msgstr ""
 
 #: src/pages/Pairing.tsx
 msgid "Remote access is enabled for this account."
-msgstr ""
+msgstr "Der Fernzugriff ist für dieses Konto aktiviert."
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -5224,11 +5224,11 @@ msgstr "Widerrufen"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke access"
-msgstr ""
+msgstr "Zugriff widerrufen"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke remote access to this computer?"
-msgstr ""
+msgstr "Fernzugriff auf diesen Computer widerrufen?"
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5537,7 +5537,7 @@ msgstr "Als Datei senden"
 #: src/pages/Auth.tsx
 #: src/pages/Pairing.tsx
 msgid "Send code"
-msgstr ""
+msgstr "Code senden"
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
@@ -6636,7 +6636,7 @@ msgstr "Prüfen und hinzufügen"
 
 #: src/pages/Pairing.tsx
 msgid "Verify your account to access this computer from another device."
-msgstr ""
+msgstr "Bestätige dein Konto, um von einem anderen Gerät auf diesen Computer zuzugreifen."
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx

@@ -1980,7 +1980,7 @@ msgstr "Не удалось загрузить {name}. Попробуйте ещ
 
 #: src/pages/Pairing.tsx
 msgid "Could not enable remote access. Check your code and connection, then try again."
-msgstr ""
+msgstr "Не удалось включить удалённый доступ. Проверьте код и подключение и повторите попытку."
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
@@ -2229,7 +2229,7 @@ msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Could not sign in. Check your code and connection, then try again."
-msgstr ""
+msgstr "Не удалось войти. Проверьте код и подключение и повторите попытку."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not start OAuth"
@@ -2762,7 +2762,7 @@ msgstr "Электронная почта"
 
 #: src/pages/Pairing.tsx
 msgid "Email code"
-msgstr ""
+msgstr "Код из письма"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2783,7 +2783,7 @@ msgstr "Включить {0}"
 
 #: src/pages/Pairing.tsx
 msgid "Enable remote access"
-msgstr ""
+msgstr "Включить удалённый доступ"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4855,7 +4855,7 @@ msgstr "Повторное подключение"
 
 #: src/App.tsx
 msgid "Reconnecting…"
-msgstr ""
+msgstr "Переподключение…"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
@@ -4953,7 +4953,7 @@ msgstr ""
 
 #: src/pages/Pairing.tsx
 msgid "Remote access is enabled for this account."
-msgstr ""
+msgstr "Удалённый доступ включён для этой учётной записи."
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -5224,11 +5224,11 @@ msgstr "Отозвать"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke access"
-msgstr ""
+msgstr "Отозвать доступ"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke remote access to this computer?"
-msgstr ""
+msgstr "Отозвать удалённый доступ к этому компьютеру?"
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5537,7 +5537,7 @@ msgstr "Отправить как файл"
 #: src/pages/Auth.tsx
 #: src/pages/Pairing.tsx
 msgid "Send code"
-msgstr ""
+msgstr "Отправить код"
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
@@ -6636,7 +6636,7 @@ msgstr "Проверить и добавить"
 
 #: src/pages/Pairing.tsx
 msgid "Verify your account to access this computer from another device."
-msgstr ""
+msgstr "Подтвердите учётную запись, чтобы получить доступ к этому компьютеру с другого устройства."
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx

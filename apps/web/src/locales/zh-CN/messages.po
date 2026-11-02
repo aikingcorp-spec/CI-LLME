@@ -1980,7 +1980,7 @@ msgstr "无法下载 {name}。请重试。"
 
 #: src/pages/Pairing.tsx
 msgid "Could not enable remote access. Check your code and connection, then try again."
-msgstr ""
+msgstr "无法启用远程访问。请检查验证码和网络连接后重试。"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
@@ -2229,7 +2229,7 @@ msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Could not sign in. Check your code and connection, then try again."
-msgstr ""
+msgstr "无法登录。请检查验证码和网络连接后重试。"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not start OAuth"
@@ -2762,7 +2762,7 @@ msgstr "邮箱"
 
 #: src/pages/Pairing.tsx
 msgid "Email code"
-msgstr ""
+msgstr "邮箱验证码"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2783,7 +2783,7 @@ msgstr "启用 {0}"
 
 #: src/pages/Pairing.tsx
 msgid "Enable remote access"
-msgstr ""
+msgstr "启用远程访问"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4855,7 +4855,7 @@ msgstr "正在重新连接"
 
 #: src/App.tsx
 msgid "Reconnecting…"
-msgstr ""
+msgstr "正在重新连接…"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
@@ -4953,7 +4953,7 @@ msgstr ""
 
 #: src/pages/Pairing.tsx
 msgid "Remote access is enabled for this account."
-msgstr ""
+msgstr "已为此账户启用远程访问。"
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -5224,11 +5224,11 @@ msgstr "撤销"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke access"
-msgstr ""
+msgstr "撤销访问权限"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke remote access to this computer?"
-msgstr ""
+msgstr "撤销对此计算机的远程访问权限？"
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5537,7 +5537,7 @@ msgstr "作为文件发送"
 #: src/pages/Auth.tsx
 #: src/pages/Pairing.tsx
 msgid "Send code"
-msgstr ""
+msgstr "发送验证码"
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
@@ -6636,7 +6636,7 @@ msgstr "校验并添加"
 
 #: src/pages/Pairing.tsx
 msgid "Verify your account to access this computer from another device."
-msgstr ""
+msgstr "验证你的账户，以便从其他设备访问此计算机。"
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx

@@ -160,6 +160,13 @@ it("expires codes and stops polling on unmount", async () => {
       (button) => button.textContent === "Get pairing code",
     )?.disabled,
   ).toBe(false);
+  // Discovery continues after code expiry so desktop account enrollment can appear automatically.
+  const beforePoll = vi.mocked(client.nodes).mock.calls.length;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5_000);
+  });
+  expect(client.nodes).toHaveBeenCalledTimes(beforePoll + 1);
+  await act(async () => root.render(null));
   expect(vi.getTimerCount()).toBe(0);
 });
 it("polls for a completed pairing and hides its consumed code", async () => {

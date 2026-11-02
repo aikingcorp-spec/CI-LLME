@@ -1980,7 +1980,7 @@ msgstr "{name} डाउनलोड नहीं हो सका। पुन�
 
 #: src/pages/Pairing.tsx
 msgid "Could not enable remote access. Check your code and connection, then try again."
-msgstr ""
+msgstr "रिमोट ऐक्सेस चालू नहीं हो सका। अपना कोड और कनेक्शन जाँचें, फिर दोबारा कोशिश करें।"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
@@ -2229,7 +2229,7 @@ msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Could not sign in. Check your code and connection, then try again."
-msgstr ""
+msgstr "साइन इन नहीं हो सका। अपना कोड और कनेक्शन जाँचें, फिर दोबारा कोशिश करें।"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not start OAuth"
@@ -2762,7 +2762,7 @@ msgstr "ईमेल"
 
 #: src/pages/Pairing.tsx
 msgid "Email code"
-msgstr ""
+msgstr "ईमेल कोड"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2783,7 +2783,7 @@ msgstr "{0} सक्षम करें"
 
 #: src/pages/Pairing.tsx
 msgid "Enable remote access"
-msgstr ""
+msgstr "रिमोट ऐक्सेस चालू करें"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4855,7 +4855,7 @@ msgstr "पुनः कनेक्ट हो रहा है"
 
 #: src/App.tsx
 msgid "Reconnecting…"
-msgstr ""
+msgstr "फिर से कनेक्ट हो रहा है…"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
@@ -4953,7 +4953,7 @@ msgstr ""
 
 #: src/pages/Pairing.tsx
 msgid "Remote access is enabled for this account."
-msgstr ""
+msgstr "इस खाते के लिए रिमोट ऐक्सेस चालू है।"
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -5224,11 +5224,11 @@ msgstr ""
 
 #: src/pages/Pairing.tsx
 msgid "Revoke access"
-msgstr ""
+msgstr "ऐक्सेस रद्द करें"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke remote access to this computer?"
-msgstr ""
+msgstr "इस कंप्यूटर का रिमोट ऐक्सेस रद्द करें?"
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5537,7 +5537,7 @@ msgstr "फ़ाइल के रूप में भेजें"
 #: src/pages/Auth.tsx
 #: src/pages/Pairing.tsx
 msgid "Send code"
-msgstr ""
+msgstr "कोड भेजें"
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
@@ -6636,7 +6636,7 @@ msgstr "पुष्टि करके जोड़ें"
 
 #: src/pages/Pairing.tsx
 msgid "Verify your account to access this computer from another device."
-msgstr ""
+msgstr "किसी दूसरे डिवाइस से इस कंप्यूटर को ऐक्सेस करने के लिए अपना खाता सत्यापित करें।"
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx

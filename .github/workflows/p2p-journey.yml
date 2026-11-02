@@ -26,7 +26,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
       - run: pnpm --filter @rakazo/desktop check && pnpm --filter @rakazo/web check && pnpm --filter @rakazo/p2p-gateway check
-      - run: pnpm exec vitest run apps/desktop/src apps/p2p-gateway/src apps/web/src/lib/p2p-client.test.ts apps/web/src/pages/Auth.test.tsx packages/p2p-prototype/src --maxWorkers=4
+      - run: pnpm exec vitest run apps/desktop/src apps/p2p-gateway/src apps/web/src/lib/p2p-client.test.ts apps/web/src/lib/p2p-locales.test.ts apps/web/src/pages/Auth.test.tsx apps/web/src/pages/Pairing.test.tsx packages/p2p-prototype/src --maxWorkers=4
       - run: pnpm --filter @rakazo/web build
         env:
           VITE_P2P_GATEWAY_URL: https://gateway.example.test

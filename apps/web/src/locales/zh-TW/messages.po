@@ -1981,7 +1981,7 @@ msgstr "無法下載 {name}。請重試。"
 
 #: src/pages/Pairing.tsx
 msgid "Could not enable remote access. Check your code and connection, then try again."
-msgstr ""
+msgstr "無法啟用遠端存取。請檢查驗證碼和網路連線後再試一次。"
 
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Could not enable tools"
@@ -2230,7 +2230,7 @@ msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Could not sign in. Check your code and connection, then try again."
-msgstr ""
+msgstr "無法登入。請檢查驗證碼和網路連線後再試一次。"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Could not start OAuth"
@@ -2763,7 +2763,7 @@ msgstr "電子信箱"
 
 #: src/pages/Pairing.tsx
 msgid "Email code"
-msgstr ""
+msgstr "電子郵件驗證碼"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2784,7 +2784,7 @@ msgstr "啟用 {0}"
 
 #: src/pages/Pairing.tsx
 msgid "Enable remote access"
-msgstr ""
+msgstr "啟用遠端存取"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "End call"
@@ -4856,7 +4856,7 @@ msgstr "正在重新連線"
 
 #: src/App.tsx
 msgid "Reconnecting…"
-msgstr ""
+msgstr "正在重新連線…"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
@@ -4954,7 +4954,7 @@ msgstr ""
 
 #: src/pages/Pairing.tsx
 msgid "Remote access is enabled for this account."
-msgstr ""
+msgstr "已為此帳戶啟用遠端存取。"
 
 #: src/components/ApprovalRulePreview.tsx
 #: src/components/ApprovalRulesSettings.tsx
@@ -5225,11 +5225,11 @@ msgstr "撤銷授權"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke access"
-msgstr ""
+msgstr "撤銷存取權"
 
 #: src/pages/Pairing.tsx
 msgid "Revoke remote access to this computer?"
-msgstr ""
+msgstr "撤銷此電腦的遠端存取權？"
 
 #: src/lib/tool-activity-label.ts
 msgid "Rewriting a bot's instructions"
@@ -5538,7 +5538,7 @@ msgstr "以檔案傳送"
 #: src/pages/Auth.tsx
 #: src/pages/Pairing.tsx
 msgid "Send code"
-msgstr ""
+msgstr "傳送驗證碼"
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
@@ -6637,7 +6637,7 @@ msgstr "驗證並新增"
 
 #: src/pages/Pairing.tsx
 msgid "Verify your account to access this computer from another device."
-msgstr ""
+msgstr "驗證你的帳戶，以便從其他裝置存取此電腦。"
 
 #: src/pages/Auth.tsx
 #: src/pages/PluginsOverlay.tsx
