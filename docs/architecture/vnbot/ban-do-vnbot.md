@@ -44,3 +44,7 @@ VNB-044 chỉ bổ sung giao diện web (dùng được ở chiều rộng 360px
 ### Desktop và web từ xa
 
 Desktop native xác minh email OTP ở dịch vụ tài khoản, mở phiên trên node qua capability riêng của main và đăng ký khóa máy bằng token tài khoản cộng chữ ký máy. RPC qua WebRTC dùng phiên local đã gắn với tài khoản đó. Worker app phục vụ SPA thật, chỉ chuyển endpoint tài khoản; chat vẫn ở node. Xem [ADR 0010](adr/0010-desktop-account-enrollment.md) về giới hạn kiểm chứng và cấu hình cần triển khai.
+
+### Màn hình máy tính qua P2P
+
+Web hosted dùng noVNC đã đóng gói trong ứng dụng và nhận luồng màn hình qua kênh node đã xác thực. Quyền xem/tiếp quản vẫn do dịch vụ node và phiên điều khiển hiện có quyết định, kiểm tra lại trong khi kết nối. Gateway không giữ dữ liệu màn hình và không mở HTTP/VNC công khai của node. Voice và các luồng media HTTP khác chưa được chuyển theo thay đổi này. Xem [ADR 0011](adr/0011-p2p-computer-screen.md).

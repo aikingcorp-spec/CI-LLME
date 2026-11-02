@@ -78,3 +78,5 @@ Native desktop enrollment uses the app account origin and the configured
 `RAKAZO_P2P_GATEWAY_URL`, defaulting to the planned public P2P origin. Desktop installers must
 be rebuilt for Linux and Windows to contain enrollment and local-session binding. Existing
 installers do not gain these changes from a web deployment.
+
+The hosted computer screen uses a bundled noVNC viewer and a capability-bound socket over the authenticated node data channel. Deploy a compatible node agent before the web assets. The existing local screen proxy retains capability, generation and control-lease rechecks; the hosted Worker still refuses `/novnc` HTTP traffic. Voice and other media HTTP transports remain outside this bridge. See ADR 0011 for protocol limits and rollback order.

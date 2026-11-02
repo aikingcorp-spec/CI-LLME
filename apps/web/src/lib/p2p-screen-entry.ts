@@ -4,6 +4,11 @@ import "./p2p-screen.css";
 // This bundled, trusted frame receives only RFB bytes. It never receives node/account credentials.
 let initialized = false;
 window.addEventListener("message", (event) => {
+  if (event.source !== parent || event.origin !== location.origin) return;
+  if (event.data?.p2pScreenReadyRequest === true) {
+    parent.postMessage({ rakazoScreenReady: true }, location.origin);
+    return;
+  }
   if (
     initialized ||
     event.source !== parent ||
@@ -115,3 +120,6 @@ window.addEventListener("message", (event) => {
     { once: true },
   );
 });
+
+// noVNC dependency initialization may outlive the document load event.
+parent.postMessage({ rakazoScreenReady: true }, location.origin);
