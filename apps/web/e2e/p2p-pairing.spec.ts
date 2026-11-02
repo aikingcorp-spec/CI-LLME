@@ -10,11 +10,11 @@ import {
   demoHandler,
 } from "../../../packages/p2p-prototype/src/node-channel-server";
 import { generateKeyPair } from "../../../packages/p2p-prototype/src/pairing";
+import { startRfbFixture } from "../../../packages/p2p-prototype/src/rfb-fixture";
 import { createScreenConnector } from "../../../packages/p2p-prototype/src/screen-connector";
 import { waitFor } from "../../../packages/p2p-prototype/src/test-util";
 import { captureScreenshot } from "./helpers";
 import { fetchLoopback, isLocalUrl, startConfiguredWeb } from "./p2p-network";
-import { startRfbFixture } from "./rfb-fixture";
 
 // Optional system Chromium for offline workstations; CI uses Playwright's installed browser.
 test.use({
