@@ -2,6 +2,8 @@ import { createChannelFraming } from "./channel-framing.js";
 import type { ChannelFrame } from "./channel-protocol.js";
 import { decodeBytes, encodeBytes } from "./channel-protocol.js";
 import type { DataPeer } from "./peer-core.js";
+import type { ScreenSocket } from "./socket-session.js";
+import { createSocketSession } from "./socket-session.js";
 
 export interface ClientCall {
   procedure: string;
@@ -55,6 +57,7 @@ function inbox<T>() {
 export class DataChannelClientTransport implements ClientTransport {
   private readonly framing;
   private bearer: string | undefined;
+  private screenSupported = false;
   private failure: Error | undefined;
   private readonly pending = new Map<string, ReturnType<typeof inbox<ChannelFrame>>>();
   private readonly handshake = inbox<string>();
@@ -83,6 +86,58 @@ export class DataChannelClientTransport implements ClientTransport {
   }
   selectedPair(): ReturnType<DataPeer["selectedPair"]> {
     return this.peer.selectedPair();
+  }
+  async openScreen(path: string, signal: AbortSignal): Promise<ScreenSocket> {
+    await this.ready;
+    signal.throwIfAborted();
+    if (this.failure) throw this.failure;
+    if (!this.screenSupported) throw new Error("node screen transport unavailable");
+    const id = globalThis.crypto.randomUUID();
+    const queue = inbox<ChannelFrame>();
+    const stream = createSocketSession(this.framing.send, this.bearer!, id);
+    const stop = () => {
+      try {
+        stream.socket.close();
+      } catch {
+        stream.end();
+      }
+      queue.end();
+    };
+    signal.addEventListener("abort", stop, { once: true });
+    this.pending.set(id, queue);
+    const ready = new Promise<void>((resolve, reject) => {
+      void (async () => {
+        try {
+          for await (const frame of queue.read()) {
+            if (frame.t === "socket-opened") resolve();
+            else if (
+              frame.t === "socket-data" ||
+              frame.t === "socket-ack" ||
+              frame.t === "socket-close"
+            ) {
+              stream.receive(frame);
+              if (frame.t === "socket-close") break;
+            } else throw new Error("invalid screen frame");
+          }
+          reject(new Error("screen socket closed"));
+        } catch {
+          reject(new Error("screen unavailable"));
+        } finally {
+          stream.end();
+          queue.end();
+          this.pending.delete(id);
+          signal.removeEventListener("abort", stop);
+        }
+      })();
+    });
+    try {
+      this.framing.send({ t: "socket-open", bearer: this.bearer!, id, path });
+      await ready;
+      return { ...stream.socket, close: stop };
+    } catch (error) {
+      stop();
+      throw error;
+    }
   }
   async renew(assertion: string, signal: AbortSignal): Promise<void> {
     await this.ready;
@@ -121,6 +176,7 @@ export class DataChannelClientTransport implements ClientTransport {
         if (!frame) continue;
         if (frame.t === "denied") throw new Error("denied");
         if (frame.t === "welcome" && !this.bearer) {
+          this.screenSupported = frame.screen === true;
           if (frame.fragmentation) this.framing.enable(frame.bearer);
           this.handshake.push(frame.bearer);
           continue;
@@ -131,7 +187,15 @@ export class DataChannelClientTransport implements ClientTransport {
         if (!queue) continue;
         if (frame.t === "error") queue.end(new Error(frame.message));
         else if (frame.t === "end") queue.end();
-        else if (frame.t === "response" || frame.t === "chunk" || frame.t === "renewed")
+        else if (
+          frame.t === "response" ||
+          frame.t === "chunk" ||
+          frame.t === "renewed" ||
+          frame.t === "socket-opened" ||
+          frame.t === "socket-data" ||
+          frame.t === "socket-ack" ||
+          frame.t === "socket-close"
+        )
           queue.push(frame);
         else throw new Error("invalid server frame");
       }

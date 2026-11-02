@@ -3,6 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import type { Bot, ComputerStatus, Routine } from "@rakazo/contracts";
 import { Maximize2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { ComputerScreenFrame } from "../../components/ComputerScreenFrame";
 import { ComputersUnavailableHint } from "../../components/ComputersUnavailableHint";
 import { screenIframeSandbox } from "../../lib/computer-screen";
 import { RoutineListHeader, RoutineListRow } from "../RoutineEditor";
@@ -80,7 +81,7 @@ export function ComputerPanel({
             className={`grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80 ${hideOnHover}`}
           />
         ) : computer?.state === "running" && embeddedScreenUrl && !computerScreenError ? (
-          <iframe
+          <ComputerScreenFrame
             key={screenFrameKey}
             title={t`Bot screen preview`}
             ref={screenFrameRef}

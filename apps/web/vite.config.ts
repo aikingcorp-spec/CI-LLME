@@ -523,6 +523,7 @@ export default defineConfig(({ command, mode }) => {
     build: {
       sourcemap: false,
       rolldownOptions: {
+        input: { app: path.resolve("index.html"), screen: path.resolve("p2p-screen.html") },
         output: {
           // Long-lived vendor chunks keep the entry small and stay cached across deploys.
           // Heavy, rarely used features (mermaid, cytoscape, katex, plots) are already

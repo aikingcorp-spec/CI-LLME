@@ -14,6 +14,7 @@ export {
 } from "./gateway-http-client.js";
 export type { DataPeer } from "./peer-core.js";
 export type { PairedNode } from "./protocol.js";
+export type { ScreenSocket } from "./socket-session.js";
 
 function channel(dc: RTCDataChannel): PeerChannel {
   dc.binaryType = "arraybuffer";

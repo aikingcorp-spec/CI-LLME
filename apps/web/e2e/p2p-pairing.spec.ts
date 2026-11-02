@@ -10,9 +10,11 @@ import {
   demoHandler,
 } from "../../../packages/p2p-prototype/src/node-channel-server";
 import { generateKeyPair } from "../../../packages/p2p-prototype/src/pairing";
+import { createScreenConnector } from "../../../packages/p2p-prototype/src/screen-connector";
 import { waitFor } from "../../../packages/p2p-prototype/src/test-util";
 import { captureScreenshot } from "./helpers";
 import { fetchLoopback, isLocalUrl, startConfiguredWeb } from "./p2p-network";
+import { startRfbFixture } from "./rfb-fixture";
 
 // Optional system Chromium for offline workstations; CI uses Playwright's installed browser.
 test.use({
@@ -32,6 +34,7 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
     "http://127.0.0.1:8787",
   );
   const auth = await startFakeAuthServer();
+  const screen = await startRfbFixture();
   const registry = new Map<string, NodeRecord>();
   const gateway = await startGateway({ port: 0, userVerifier: auth.verifier, registry });
   let agent: ReturnType<typeof startNodeAgent> | undefined;
@@ -157,6 +160,7 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
         return demo.call(...args);
       },
       subscribe: demo.subscribe,
+      openScreen: createScreenConnector(screen.origin),
     };
     const startAgent = () =>
       startNodeAgent({
@@ -191,6 +195,28 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
       return { status: response.status, exact: (await response.text()) === body };
     });
     expect(largeRpc).toEqual({ status: 200, exact: true });
+    await page.evaluate(async () => {
+      const entry = "/e2e/p2p-screen-fixture.tsx";
+      const { mountScreen } = await import(/* @vite-ignore */ entry);
+      mountScreen();
+    });
+    const canvas = page.frameLocator('iframe[title="P2P screen fixture"]').locator("canvas");
+    await expect
+      .poll(async () =>
+        canvas.evaluate((element) => {
+          const canvas = element as HTMLCanvasElement;
+          const pixel = canvas.getContext("2d")!.getImageData(0, 0, 1, 1).data;
+          return [canvas.width, canvas.height, pixel[0], pixel[1], pixel[2]];
+        }),
+      )
+      .toEqual([2, 2, 0, 255, 0]);
+    await captureScreenshot(page, testInfo, "p2p-screen-framebuffer");
+    await page.evaluate(async () => {
+      const entry = "/e2e/p2p-screen-fixture.tsx";
+      const { unmountScreen } = await import(/* @vite-ignore */ entry);
+      unmountScreen();
+    });
+
     expect(calls).toContain("bots/list");
     expect(hostedRpc).toEqual([]);
     expect(
@@ -224,6 +250,7 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
     await agent?.close();
     await gateway.close();
     await auth.close();
+    await screen.close();
     web.close();
   }
 });

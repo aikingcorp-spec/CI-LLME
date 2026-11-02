@@ -2,9 +2,14 @@
 export type ChannelFrame =
   | { t: "hello"; assertion: string; fragmentation?: true }
   | { t: "denied" }
-  | { t: "welcome"; bearer: string; fragmentation?: true }
+  | { t: "welcome"; bearer: string; fragmentation?: true; screen?: true }
   | { t: "renew"; bearer: string; id: string; assertion: string }
   | { t: "renewed"; bearer: string; id: string }
+  | { t: "socket-open"; bearer: string; id: string; path: string }
+  | { t: "socket-opened"; bearer: string; id: string }
+  | { t: "socket-close"; bearer: string; id: string }
+  | { t: "socket-data"; bearer: string; id: string; seq: number; data: string }
+  | { t: "socket-ack"; bearer: string; id: string; seq: number }
   | {
       t: "call" | "subscribe";
       bearer: string;
@@ -58,9 +63,27 @@ export function decodeChannelFrame(raw: string): ChannelFrame {
   if (v.t === "hello") return { t: v.t, assertion: str("assertion"), ...fragmentation };
   if (v.t === "denied") return { t: v.t };
   const bearer = str("bearer");
-  if (v.t === "welcome") return { t: v.t, bearer, ...fragmentation };
+  if (v.t === "welcome")
+    return {
+      t: v.t,
+      bearer,
+      ...fragmentation,
+      ...(v.screen === true ? { screen: true as const } : {}),
+    };
   const id = str("id");
   switch (v.t) {
+    case "socket-open":
+      return { t: v.t, bearer, id, path: str("path") };
+    case "socket-opened":
+    case "socket-close":
+      return { t: v.t, bearer, id };
+    case "socket-data":
+    case "socket-ack":
+      if (!Number.isSafeInteger(v.seq) || (v.seq as number) < 0)
+        throw new Error("invalid socket sequence");
+      return v.t === "socket-data"
+        ? { t: v.t, bearer, id, seq: v.seq as number, data: bytes("data") }
+        : { t: v.t, bearer, id, seq: v.seq as number };
     case "renew":
       return { t: v.t, bearer, id, assertion: str("assertion") };
     case "renewed":

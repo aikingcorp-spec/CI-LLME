@@ -1,5 +1,14 @@
 # Architecture changelog
 
+## 2026-11-02 — Computer screen over the authenticated P2P channel
+
+- Pull request: #38.
+- What changed versus baseline: the hosted viewer bundles noVNC and carries its capability-bound socket over authenticated WebRTC, with bounded buffers, acknowledgements and channel-scoped cleanup. Local screens keep their proxy embed.
+- Why: hosted RPC could connect while the screen iframe requested a deliberately unavailable hosted HTTP path.
+- Modules and files: shared P2P channel protocol, client/server and screen connector; desktop agent composition; web screen frame/viewer, build entries and computer hook; shared CSP and hosted app boundary.
+- Invariants affected: existing local capability/lease rechecks remain authoritative, screen traffic stays on the node channel, arbitrary socket targets are refused, and revocation closes screen sockets. No public VNC/RPC fallback, database or key changes.
+- ADR: [0011](adr/0011-p2p-computer-screen.md).
+
 ## 2026-11-02 — Fragment large authenticated channel frames
 
 - Pull request: #38.

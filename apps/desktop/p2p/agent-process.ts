@@ -2,6 +2,7 @@ import { cleanup } from "node-datachannel";
 import { fetchNodeTurnServers } from "../../../packages/p2p-prototype/src/gateway-client.js";
 import { startNodeAgent } from "../../../packages/p2p-prototype/src/node-agent.js";
 import { forwardChannelHandler } from "../../../packages/p2p-prototype/src/node-channel-server.js";
+import { createScreenConnector } from "../../../packages/p2p-prototype/src/screen-connector.js";
 import { desktopChannelHandler } from "../src/p2p-channel-handler.js";
 import { desktopIceServers } from "../src/p2p-node.js";
 
@@ -48,7 +49,10 @@ listen(async (message) => {
         channel: {
           gatewayPublicKey: m.key.gatewayPublicKey,
           allowedUsers: [m.key.user],
-          handler: desktopChannelHandler(m.webUrl, forwardChannelHandler(m.webUrl, m.localHeaders)),
+          handler: {
+            ...desktopChannelHandler(m.webUrl, forwardChannelHandler(m.webUrl, m.localHeaders)),
+            openScreen: createScreenConnector(m.webUrl, m.localHeaders),
+          },
         },
       });
       const current = agent;

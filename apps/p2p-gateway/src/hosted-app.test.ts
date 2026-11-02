@@ -22,6 +22,16 @@ describe("hosted app boundary", () => {
     expect(response.headers.get("content-security-policy")).toContain("wss://p2p.example.test");
     expect(response.headers.get("cache-control")).toBe("no-cache");
   });
+  it("embeds only the bundled screen viewer and denies its own network connections", async () => {
+    const response = await serveHostedApp(request("/p2p-screen.html"), env);
+    const policy = response.headers.get("content-security-policy");
+    expect(policy).toContain("frame-ancestors 'self'");
+    expect(policy).toContain("connect-src 'none'");
+    expect(policy).toContain("script-src 'self'");
+    expect(
+      (await serveHostedApp(request("/app"), env)).headers.get("content-security-policy"),
+    ).toContain("frame-ancestors 'none'");
+  });
   it.each([
     "/rpc/bots/list",
     "/api/voice/speak",

@@ -1,5 +1,6 @@
 import {
   appContentSecurityPolicy,
+  contentSecurityPolicyFor,
   p2pGatewayOrigin,
 } from "../../../packages/contracts/src/content-security-policy.js";
 
@@ -87,7 +88,10 @@ export async function serveHostedApp(request: Request, env: HostedAppEnv): Promi
   if (url.pathname.endsWith(".map")) return new Response(null, { status: 404 });
   const response = await env.ASSETS.fetch(request);
   const out = new Response(response.body, response);
-  out.headers.set("content-security-policy", appContentSecurityPolicy({ p2pGatewayUrl: gateway }));
+  out.headers.set(
+    "content-security-policy",
+    contentSecurityPolicyFor(url.pathname, appContentSecurityPolicy({ p2pGatewayUrl: gateway }))!,
+  );
   out.headers.set("x-content-type-options", "nosniff");
   out.headers.set("referrer-policy", "same-origin");
   if (out.headers.get("content-type")?.includes("text/html"))

@@ -15,6 +15,11 @@ const frames: ChannelFrame[] = [
   { t: "welcome", bearer: "node-only" },
   { t: "welcome", bearer: "node-only", fragmentation: true },
   { t: "denied" },
+  { t: "socket-open", ...credentials, path: "/novnc/session/view/fixture/websockify" },
+  { t: "socket-opened", ...credentials },
+  { t: "socket-close", ...credentials },
+  { t: "socket-data", ...credentials, seq: 0, data: "AP8=" },
+  { t: "socket-ack", ...credentials, seq: 0 },
   { t: "call", ...request },
   { t: "subscribe", ...request },
   { t: "response", ...request, status: 200 },
@@ -38,6 +43,8 @@ describe("channel protocol", () => {
     expect(decodeBytes(encodeBytes(bytes))).toEqual(bytes);
   });
   it.each([
+    JSON.stringify({ t: "socket-ack", ...credentials, seq: -1 }),
+    JSON.stringify({ t: "socket-data", ...credentials, seq: 0, data: "bad-base64" }),
     "null",
     "[]",
     "broken",

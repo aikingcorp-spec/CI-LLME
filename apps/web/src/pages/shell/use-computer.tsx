@@ -32,6 +32,7 @@ import {
   screenFrameMessage,
   screenFrameStarted,
 } from "../../lib/computer-screen";
+import { activeP2PClient } from "../../lib/p2p-client";
 import type { Panel } from "../../lib/right-panel-state";
 import type { createSpaceRpc } from "../../lib/rpc";
 import {
@@ -114,7 +115,7 @@ export function useComputerState({
     if (!isProxiedScreenUrl(url)) return;
     let cancelled = false;
     const fallback = t`Could not connect to the computer screen`;
-    void probeScreen(url, fallback).then((error) => {
+    void (activeP2PClient() ? Promise.resolve(null) : probeScreen(url, fallback)).then((error) => {
       if (!cancelled && error && !screenFrameReported.current) setScreenLoadError(error);
     });
     const timer = setTimeout(() => {
@@ -150,7 +151,9 @@ export function useComputerState({
           // Wait out an API that can't be reached, so the one reconnect isn't spent on it.
           void waitForScreenPage(
             async (signal) =>
-              isProxiedScreenUrl(url) ? probeScreenStatus(screenProbeUrl(url), fetch, signal) : 200,
+              isProxiedScreenUrl(url) && !activeP2PClient()
+                ? probeScreenStatus(screenProbeUrl(url), fetch, signal)
+                : 200,
             { signal: stopped.signal },
           ).then((outcome) => {
             if (outcome === "cancelled") return;

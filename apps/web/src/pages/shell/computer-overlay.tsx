@@ -11,6 +11,7 @@ import { BotAvatar, Button } from "@rakazo/ui-web";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { ComputerMaintenanceActions } from "../../components/ComputerMaintenanceActions";
+import { ComputerScreenFrame } from "../../components/ComputerScreenFrame";
 import { TeachCaptureOverlay } from "../../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../../components/teach/TeachRecordingChrome";
@@ -194,7 +195,7 @@ export function ComputerOverlay({
             <DesktopKindEmptyState className="grid h-full place-items-center px-8 text-center text-sm text-muted-foreground/80" />
           ) : computer?.state === "running" && embeddedScreenUrl && !computerScreenError ? (
             <>
-              <iframe
+              <ComputerScreenFrame
                 key={screenFrameKey}
                 title={t`Bot screen`}
                 ref={screenFrameRef}

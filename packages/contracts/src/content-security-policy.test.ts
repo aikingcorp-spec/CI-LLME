@@ -22,6 +22,12 @@ function directives(policy: string) {
 describe("app content security policy", () => {
   const policy = directives(APP_CONTENT_SECURITY_POLICY);
 
+  it("allows only the app to frame its bundled P2P viewer with no network access", () => {
+    const screen = directives(contentSecurityPolicyFor("/p2p-screen.html")!);
+    expect(screen.get("frame-ancestors")).toEqual(["'self'"]);
+    expect(screen.get("connect-src")).toEqual(["'none'"]);
+    expect(screen.get("script-src")).toEqual(["'self'"]);
+  });
   it("runs only same-origin script files", () => {
     expect(policy.get("script-src")).toEqual(["'self'"]);
     expect(policy.get("default-src")).toEqual(["'self'"]);

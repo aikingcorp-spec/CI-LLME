@@ -1,6 +1,6 @@
 import { MeSchema } from "@rakazo/contracts";
 import { p2pGatewayOrigin } from "@rakazo/contracts/content-security-policy";
-import type { PairedNode } from "@rakazo/p2p-prototype/browser";
+import type { PairedNode, ScreenSocket } from "@rakazo/p2p-prototype/browser";
 import {
   connectBrowserPeer,
   DataChannelClientTransport,
@@ -296,6 +296,11 @@ export class WebP2PClient {
   };
 
   /** Never fall back to the gateway's /rpc after selecting a remote node. */
+  async openScreen(path: string, signal: AbortSignal): Promise<ScreenSocket> {
+    if (!this.transport || this.getSnapshot().state !== "connected")
+      throw new Error("Node disconnected");
+    return this.transport.openScreen(path, signal);
+  }
   async fetch(request: Request, signal: AbortSignal): Promise<Response> {
     const transport = this.transport;
     if (!transport || this.snapshot.state !== "connected") throw new Error("P2P disconnected");

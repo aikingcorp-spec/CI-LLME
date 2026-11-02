@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { once } from "node:events";
+import type { AddressInfo } from "node:net";
 import { cleanup } from "node-datachannel";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { WebSocketServer } from "ws";
 import { decodeChannelFrame } from "./channel-protocol.js";
-import type { ClientCall, ClientTransport } from "./client-transport.js";
+import type { ClientCall } from "./client-transport.js";
 import { DataChannelClientTransport } from "./client-transport.js";
 import { startFakeAuthServer } from "./fake-auth-server.js";
 import type { Gateway } from "./gateway.js";
@@ -12,6 +15,7 @@ import type { NodeAgent } from "./node-agent.js";
 import { startNodeAgent } from "./node-agent.js";
 import { channelHttpHandler, demoHandler } from "./node-channel-server.js";
 import { generateKeyPair, signAssertion } from "./pairing.js";
+import { createScreenConnector } from "./screen-connector.js";
 import { waitFor } from "./test-util.js";
 import type { DataPeer } from "./webrtc-peer.js";
 import { connectPeer } from "./webrtc-peer.js";
@@ -57,6 +61,7 @@ describe("ClientTransport over a real gateway and node agent", () => {
   let gateway: Gateway;
   let agent: NodeAgent;
   let activeSubscriptions = 0;
+  let screenServer: WebSocketServer;
   const peers: DataPeer[] = [];
   const clients: DataChannelClientTransport[] = [];
   beforeEach(async () => {
@@ -68,9 +73,15 @@ describe("ClientTransport over a real gateway and node agent", () => {
     });
     const { code } = await startPairing(gateway.url, "token");
     await completePairing(gateway.url, code, "node", keyPair);
+    screenServer = new WebSocketServer({ host: "127.0.0.1", port: 0 });
+    await once(screenServer, "listening");
+    screenServer.on("connection", (socket) => socket.on("message", (data) => socket.send(data)));
     const demo = demoHandler();
     const handler = {
       call: demo.call,
+      openScreen: createScreenConnector(
+        `http://127.0.0.1:${(screenServer.address() as AddressInfo).port}`,
+      ),
       async *subscribe(...args: Parameters<typeof demo.subscribe>) {
         activeSubscriptions++;
         try {
@@ -95,6 +106,8 @@ describe("ClientTransport over a real gateway and node agent", () => {
     for (const peer of peers.splice(0)) peer.close();
     await agent.close();
     await gateway.close();
+    for (const socket of screenServer.clients) socket.terminate();
+    await new Promise<void>((resolve) => screenServer.close(() => resolve()));
     vi.restoreAllMocks();
   });
   afterAll(() => cleanup());
@@ -112,7 +125,7 @@ describe("ClientTransport over a real gateway and node agent", () => {
     await peer.open;
     return { peer, session };
   }
-  async function transport(): Promise<ClientTransport> {
+  async function transport(): Promise<DataChannelClientTransport> {
     const { peer, session } = await peerConnection();
     const client = new DataChannelClientTransport(peer, session.assertion);
     clients.push(client);
@@ -120,6 +133,35 @@ describe("ClientTransport over a real gateway and node agent", () => {
     expect(client.selectedPair()).not.toBeNull();
     return client;
   }
+  it("carries a bounded duplex screen socket and closes it on channel revocation", async () => {
+    const client = await transport();
+    const socket = await client.openScreen(
+      "/novnc/session/view/1234567890000.fixturefixturefixture/websockify",
+      AbortSignal.timeout(10000),
+    );
+    const input = socket.read[Symbol.asyncIterator]();
+    const bytes = new Uint8Array(50000).fill(42);
+    const writing = socket.write(bytes);
+    let received = 0;
+    while (received < bytes.length) {
+      const next = await input.next();
+      if (next.done) throw new Error("screen ended early");
+      expect(next.value.every((n) => n === 42)).toBe(true);
+      received += next.value.length;
+    }
+    const end = input.next();
+    await writing;
+    expect(received).toBe(bytes.length);
+    expect((await client.call(request())).status).toBe(200);
+    agent.auth!.revokeUser("user");
+    expect((await end).done).toBe(true);
+    await waitFor(() => screenServer.clients.size === 0);
+  });
+  it("rejects arbitrary local socket paths without breaking RPC", async () => {
+    const client = await transport();
+    await expect(client.openScreen("/rpc/me", AbortSignal.timeout(5000))).rejects.toThrow();
+    expect((await client.call(request())).status).toBe(200);
+  });
   it("echo round-trip preserves bytes and headers", async () => {
     const client = await transport();
     const req = request();

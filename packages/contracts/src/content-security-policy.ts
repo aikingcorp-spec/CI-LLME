@@ -9,6 +9,7 @@ import { isLoopbackHost } from "@rakazo/contracts/network-host";
 /** Static shell for SandboxedHtmlViewer. It must load from the network so it does not inherit the
  * app policy the way a srcdoc frame would; its own meta CSP governs it and its nested preview. */
 export const HTML_VIEWER_PATH = "/html-viewer.html";
+export const P2P_SCREEN_PATH = "/p2p-screen.html";
 
 /** Same-origin endpoint browsers send violation reports to, so a blocked resource is not silent. */
 export const CSP_REPORT_PATH = "/api/csp-report";
@@ -178,5 +179,16 @@ export function contentSecurityPolicyFor(
   )
     return null;
   if (pathname === HTML_VIEWER_PATH) return HTML_VIEWER_CONTENT_SECURITY_POLICY;
+  if (pathname === P2P_SCREEN_PATH)
+    return serialize({
+      "default-src": ["'none'"],
+      "script-src": ["'self'"],
+      "style-src": ["'self'", "'unsafe-inline'"],
+      "img-src": ["'self'", "data:", "blob:"],
+      "connect-src": ["'none'"],
+      "frame-ancestors": ["'self'"],
+      "base-uri": ["'none'"],
+      "form-action": ["'none'"],
+    });
   return appPolicy;
 }

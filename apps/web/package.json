@@ -18,6 +18,7 @@
     "@better-auth/passkey": "1.7.12",
     "@lingui/core": "6.6.0",
     "@lingui/react": "6.6.0",
+    "@novnc/novnc": "1.7.0",
     "@orpc/client": "1.15.7",
     "@orpc/contract": "1.15.7",
     "@orpc/tanstack-query": "1.15.7",

@@ -5,9 +5,12 @@ import { decodeBytes, encodeBytes } from "./channel-protocol.js";
 import type { ClientResponse } from "./client-transport.js";
 import type { LocalHandler } from "./node-agent.js";
 import type { NodeAuth, NodeSession } from "./node-auth.js";
+import type { ScreenSocket } from "./socket-session.js";
+import { createSocketSession } from "./socket-session.js";
 import type { DataPeer } from "./webrtc-peer.js";
 
 export interface NodeChannelHandler {
+  openScreen?(path: string, signal: AbortSignal): Promise<ScreenSocket>;
   call(
     procedure: string,
     headers: Record<string, string>,
@@ -31,14 +34,45 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
     async accept(peer: DataPeer, onAuthenticated?: () => void): Promise<void> {
       let session: NodeSession | undefined;
       const active = new Map<string, AbortController>();
+      const sockets = new Map<string, ReturnType<typeof createSocketSession>>();
       let closing: Promise<void> | undefined;
       const close = (): Promise<void> => {
         for (const controller of active.values()) controller.abort();
+        for (const socket of sockets.values()) socket.end();
         closing ??= peer.closeGracefully();
         return closing;
       };
       const framing = createChannelFraming((raw) => peer.send(raw));
       const send = framing.send;
+      const openScreen = async (
+        frame: Extract<ChannelFrame, { t: "socket-open" }>,
+        controller: AbortController,
+      ) => {
+        const stream = createSocketSession(send, frame.bearer, frame.id);
+        sockets.set(frame.id, stream);
+        let upstream: ScreenSocket | undefined;
+        try {
+          if (!handler.openScreen) throw new Error("screen unavailable");
+          upstream = await handler.openScreen(frame.path, controller.signal);
+          if (controller.signal.aborted) return;
+          send({ t: "socket-opened", bearer: frame.bearer, id: frame.id });
+          const source = upstream;
+          await Promise.race([
+            (async () => {
+              for await (const data of source.read) await stream.socket.write(data);
+            })(),
+            (async () => {
+              for await (const data of stream.socket.read) await source.write(data);
+            })(),
+          ]);
+        } finally {
+          controller.abort();
+          upstream?.close();
+          sockets.delete(frame.id);
+          active.delete(frame.id);
+          stream.socket.close();
+        }
+      };
       const dispatch = async (
         frame: Extract<ChannelFrame, { t: "call" | "subscribe" }>,
         bearer: string,
@@ -96,6 +130,7 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
               t: "welcome",
               bearer: session.bearer,
               ...(fragmentation ? { fragmentation: true } : {}),
+              ...(handler.openScreen ? { screen: true } : {}),
             });
             if (fragmentation) framing.enable(session.bearer);
             continue;
@@ -106,7 +141,41 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
             !auth.checkBearer(frame.bearer)
           )
             break;
-          if (frame.t === "renew") {
+          if (frame.t === "socket-open") {
+            if (active.has(frame.id)) break;
+            if (sockets.size >= 2) {
+              send({
+                t: "error",
+                bearer: frame.bearer,
+                id: frame.id,
+                message: "screen limit reached",
+              });
+              continue;
+            }
+            const controller = new AbortController();
+            active.set(frame.id, controller);
+            void openScreen(frame, controller).catch(() => {
+              try {
+                send({
+                  t: "error",
+                  bearer: frame.bearer,
+                  id: frame.id,
+                  message: "screen unavailable",
+                });
+              } catch {
+                void close().catch(() => {});
+              }
+            });
+          } else if (
+            frame.t === "socket-data" ||
+            frame.t === "socket-ack" ||
+            frame.t === "socket-close"
+          ) {
+            const socket = sockets.get(frame.id);
+            if (!socket) continue;
+            socket.receive(frame);
+            if (frame.t === "socket-close") active.get(frame.id)?.abort();
+          } else if (frame.t === "renew") {
             if (!auth.renewBearer(session.bearer, frame.assertion)) {
               send({ t: "denied" });
               break;
