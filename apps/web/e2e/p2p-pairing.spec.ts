@@ -180,6 +180,17 @@ test("Vietnamese pairing at 360px connects to a local prototype node and carries
       return rpc.bots.list();
     });
     expect(bots).toEqual([]);
+    const largeRpc = await page.evaluate(async () => {
+      const entry = "/src/lib/p2p-client.ts";
+      const { webP2PClient } = await import(/* @vite-ignore */ entry);
+      const body = "Tin nhắn 🌴".repeat(30000);
+      const response = await webP2PClient().fetch(
+        new Request(`${location.origin}/rpc/echo`, { method: "POST", body }),
+        AbortSignal.timeout(15000),
+      );
+      return { status: response.status, exact: (await response.text()) === body };
+    });
+    expect(largeRpc).toEqual({ status: 200, exact: true });
     expect(calls).toContain("bots/list");
     expect(hostedRpc).toEqual([]);
     expect(
