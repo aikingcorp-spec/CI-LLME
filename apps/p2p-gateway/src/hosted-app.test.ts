@@ -75,6 +75,28 @@ describe("hosted app boundary", () => {
       ).status,
     ).toBe(403);
   });
+  it("uses the configured edge credential instead of any client-supplied header", async () => {
+    const upstream = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", upstream);
+    const response = await serveHostedApp(
+      request("/api/auth/get-session", { headers: { "x-vnbot-edge": "untrusted-client" } }),
+      { ...env, AUTH_EDGE_SECRET: "configured-test-secret" },
+    );
+    const [, init] = upstream.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(new Headers(init.headers).get("x-vnbot-edge")).toBe("configured-test-secret");
+    expect(await response.text()).not.toContain("configured-test-secret");
+    expect(response.headers.has("x-vnbot-edge")).toBe(false);
+  });
+  it("does not forward a client edge credential when none is configured", async () => {
+    const upstream = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", upstream);
+    await serveHostedApp(
+      request("/api/auth/get-session", { headers: { "x-vnbot-edge": "untrusted-client" } }),
+      env,
+    );
+    const [, init] = upstream.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(new Headers(init.headers).has("x-vnbot-edge")).toBe(false);
+  });
   it("fails closed without a separate HTTPS account service", async () => {
     expect(
       (

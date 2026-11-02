@@ -7,6 +7,8 @@ interface HostedAppEnv {
   ASSETS: Fetcher;
   /** Existing account service. Must trust the public app origin and issue host-only cookies. */
   AUTH_ORIGIN: string;
+  /** Optional secret for an account origin restricted by an edge firewall. */
+  AUTH_EDGE_SECRET?: string;
   P2P_GATEWAY_URL: string;
 }
 const AUTH_PATHS = new Set([
@@ -67,6 +69,7 @@ export async function serveHostedApp(request: Request, env: HostedAppEnv): Promi
     }
     // The account deployment must configure its public auth URL as the hosted app origin.
     headers.set("origin", url.origin);
+    if (env.AUTH_EDGE_SECRET) headers.set("x-vnbot-edge", env.AUTH_EDGE_SECRET);
     const response = await fetch(upstream, {
       method: request.method,
       headers,

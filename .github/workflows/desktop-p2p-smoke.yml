@@ -10,8 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          repository: aikingcorp-spec/vnbot
-          ref: 13d9a86e80e459599cc4c5cbf2a4e0aed293f945
           persist-credentials: false
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4

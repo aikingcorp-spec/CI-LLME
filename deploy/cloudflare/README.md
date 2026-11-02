@@ -64,6 +64,9 @@ is unchanged; it does not publish the application.
 3. Set app Worker `AUTH_ORIGIN` to the existing HTTPS account service origin and
    `P2P_GATEWAY_URL` to that same gateway origin used at build time. These are public settings,
    not credentials. The proxy refuses a self-referential or non-HTTPS account origin.
+   When that origin requires an edge firewall credential, bind `AUTH_EDGE_SECRET` as a
+   Worker secret matching the firewall's `x-vnbot-edge` requirement. The proxy injects it
+   only for allowed account endpoints; it never forwards the browser's copy of that header.
 4. From `deploy/cloudflare/app`, run `wrangler deploy --dry-run`, inspect its bindings and assets,
    then deploy only the app Worker after the account and gateway prerequisites are verified.
    Do not run the landing deploy for this change.
