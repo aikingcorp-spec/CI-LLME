@@ -5,7 +5,11 @@ permissions:
   contents: read
 jobs:
   protected-account:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
@@ -17,12 +21,15 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Gateway type check
-        run: pnpm --filter @rakazo/p2p-gateway check
+      - run: pnpm db:generate
+      - name: Scoped type checks
+        run: pnpm --filter @rakazo/desktop check && pnpm --filter @rakazo/web check && pnpm --filter @rakazo/p2p-gateway check
       - name: Account proxy and gateway regression tests
-        run: pnpm exec vitest run apps/p2p-gateway/src --maxWorkers=4
+        run: pnpm exec vitest run apps/desktop/src apps/p2p-gateway/src apps/web/src/lib/p2p-client.test.ts apps/web/src/lib/p2p-locales.test.ts apps/web/src/pages/Auth.test.tsx apps/web/src/pages/Pairing.test.tsx packages/p2p-prototype/src --maxWorkers=4
       - name: Check changed TypeScript
-        run: pnpm exec biome check apps/p2p-gateway/src/hosted-app.ts apps/p2p-gateway/src/hosted-app.test.ts
+        run: pnpm exec biome check apps/web/src/lib/p2p-client.ts apps/web/src/lib/p2p-client.test.ts packages/p2p-prototype/src/node-auth.ts packages/p2p-prototype/src/node-auth.test.ts packages/p2p-prototype/src/channel-protocol.ts packages/p2p-prototype/src/node-channel-server.ts packages/p2p-prototype/src/data-channel-client.ts packages/p2p-prototype/src/client-transport.test.ts
+      - name: Build isolated desktop agent
+        run: node apps/desktop/scripts/build-p2p-agent.mjs
       - name: Build real web application
         env:
           VITE_P2P_GATEWAY_URL: https://p2p.vnbot.run
@@ -32,8 +39,9 @@ jobs:
         run: pnpm exec wrangler deploy --config ../../deploy/cloudflare/app/wrangler.toml --dry-run --outdir ../../.out/app-worker --var AUTH_ORIGIN:https://accounts.example.test --var P2P_GATEWAY_URL:https://p2p.vnbot.run
       - uses: actions/upload-artifact@v4
         with:
-          name: protected-account-build
+          name: p2p-renewal-build-${{ matrix.os }}
           path: |
             .out/app-worker
             apps/web/dist
+            apps/desktop/dist/p2p-agent.js
           retention-days: 7

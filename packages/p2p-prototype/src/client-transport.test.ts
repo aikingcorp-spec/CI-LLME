@@ -129,6 +129,31 @@ describe("ClientTransport over a real gateway and node agent", () => {
     expect(response.headers["content-type"]).toBe("text/plain");
     expect(response.body).toEqual(req.body);
   });
+  it("renews a live channel while a subscription crosses its original expiry", async () => {
+    const { peer, session } = await peerConnection();
+    const initialExpiry = Date.now() + 4000;
+    const identity = { nodeId: "node", user: "user", peerId: session.peerId };
+    const client = new DataChannelClientTransport(
+      peer,
+      signAssertion(gatewayKey, { ...identity, exp: initialExpiry }),
+    );
+    clients.push(client);
+    await client.ready;
+    const stream = client
+      .subscribe(request("ticks", JSON.stringify({ count: 50, intervalMs: 100 })))
+      [Symbol.asyncIterator]();
+    expect(decode((await stream.next()).value!)).toBe("data: tick 0\n\n");
+    await client.renew(
+      signAssertion(gatewayKey, { ...identity, exp: Date.now() + 10_000 }),
+      AbortSignal.timeout(2000),
+    );
+    const chunks: string[] = [];
+    for await (const chunk of { [Symbol.asyncIterator]: () => stream }) chunks.push(decode(chunk));
+    expect(Date.now()).toBeGreaterThan(initialExpiry);
+    expect(chunks).toHaveLength(49);
+    expect(chunks.at(-1)).toBe("data: tick 49\n\n");
+    expect(decode((await client.call(request())).body)).toBe("hello");
+  }, 15_000);
   it("subscription yields ordered event-stream bytes", async () => {
     const client = await transport();
     const chunks: string[] = [];

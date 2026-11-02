@@ -61,6 +61,7 @@ function peer(denied = false, identity: unknown = { userId: "node-user" }): Data
           headers: { "content-type": "application/json" },
           body: frame.procedure === "me" ? btoa(JSON.stringify({ json: identity })) : frame.body,
         });
+      if (frame.t === "renew") push({ t: "renewed", bearer: frame.bearer, id: frame.id });
       if (frame.t === "subscribe")
         push({ t: "chunk", bearer: frame.bearer, id: frame.id, data: btoa("data: hello\n\n") });
     },
@@ -121,6 +122,34 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.useRealTimers();
+});
+it("renews access across successive assertion expiries without replacing the connected transport", async () => {
+  vi.useFakeTimers();
+  await client.connect("node-1");
+  const originalClose = close;
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(sent.map((raw) => JSON.parse(raw)).filter((frame) => frame.t === "renew")).toHaveLength(2);
+  expect(connectBrowserPeer).toHaveBeenCalledTimes(1);
+  expect(originalClose).not.toHaveBeenCalled();
+  expect(client.getSnapshot().state).toBe("connected");
+  expect(client.getNodeUserId()).toBe("node-user");
+});
+it("closes access when the account cannot authorize renewal", async () => {
+  vi.useFakeTimers();
+  await client.connect("node-1");
+  request.mockResolvedValueOnce(new Response(null, { status: 401 }));
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(sessionSignal).toHaveBeenCalled();
+  expect(close).toHaveBeenCalled();
+  expect(sent.map((raw) => JSON.parse(raw)).some((frame) => frame.t === "renew")).toBe(false);
+});
+it("cancels scheduled renewal after disconnect", async () => {
+  vi.useFakeTimers();
+  await client.connect("node-1");
+  const count = request.mock.calls.length;
+  client.disconnect();
+  await vi.advanceTimersByTimeAsync(120_000);
+  expect(request).toHaveBeenCalledTimes(count);
 });
 it("uses a secure configured origin and defaults to STUN only", () => {
   expect(p2pConfig({ VITE_P2P_GATEWAY_URL: config.gatewayUrl })).toEqual({

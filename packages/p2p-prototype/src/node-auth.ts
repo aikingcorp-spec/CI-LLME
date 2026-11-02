@@ -6,6 +6,7 @@ import type { NodeId } from "./protocol.js";
 export interface NodeSession {
   bearer: string;
   user: string;
+  peerId: string;
   /** Epoch milliseconds; equals the assertion's expiry. */
   expiresAt: number;
 }
@@ -26,6 +27,8 @@ export interface NodeAuth {
   /** Verifies an assertion and, if it is for this node and an allowed user, mints a bearer for the channel. */
   acceptAssertion(token: string): NodeSession | undefined;
   checkBearer(bearer: string): NodeSession | undefined;
+  /** Extends a live channel only with a fresh assertion for its same user, peer and node. */
+  renewBearer(bearer: string, assertion: string): NodeSession | undefined;
   /** Blocks the user and revokes their bearers. Returns how many sessions were revoked. */
   revokeUser(user: string): number;
   revokeBearer(bearer: string): boolean;
@@ -53,6 +56,13 @@ export function createNodeAuth(o: NodeAuthOptions): NodeAuth {
     for (const [bearer, session] of sessions) if (session.expiresAt <= clock()) revoke(bearer);
   };
 
+  const scheduleExpiry = (session: NodeSession): void => {
+    clearTimeout(timers.get(session.bearer));
+    const timer = setTimeout(() => revoke(session.bearer), session.expiresAt - clock());
+    timer.unref();
+    timers.set(session.bearer, timer);
+  };
+
   return {
     authorization: () => nodeAuthorization(o.keyPair, o.nodeId, clock()),
     acceptAssertion(token) {
@@ -64,18 +74,36 @@ export function createNodeAuth(o: NodeAuthOptions): NodeAuth {
       const session = {
         bearer: randomBytes(BEARER_BYTES).toString("base64url"),
         user: claims.user,
+        peerId: claims.peerId,
         expiresAt: claims.exp,
       };
       sessions.set(session.bearer, session);
-      const timer = setTimeout(() => revoke(session.bearer), session.expiresAt - clock());
-      timer.unref();
-      timers.set(session.bearer, timer);
+      scheduleExpiry(session);
       return { ...session };
     },
     checkBearer(bearer) {
       purgeExpired();
       const session = sessions.get(bearer);
       return session && { ...session };
+    },
+    renewBearer(bearer, assertion) {
+      purgeExpired();
+      const session = sessions.get(bearer);
+      const claims = verifyAssertion(o.gatewayPublicKey, assertion, clock());
+      if (
+        !session ||
+        !claims ||
+        !allowed.has(session.user) ||
+        claims.nodeId !== o.nodeId ||
+        claims.user !== session.user ||
+        claims.peerId !== session.peerId ||
+        claims.exp <= session.expiresAt
+      )
+        return undefined;
+      const renewed = { ...session, expiresAt: claims.exp };
+      sessions.set(bearer, renewed);
+      scheduleExpiry(renewed);
+      return { ...renewed };
     },
     revokeUser(user) {
       allowed.delete(user);

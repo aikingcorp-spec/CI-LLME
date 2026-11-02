@@ -8,6 +8,8 @@ Registration requires both the application signer's token and a machine signatur
 
 The data-channel handshake still verifies the gateway assertion, owner, node, expiry and bearer. The local HTTP adapter discards remote credentials and injects the node's local session inside the isolated agent process. Only canonical RPC procedure names and selected RPC headers pass. The gateway never sees the local cookie or product data. Gateway revocation closes the agent link, which closes its data channels. No HTTP product fallback is introduced.
 
+The browser renews its channel lease before expiry by obtaining a fresh account-authorized gateway assertion and sending it over the existing data channel. The node requires the same node, user and peer, a later expiry and its pinned gateway signature. The existing bearer and active subscriptions remain unchanged. Failed renewal closes access; an expired or revoked bearer cannot be renewed. Deploy a compatible node agent before the renewing web client.
+
 The agent names its node in the WebSocket query so the hosted Worker can select its Durable Object before accepting the signed hello. This routing value grants no access; the room still verifies the machine's signature. Local Workers runtime acceptance verifies registration, online/offline discovery, native RTC and revocation with the shipped D1 migrations and Durable Object implementation.
 
 Native host-computer listeners bind loopback. Docker mode explicitly retains host-gateway networking and its existing secret/consent checks. Linux and Windows use the same enrollment protocol, native process boundary and user-data storage. Windows execution must be verified in its CI runner; Linux tests alone cannot certify it.

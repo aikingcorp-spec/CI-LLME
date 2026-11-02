@@ -96,7 +96,13 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
             !auth.checkBearer(frame.bearer)
           )
             break;
-          if (frame.t === "cancel") active.get(frame.id)?.abort();
+          if (frame.t === "renew") {
+            if (!auth.renewBearer(session.bearer, frame.assertion)) {
+              send({ t: "denied" });
+              break;
+            }
+            send({ t: "renewed", bearer: session.bearer, id: frame.id });
+          } else if (frame.t === "cancel") active.get(frame.id)?.abort();
           else if (frame.t === "call" || frame.t === "subscribe") {
             if (active.has(frame.id)) break;
             const controller = new AbortController();

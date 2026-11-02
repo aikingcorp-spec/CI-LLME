@@ -1,5 +1,14 @@
 # Architecture changelog
 
+## 2026-11-02 — Renew remote channel authorization in place
+
+- Pull request: #38.
+- What changed versus baseline: the hosted client obtains fresh account-authorized gateway assertions before its channel lease expires, and the node renews the existing bearer after checking the pinned gateway signature and the same node, user and peer identity. Calls and subscriptions keep their existing channel.
+- Why: a connected application otherwise loses access when its initial short-lived assertion expires.
+- Modules and files: `apps/web/src/lib/p2p-client.ts`; `packages/p2p-prototype/src/{node-auth,channel-protocol,node-channel-server,data-channel-client}.ts` and regression tests.
+- Invariants affected: lease duration is unchanged; expired or revoked channels cannot be revived; replayed, foreign-identity and untrusted assertions cannot extend access. Renewal failure closes the transport. No HTTP product fallback.
+- ADR: [0010](adr/0010-desktop-account-enrollment.md).
+
 ## 2026-11-01 — Server image packages the P2P workspace packages
 
 - Date: 2026-11-01.

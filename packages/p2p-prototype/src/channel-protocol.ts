@@ -3,6 +3,8 @@ export type ChannelFrame =
   | { t: "hello"; assertion: string }
   | { t: "denied" }
   | { t: "welcome"; bearer: string }
+  | { t: "renew"; bearer: string; id: string; assertion: string }
+  | { t: "renewed"; bearer: string; id: string }
   | {
       t: "call" | "subscribe";
       bearer: string;
@@ -58,6 +60,10 @@ export function decodeChannelFrame(raw: string): ChannelFrame {
   if (v.t === "welcome") return { t: v.t, bearer };
   const id = str("id");
   switch (v.t) {
+    case "renew":
+      return { t: v.t, bearer, id, assertion: str("assertion") };
+    case "renewed":
+      return { t: v.t, bearer, id };
     case "call":
     case "subscribe":
       return {

@@ -80,6 +80,27 @@ export class DataChannelClientTransport implements ClientTransport {
   selectedPair(): ReturnType<DataPeer["selectedPair"]> {
     return this.peer.selectedPair();
   }
+  async renew(assertion: string, signal: AbortSignal): Promise<void> {
+    await this.ready;
+    signal.throwIfAborted();
+    if (this.failure) throw this.failure;
+    const id = globalThis.crypto.randomUUID();
+    const queue = inbox<ChannelFrame>();
+    const abort = () => queue.end(signal.reason ?? new Error("aborted"));
+    signal.addEventListener("abort", abort, { once: true });
+    this.pending.set(id, queue);
+    try {
+      this.peer.send(JSON.stringify({ t: "renew", id, bearer: this.bearer, assertion }));
+      for await (const frame of queue.read()) {
+        if (frame.t !== "renewed") throw new Error("expected renewal acknowledgement");
+        return;
+      }
+      throw new Error("missing renewal acknowledgement");
+    } finally {
+      signal.removeEventListener("abort", abort);
+      this.pending.delete(id);
+    }
+  }
   close(): void {
     this.fail(new Error("channel closed"));
     this.peer.close();
@@ -104,7 +125,8 @@ export class DataChannelClientTransport implements ClientTransport {
         if (!queue) continue;
         if (frame.t === "error") queue.end(new Error(frame.message));
         else if (frame.t === "end") queue.end();
-        else if (frame.t === "response" || frame.t === "chunk") queue.push(frame);
+        else if (frame.t === "response" || frame.t === "chunk" || frame.t === "renewed")
+          queue.push(frame);
         else throw new Error("invalid server frame");
       }
       this.fail(

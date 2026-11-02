@@ -66,6 +66,80 @@ describe("node authentication", () => {
     expect(onRevoke).toHaveBeenCalledExactlyOnceWith(session);
     expect(auth.checkBearer(session?.bearer ?? "")).toBeUndefined();
   });
+  it("renews the same bearer without the previous expiry closing its channel", () => {
+    const { auth, token, exp, onRevoke } = fixture();
+    const session = auth.acceptAssertion(token)!;
+    vi.advanceTimersByTime(30_000);
+    const assertion = signAssertion(gatewayKey, {
+      nodeId: "node",
+      peerId: "peer",
+      user: "user",
+      exp: exp + 30_000,
+    });
+    expect(auth.renewBearer(session.bearer, assertion)).toEqual({
+      ...session,
+      expiresAt: exp + 30_000,
+    });
+    vi.advanceTimersByTime(30_000);
+    expect(auth.checkBearer(session.bearer)).toBeDefined();
+    expect(onRevoke).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(30_000);
+    expect(auth.checkBearer(session.bearer)).toBeUndefined();
+    expect(onRevoke).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    { nodeId: "other", peerId: "peer", user: "user" },
+    { nodeId: "node", peerId: "other", user: "user" },
+    { nodeId: "node", peerId: "peer", user: "other" },
+  ])("rejects renewal across an identity boundary: %j", (identity) => {
+    const { auth, token, exp, onRevoke } = fixture();
+    const session = auth.acceptAssertion(token)!;
+    expect(
+      auth.renewBearer(
+        session.bearer,
+        signAssertion(gatewayKey, { ...identity, exp: exp + 30_000 }),
+      ),
+    ).toBeUndefined();
+    expect(auth.checkBearer(session.bearer)).toEqual(session);
+    vi.advanceTimersByTime(60_000);
+    expect(onRevoke).toHaveBeenCalledTimes(1);
+  });
+  it("rejects replayed, tampered and untrusted renewals without extending access", () => {
+    const { auth, token, exp } = fixture();
+    const session = auth.acceptAssertion(token)!;
+    expect(auth.renewBearer(session.bearer, token)).toBeUndefined();
+    expect(auth.renewBearer(session.bearer, `x${token}`)).toBeUndefined();
+    expect(
+      auth.renewBearer(
+        session.bearer,
+        signAssertion(generateKeyPair(), {
+          nodeId: "node",
+          peerId: "peer",
+          user: "user",
+          exp: exp + 30_000,
+        }),
+      ),
+    ).toBeUndefined();
+    vi.advanceTimersByTime(60_000);
+    expect(auth.checkBearer(session.bearer)).toBeUndefined();
+  });
+  it.each(["expired", "revoked"])("never revives a %s channel", (reason) => {
+    const { auth, token, exp } = fixture();
+    const session = auth.acceptAssertion(token)!;
+    if (reason === "expired") vi.advanceTimersByTime(60_000);
+    else auth.revokeUser("user");
+    expect(
+      auth.renewBearer(
+        session.bearer,
+        signAssertion(gatewayKey, {
+          nodeId: "node",
+          peerId: "peer",
+          user: "user",
+          exp: exp + 60_000,
+        }),
+      ),
+    ).toBeUndefined();
+  });
   it("rejects tampered assertions", () => {
     const { auth, token } = fixture();
     expect(auth.acceptAssertion(`x${token}`)).toBeUndefined();

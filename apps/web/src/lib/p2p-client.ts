@@ -68,6 +68,7 @@ export class WebP2PClient {
   private attempt?: AbortController;
   private transport?: DataChannelClientTransport;
   private retry?: ReturnType<typeof setTimeout>;
+  private renewal?: ReturnType<typeof setTimeout>;
   private retryCount = 0;
   private retryEpoch = 0;
   private accountId?: string;
@@ -157,6 +158,35 @@ export class WebP2PClient {
       });
     }, delay);
   }
+  private scheduleRenewal(
+    nodeId: string,
+    peerId: string,
+    expiresAt: number,
+    attempt: AbortController,
+    transport: DataChannelClientTransport,
+  ) {
+    clearTimeout(this.renewal);
+    this.renewal = setTimeout(
+      async () => {
+        this.renewal = undefined;
+        const current = () =>
+          this.attempt === attempt && !attempt.signal.aborted && this.transport === transport;
+        if (!current()) return;
+        const signal = AbortSignal.any([attempt.signal, AbortSignal.timeout(10_000)]);
+        try {
+          const token = await this.token("session", signal, nodeId);
+          const session = await openSession(this.config.gatewayUrl, token, nodeId, peerId, signal);
+          if (!current()) return;
+          await transport.renew(session.assertion, signal);
+          if (current()) this.scheduleRenewal(nodeId, peerId, session.exp, attempt, transport);
+        } catch {
+          // The node's old expiry remains authoritative; never retain access after renewal fails.
+          if (current()) transport.close();
+        }
+      },
+      Math.max(1000, (expiresAt - Date.now()) / 2),
+    );
+  }
   async connect(nodeId: string): Promise<void> {
     const previousUserId = this.snapshot.nodeId === nodeId ? this.nodeUserId : undefined;
     this.disconnect();
@@ -193,6 +223,8 @@ export class WebP2PClient {
         signal: attempt.signal,
         onClose: () => {
           if (this.attempt === attempt && !attempt.signal.aborted) {
+            clearTimeout(this.renewal);
+            this.renewal = undefined;
             attempt.abort();
             this.transport = undefined;
             this.set({ state: "connecting", nodeId });
@@ -232,6 +264,7 @@ export class WebP2PClient {
         }
       }
       this.transport = transport;
+      this.scheduleRenewal(nodeId, session.peerId, session.exp, attempt, transport);
       this.set({ state: "connected", nodeId });
     } catch (error) {
       if (this.attempt === attempt) {
@@ -247,6 +280,8 @@ export class WebP2PClient {
     this.nodeUserId = undefined;
     this.retryEpoch++;
     clearTimeout(this.retry);
+    clearTimeout(this.renewal);
+    this.renewal = undefined;
     this.retry = undefined;
     this.attempt?.abort();
     this.attempt = undefined;
