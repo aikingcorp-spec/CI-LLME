@@ -11,6 +11,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
         with:
@@ -27,7 +30,7 @@ jobs:
       - name: Account proxy and gateway regression tests
         run: pnpm exec vitest run apps/desktop/src apps/p2p-gateway/src apps/web/src/lib/p2p-client.test.ts apps/web/src/lib/p2p-locales.test.ts apps/web/src/pages/Auth.test.tsx apps/web/src/pages/Pairing.test.tsx packages/p2p-prototype/src --maxWorkers=4
       - name: Check changed TypeScript
-        run: pnpm exec biome check apps/web/src/lib/p2p-client.ts apps/web/src/lib/p2p-client.test.ts packages/p2p-prototype/src/node-auth.ts packages/p2p-prototype/src/node-auth.test.ts packages/p2p-prototype/src/channel-protocol.ts packages/p2p-prototype/src/node-channel-server.ts packages/p2p-prototype/src/data-channel-client.ts packages/p2p-prototype/src/client-transport.test.ts
+        run: pnpm exec biome check apps/web/src/lib/p2p-client.ts apps/web/src/lib/p2p-client.test.ts packages/p2p-prototype/src/node-agent.ts packages/p2p-prototype/src/node-auth.ts packages/p2p-prototype/src/node-auth.test.ts packages/p2p-prototype/src/channel-protocol.ts packages/p2p-prototype/src/node-channel-server.ts packages/p2p-prototype/src/data-channel-client.ts packages/p2p-prototype/src/client-transport.test.ts
       - name: Build isolated desktop agent
         run: node apps/desktop/scripts/build-p2p-agent.mjs
       - name: Build real web application

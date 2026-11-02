@@ -27,7 +27,7 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
     onRevoke(session: NodeSession): void {
       channels.get(session.bearer)?.();
     },
-    async accept(peer: DataPeer): Promise<void> {
+    async accept(peer: DataPeer, onAuthenticated?: () => void): Promise<void> {
       let session: NodeSession | undefined;
       const active = new Map<string, AbortController>();
       let closing: Promise<void> | undefined;
@@ -87,6 +87,7 @@ export function createNodeChannelServer(auth: NodeAuth, handler: NodeChannelHand
             channels.set(session.bearer, () => {
               void close().catch(() => {});
             });
+            onAuthenticated?.();
             send({ t: "welcome", bearer: session.bearer });
             continue;
           }

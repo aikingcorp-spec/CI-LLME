@@ -163,7 +163,8 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
         }
         peers.add(peer);
         try {
-          await server.accept(peer);
+          // This deadline bounds negotiation/authentication, not the established channel.
+          await server.accept(peer, () => clearTimeout(timer));
         } finally {
           peers.delete(peer);
           clearTimeout(timer);
