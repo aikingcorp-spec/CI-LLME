@@ -11,7 +11,9 @@ const request = {
 };
 const frames: ChannelFrame[] = [
   { t: "hello", assertion: "signed" },
+  { t: "hello", assertion: "signed", fragmentation: true },
   { t: "welcome", bearer: "node-only" },
+  { t: "welcome", bearer: "node-only", fragmentation: true },
   { t: "denied" },
   { t: "call", ...request },
   { t: "subscribe", ...request },

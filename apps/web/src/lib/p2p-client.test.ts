@@ -255,7 +255,11 @@ it("signals with the scoped assertion and only connects after the authenticated 
     }),
   );
   expect(client.getNodeUserId()).toBe("node-user");
-  expect(JSON.parse(sent[0] ?? "")).toEqual({ t: "hello", assertion: "signed-assertion" });
+  expect(JSON.parse(sent[0] ?? "")).toEqual({
+    t: "hello",
+    assertion: "signed-assertion",
+    fragmentation: true,
+  });
   expect(listener).toHaveBeenCalled();
 });
 it("does not report connected when the channel cannot identify the authenticated node user", async () => {
