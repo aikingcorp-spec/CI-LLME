@@ -16,6 +16,11 @@ vi.mock("ws", async () => {
     static CLOSED = 3;
     readyState = 1;
     send = vi.fn();
+    ping = vi.fn();
+    terminate() {
+      this.readyState = 3;
+      this.emit("close", 1006);
+    }
     close() {
       this.readyState = 3;
       this.emit("close", 1000);
@@ -87,6 +92,21 @@ beforeEach(() => {
 });
 afterEach(async () => {
   await agent.close();
+  vi.useRealTimers();
+});
+
+it("keeps the agent link alive and reconnects when a heartbeat is not answered", async () => {
+  vi.useFakeTimers();
+  socket.emit("open");
+  const current = socket as EventEmitter & { ping: ReturnType<typeof vi.fn> };
+  await vi.advanceTimersByTimeAsync(20_000);
+  expect(current.ping).toHaveBeenCalledTimes(1);
+  socket.emit("pong");
+  await vi.advanceTimersByTimeAsync(20_000);
+  expect(current.ping).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(WebSocket)).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(20_500);
+  expect(vi.mocked(WebSocket)).toHaveBeenCalledTimes(2);
 });
 
 it("routes the signed agent connection to the hosted node room", () => {

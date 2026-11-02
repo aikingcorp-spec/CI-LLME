@@ -34,6 +34,7 @@ export interface NodeAgentOptions {
   };
   reconnectMs?: number;
   clock?: () => number;
+  onGatewayState?: (state: "connected" | "closed", code?: number) => void;
 }
 export interface NodeAgent {
   close(): Promise<void>;
@@ -43,6 +44,7 @@ export interface NodeAgent {
 
 const DEFAULT_RECONNECT_MS = 500;
 const MAX_BACKOFF_MS = 10_000;
+const HEARTBEAT_INTERVAL_MS = 20_000;
 const CLOSE_UNAUTHORIZED = 4401;
 const BODYLESS_METHODS = new Set(["GET", "HEAD"]);
 const DECODED_RESPONSE_HEADERS = new Set([
@@ -57,6 +59,7 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
   const clock = o.clock ?? Date.now;
   let socket: WebSocket | undefined;
   let timer: NodeJS.Timeout | undefined;
+  let heartbeat: NodeJS.Timeout | undefined;
   let failures = 0;
   let welcomed = false;
   let stopped = false;
@@ -204,7 +207,21 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
     // Workers selects the node's Durable Object before accepting the signed hello.
     const ws = new WebSocket(`${toWsUrl(o.gatewayUrl)}/agent?node=${encodeURIComponent(o.nodeId)}`);
     socket = ws;
+    let awaitingPong = false;
+    ws.on("pong", () => {
+      awaitingPong = false;
+    });
     ws.on("open", () => {
+      heartbeat = setInterval(() => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        if (awaitingPong) {
+          ws.terminate();
+          return;
+        }
+        awaitingPong = true;
+        ws.ping();
+      }, HEARTBEAT_INTERVAL_MS);
+      heartbeat.unref();
       const { ts, sig } = signNodeProof(o.keyPair, "agent", o.nodeId, clock());
       ws.send(encodeFrame({ kind: "hello", nodeId: o.nodeId, ts, sig }));
     });
@@ -214,6 +231,7 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
         if (frame.kind === "welcome") {
           welcomed = true;
           failures = 0;
+          o.onGatewayState?.("connected");
         } else if (frame.kind === "cancel") {
           requests.get(frame.id)?.abort();
         } else if (frame.kind === "signal") {
@@ -227,6 +245,9 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
     });
     ws.on("error", () => {});
     ws.on("close", (code) => {
+      clearInterval(heartbeat);
+      heartbeat = undefined;
+      o.onGatewayState?.("closed", code);
       welcomed = false;
       stopPeers();
       if (stopped || code === CLOSE_UNAUTHORIZED) return;
@@ -245,6 +266,7 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
       stopped = true;
       stopPeers();
       clearTimeout(timer);
+      clearInterval(heartbeat);
       const ws = socket;
       if (ws === undefined || ws.readyState === WebSocket.CLOSED) return;
       await new Promise<void>((resolve) => {

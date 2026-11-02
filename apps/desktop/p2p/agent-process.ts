@@ -40,6 +40,7 @@ listen(async (message) => {
         gatewayUrl: m.gatewayUrl,
         nodeId: m.nodeId,
         keyPair: m.key,
+        onGatewayState: (state, code) => post({ type: "gateway", state, code }),
         iceServers: () =>
           desktopIceServers(m.gatewayUrl, m.nodeId, m.key, fetchNodeTurnServers, m.stunServers),
         // The gateway's plaintext HTTP relay is off; only the data channel carries requests.
