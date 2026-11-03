@@ -310,6 +310,10 @@ export async function startGateway(o: GatewayOptions): Promise<Gateway> {
       HELLO_TIMEOUT_MS,
     );
     onFrames(socket, (raw) => {
+      if (nodeId !== undefined && raw === "ping") {
+        socket.send("pong");
+        return;
+      }
       if (nodeId === undefined) {
         const hello = decodeHello(raw);
         if (hello === undefined || !nodeProofValid("agent", hello.nodeId, hello.ts, hello.sig)) {

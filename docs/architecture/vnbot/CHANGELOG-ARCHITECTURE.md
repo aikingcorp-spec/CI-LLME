@@ -1,5 +1,14 @@
 # Architecture changelog
 
+## 2026-11-03 — Check application liveness on the agent socket
+
+- Pull request: [#44](https://github.com/aikingcorp-spec/vnbot/pull/44).
+- What changed versus baseline: the isolated node checks the gateway's existing text ping/pong auto-response instead of accepting transport control pongs as room liveness.
+- Why: an open transport can outlive its application association and otherwise remain marked connected without a discoverable room socket.
+- Modules and files: shared node agent heartbeat, the standalone gateway's equivalent authenticated response and recovery regression tests.
+- Invariants affected: signed welcome is still required; timeouts retain one bounded reconnect attempt and close old peers. The existing hibernation auto-response avoids extra Durable Object wakeups. No new protocol capability, identity, binding, key or database change.
+- ADR: [0010](adr/0010-desktop-account-enrollment.md).
+
 ## 2026-11-03 — Manual desktop updates through a public feed
 
 - Pull request: [#44](https://github.com/aikingcorp-spec/vnbot/pull/44).

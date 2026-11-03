@@ -230,9 +230,6 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
       clearTimeout(welcomeTimeout);
     };
     cancelAttempt = clearAttempt;
-    ws.on("pong", () => {
-      awaitingPong = false;
-    });
     ws.on("open", () => {
       if (!current()) return;
       welcomeTimeout = setTimeout(() => {
@@ -249,7 +246,10 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
           return;
         }
         awaitingPong = true;
-        ws.ping();
+        // Control pongs can come from an intermediary even when the room has
+        // lost this socket. The room's hibernation auto-response answers this
+        // application heartbeat without waking the Durable Object.
+        ws.send("ping");
       }, HEARTBEAT_INTERVAL_MS);
       heartbeat.unref();
       const { ts, sig } = signNodeProof(o.keyPair, "agent", o.nodeId, clock());
@@ -258,7 +258,12 @@ export function startNodeAgent(o: NodeAgentOptions): NodeAgent {
     ws.on("message", (data: RawData) => {
       if (!current()) return;
       try {
-        const frame = decodeGatewayFrame(data.toString());
+        const text = data.toString();
+        if (text === "pong") {
+          awaitingPong = false;
+          return;
+        }
+        const frame = decodeGatewayFrame(text);
         if (frame.kind === "welcome") {
           if (frame.nodeId !== o.nodeId || welcomed) {
             ws.close(1003, "bad welcome");

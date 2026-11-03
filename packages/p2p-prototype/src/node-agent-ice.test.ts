@@ -99,15 +99,27 @@ it("keeps the agent link alive and reconnects when a heartbeat is not answered",
   vi.useFakeTimers();
   socket.emit("open");
   socket.emit("message", Buffer.from(encodeFrame({ kind: "welcome", nodeId: "node" })));
-  const current = socket as EventEmitter & { ping: ReturnType<typeof vi.fn> };
+  const current = socket as EventEmitter & { send: ReturnType<typeof vi.fn> };
   await vi.advanceTimersByTimeAsync(20_000);
-  expect(current.ping).toHaveBeenCalledTimes(1);
-  socket.emit("pong");
+  expect(current.send.mock.calls.filter(([frame]) => frame === "ping")).toHaveLength(1);
+  socket.emit("message", Buffer.from("pong"));
   await vi.advanceTimersByTimeAsync(20_000);
-  expect(current.ping).toHaveBeenCalledTimes(2);
+  expect(current.send.mock.calls.filter(([frame]) => frame === "ping")).toHaveLength(2);
   expect(vi.mocked(WebSocket)).toHaveBeenCalledTimes(1);
   await vi.advanceTimersByTimeAsync(20_500);
   expect(vi.mocked(WebSocket)).toHaveBeenCalledTimes(2);
+});
+
+it("does not mistake a transport pong for a live gateway application", async () => {
+  vi.useFakeTimers();
+  socket.emit("open");
+  socket.emit("message", Buffer.from(encodeFrame({ kind: "welcome", nodeId: "node" })));
+  await vi.advanceTimersByTimeAsync(20_000);
+  // An intermediary can keep the transport alive after the room loses its socket.
+  socket.emit("pong");
+  await vi.advanceTimersByTimeAsync(20_500);
+  expect(WebSocket).toHaveBeenCalledTimes(2);
+  expect(agent.connected()).toBe(false);
 });
 
 it("retries an open socket that never receives welcome, ignoring events from the old attempt", async () => {
