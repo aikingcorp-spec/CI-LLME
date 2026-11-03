@@ -49,6 +49,7 @@ jobs:
       - name: Connector, voice and continuation regressions
         run: >-
           pnpm exec vitest run
+          apps/desktop/src/auto-update.test.ts apps/desktop/src/update-feed.test.ts apps/desktop/src/release-workflow.test.ts
           apps/api/src/router.test.ts apps/api/src/onboarding.test.ts apps/api/src/mcp-approval.test.ts
           apps/api/src/catalog-text.test.ts apps/api/src/realtime-voice.test.ts
           packages/adapters/src/integration-provider-settings.test.ts packages/adapters/src/composio-connector.test.ts

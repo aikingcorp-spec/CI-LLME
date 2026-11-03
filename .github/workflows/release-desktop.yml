@@ -245,9 +245,8 @@ jobs:
           rm -f "$entitlements"
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose=2 "$app"
-          grep -Fqx "provider: github" "$app/Contents/Resources/app-update.yml"
-          grep -Fqx "owner: aikingcorp-spec" "$app/Contents/Resources/app-update.yml"
-          grep -Fqx "repo: vnbot" "$app/Contents/Resources/app-update.yml"
+          grep -Fqx "provider: generic" "$app/Contents/Resources/app-update.yml"
+          grep -Fqx "url: https://dl.vnbot.run/desktop/" "$app/Contents/Resources/app-update.yml"
 
       - name: Verify packaged native dependencies
         if: runner.os == 'macOS'
@@ -312,7 +311,7 @@ jobs:
             throw "Windows update config is not bound to the signing publisher."
           }
           $feed = Get-Content -Raw $config
-          foreach ($expected in @("provider: github", "owner: aikingcorp-spec", "repo: vnbot")) {
+          foreach ($expected in @("provider: generic", "url: https://dl.vnbot.run/desktop/")) {
             if ($feed -notmatch "(?m)^$([regex]::Escape($expected))\r?$") {
               throw "Windows update config missing '$expected'."
             }
@@ -323,7 +322,7 @@ jobs:
         run: >-
           pnpm --filter @rakazo/desktop exec electron-builder
           --linux --x64 --publish never
-      - name: Verify Linux update feed is pinned to the official GitHub channel
+      - name: Verify Linux update feed is pinned to the public HTTPS channel
         if: runner.os == 'Linux'
         shell: bash
         env:
@@ -336,9 +335,8 @@ jobs:
           fi
           test -n "$config"
           test -f "$config"
-          grep -Fqx "provider: github" "$config"
-          grep -Fqx "owner: aikingcorp-spec" "$config"
-          grep -Fqx "repo: vnbot" "$config"
+          grep -Fqx "provider: generic" "$config"
+          grep -Fqx "url: https://dl.vnbot.run/desktop/" "$config"
           test -f apps/desktop/out/latest-linux.yml
           grep -Fqx "version: $RELEASE_VERSION" apps/desktop/out/latest-linux.yml
 

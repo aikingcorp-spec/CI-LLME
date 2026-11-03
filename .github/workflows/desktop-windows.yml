@@ -77,6 +77,8 @@ jobs:
           foreach ($module in @('pg', 'graphile-worker')) {
             if (-not (Test-Path -LiteralPath (Join-Path $resources "server/node_modules/$module/package.json") -PathType Leaf)) { throw "Missing server dependency: $module" }
           }
+      - name: Verify public update metadata and artifact digests
+        run: node apps/desktop/scripts/check-update-feed.mjs apps/desktop/out/win-unpacked/resources apps/desktop/out/latest.yml
       - name: Silent install, smoke test, uninstall
         run: |
           New-Item -ItemType Directory -Force -Path $env:SMOKE_DIR | Out-Null
@@ -155,6 +157,8 @@ jobs:
           path: |
             apps/desktop/out/*.exe
             apps/desktop/out/*.msi
+            apps/desktop/out/*.blockmap
+            apps/desktop/out/latest*.yml
             smoke-artifacts/**
           if-no-files-found: warn
           compression-level: 0

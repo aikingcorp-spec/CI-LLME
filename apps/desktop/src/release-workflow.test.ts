@@ -74,11 +74,10 @@ describe("desktop release workflow", () => {
     expect(workflow).toContain("feeds+=(release-artifacts/latest.yml)");
   });
 
-  it("pins every platform update feed to the official GitHub owner and repo", () => {
-    expect(workflow).toContain('grep -Fqx "provider: github"');
-    expect(workflow).toContain('grep -Fqx "owner: aikingcorp-spec"');
-    expect(workflow).toContain('grep -Fqx "repo: vnbot"');
-    expect(workflow).toContain("Verify Linux update feed is pinned to the official GitHub channel");
+  it("pins every platform update feed to the public HTTPS download channel", () => {
+    expect(workflow).toContain('grep -Fqx "provider: generic"');
+    expect(workflow).toContain('grep -Fqx "url: https://dl.vnbot.run/desktop/"');
+    expect(workflow).toContain("Verify Linux update feed is pinned to the public HTTPS channel");
     expect(workflow).toContain("Windows update config missing");
     expect(workflow).toContain("RELEASE_VERSION:");
     expect(workflow).toContain('grep -Fqx "version: $RELEASE_VERSION"');

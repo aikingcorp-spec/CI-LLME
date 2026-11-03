@@ -1,5 +1,14 @@
 # Architecture changelog
 
+## 2026-11-03 — Manual desktop updates through a public feed
+
+- Pull request: [#44](https://github.com/aikingcorp-spec/vnbot/pull/44).
+- What changed versus baseline: packaged applications permit explicit update checks while scheduled checks retain opt-in. Installers include a generic public HTTPS provider, and packaging checks verify the feed against actual artifact digests and sizes.
+- Why: the previous desktop opt-in gate blocked the in-app manual action and private repository feeds cannot serve public users.
+- Modules and files: desktop update controller, desktop packaging configuration, installer workflows and update metadata verifier.
+- Invariants affected: existing IPC authorization, checksum and configured publisher verification, stable upgrade-only policy and background opt-in remain. No sidecar update permission, remote execution endpoint, migration or credential change.
+- ADR: [0014](adr/0014-manual-desktop-updates.md).
+
 ## 2026-11-02 — Native voice bridge and bounded task continuation
 
 - Pull request: [#44](https://github.com/aikingcorp-spec/vnbot/pull/44).

@@ -56,6 +56,8 @@ jobs:
             grep -Fxq "$file" <<< "$asar_files" || { echo "Missing in app.asar: $file"; exit 1; }
           done
           test -n "$(find "$resources/app.asar.unpacked/node_modules/node-datachannel/build/Release" -maxdepth 1 -name '*.node' -print -quit)"
+      - name: Verify public update metadata and artifact digests
+        run: node apps/desktop/scripts/check-update-feed.mjs apps/desktop/out/linux-unpacked/resources apps/desktop/out/latest-linux.yml
       - name: Smoke test the AppImage
         timeout-minutes: 4
         # Hard cap on the whole step so a hang cannot burn the job.
@@ -113,6 +115,8 @@ jobs:
           path: |
             apps/desktop/out/*.AppImage
             apps/desktop/out/*.deb
+            apps/desktop/out/*.blockmap
+            apps/desktop/out/latest*.yml
             smoke-artifacts/**
           include-hidden-files: true
           if-no-files-found: warn

@@ -10,13 +10,11 @@ export const MIN_CHECK_INTERVAL_MS = 60_000;
 export interface UpdaterEnvironment {
   packaged: boolean;
   version: string;
+  /** Disables scheduled checks; an explicit in-app check remains available. */
   disabled?: boolean;
 }
 
 export function updaterSupport(env: UpdaterEnvironment): { supported: boolean; reason: string } {
-  if (env.disabled !== false) {
-    return { supported: false, reason: strings().updater.disabled };
-  }
   if (!env.packaged) {
     return { supported: false, reason: strings().updater.notInstalled };
   }
@@ -336,6 +334,7 @@ export class DesktopUpdateController {
   }
 
   check(userInitiated: boolean) {
+    if (!userInitiated && this.environment.disabled !== false) return Promise.resolve(this.current);
     if (this.checkPromise !== null) {
       if (userInitiated) this.checkWasRequested = true;
       return this.checkPromise;

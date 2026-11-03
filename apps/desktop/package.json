@@ -1,7 +1,7 @@
 {
   "name": "@rakazo/desktop",
   "productName": "VNBot",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "author": {
     "name": "VNBot"
   },
@@ -14,8 +14,8 @@
     "build": "pnpm check && node scripts/build.mjs && node scripts/build-p2p-agent.mjs dist && node scripts/copy-static.mjs",
     "build:native": "pnpm check && node scripts/build.mjs --native && node scripts/build-p2p-agent.mjs dist && node scripts/copy-static.mjs",
     "pack": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --mac --win --linux",
-    "pack:win": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --win --x64",
-    "pack:linux": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --linux --x64",
+    "pack:win": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --win --x64 --publish never",
+    "pack:linux": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --linux --x64 --publish never",
     "pack:dir": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --dir",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. apps/desktop/src",
@@ -209,7 +209,10 @@
         }
       }
     },
-    "publish": null,
+    "publish": {
+      "provider": "generic",
+      "url": "https://dl.vnbot.run/desktop/"
+    },
     "artifactName": "VNBot-${version}-${os}-${arch}.${ext}",
     "msi": {
       "oneClick": false,

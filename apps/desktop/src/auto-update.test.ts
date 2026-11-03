@@ -58,11 +58,11 @@ function deferred() {
 }
 
 describe("updaterSupport", () => {
-  it("only runs in an installed build that explicitly opts in", () => {
+  it("supports manual updates in installed builds independently of the background preference", () => {
     expect(updaterSupport(packaged).supported).toBe(true);
-    expect(updaterSupport({ packaged: true, version: "0.1.0" }).supported).toBe(false);
+    expect(updaterSupport({ packaged: true, version: "0.1.0" }).supported).toBe(true);
     expect(updaterSupport({ packaged: false, version: "0.1.0" }).supported).toBe(false);
-    expect(updaterSupport({ ...packaged, disabled: true }).supported).toBe(false);
+    expect(updaterSupport({ ...packaged, disabled: true }).supported).toBe(true);
   });
 
   it("starts unsupported builds in a state that explains itself", () => {
@@ -268,6 +268,30 @@ describe("shouldCheck", () => {
 });
 
 describe("DesktopUpdateController", () => {
+  it.each([true, undefined])(
+    "keeps background checks off but completes a user-requested update inside the app (%s)",
+    async (disabled) => {
+      const fake = fakeUpdater();
+      const load = vi.fn(async () => fake.updater);
+      const controller = new DesktopUpdateController({ ...packaged, disabled }, load, clock);
+      vi.mocked(fake.updater.checkForUpdates).mockImplementation(async () => {
+        fake.emit("checking-for-update");
+        fake.emit("update-available", { version: "0.3.8" });
+      });
+      vi.mocked(fake.updater.downloadUpdate).mockImplementation(async () => {
+        fake.emit("update-downloaded", { version: "0.3.8" });
+      });
+      await controller.check(false);
+      expect(load).not.toHaveBeenCalled();
+      await controller.check(true);
+      await controller.download();
+      expect(controller.state()).toMatchObject({ phase: "ready", availableVersion: "0.3.8" });
+      expect(fake.updater.checkForUpdates).toHaveBeenCalledOnce();
+      expect(fake.updater.downloadUpdate).toHaveBeenCalledOnce();
+      await controller.install();
+      expect(fake.updater.quitAndInstall).toHaveBeenCalledOnce();
+    },
+  );
   it("locks the updater to stable, upgrade-only, signed installer behavior", async () => {
     const fake = fakeUpdater();
     const controller = new DesktopUpdateController(packaged, async () => fake.updater, clock);
