@@ -1,14 +1,13 @@
-name: installed-desktop-update-acceptance
+name: installed-desktop-public-feed-acceptance
 on:
   workflow_dispatch:
 permissions:
   contents: read
-  actions: read
 jobs:
-  installed-update:
+  public-feed:
     if: github.repository == 'aikingcorp-spec/CI-LLME'
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     defaults:
       run:
         shell: pwsh
@@ -16,25 +15,19 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Wait for verified installer
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh run watch 41570266389 --repo aikingcorp-spec/CI-LLME --exit-status --interval 20
-      - name: Download exact CI installer
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh run download 41570266389 --repo aikingcorp-spec/CI-LLME --name desktop-windows --dir packaged-artifacts
-      - name: Install and exercise real in-app updater
+      - name: Install acceptance driver
+        run: npm install --prefix .ci/probe-tools --no-audit --no-fund @playwright/test@1.64.1
+      - name: Fetch and verify public installer
         run: |
-          $installer = (Get-ChildItem packaged-artifacts -Recurse -Filter 'VNBot-Setup-0.3.8-x64.exe' | Select-Object -First 1).FullName
-          if (-not $installer) { throw 'Expected installer missing' }
-          Start-Process -FilePath $installer -ArgumentList '/S' -Wait
+          Invoke-WebRequest -Uri 'https://dl.vnbot.run/desktop/VNBot-Setup-0.3.8-x64.exe' -UserAgent 'electron-updater' -OutFile installer.exe
+          $hash = (Get-FileHash installer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne 'b9723a43511f61f1b210fc50ac7da3078dac2f8b1f723dc935d8be66f89fe8a9') { throw 'Public installer digest mismatch' }
+      - name: Verify in-app check against public HTTPS feed
+        run: |
+          Start-Process -FilePath "$env:GITHUB_WORKSPACE\installer.exe" -ArgumentList '/S' -Wait
           $env:PROBE_INSTALLED_APP = Join-Path $env:LOCALAPPDATA 'Programs\VNBot\VNBot.exe'
-          node .ci/installed-update-probe.mjs
-          if ($LASTEXITCODE -ne 0) { throw 'Installed updater acceptance failed' }
+          node .ci/installed-public-feed-probe.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Installed public feed acceptance failed' }
