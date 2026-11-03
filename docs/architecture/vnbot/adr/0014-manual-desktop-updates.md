@@ -24,6 +24,11 @@ versioned artifacts first and mutable latest metadata only after verification.
 Packaging checks compare feed versions, file sizes and SHA-512 digests with the
 actual installers. Do not place repository credentials in the desktop application.
 
+Exclude latest update metadata and the checksum index from broad installer cache
+rules. Their origin cache policy must remain effective. Purge any previously
+cached missing-feed response, then verify both canonical and cache-busted URLs.
+Immutable versioned installers retain their existing cache policy.
+
 Keep SDK integrity checks and publisher verification when a signing publisher is
 configured. The existing unsigned Windows distribution can use manual NSIS updates
 without inventing a publisher or disabling signature checks globally. macOS signing

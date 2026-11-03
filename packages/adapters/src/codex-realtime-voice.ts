@@ -1,3 +1,16 @@
+import { readBodyCapped } from "./web-ssrf.js";
+
+/** A sanitized failure; upstream bodies and credentials never cross the adapter boundary. */
+export class CodexRealtimeCallError extends Error {
+  constructor(
+    readonly reason: "usage_limit" | "rate_limit" | "authorization" | "unavailable",
+    message: string,
+  ) {
+    super(message);
+    this.name = "CodexRealtimeCallError";
+  }
+}
+
 /** Native ChatGPT-backed voice transport. Pi remains the tool execution runtime. */
 export const CODEX_REALTIME_VOICES = [
   "juniper",
@@ -69,15 +82,36 @@ export async function createCodexRealtimeCall(
     signal: AbortSignal.any([input.signal, AbortSignal.timeout(20_000)]),
   });
   if (!response.ok) {
-    await response.body?.cancel();
-    // Provider bodies may contain credentials or private account details.
-    throw new Error(
-      response.status === 401 || response.status === 403
-        ? "ChatGPT voice authorization was rejected. Reconnect the selected account."
-        : response.status === 429
-          ? "ChatGPT voice is temporarily rate limited. Try again later."
-          : `ChatGPT voice is unavailable (HTTP ${response.status})`,
-    );
+    let usageLimit = false;
+    if (response.status === 429) {
+      try {
+        const body = JSON.parse(
+          new TextDecoder().decode(await readBodyCapped(response, 8192, input.signal)),
+        );
+        usageLimit = body?.error?.type === "usage_limit_reached";
+      } catch {
+        input.signal.throwIfAborted();
+        // Malformed, oversized or non-JSON denials retain the HTTP classification.
+      }
+    } else {
+      await response.body?.cancel();
+    }
+    if (usageLimit)
+      throw new CodexRealtimeCallError(
+        "usage_limit",
+        "The selected ChatGPT account has reached its voice usage limit. Wait for it to reset or choose another connected account in Voice settings.",
+      );
+    if (response.status === 429)
+      throw new CodexRealtimeCallError(
+        "rate_limit",
+        "ChatGPT voice is temporarily rate limited. Try again later.",
+      );
+    if (response.status === 401 || response.status === 403)
+      throw new CodexRealtimeCallError(
+        "authorization",
+        "ChatGPT voice access was rejected. Check the selected account in Voice settings; reconnect it if needed.",
+      );
+    throw new CodexRealtimeCallError("unavailable", "ChatGPT voice is temporarily unavailable.");
   }
   if (!response.body) throw new Error("The voice service returned no connection answer");
   const reader = response.body.getReader();

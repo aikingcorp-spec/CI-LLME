@@ -37,7 +37,11 @@ export * from "./cloud-agent-poll.js";
 export * from "./cloud-agent-provider-env.js";
 export * from "./cloud-agent-service.js";
 export * from "./cloud-agent-tools.js";
-export { CODEX_REALTIME_VOICES, createCodexRealtimeCall } from "./codex-realtime-voice.js";
+export {
+  CODEX_REALTIME_VOICES,
+  CodexRealtimeCallError,
+  createCodexRealtimeCall,
+} from "./codex-realtime-voice.js";
 export * from "./composio-catalog-cache.js";
 export * from "./composio-connector.js";
 export * from "./composio-fake.js";
@@ -178,6 +182,7 @@ export { dispatcherFetch } from "./undici-fetch.js";
 export * from "./user-device-emulator.js";
 export * from "./user-device-gateway.js";
 export * from "./user-device-protocol.js";
+export { truncateUtf8 } from "./utf8.js";
 export * from "./voice-factory.js";
 export * from "./wakeup.js";
 export * from "./web-limits.js";

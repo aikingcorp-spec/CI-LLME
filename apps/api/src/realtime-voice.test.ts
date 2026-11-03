@@ -1,3 +1,6 @@
+import { os } from "@orpc/server";
+import { RPCHandler } from "@orpc/server/fetch";
+import { CodexRealtimeCallError } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { configureRealtimeVoice, connectRealtimeVoice } from "./realtime-voice.js";
@@ -15,7 +18,14 @@ vi.mock("@rakazo/adapters", async (original) => ({
 
 function fixture() {
   const prisma = {
-    bot: { findFirst: vi.fn(async () => ({ name: "Assistant" })) },
+    user: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        name: "Fixture member",
+        timezone: "Asia/Ho_Chi_Minh",
+      })),
+    },
+    thread: { findFirst: vi.fn(async () => null) },
+    bot: { findFirst: vi.fn(async () => ({ name: "Assistant", instructions: "" })) },
     userModelCredential: {
       findFirst: vi.fn(async () => ({ id: "owned-connection", secretId: "secret" })),
     },
@@ -40,14 +50,15 @@ function fixture() {
       }),
     ),
   };
-  const deps = { prisma, secrets } as unknown as RouterDeps;
+  const memory = { read: vi.fn(async () => ({ documents: [] })) };
+  const deps = { prisma, secrets, memory } as unknown as RouterDeps;
   const actor: Actor = {
     userId: "owner",
     spaceId: "space",
     email: "fixture@example.test",
     isDeploymentOwner: false,
   };
-  return { prisma, secrets, deps, actor };
+  return { prisma, secrets, memory, deps, actor };
 }
 
 describe("personal native voice", () => {
@@ -90,6 +101,12 @@ describe("personal native voice", () => {
         accountId: "fixture-account",
       }),
     );
+    const request = vi.mocked(provider.create).mock.calls.at(-1)?.[0] as unknown as {
+      instructions: string;
+    };
+    expect(request.instructions).toContain('"name":"Fixture member"');
+    expect(request.instructions).not.toContain("fixture-private-token");
+    expect(request.instructions).not.toContain("fixture@example.test");
   });
   it("rejects a foreign bot before refreshing or opening provider media", async () => {
     const f = fixture();
@@ -106,5 +123,62 @@ describe("personal native voice", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(provider.refresh).not.toHaveBeenCalled();
     expect(provider.create).not.toHaveBeenCalled();
+    expect(f.memory.read).not.toHaveBeenCalled();
+    expect(f.prisma.user.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+});
+
+it.each([
+  ["usage_limit", "TOO_MANY_REQUESTS", 429],
+  ["rate_limit", "TOO_MANY_REQUESTS", 429],
+  ["authorization", "FORBIDDEN", 403],
+  ["unavailable", "SERVICE_UNAVAILABLE", 503],
+] as const)(
+  "preserves the safe %s failure across the RPC boundary",
+  async (reason, code, status) => {
+    const f = fixture();
+    provider.create.mockRejectedValueOnce(
+      new CodexRealtimeCallError(reason, "Safe account guidance"),
+    );
+    await expect(
+      connectRealtimeVoice(
+        f.deps,
+        f.actor,
+        { botId: "owned-bot", offer: "v=0" },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code, status, message: "Safe account guidance" });
+  },
+);
+
+it("serializes usage-limit guidance instead of an internal server error", async () => {
+  const f = fixture();
+  provider.create.mockRejectedValueOnce(
+    new CodexRealtimeCallError("usage_limit", "Safe voice limit guidance"),
+  );
+  const rpc = new RPCHandler({
+    connect: os.handler(() =>
+      connectRealtimeVoice(
+        f.deps,
+        f.actor,
+        { botId: "owned-bot", offer: "v=0" },
+        new AbortController().signal,
+      ),
+    ),
+  });
+  const result = await rpc.handle(
+    new Request("http://localhost/rpc/connect", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ json: {} }),
+    }),
+    { prefix: "/rpc", context: {} },
+  );
+  expect(result.matched).toBe(true);
+  expect(result.response?.status).toBe(429);
+  const body = await result.response!.json();
+  expect(body.json).toMatchObject({
+    code: "TOO_MANY_REQUESTS",
+    message: "Safe voice limit guidance",
   });
 });

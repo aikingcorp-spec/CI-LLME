@@ -36,6 +36,10 @@ jobs:
         run: pnpm --filter @rakazo/desktop test
       - name: Package AppImage and deb
         run: pnpm --filter @rakazo/desktop run pack:linux
+      - name: Exercise OAuth windows in the packaged desktop
+        env:
+          DESKTOP_POPUP_TEST_EXECUTABLE: ${{ github.workspace }}/apps/desktop/out/linux-unpacked/vnbot
+        run: xvfb-run -a pnpm --filter @rakazo/desktop exec playwright test --config e2e/playwright.config.ts oauth-popup.spec.ts
       - name: Check packaged native resources
         run: |
           set -euo pipefail
@@ -118,6 +122,7 @@ jobs:
             apps/desktop/out/*.blockmap
             apps/desktop/out/latest*.yml
             smoke-artifacts/**
+            apps/desktop/test-results/**
           include-hidden-files: true
           if-no-files-found: warn
           compression-level: 0

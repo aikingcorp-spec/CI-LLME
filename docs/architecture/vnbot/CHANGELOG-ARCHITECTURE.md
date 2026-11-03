@@ -1,5 +1,14 @@
 # Architecture changelog
 
+## 2026-11-03 — Reserved OAuth popups, native voice context and safe provider failures
+
+- Pull request: [#44](https://github.com/aikingcorp-spec/vnbot/pull/44).
+- What changed versus baseline: desktop permits the three explicit OAuth reservation names with UUID attempt suffixes for a blank window and HTTPS provider navigation. Native voice starts with an owned profile, independently bounded user/bot memory, conversation summary and recent visible text. Its adapter classifies usage limits, transient throttling, rejected access and provider unavailability without exposing upstream bodies; the API returns actionable RPC failures.
+- Why: desktop denied the new reservation names while the browser UI reported a popup blocker; native audio previously received only a bot name and generic instructions, while expected upstream denials were masked as internal errors.
+- Modules and files: desktop window-open policy and native Electron coverage; API realtime voice context, existing MemoryStore/visible-message reads, adapter UTF-8 utility and native voice transport error boundary.
+- Invariants affected: sandboxed popup session and no privileged preload; unknown reservations and unsafe protocols refused. No browser-selected identity, credentials in context, cross-account memory, new memory store, model request at setup or database migration. Desktop version 0.3.9.
+- ADR: [0013](adr/0013-native-voice-and-bounded-continuity.md).
+
 ## 2026-11-03 — Check application liveness on the agent socket
 
 - Pull request: [#44](https://github.com/aikingcorp-spec/vnbot/pull/44).

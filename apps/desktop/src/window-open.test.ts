@@ -3,6 +3,34 @@ import { oauthPopupSessionPreferences, shouldOpenInAppPopup } from "./window-ope
 
 const appOrigin = "https://rakazo.example.com";
 
+it.each(["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-oauth"])(
+  "allows the reserved %s attempt before provider navigation",
+  (prefix) => {
+    const name = `${prefix}:12345678-1234-4234-8234-123456789abc`;
+    expect(shouldOpenInAppPopup(appOrigin, "about:blank", name)).toBe(true);
+    expect(shouldOpenInAppPopup(appOrigin, "https://provider.example.com/authorize", name)).toBe(
+      true,
+    );
+    for (const target of [
+      "javascript:alert(1)",
+      "file:///tmp/example",
+      "http://provider.example.com",
+      "about:blank#unsafe",
+    ])
+      expect(shouldOpenInAppPopup(appOrigin, target, name)).toBe(false);
+  },
+);
+
+it.each([
+  "vnbot-plugin-connect:",
+  "vnbot-app-connect:unknown",
+  "rakazo-mcp-oauth:../../",
+  "other:12345678-1234-4234-8234-123456789abc",
+])("rejects an unrecognized reservation %s", (name) => {
+  expect(shouldOpenInAppPopup(appOrigin, "about:blank", name)).toBe(false);
+  expect(shouldOpenInAppPopup(appOrigin, "https://provider.example.com", name)).toBe(false);
+});
+
 describe("desktop child windows", () => {
   it("keeps same-origin app routes in Electron", () => {
     expect(shouldOpenInAppPopup(appOrigin, `${appOrigin}/mcp/oauth/callback`, "_blank")).toBe(true);

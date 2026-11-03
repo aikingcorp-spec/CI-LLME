@@ -54,6 +54,29 @@ Existing queued-run recovery handles a lost enqueue after commit.
 
 ## Alternatives
 
+### Call context snapshot, 2026-11-03
+
+At each native call setup the node loads the owned user's display name/timezone,
+the selected bot's instructions, separately bounded user and bot durable memory,
+the existing conversation summary and up to twelve recent visible messages.
+The same MemoryStore and transcript filtering used by Pi own the reads. No
+credential store, other account's thread, hidden tool payload or ChatGPT consumer
+memory is used as background context. User and bot memory have independent
+budgets so a large bot document cannot displace personal memory. Encoded JSON
+fields are bounded even when control characters expand during serialization.
+
+The provider receives these facts as background data with explicit limits on
+trust and completeness. Memory changes and missing knowledge are delegated to
+Pi. Call setup adds no model request or separate persistent memory store. A new
+call reloads edits/deletions; an already running provider session cannot unlearn
+data previously supplied. This snapshot does not promise to persist every casual
+voice utterance as durable memory. Explicit requests to remember facts use Pi's
+existing authorized memory tools.
+
+A browser-provided snapshot would let the client choose identity and history;
+a separate voice memory store would split ownership from Pi. Node-owned scoped
+reads retain the existing authorization boundary.
+
 Running the Codex agent harness behind voice would split ownership of tools,
 memory and approval policy from Pi. A native audio transport bridge retains one
 execution owner. Reusing a TTS credential would confuse account ownership and
@@ -77,3 +100,5 @@ Provider failures are not successful certification.
 Rollback the app/API/worker together to their prior immutable artifacts, disable
 the opt-in reviewer, and retain the additive tables. Never restore a production
 database or rotate pairing/signing material as a rollback test.
+
+Native voice denial handling uses a bounded upstream JSON read and a closed set of safe errors. A structured `usage_limit_reached` denial is distinct from transient HTTP 429 throttling. The API preserves actionable account/service errors instead of reporting an internal server failure. It does not switch credentials, automatically retry call creation, infer a reset time or reproduce provider bodies in logs/client replies.

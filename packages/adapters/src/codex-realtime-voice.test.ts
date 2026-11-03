@@ -31,9 +31,7 @@ it("does not disclose provider errors", async () => {
   const request = vi
     .fn<typeof fetch>()
     .mockResolvedValue(new Response("private upstream details", { status: 403 }));
-  await expect(createCodexRealtimeCall(input, request)).rejects.toThrow(
-    "authorization was rejected",
-  );
+  await expect(createCodexRealtimeCall(input, request)).rejects.toThrow("access was rejected");
 });
 it("rejects unsupported voices before making a request", async () => {
   const request = vi.fn<typeof fetch>();
@@ -48,3 +46,32 @@ it("bounds untrusted SDP answers", async () => {
     .mockResolvedValue(new Response(`v=0${"a".repeat(128 * 1024)}`));
   await expect(createCodexRealtimeCall(input, request)).rejects.toThrow("too large");
 });
+
+it.each([
+  [
+    429,
+    { error: { type: "usage_limit_reached", message: "private upstream detail" } },
+    "usage_limit",
+  ],
+  [429, { error: { type: "rate_limit_exceeded" } }, "rate_limit"],
+  [401, { error: { message: "private token" } }, "authorization"],
+  [403, { error: { message: "private account" } }, "authorization"],
+  [503, { error: { message: "private infrastructure" } }, "unavailable"],
+])("classifies HTTP %i without exposing upstream bodies", async (status, body, reason) => {
+  const request = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(new Response(JSON.stringify(body), { status }));
+  const error = await createCodexRealtimeCall(input, request).catch((error) => error);
+  expect(error).toMatchObject({ name: "CodexRealtimeCallError", reason });
+  expect(String(error)).not.toContain("private");
+  expect(request).toHaveBeenCalledTimes(1);
+});
+it.each(["<html>private challenge</html>", "x".repeat(9000)])(
+  "bounds malformed rate-limit responses",
+  async (body) => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response(body, { status: 429 }));
+    await expect(createCodexRealtimeCall(input, request)).rejects.toMatchObject({
+      reason: "rate_limit",
+    });
+  },
+);

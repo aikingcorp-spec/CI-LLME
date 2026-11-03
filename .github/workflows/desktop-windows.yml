@@ -53,6 +53,10 @@ jobs:
         run: pnpm --filter @rakazo/desktop test
       - name: Package NSIS and MSI
         run: pnpm --filter @rakazo/desktop run pack:win
+      - name: Exercise OAuth windows in the packaged desktop
+        env:
+          DESKTOP_POPUP_TEST_EXECUTABLE: ${{ github.workspace }}\apps\desktop\out\win-unpacked\VNBot.exe
+        run: pnpm --filter @rakazo/desktop exec playwright test --config e2e/playwright.config.ts oauth-popup.spec.ts
       - name: Check packaged server resources
         run: |
           $resources = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/out/win-unpacked/resources'
@@ -160,6 +164,7 @@ jobs:
             apps/desktop/out/*.blockmap
             apps/desktop/out/latest*.yml
             smoke-artifacts/**
+            apps/desktop/test-results/**
           if-no-files-found: warn
           compression-level: 0
           retention-days: 7

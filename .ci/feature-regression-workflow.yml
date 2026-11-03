@@ -51,7 +51,7 @@ jobs:
           pnpm exec vitest run
           apps/desktop/src/auto-update.test.ts apps/desktop/src/update-feed.test.ts apps/desktop/src/release-workflow.test.ts
           apps/api/src/router.test.ts apps/api/src/onboarding.test.ts apps/api/src/mcp-approval.test.ts
-          apps/api/src/catalog-text.test.ts apps/api/src/realtime-voice.test.ts
+          apps/api/src/catalog-text.test.ts apps/api/src/realtime-voice.test.ts apps/api/src/realtime-voice-context.test.ts apps/api/src/thread-message-pages.test.ts
           packages/adapters/src/integration-provider-settings.test.ts packages/adapters/src/composio-connector.test.ts
           packages/adapters/src/connect-app.test.ts packages/adapters/src/codex-realtime-voice.test.ts
           packages/adapters/src/task-continuity.test.ts packages/adapters/src/pi-runtime*.test.ts
