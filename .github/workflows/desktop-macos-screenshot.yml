@@ -1,17 +1,32 @@
-name: installed-desktop-update-acceptance
+name: desktop-macos-screenshot
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: &desktop-setup-paths
+      - ".github/workflows/desktop-macos-screenshot.yml"
+      - "apps/desktop/e2e/setup.spec.ts"
+      - "apps/desktop/package.json"
+      - "apps/desktop/assets/**"
+      - "packages/ui-tokens/assets/**"
+      - "apps/desktop/scripts/copy-static.mjs"
+      - "apps/desktop/src/setup*"
+      - "apps/desktop/src/window-options.ts"
+      - "packages/contracts/src/desktop.ts"
+  pull_request:
+    paths: *desktop-setup-paths
+
 permissions:
   contents: read
-  actions: read
+
+concurrency:
+  group: desktop-macos-screenshot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  installed-update:
-    if: github.repository == 'aikingcorp-spec/CI-LLME'
-    runs-on: windows-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        shell: pwsh
+  screenshot:
+    name: macOS setup screenshot
+    runs-on: macos-26
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
@@ -22,15 +37,39 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Download exact CI installer
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh run download 41570266389 --repo aikingcorp-spec/CI-LLME --name desktop-windows --dir packaged-artifacts
-      - name: Install and exercise real in-app updater
+      - run: pnpm --filter @rakazo/desktop build
+      - name: Verify packaged Tahoe icon and legacy fallback
         run: |
-          $installer = (Get-ChildItem packaged-artifacts -Recurse -Filter 'VNBot-Setup-0.3.8-x64.exe' | Select-Object -First 1).FullName
-          if (-not $installer) { throw 'Expected installer missing' }
-          Start-Process -FilePath $installer -ArgumentList '/S' -Wait
-          $env:PROBE_INSTALLED_APP = Join-Path $env:LOCALAPPDATA 'Programs\VNBot\VNBot.exe'
-          node .ci/installed-update-probe.mjs
-          if ($LASTEXITCODE -ne 0) { throw 'Installed updater acceptance failed' }
+          pnpm --filter @rakazo/web build
+          CSC_IDENTITY_AUTO_DISCOVERY=false pnpm --filter @rakazo/desktop exec electron-builder --mac --dir --publish never -c.mac.identity=null -c.mac.notarize=false
+          product_name="$(node -p "require('./apps/desktop/package.json').productName")"
+          app_bundle="apps/desktop/out/mac-arm64/$product_name.app"
+          # Validate Icon Composer only when selected; main currently packages an ICNS icon.
+          icon_source="$(node -p "require('./apps/desktop/package.json').build.mac.icon")"
+          if [[ "$icon_source" == *.icon ]]; then
+            xcrun assetutil --info "$app_bundle/Contents/Resources/Assets.car" > "$RUNNER_TEMP/icon-assets.json"
+            jq -e 'any(.[]; .Name == "Icon" and .AssetType == "IconImageStack") and any(.[]; .Name == "Icon_Assets/orange-bot" and .AssetType == "Image")' "$RUNNER_TEMP/icon-assets.json"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$app_bundle/Contents/Info.plist")" = Icon
+          fi
+          iconutil -c iconset "$app_bundle/Contents/Resources/icon.icns" -o "$RUNNER_TEMP/fallback.iconset"
+          sips -s format png "$RUNNER_TEMP/fallback.iconset/icon_128x128@2x.png" --out "$RUNNER_TEMP/fallback-decoded.png"
+          test -s "$RUNNER_TEMP/fallback-decoded.png"
+        env:
+          RAKAZO_ALLOW_DEV_SECRETS: "1"
+      - name: Capture packaged macOS setup window and Dock
+        run: |
+          product_name="$(node -p "require('./apps/desktop/package.json').productName")"
+          export RAKAZO_E2E_EXECUTABLE="out/mac-arm64/$product_name.app/Contents/MacOS/$product_name"
+          pnpm --filter @rakazo/desktop exec playwright test \
+            --config e2e/playwright.config.ts setup.spec.ts \
+            --grep "first run defaults to this computer"
+      - name: Upload native macOS setup screenshot
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-e2e-macos-screenshot
+          path: |
+            apps/desktop/e2e/screenshots/08-setup-macos-native-controls.png
+            apps/desktop/e2e/screenshots/09-macos-dock.png
+          if-no-files-found: error
+          retention-days: 1
