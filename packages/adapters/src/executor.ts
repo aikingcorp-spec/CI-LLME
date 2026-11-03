@@ -1201,13 +1201,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
         const replyContext = await loadReplyContext(deps.prisma, thread.id, run.sourceMessageId);
         let userTimeZone: string | null | undefined;
+        let taskContinuity = false;
         try {
-          userTimeZone = (
-            await deps.prisma.user.findUnique({
-              where: { id: run.userId },
-              select: { timezone: true },
-            })
-          )?.timezone;
+          const userSettings = await deps.prisma.user.findUnique({
+            where: { id: run.userId },
+            select: { timezone: true, taskContinuityEnabled: true },
+          });
+          userTimeZone = userSettings?.timezone;
+          taskContinuity = userSettings?.taskContinuityEnabled ?? false;
         } catch {
           // Timezone is optional context; a lookup failure must not prevent a run.
         }
@@ -1501,6 +1502,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
               script,
               allowSilentEmpty: allowSilentEmptyRun,
+              taskContinuity,
               emptyResponseText,
               executeTool: scripted
                 ? undefined

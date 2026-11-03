@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button, Field, FieldLabel, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
+import { Field, FieldLabel, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { useSpaceQueries } from "../../lib/query";
@@ -86,13 +86,6 @@ export function NativeVoiceSettings() {
               Uses your ChatGPT account. Voice availability and limits follow your plan.
             </Trans>
           </p>
-          <Button
-            variant="outline"
-            disabled={pending}
-            onClick={() => void configure(null, status.data!.voiceId)}
-          >
-            <Trans>Turn off voice calls</Trans>
-          </Button>
         </>
       ) : null}
       {error ? (

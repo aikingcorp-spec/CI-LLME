@@ -26,6 +26,7 @@ export async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
         email: true,
         name: true,
         timezone: true,
+        taskContinuityEnabled: true,
         signupSurvey: { select: { userId: true } },
       },
     }),
@@ -33,6 +34,8 @@ export async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
   ]);
   return {
     ticketBoardEnabled: deps.env.ticketBoardEnabled === true,
+    taskContinuityEnabled: user.taskContinuityEnabled ?? false,
+    taskContinuitySupported: true,
     phoneCallsEnabled:
       deps.env.phoneCallsEnabled === true || (await realtimeVoiceEnabled(deps, actor)),
     navLinks: deps.env.navLinks ?? [],

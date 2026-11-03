@@ -83,6 +83,7 @@ export class IntegrationProviderSettings {
       this.cache.delete(key);
       return { provider: id === "composio" ? undefined : this.fallbacks[id], ref: null };
     }
+    const ref = providerRevisionRef(id, row);
     let invalidated = false;
     const unsubscribe =
       this.secrets.onChange?.((ref) => {
@@ -94,13 +95,13 @@ export class IntegrationProviderSettings {
       const cached = this.cache.get(key);
       const digest = credentialDigest(plaintext);
       if (cached?.ciphertext === row.ciphertext && cached.digest === digest)
-        return { provider: cached.adapter, ref: row.ciphertext };
+        return { provider: cached.adapter, ref };
       const config = IntegrationProviderConfigSchema.parse(JSON.parse(plaintext));
       if (config.provider !== id)
         throw new Error("Integration provider configuration does not match");
       const adapter = this.create(config);
       this.cache.set(key, { ciphertext: row.ciphertext, digest, adapter });
-      return { provider: adapter, ref: row.ciphertext };
+      return { provider: adapter, ref };
     } finally {
       unsubscribe();
     }
@@ -130,7 +131,7 @@ export class IntegrationProviderSettings {
               where: {
                 userId: context.userId,
                 connectorId: "composio",
-                status: { in: ["connected", "pending"] },
+                status: { in: ["connected", "pending", "error"] },
               },
             })
           )
@@ -145,7 +146,7 @@ export class IntegrationProviderSettings {
               provider: config.provider,
               ciphertext: stored.ciphertext,
             },
-            update: { ciphertext: stored.ciphertext },
+            update: { ciphertext: stored.ciphertext, revision: { increment: 1 } },
           });
         },
         { timeout: 30_000 },
@@ -201,13 +202,13 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
           this.id === "composio"
             ? await client.userIntegrationProviderConfig.findUnique({
                 where: { userId_provider: { userId, provider: this.id } },
-                select: { ciphertext: true },
+                select: { ciphertext: true, revision: true },
               })
             : await client.integrationProviderConfig.findUnique({
                 where: { id: this.id },
                 select: { ciphertext: true },
               });
-        return (current?.ciphertext ?? null) === prepared.ref;
+        return (current ? providerRevisionRef(this.id, current) : null) === prepared.ref;
       },
     };
   }
@@ -269,6 +270,13 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
   async *execute(call: ConnectorCall, context: AdapterContext) {
     yield* (await this.required(context)).execute(call, context);
   }
+}
+
+function providerRevisionRef(
+  id: IntegrationProviderId,
+  row: { ciphertext: string; revision?: number },
+) {
+  return id === "composio" ? JSON.stringify([row.ciphertext, row.revision ?? 0]) : row.ciphertext;
 }
 
 export async function prepareManagedConnectorForTransaction(

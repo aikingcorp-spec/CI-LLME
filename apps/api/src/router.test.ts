@@ -52,6 +52,22 @@ const enqueueBotIntroRun = (deps: RouterDeps, ...rest: [Actor, Bot]) =>
   enqueueBotIntroRunWith(withRoleDeps(deps), ...rest);
 
 describe("account preferences", () => {
+  it("saves task continuity only for the authenticated account", async () => {
+    const { deps, actor, update } = preferencesDeps("organic");
+    const client = createRouterClient(createRouter(deps), {
+      context: { actor: { ...actor, isDeploymentOwner: false } } as never,
+    });
+    await client.preferences.update({ taskContinuityEnabled: true });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: actor.userId },
+      data: { taskContinuityEnabled: true },
+    });
+    await client.preferences.update({ taskContinuityEnabled: false });
+    expect(update).toHaveBeenLastCalledWith({
+      where: { id: actor.userId },
+      data: { taskContinuityEnabled: false },
+    });
+  });
   function preferencesDeps(avatarStyle: string, timezone: string | null = null) {
     const update = vi.fn().mockResolvedValue({});
     const user = { email: "user@rakazo.test", name: "Test User", avatarStyle, timezone };

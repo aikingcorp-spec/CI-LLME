@@ -1,6 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, openUserSettings, signup } from "./helpers";
 
+test("task continuity is an explicit personal preference that survives reload", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `continuity-${Date.now()}@rakazo.test`, "password12", "Task Tester");
+  await completeOnboarding(page);
+  await openUserSettings(page, "general");
+  const toggle = page.getByRole("switch", { name: "Continue unfinished tasks", exact: true });
+  await expect(toggle).not.toBeChecked();
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  await page.reload();
+  await expect(toggle).toBeChecked();
+  await captureScreenshot(page, testInfo, "personal-task-continuity-enabled");
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
+});
+
 test("native calls select an owned ChatGPT connection while keeping speech settings separate", async ({
   page,
 }, testInfo) => {
@@ -49,9 +66,12 @@ test("native calls select an owned ChatGPT connection while keeping speech setti
       { exact: true },
     ),
   ).toBeVisible();
+  await expect(page.getByLabel("API key", { exact: true })).toBeHidden();
+  await page.getByText("Speech and dictation", { exact: true }).click();
   await expect(page.getByLabel("API key", { exact: true })).toBeVisible();
+  await page.getByText("Speech and dictation", { exact: true }).click();
   await captureScreenshot(page, testInfo, "native-voice-uses-owned-chatgpt");
-  await settings.getByRole("button", { name: "Turn off voice calls", exact: true }).click();
+  await settings.getByLabel("ChatGPT voice calls", { exact: true }).selectOption("");
   await expect(settings.getByLabel("ChatGPT voice calls", { exact: true })).toHaveValue("");
   expect(credentialId).toBeNull();
 });

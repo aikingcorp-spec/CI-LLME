@@ -2,8 +2,8 @@
 
 ## 2026-11-02 — Native voice bridge and bounded task continuation
 
-- Pull request: pending on `feat/voice-connectors-continuity`.
-- What changed: personal native voice preferences reuse an owned ChatGPT OAuth connection; SDP setup stays on the node and media goes directly from the browser to the voice service. Pi retains tool/task execution. The existing call UI is reused. An explicitly enabled finish-turn reviewer can continue incomplete tool work within a fixed call budget. Verified inline OAuth can wake its completed source task once.
+- Pull request: [#44](https://github.com/aikingcorp-spec/vnbot/pull/44).
+- What changed: personal native voice preferences reuse an owned ChatGPT OAuth connection; SDP setup stays on the node and media goes directly from the browser to the voice service. Pi retains tool/task execution. The existing call UI is reused. A personal opt-in finish-turn reviewer can continue incomplete tool work within a fixed call budget. Configuration revisions fence personal-key changes even when an external secret-store reference stays unchanged. Verified inline OAuth can wake its completed source task once.
 - Why: native conversation should keep the existing execution and approval owner, and a progress reply should not silently terminate authorized work.
 - Modules: voice adapter, personal preference schema/RLS, account and call routes, existing web call session and voice settings, Pi finish-turn hook, onboarding connection acknowledgement.
 - Invariants: no browser OAuth token, no product HTTP fallback, no approval/cancellation override, no duplicate model secret, no surprise review usage by default. Additive migration, previous code remains compatible.
@@ -11,7 +11,7 @@
 
 ## 2026-11-02 — Personal broker setup and node-bound OAuth completion
 
-- Pull request: pending on `feat/voice-connectors-continuity`.
+- Pull request: [#44](https://github.com/aikingcorp-spec/vnbot/pull/44).
 - What changed versus baseline: optional personal Composio credentials are encrypted and resolved by member in API/worker; project directory caches are isolated. New-tab MCP callbacks reconnect to the originating node and correlate completion by attempt. Neutral registry-hosted plugin previews retain service policy checks. Connection polling preserves permanent errors.
 - Why: deployment-wide broker keys cannot represent personal ownership; hosted callbacks cannot send product RPC to the account service; preview provenance must not masquerade as a temporary network failure.
 - Modules and files: integration settings and Composio adapters; personal configuration schema/migration/RLS; connection and setup API routes; setup UI and MCP callback/client; catalog text policy; shared connection polling.

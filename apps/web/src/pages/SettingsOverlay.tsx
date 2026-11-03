@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
 import { computersAreUnavailable } from "../components/ComputersUnavailableHint";
 import { SETTINGS_CONTENT_WIDTH, SettingsGroup, SettingsRow } from "../components/SettingsRows";
+import { TaskContinuitySettings } from "../components/TaskContinuitySettings";
 import { VaultSettings } from "../components/VaultSettings";
 import { desktopBridge } from "../lib/desktop";
 import { SpaceRpcProvider } from "../lib/space-rpc";
@@ -355,6 +356,7 @@ export function SettingsOverlay({
                         timezone={timezone}
                         onTimezoneChange={onTimezoneChange}
                       />
+                      <TaskContinuitySettings />
                       {/* One space is just the app, so there is nothing to tell apart or manage. */}
                       {spaces.length > 1 && onOpenSpace ? (
                         <SettingsGroup title={t`Spaces`} data-testid="settings-spaces">

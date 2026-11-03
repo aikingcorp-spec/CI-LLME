@@ -2,7 +2,10 @@ import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-k
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { InfisicalSecretStore } from "./infisical-secret-store.js";
-import { IntegrationProviderSettings } from "./integration-provider-settings.js";
+import {
+  IntegrationProviderSettings,
+  prepareManagedConnectorForTransaction,
+} from "./integration-provider-settings.js";
 import { infisicalFake } from "./secret-store-fake.js";
 import { EncryptedSecretStore } from "./secrets.js";
 
@@ -14,7 +17,7 @@ const context: AdapterContext = {
   signal: new AbortController().signal,
 };
 function fixture() {
-  const rows = new Map<string, { id: string; ciphertext: string }>();
+  const rows = new Map<string, { id: string; ciphertext: string; revision?: number }>();
   const prisma = {
     integrationProviderConfig: {
       findUnique: vi.fn(async ({ where }: { where: { id: string } }) => rows.get(where.id) ?? null),
@@ -39,7 +42,12 @@ function fixture() {
         }: {
           create: { userId: string; provider: string; ciphertext: string };
         }) => {
-          const row = { id: `${create.userId}:${create.provider}`, ciphertext: create.ciphertext };
+          const previous = rows.get(`${create.userId}:${create.provider}`);
+          const row = {
+            id: `${create.userId}:${create.provider}`,
+            ciphertext: create.ciphertext,
+            revision: previous ? (previous.revision ?? 0) + 1 : 0,
+          };
           rows.set(row.id, row);
           return row;
         },
@@ -63,6 +71,24 @@ function fixture() {
   return { rows, prisma, adapter, factory, secrets, settings };
 }
 describe("integration provider settings", () => {
+  it("fences a prepared connection when key replacement keeps the external secret reference", async () => {
+    const f = fixture();
+    let plaintext = "";
+    vi.spyOn(f.secrets, "put").mockImplementation(async (value) => {
+      plaintext = value;
+      return { id: "remote-record", ref: "remote-ref", ciphertext: "remote-ref" };
+    });
+    vi.spyOn(f.secrets, "load").mockImplementation(async () => plaintext);
+    await f.settings.save({ provider: "composio", apiKey: "fake-first" }, context);
+    const connector = f.settings
+      .providers()
+      .find((provider) => provider.describe().id === "composio")!;
+    const prepared = await prepareManagedConnectorForTransaction(connector, context.userId!);
+    expect(await prepared.recheck?.(f.prisma as unknown as PrismaClient)).toBe(true);
+    await f.settings.save({ provider: "composio", apiKey: "fake-replacement" }, context);
+    expect(f.rows.get("user:composio")?.ciphertext).toBe("remote-ref");
+    expect(await prepared.recheck?.(f.prisma as unknown as PrismaClient)).toBe(false);
+  });
   it("isolates personal keys and never falls back to deployment Composio credentials", async () => {
     const f = fixture();
     const fallback = { catalog: vi.fn() } as unknown as ManagedConnectorProvider;

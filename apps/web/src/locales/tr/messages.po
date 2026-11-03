@@ -1336,6 +1336,10 @@ msgstr ""
 msgid "Checking…"
 msgstr ""
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Checks for remaining work before stopping. Uses extra model requests."
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 msgid "Choose a bot"
 msgstr "Bir bot seç"
@@ -1778,6 +1782,10 @@ msgstr "Devam"
 msgid "Continue in Background"
 msgstr ""
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Continue unfinished tasks"
+msgstr ""
+
 #. placeholder {0}: reset.sso.name
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
@@ -2215,6 +2223,10 @@ msgstr "Kural kaydedilemedi"
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not save skill"
 msgstr "Beceri kaydedilemedi"
+
+#: src/components/TaskContinuitySettings.tsx
+msgid "Could not save task settings"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Could not save that choice"
@@ -5901,6 +5913,10 @@ msgid "Speaking"
 msgstr ""
 
 #: src/pages/VoiceSettingsOverlay.tsx
+msgid "Speech and dictation"
+msgstr ""
+
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Speech model"
 msgstr "Konuşma modeli"
 
@@ -6420,10 +6436,6 @@ msgstr "Testi yeniden dene."
 #: src/lib/cron.ts
 msgid "Tuesday"
 msgstr "Salı"
-
-#: src/components/call/NativeVoiceSettings.tsx
-msgid "Turn off voice calls"
-msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Type"

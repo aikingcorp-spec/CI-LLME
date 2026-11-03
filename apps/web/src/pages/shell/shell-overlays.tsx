@@ -168,6 +168,8 @@ export function SettingsOverlays({
           }}
           onVoiceStatusMaybeChanged={async () => {
             try {
+              const nextMe = await Promise.race([rpc.me(), voiceStatusRefreshTimeout()]);
+              if (alive.current) setBootstrapMe(() => nextMe);
               queryClient.setQueryData(
                 voiceStatusKey,
                 await Promise.race([rpc.voice.status(), voiceStatusRefreshTimeout()]),

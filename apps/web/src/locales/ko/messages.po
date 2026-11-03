@@ -1336,6 +1336,10 @@ msgstr ""
 msgid "Checking…"
 msgstr "확인 중…"
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Checks for remaining work before stopping. Uses extra model requests."
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 msgid "Choose a bot"
 msgstr "봇 선택"
@@ -1778,6 +1782,10 @@ msgstr "계속"
 msgid "Continue in Background"
 msgstr ""
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Continue unfinished tasks"
+msgstr ""
+
 #. placeholder {0}: reset.sso.name
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
@@ -2215,6 +2223,10 @@ msgstr "확인 규칙을 저장하지 못했습니다."
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not save skill"
 msgstr "스킬을 저장하지 못했습니다"
+
+#: src/components/TaskContinuitySettings.tsx
+msgid "Could not save task settings"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Could not save that choice"
@@ -5901,6 +5913,10 @@ msgid "Speaking"
 msgstr ""
 
 #: src/pages/VoiceSettingsOverlay.tsx
+msgid "Speech and dictation"
+msgstr ""
+
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Speech model"
 msgstr "음성 모델"
 
@@ -6420,10 +6436,6 @@ msgstr "테스트를 다시 시도하세요."
 #: src/lib/cron.ts
 msgid "Tuesday"
 msgstr "화요일"
-
-#: src/components/call/NativeVoiceSettings.tsx
-msgid "Turn off voice calls"
-msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Type"

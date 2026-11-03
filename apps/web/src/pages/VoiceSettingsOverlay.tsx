@@ -18,6 +18,7 @@ import {
   DialogClose,
   DialogContent,
   DialogTitle,
+  Disclosure,
   Field,
   FieldLabel,
   Input,
@@ -25,7 +26,7 @@ import {
   NativeSelectOption,
   Spinner,
 } from "@rakazo/ui-web";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { NativeVoiceSettings } from "../components/call/NativeVoiceSettings";
@@ -54,6 +55,7 @@ export function VoiceSettingsOverlay({
   const spaceId = useBoundSpaceId();
   const queries = useSpaceQueries();
   const queryClient = useQueryClient();
+  const nativeVoice = useQuery(queries.voice.realtime.status.queryOptions()).data;
   const scoped = { input: { scope } };
   // A revisit opens with what this scope showed last time and refreshes it in the background.
   const [cached] = useState(() => {
@@ -320,9 +322,8 @@ export function VoiceSettingsOverlay({
     }
   }
 
-  const content = (
+  const speechContent = (
     <>
-      {scope === "account" ? <NativeVoiceSettings /> : null}
       {loading && !catalog.length ? (
         <p className="text-sm text-muted-foreground">
           <Spinner aria-label={t`Loading voice providers…`} />
@@ -575,6 +576,17 @@ export function VoiceSettingsOverlay({
           ) : null}
         </>
       ) : null}
+    </>
+  );
+
+  const content = (
+    <>
+      {scope === "account" ? <NativeVoiceSettings /> : null}
+      {scope === "account" && nativeVoice?.enabled ? (
+        <Disclosure summary={<Trans>Speech and dictation</Trans>}>{speechContent}</Disclosure>
+      ) : (
+        speechContent
+      )}
     </>
   );
 

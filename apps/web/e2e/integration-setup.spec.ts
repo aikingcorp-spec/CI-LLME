@@ -1,5 +1,27 @@
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, openUserSettings, signup } from "./helpers";
+
+test("task completion checks are a personal opt-in with visible model usage", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `task-continuity-${Date.now()}@rakazo.test`, "password12", "Task Tester");
+  await completeOnboarding(page);
+  await openUserSettings(page, "general");
+  const control = page.getByRole("switch", { name: "Continue unfinished tasks", exact: true });
+  await expect(control).not.toBeChecked();
+  await control.click();
+  await expect(control).toBeChecked();
+  const response = await page.request.post("/rpc/me", { data: { json: null } });
+  expect((await response.json()).json.taskContinuityEnabled).toBe(true);
+  await expect(
+    page.getByText("Checks for remaining work before stopping. Uses extra model requests.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await captureScreenshot(page, testInfo, "personal-task-continuity-enabled");
+  await control.click();
+  await expect(control).not.toBeChecked();
+});
 
 test("signup never grants server authority and settings contain only account controls", async ({
   page,

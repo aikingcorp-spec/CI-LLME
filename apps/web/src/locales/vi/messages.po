@@ -1336,6 +1336,10 @@ msgstr "Đang kiểm tra các bot của bạn"
 msgid "Checking…"
 msgstr "Đang kiểm tra…"
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Checks for remaining work before stopping. Uses extra model requests."
+msgstr "Kiểm tra việc còn lại trước khi dừng. Sử dụng thêm lượt gọi mô hình."
+
 #: src/pages/shell/agent-import.tsx
 msgid "Choose a bot"
 msgstr "Chọn một bot"
@@ -1778,6 +1782,10 @@ msgstr "Tiếp tục"
 msgid "Continue in Background"
 msgstr "Tiếp tục chạy nền"
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Continue unfinished tasks"
+msgstr "Tiếp tục việc chưa hoàn tất"
+
 #. placeholder {0}: reset.sso.name
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
@@ -2215,6 +2223,10 @@ msgstr "Không thể lưu quy tắc"
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not save skill"
 msgstr "Không thể lưu kỹ năng"
+
+#: src/components/TaskContinuitySettings.tsx
+msgid "Could not save task settings"
+msgstr "Không lưu được cài đặt tác vụ"
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Could not save that choice"
@@ -5901,6 +5913,10 @@ msgid "Speaking"
 msgstr "Đang nói"
 
 #: src/pages/VoiceSettingsOverlay.tsx
+msgid "Speech and dictation"
+msgstr "Đọc và nhập bằng giọng nói"
+
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Speech model"
 msgstr "Mô hình giọng nói"
 
@@ -6420,10 +6436,6 @@ msgstr "Bạn hãy kiểm tra lại."
 #: src/lib/cron.ts
 msgid "Tuesday"
 msgstr "Thứ Ba"
-
-#: src/components/call/NativeVoiceSettings.tsx
-msgid "Turn off voice calls"
-msgstr "Tắt gọi thoại"
 
 #: src/components/VaultSettings.tsx
 msgid "Type"

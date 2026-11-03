@@ -40,6 +40,7 @@ vi.mock("./AccountSettingsOverlay", () => ({
   UpdatesSettingsPanel: () => null,
   UsageSettingsPanel: () => null,
 }));
+vi.mock("../components/TaskContinuitySettings", () => ({ TaskContinuitySettings: () => null }));
 const { memoryConfigs, memoryConfigChange, providerConfig, updaterStatus } = vi.hoisted(() => ({
   memoryConfigs: [] as unknown[],
   memoryConfigChange: { current: (_config: unknown) => {} },

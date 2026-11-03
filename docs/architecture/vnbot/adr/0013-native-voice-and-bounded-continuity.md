@@ -36,7 +36,10 @@ provider abort, silent background tasks or an exhausted tool budget. It makes
 at most two review calls per runtime invocation, each with a 20-second deadline
 and 1,024 output-token ceiling. Usage goes through the existing observer and
 accounting as `setup`, separately from answer calls. Enable explicitly with
-`AGENT_CONTINUITY_REVIEW=1`; default is off to avoid surprise model usage.
+the account's “Continue unfinished tasks” setting; default is off to avoid surprise
+model usage. The executor reads this preference with the existing user-context
+lookup, without another query. A request's explicit false overrides the optional
+`AGENT_CONTINUITY_REVIEW=1` composition-root default for programmatic runtimes.
 
 Invalid or failed reviews are unqualified, logged without conversation content,
 and preserve existing completion behavior. The bounded layer improves recovery;

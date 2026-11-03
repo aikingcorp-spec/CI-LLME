@@ -1336,6 +1336,10 @@ msgstr ""
 msgid "Checking…"
 msgstr "Проверка…"
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Checks for remaining work before stopping. Uses extra model requests."
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 msgid "Choose a bot"
 msgstr "Выберите бота"
@@ -1778,6 +1782,10 @@ msgstr "Продолжить"
 msgid "Continue in Background"
 msgstr "Продолжить в фоне"
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Continue unfinished tasks"
+msgstr ""
+
 #. placeholder {0}: reset.sso.name
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
@@ -2215,6 +2223,10 @@ msgstr "Не удалось сохранить правило."
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not save skill"
 msgstr "Не удалось сохранить навык"
+
+#: src/components/TaskContinuitySettings.tsx
+msgid "Could not save task settings"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Could not save that choice"
@@ -5901,6 +5913,10 @@ msgid "Speaking"
 msgstr "говорит"
 
 #: src/pages/VoiceSettingsOverlay.tsx
+msgid "Speech and dictation"
+msgstr ""
+
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Speech model"
 msgstr "Речевая модель"
 
@@ -6420,10 +6436,6 @@ msgstr "Повторите тест."
 #: src/lib/cron.ts
 msgid "Tuesday"
 msgstr "вторник"
-
-#: src/components/call/NativeVoiceSettings.tsx
-msgid "Turn off voice calls"
-msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Type"

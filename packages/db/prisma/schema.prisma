@@ -33,6 +33,7 @@ model User {
   avatarStyle                 String                       @default("organic")
   /// IANA timezone such as "Pacific/Auckland". Null until set; bots then get UTC only.
   timezone                    String?
+  taskContinuityEnabled       Boolean @default(false)
   marketingEmailOptOutAt      DateTime?
   sessions                    Session[]
   accounts                    Account[]
@@ -1156,6 +1157,7 @@ model UserIntegrationProviderConfig {
   userId     String
   provider   String
   ciphertext String
+  revision   Int @default(0)
   updatedAt  DateTime @updatedAt
 
   @@id([userId, provider])

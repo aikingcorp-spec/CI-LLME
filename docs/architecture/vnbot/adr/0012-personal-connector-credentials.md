@@ -17,8 +17,11 @@ Never return keys or insert them into agent conversation text.
 
 Serialize key replacement with connection changes and refuse replacement while
 connections are active. Load prepared credentials outside connection transactions
-and recheck their reference inside them. This preserves slow external secret-store
-support and fences concurrent credential replacement.
+and recheck their reference and database revision inside them. External stores may
+keep a stable reference while its contents change, so each configured key replacement
+increments the revision under the same lock. This preserves slow external secret-store
+support and fences concurrent key replacement through setup. Out-of-band vault rotation
+cannot participate in database locking and should be coordinated by the operator.
 
 New-tab OAuth callbacks reconnect to their originating paired node before product
 RPC. Persist only expiring account/node routing metadata, never codes or tokens.

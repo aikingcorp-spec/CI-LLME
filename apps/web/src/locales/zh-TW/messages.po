@@ -1337,6 +1337,10 @@ msgstr ""
 msgid "Checking…"
 msgstr "正在檢查…"
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Checks for remaining work before stopping. Uses extra model requests."
+msgstr ""
+
 #: src/pages/shell/agent-import.tsx
 msgid "Choose a bot"
 msgstr "選擇機器人"
@@ -1779,6 +1783,10 @@ msgstr "繼續"
 msgid "Continue in Background"
 msgstr "在背景繼續"
 
+#: src/components/TaskContinuitySettings.tsx
+msgid "Continue unfinished tasks"
+msgstr ""
+
 #. placeholder {0}: reset.sso.name
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
@@ -2216,6 +2224,10 @@ msgstr "無法儲存規則"
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not save skill"
 msgstr "無法儲存技能"
+
+#: src/components/TaskContinuitySettings.tsx
+msgid "Could not save task settings"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Could not save that choice"
@@ -5902,6 +5914,10 @@ msgid "Speaking"
 msgstr "說話中"
 
 #: src/pages/VoiceSettingsOverlay.tsx
+msgid "Speech and dictation"
+msgstr ""
+
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Speech model"
 msgstr "語音模型"
 
@@ -6421,10 +6437,6 @@ msgstr "請重試測試。"
 #: src/lib/cron.ts
 msgid "Tuesday"
 msgstr "週二"
-
-#: src/components/call/NativeVoiceSettings.tsx
-msgid "Turn off voice calls"
-msgstr ""
 
 #: src/components/VaultSettings.tsx
 msgid "Type"

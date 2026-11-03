@@ -268,7 +268,9 @@ export class PiAgentRuntime implements AgentRuntime {
         };
         resumeHost = host;
         const tools = toAgentTools(toolDefs, host);
-        const continuity = new TaskContinuity(this.continuityReview && !request.allowSilentEmpty);
+        const continuity = new TaskContinuity(
+          (request.taskContinuity ?? this.continuityReview) && !request.allowSilentEmpty,
+        );
         const seenSteeringIds: string[] = [];
         const initialSteering = request.claimSteering ? await request.claimSteering([]) : [];
         let hasCurrentImages = Boolean(

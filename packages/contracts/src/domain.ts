@@ -1708,6 +1708,8 @@ export const MeSchema = z.object({
   maxUploadSizeBytes: z.number().int().positive().optional(),
   ticketBoardEnabled: z.boolean(),
   phoneCallsEnabled: z.boolean().default(false),
+  taskContinuityEnabled: z.boolean().optional(),
+  taskContinuitySupported: z.boolean().optional(),
   /** Operator-configured menu links. Absent from older servers. */
   navLinks: z.array(NavLinkSchema).default([]),
   userId: Id,
