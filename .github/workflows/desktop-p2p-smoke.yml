@@ -1,90 +1,41 @@
-name: voice-connectors-continuity
+name: legacy-in-app-upgrade-acceptance
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  feature:
+  legacy-upgrade:
     if: github.repository == 'aikingcorp-spec/CI-LLME'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 35
+    runs-on: windows-latest
+    timeout-minutes: 12
     defaults:
       run:
-        shell: bash
+        shell: pwsh
     steps:
       - uses: actions/checkout@v5
-      - name: Verify pinned source content
-        run: |
-          python - <<'PY'
-          import hashlib,json,pathlib
-          files=json.loads(pathlib.Path('.ci-source-files.json').read_text())
-          for name,expected in files.items():
-            actual=hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()
-            if actual!=expected:raise SystemExit('Source mismatch: '+name)
-          print(pathlib.Path('.ci-source.json').read_text())
-          print('Source content verified')
-          PY
-      - uses: pnpm/action-setup@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm db:generate
-      - name: Check shared runtime, API, worker and clients
+      - name: Install acceptance driver
+        run: npm install --prefix .ci/probe-tools --no-audit --no-fund @playwright/test@1.64.1
+      - name: Fetch and verify public installer
         run: |
-          pnpm --filter @rakazo/adapter-kit check
-          pnpm --filter @rakazo/contracts check
-          pnpm --filter @rakazo/core check
-          pnpm --filter @rakazo/db check
-          pnpm --filter @rakazo/adapters check
-          pnpm --filter @rakazo/api check
-          pnpm --filter @rakazo/worker check
-          pnpm --filter @rakazo/web check
-          pnpm --filter @rakazo/desktop check
-      - name: Connector, voice and continuation regressions
-        run: >-
-          pnpm exec vitest run
-          apps/desktop/src/auto-update.test.ts apps/desktop/src/update-feed.test.ts apps/desktop/src/release-workflow.test.ts
-          apps/api/src/router.test.ts apps/api/src/onboarding.test.ts apps/api/src/mcp-approval.test.ts
-          apps/api/src/catalog-text.test.ts apps/api/src/realtime-voice.test.ts
-          packages/adapters/src/integration-provider-settings.test.ts packages/adapters/src/composio-connector.test.ts
-          packages/adapters/src/connect-app.test.ts packages/adapters/src/codex-realtime-voice.test.ts
-          packages/adapters/src/task-continuity.test.ts packages/adapters/src/pi-runtime*.test.ts
-          apps/web/src/lib/mcp-connect.test.ts apps/web/src/lib/native-voice.test.ts
-          apps/web/src/lib/call-session*.test.ts apps/web/src/pages/VoiceSettingsOverlay.test.tsx
-          apps/web/src/pages/shell/message-cards.test.tsx packages/core/src/connection-catalog.test.ts
-          --maxWorkers=4
-      - name: PostgreSQL ownership and foreign-key isolation
-        if: runner.os == 'Linux'
-        run: pnpm exec tsx packages/testkit/src/cli/harness.ts --integration --spec=row-security.postgres
-      - name: Install browser
-        if: runner.os == 'Linux'
-        run: pnpm --filter @rakazo/web exec playwright install --with-deps chromium
-      - name: Marketplace and native voice UI
-        if: runner.os == 'Linux'
-        run: pnpm exec tsx packages/testkit/src/cli/harness.ts --e2e '--spec=integration-setup.spec.ts|native-voice.spec.ts|integration-callback.spec.ts' --workers=1
-      - name: Build real hosted web
-        run: pnpm --filter @rakazo/web build
-        env:
-          VITE_P2P_GATEWAY_URL: https://gateway.example.test
-      - name: Build desktop entry and isolated agent
+          Invoke-WebRequest -Uri 'https://dl.vnbot.run/desktop/VNBot-Setup-0.3.7-x64.exe' -UserAgent 'electron-updater' -OutFile installer.exe
+          $hash = (Get-FileHash installer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne '1670dc906f10f8e3c5848f01f9f61659fb784336d3627a631cfcbf1a16eb9786') { throw 'Public installer digest mismatch' }
+      - name: Upgrade through the actual in-app installer
         run: |
-          node apps/desktop/scripts/build.mjs
-          node apps/desktop/scripts/build-p2p-agent.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: voice-connectors-${{ runner.os }}
-          path: |
-            .ci-source.json
-            test-report/
-            apps/web/test-results/
-            playwright-report/
-          if-no-files-found: ignore
-  p2p:
-    uses: ./.github/workflows/p2p-journey.yml
+          Start-Process -FilePath "$env:GITHUB_WORKSPACE\installer.exe" -ArgumentList '/S' -Wait
+          $env:PROBE_INSTALLED_APP = Join-Path $env:LOCALAPPDATA 'Programs\VNBot\VNBot.exe'
+          node .ci/legacy-upgrade-probe.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy in-app installer failed' }
+          $deadline = (Get-Date).AddSeconds(120)
+          do {
+            Start-Sleep -Seconds 2
+            $version = (Get-Item $env:PROBE_INSTALLED_APP).VersionInfo.ProductVersion
+          } while ($version -notmatch '^0\.3\.8' -and (Get-Date) -lt $deadline)
+          if ($version -notmatch '^0\.3\.8') { throw 'Real installer did not update the executable' }
+          node .ci/legacy-upgrade-verify.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Upgraded app verification failed' }
