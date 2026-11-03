@@ -102,3 +102,5 @@ the opt-in reviewer, and retain the additive tables. Never restore a production
 database or rotate pairing/signing material as a rollback test.
 
 Native voice denial handling uses a bounded upstream JSON read and a closed set of safe errors. A structured `usage_limit_reached` denial is distinct from transient HTTP 429 throttling. The API preserves actionable account/service errors instead of reporting an internal server failure. It does not switch credentials, automatically retry call creation, infer a reset time or reproduce provider bodies in logs/client replies.
+
+Initial voice context is serialized as a developer message in the native session `initial_items`, matching the upstream Frameless Bidi protocol. Policy instructions remain separate. An isolated real-provider comparison showed that putting background facts only in `session.instructions` did not let voice recognize the synthetic user, while the initial-message path did. The UI receives only SDP; background data is resolved by the authorized node.

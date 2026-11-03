@@ -81,7 +81,7 @@ for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-o
           sandbox: prefs.sandbox,
           isolated: prefs.contextIsolation,
           node: prefs.nodeIntegration,
-          preload: prefs.preload,
+          hasPreload: Boolean(prefs.preload),
           sameSession: popup!.webContents.session === parent!.webContents.session,
         };
       });
@@ -89,7 +89,7 @@ for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-o
         sandbox: true,
         isolated: true,
         node: false,
-        preload: "",
+        hasPreload: false,
         sameSession: true,
       });
       await child.getByText("Authorize fixture").click();

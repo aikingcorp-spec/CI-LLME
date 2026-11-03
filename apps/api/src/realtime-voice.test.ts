@@ -102,11 +102,11 @@ describe("personal native voice", () => {
       }),
     );
     const request = vi.mocked(provider.create).mock.calls.at(-1)?.[0] as unknown as {
-      instructions: string;
+      context: string;
     };
-    expect(request.instructions).toContain('"name":"Fixture member"');
-    expect(request.instructions).not.toContain("fixture-private-token");
-    expect(request.instructions).not.toContain("fixture@example.test");
+    expect(request.context).toContain('"name":"Fixture member"');
+    expect(request.context).not.toContain("fixture-private-token");
+    expect(request.context).not.toContain("fixture@example.test");
   });
   it("rejects a foreign bot before refreshing or opening provider media", async () => {
     const f = fixture();
