@@ -1,0 +1,33 @@
+name: installed-desktop-public-feed-acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-feed:
+    if: github.repository == 'aikingcorp-spec/CI-LLME'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install acceptance driver
+        run: npm install --prefix .ci/probe-tools --no-audit --no-fund @playwright/test@1.64.1
+      - name: Fetch and verify public installer
+        run: |
+          Invoke-WebRequest -Uri 'https://dl.vnbot.run/desktop/VNBot-Setup-0.3.8-x64.exe' -UserAgent 'electron-updater' -OutFile installer.exe
+          $hash = (Get-FileHash installer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne 'b9723a43511f61f1b210fc50ac7da3078dac2f8b1f723dc935d8be66f89fe8a9') { throw 'Public installer digest mismatch' }
+      - name: Verify in-app check against public HTTPS feed
+        run: |
+          Start-Process -FilePath "$env:GITHUB_WORKSPACE\installer.exe" -ArgumentList '/S' -Wait
+          $env:PROBE_INSTALLED_APP = Join-Path $env:LOCALAPPDATA 'Programs\VNBot\VNBot.exe'
+          node .ci/installed-public-feed-probe.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Installed public feed acceptance failed' }
