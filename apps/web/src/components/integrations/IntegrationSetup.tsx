@@ -6,6 +6,7 @@ import { useState } from "react";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { PersonalComposio } from "./personal-composio";
 
 /** Personal MCP connections never configure deployment-wide provider credentials. */
 export function IntegrationSetup({ onDone, botId }: { onDone?: () => void; botId?: string }) {
@@ -61,6 +62,7 @@ export function IntegrationSetup({ onDone, botId }: { onDone?: () => void; botId
 
   return (
     <div className="space-y-6">
+      <PersonalComposio />
       <h1 className="text-[32px] font-medium text-foreground">
         <Trans>Add MCP server</Trans>
       </h1>

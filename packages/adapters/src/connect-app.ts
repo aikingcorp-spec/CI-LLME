@@ -38,7 +38,21 @@ export async function connectApp(
       catalog.filter((item) => item.connected),
       app,
     ) ?? matchAppCatalog(catalog, app);
-  if (!entry) return { error: "No such app is available in the connector catalog." };
+  if (!entry) {
+    for (const provider of providers) {
+      if (provider.describe().id !== "composio" || !provider.configuration) continue;
+      const setup = await provider.configuration(context);
+      if (!setup.configured && setup.personal)
+        return {
+          status: "setup_required",
+          provider: "composio",
+          setupPath: "/integrations/setup",
+          message:
+            "This account has no personal Composio key. Offer the user two choices: add their own project key in Integrations, then authorize the app, or add an official MCP server manually with add_mcp_server. Never ask for the API key in chat. No shared key or paid fallback is used. Resume the original task after connection; continue independent work meanwhile.",
+        };
+    }
+    return { error: "No such app is available in the connector catalog." };
+  }
   if (entry.connected)
     return {
       status: "connected",

@@ -615,6 +615,10 @@ msgstr ""
 msgid "Add workspace"
 msgstr "वर्कस्पेस जोड़ें"
 
+#: src/pages/PluginsOverlay.tsx
+msgid "Add your Composio key or connect an MCP server."
+msgstr ""
+
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Added"
@@ -686,6 +690,11 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Allow once"
 msgstr "एक बार अनुमति दें"
+
+#: src/pages/PluginsOverlay.tsx
+#: src/pages/shell/message-cards.tsx
+msgid "Allow popups for this site and try again."
+msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Allow rule"
@@ -1254,6 +1263,10 @@ msgstr "Slack से अपने बॉट से चैट करें।"
 msgid "ChatGPT subscription"
 msgstr ""
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "ChatGPT voice calls"
+msgstr ""
+
 #: src/lib/identity-display.ts
 msgid "Chats"
 msgstr "चैट"
@@ -1261,6 +1274,10 @@ msgstr "चैट"
 #: src/components/ComputersUnavailableHint.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
+msgstr ""
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Check and save"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -1314,6 +1331,7 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdateViews.tsx
+#: src/components/integrations/personal-composio.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr ""
@@ -1530,6 +1548,10 @@ msgstr ""
 msgid "Completed"
 msgstr "पूर्ण"
 
+#: src/components/integrations/personal-composio.tsx
+msgid "Composio connected"
+msgstr ""
+
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/message-view.tsx
@@ -1574,10 +1596,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, novita, daytona, or boat with its API key. Recreate the stack after changing .env."
 msgstr "कंप्यूटर बंद हैं। SANDBOX_PROVIDER=docker और SANDBOX_SUPERVISOR_TOKEN सेट करें, या SANDBOX_PROVIDER को e2b, novita, daytona, या boat पर सेट कर उसका API key दें। .env बदलने के बाद स्टैक फिर बनाएँ।"
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Configure a plugin catalog on the server to connect apps."
-msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Configured servers"
@@ -1650,6 +1668,10 @@ msgstr ""
 msgid "Connect apps"
 msgstr "ऐप कनेक्ट करें"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Connect ChatGPT in Models to use its voice."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "MCP सर्वर “{name}” कनेक्ट करें"
@@ -1665,6 +1687,10 @@ msgstr "OAuth कनेक्ट करें"
 #: src/lib/agent-import-errors.ts
 msgid "Connect this model's provider first."
 msgstr "पहले इस मॉडल का प्रदाता कनेक्ट करें।"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Connect with your Composio key"
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -2209,6 +2235,14 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
 msgstr "यह विकल्प सहेजा नहीं जा सका"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Could not save voice settings"
+msgstr ""
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Could not save your Composio key"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not search catalog"
@@ -3140,6 +3174,10 @@ msgstr "मोबाइल ऐप पाएँ"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Get ticket"
+msgstr ""
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Get your project key"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -4356,6 +4394,10 @@ msgstr "OAuth कनेक्शन विफल"
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "OAuth की समय-सीमा समाप्त हो गई"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Off"
+msgstr ""
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/Pairing.tsx
@@ -6059,6 +6101,10 @@ msgstr "बॉट और उसके इंपोर्ट से जोड़�
 msgid "The bot can use the file but won't see the picture."
 msgstr "बॉट फ़ाइल का उपयोग कर सकता है, लेकिन तस्वीर नहीं देख पाएगा।"
 
+#: src/lib/call-session.ts
+msgid "The computer connection was lost. Hang up and reconnect."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "कनेक्शन का समय समाप्त हो गया।"
@@ -6375,6 +6421,10 @@ msgstr "परीक्षण फिर से आज़माएँ।"
 msgid "Tuesday"
 msgstr "मंगलवार"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Turn off voice calls"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Type"
 msgstr ""
@@ -6599,6 +6649,10 @@ msgstr "आपके कंप्यूटर के पाथ इस्ते�
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "{selectedProviderName} तक पहुँचने के लिए इस सर्वर के अपने {hostCredentialSource} क्रेडेंशियल का उपयोग करता है।"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Uses your ChatGPT account. Voice availability and limits follow your plan."
+msgstr ""
+
 #: src/lib/tool-activity-label.ts
 msgid "Using {name}"
 msgstr ""
@@ -6672,12 +6726,17 @@ msgstr ""
 msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
 msgstr ""
 
+#: src/components/call/NativeVoiceSettings.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
 msgstr "आवाज़"
+
+#: src/lib/call-session.ts
+msgid "Voice calls were turned off. Hang up to close this call."
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
@@ -6864,6 +6923,10 @@ msgstr "नियंत्रण आपके पास है"
 #: src/lib/run-error.ts
 msgid "Your Anthropic"
 msgstr "आपका Anthropic"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Your Composio API key"
+msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Your defaults"

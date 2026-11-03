@@ -137,7 +137,10 @@ async function main() {
   const runtime =
     process.env.AGENT_RUNTIME === "scripted"
       ? new ScriptedAgentRuntime()
-      : new PiAgentRuntime({ sessionRoot: resolvePiSessionRoot(dataDir) });
+      : new PiAgentRuntime({
+          sessionRoot: resolvePiSessionRoot(dataDir),
+          continuityReview: process.env.AGENT_CONTINUITY_REVIEW === "1",
+        });
   // Same resolver the API uses, so both processes agree on provider, model and key.
   const { key: deploymentModelKey, configured: deploymentModelConfigured } =
     resolveDeploymentModel();
@@ -256,7 +259,7 @@ async function main() {
     connector: stack.connector,
     connectors: stack.connector,
     listConnectedPluginSlugs: async (userId) => {
-      const provider = await integrationSettings.resolve("composio");
+      const provider = await integrationSettings.resolve("composio", userId);
       if (!provider) return [];
       return provider.listConnectedExternalIds({
         userId,

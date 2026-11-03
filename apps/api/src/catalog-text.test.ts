@@ -7,11 +7,27 @@ import { describe, expect, it, vi } from "vitest";
 import type * as catalogDescriptions from "./catalog-descriptions-vi.js";
 import {
   isCatalogContentAllowed,
+  isPluginPreviewAllowed,
   sanitizeAgentSkill,
   sanitizeCatalogText,
   sanitizePluginCatalog,
   withCatalogLocale,
 } from "./catalog-text.js";
+
+it("accepts neutral services vendored by a registry while still rejecting excluded service endpoints", () => {
+  const preview = {
+    name: "mail",
+    homepage: "https://github.com/cursor/plugins/tree/main/mail",
+    repository: "https://github.com/cursor/plugins",
+    mcpServers: [{ endpoint: "https://mail.example.test/mcp" }],
+  };
+  expect(isPluginPreviewAllowed(preview)).toBe(true);
+  expect(isPluginPreviewAllowed({ ...preview, name: "Cursor" })).toBe(false);
+  expect(
+    isPluginPreviewAllowed({ ...preview, mcpServers: [{ endpoint: "https://cursor.com/mcp" }] }),
+  ).toBe(false);
+});
+
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
 

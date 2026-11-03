@@ -261,6 +261,8 @@ export interface ConnectionAuthProvider {
 export interface ManagedConnectorProvider
   extends ConnectorProvider,
     Omit<ConnectionAuthProvider, "describe"> {
+  /** Whether this user's personal broker credentials are ready; never contains a key. */
+  configuration?(context: AdapterContext): Promise<{ configured: boolean; personal: boolean }>;
   catalog(context: AdapterContext, query?: string): Promise<ConnectorCatalogItem[]>;
   listConnectedExternalIds(context: AdapterContext): Promise<string[]>;
   /** Connection refs the provider reports as dead until the user reconnects them. */

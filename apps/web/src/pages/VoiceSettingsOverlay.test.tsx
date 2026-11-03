@@ -7,6 +7,15 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 
 const voice = vi.hoisted(() => ({
+  realtime: {
+    status: vi.fn(async () => ({
+      enabled: false,
+      credentialId: null,
+      voiceId: "cove",
+      voices: ["cove"],
+    })),
+    configure: vi.fn(),
+  },
   catalog: vi.fn(),
   credentials: vi.fn(),
   status: vi.fn(),
@@ -20,9 +29,9 @@ const voice = vi.hoisted(() => ({
 const { speak } = vi.hoisted(() => ({ speak: vi.fn(async () => undefined) }));
 vi.mock("../lib/tts.js", () => ({ speaker: { speak, state: {} } }));
 vi.mock("../lib/rpc", () => ({
-  rpc: { voice },
-  rpcForSpace: () => ({ voice }),
-  createSpaceRpc: () => ({ voice }),
+  rpc: { voice, models: { credentials: vi.fn(async () => []) } },
+  rpcForSpace: () => ({ voice, models: { credentials: vi.fn(async () => []) } }),
+  createSpaceRpc: () => ({ voice, models: { credentials: vi.fn(async () => []) } }),
   selectedSpaceId: () => null,
 }));
 vi.mock("@lingui/react/macro", () => {
@@ -152,7 +161,9 @@ it("saves a Fish speech model on the existing provider pane", async () => {
   document.body.append(container);
   const root = createRoot(container);
   const chooseProvider = (value: string) => {
-    const select = container.querySelector("select");
+    const select = [...container.querySelectorAll("select")].find(
+      (select) => container.querySelector(`label[for="${select.id}"]`)?.textContent === "Provider",
+    );
     if (!select) throw new Error("Missing provider select");
     select.value = value;
     select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -497,7 +508,10 @@ it("keeps the provider picked during a background refresh and only its voices", 
     );
     const second = await mount();
     await act(async () => {
-      const select = container.querySelector("select");
+      const select = [...container.querySelectorAll("select")].find(
+        (select) =>
+          container.querySelector(`label[for="${select.id}"]`)?.textContent === "Provider",
+      );
       if (!select) throw new Error("Missing provider select");
       select.value = "elevenlabs";
       select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -507,7 +521,12 @@ it("keeps the provider picked during a background refresh and only its voices", 
     await act(async () => {
       await Promise.resolve();
     });
-    expect(container.querySelector("select")?.value).toBe("elevenlabs");
+    expect(
+      [...container.querySelectorAll("select")].find(
+        (select) =>
+          container.querySelector(`label[for="${select.id}"]`)?.textContent === "Provider",
+      )?.value,
+    ).toBe("elevenlabs");
     expect(container.textContent).toContain("Rachel");
     expect(container.textContent).not.toContain("Aria");
     await act(async () => second.unmount());

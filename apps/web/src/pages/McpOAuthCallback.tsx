@@ -2,14 +2,14 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MCP_OAUTH_CHANNEL } from "../lib/mcp-connect";
-import { rpc } from "../lib/rpc";
+import { completeMcpOauth, MCP_OAUTH_CHANNEL } from "../lib/mcp-connect";
 import { errorText } from "../lib/user-error";
 
 // The window.open name set by the OAuth popup flow. Providers whose login
 // pages send COOP sever window.opener mid-flow, but the window name survives,
 // so it is the reliable "we are the popup" marker.
 const POPUP_NAME = MCP_OAUTH_CHANNEL;
+const isPopup = () => window.name === POPUP_NAME || window.name.startsWith(`${POPUP_NAME}:`);
 
 export function McpOAuthCallbackPage() {
   const { t } = useLingui();
@@ -27,13 +27,12 @@ export function McpOAuthCallbackPage() {
     }
     if (handledState.current === state) return;
     handledState.current = state;
-    void rpc.mcp.oauth
-      .complete({ sessionId: state, code, state })
+    void completeMcpOauth(state, code)
       .then(() => {
         const channel = new BroadcastChannel(POPUP_NAME);
-        channel.postMessage({ type: "mcp-oauth-complete" });
+        channel.postMessage({ type: "mcp-oauth-complete", state });
         channel.close();
-        if (window.name === POPUP_NAME) {
+        if (isPopup()) {
           setDone(true);
           window.close();
           return;
@@ -42,7 +41,7 @@ export function McpOAuthCallbackPage() {
       })
       .catch((err: unknown) => setError(errorText(err, t`Could not complete OAuth`)));
   }, [navigate, params, t]);
-  const showReturn = Boolean(error) && window.name !== POPUP_NAME;
+  const showReturn = Boolean(error) && !isPopup();
   return (
     <div className="grid min-h-screen place-items-center bg-background p-6 text-center">
       <div>

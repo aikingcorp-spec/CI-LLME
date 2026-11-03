@@ -7,6 +7,7 @@ import {
 } from "@rakazo/adapters";
 import type { Actor, Me } from "@rakazo/contracts";
 import { attachmentMaxBytes, canonicalPiProviderId } from "@rakazo/contracts";
+import { realtimeVoiceEnabled } from "../realtime-voice.js";
 import type { RouterDeps } from "../router.js";
 
 export { createAdapterContext as computerContext } from "@rakazo/adapter-kit";
@@ -32,7 +33,8 @@ export async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
   ]);
   return {
     ticketBoardEnabled: deps.env.ticketBoardEnabled === true,
-    phoneCallsEnabled: deps.env.phoneCallsEnabled === true,
+    phoneCallsEnabled:
+      deps.env.phoneCallsEnabled === true || (await realtimeVoiceEnabled(deps, actor)),
     navLinks: deps.env.navLinks ?? [],
     maxUploadSizeBytes: attachmentMaxBytes(deps.env),
     userId: actor.userId,

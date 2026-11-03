@@ -615,6 +615,10 @@ msgstr "Add trigger"
 msgid "Add workspace"
 msgstr "Add workspace"
 
+#: src/pages/PluginsOverlay.tsx
+msgid "Add your Composio key or connect an MCP server."
+msgstr "Add your Composio key or connect an MCP server."
+
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Added"
@@ -686,6 +690,11 @@ msgstr "Allow for this chat"
 #: src/components/AskCard.tsx
 msgid "Allow once"
 msgstr "Allow once"
+
+#: src/pages/PluginsOverlay.tsx
+#: src/pages/shell/message-cards.tsx
+msgid "Allow popups for this site and try again."
+msgstr "Allow popups for this site and try again."
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Allow rule"
@@ -1254,6 +1263,10 @@ msgstr "Chat with your bot from Slack."
 msgid "ChatGPT subscription"
 msgstr "ChatGPT subscription"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "ChatGPT voice calls"
+msgstr "ChatGPT voice calls"
+
 #: src/lib/identity-display.ts
 msgid "Chats"
 msgstr "Chats"
@@ -1262,6 +1275,10 @@ msgstr "Chats"
 #: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
 msgstr "Check again"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Check and save"
+msgstr "Check and save"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Check every"
@@ -1314,6 +1331,7 @@ msgstr "Checking your bots"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdateViews.tsx
+#: src/components/integrations/personal-composio.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "Checking…"
@@ -1530,6 +1548,10 @@ msgstr "Complete scratchpad item"
 msgid "Completed"
 msgstr "Completed"
 
+#: src/components/integrations/personal-composio.tsx
+msgid "Composio connected"
+msgstr "Composio connected"
+
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/message-view.tsx
@@ -1574,10 +1596,6 @@ msgstr "Computers are available. Reload or open a bot to continue."
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, novita, daytona, or boat with its API key. Recreate the stack after changing .env."
 msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, novita, daytona, or boat with its API key. Recreate the stack after changing .env."
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Configure a plugin catalog on the server to connect apps."
-msgstr "Configure a plugin catalog on the server to connect apps."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Configured servers"
@@ -1650,6 +1668,10 @@ msgstr "Connect app"
 msgid "Connect apps"
 msgstr "Connect apps"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Connect ChatGPT in Models to use its voice."
+msgstr "Connect ChatGPT in Models to use its voice."
+
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "Connect MCP server “{name}”"
@@ -1665,6 +1687,10 @@ msgstr "Connect OAuth"
 #: src/lib/agent-import-errors.ts
 msgid "Connect this model's provider first."
 msgstr "Connect this model's provider first."
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Connect with your Composio key"
+msgstr "Connect with your Composio key"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -2209,6 +2235,14 @@ msgstr "Could not save the credential"
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
 msgstr "Could not save this choice"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Could not save voice settings"
+msgstr "Could not save voice settings"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Could not save your Composio key"
+msgstr "Could not save your Composio key"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not search catalog"
@@ -3141,6 +3175,10 @@ msgstr "Get the mobile app"
 #: src/lib/builtin-tool-labels.ts
 msgid "Get ticket"
 msgstr "Get ticket"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Get your project key"
+msgstr "Get your project key"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -4356,6 +4394,10 @@ msgstr "OAuth connection failed"
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "OAuth expired"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Off"
+msgstr "Off"
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/Pairing.tsx
@@ -6059,6 +6101,10 @@ msgstr "The bot and what its import added will be removed."
 msgid "The bot can use the file but won't see the picture."
 msgstr "The bot can use the file but won't see the picture."
 
+#: src/lib/call-session.ts
+msgid "The computer connection was lost. Hang up and reconnect."
+msgstr "The computer connection was lost. Hang up and reconnect."
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "The connection timed out."
@@ -6375,6 +6421,10 @@ msgstr "Try the test again."
 msgid "Tuesday"
 msgstr "Tuesday"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Turn off voice calls"
+msgstr "Turn off voice calls"
+
 #: src/components/VaultSettings.tsx
 msgid "Type"
 msgstr "Type"
@@ -6599,6 +6649,10 @@ msgstr "Uses paths on your computer"
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Uses your ChatGPT account. Voice availability and limits follow your plan."
+msgstr "Uses your ChatGPT account. Voice availability and limits follow your plan."
+
 #: src/lib/tool-activity-label.ts
 msgid "Using {name}"
 msgstr "Using {name}"
@@ -6672,12 +6726,17 @@ msgstr "vnbot-<space>"
 msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
 msgstr "vnbot-shared and IDs starting with bot- are reserved for VNBot."
 
+#: src/components/call/NativeVoiceSettings.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
 msgstr "Voice"
+
+#: src/lib/call-session.ts
+msgid "Voice calls were turned off. Hang up to close this call."
+msgstr "Voice calls were turned off. Hang up to close this call."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
@@ -6864,6 +6923,10 @@ msgstr "You have control"
 #: src/lib/run-error.ts
 msgid "Your Anthropic"
 msgstr "Your Anthropic"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Your Composio API key"
+msgstr "Your Composio API key"
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Your defaults"

@@ -162,6 +162,8 @@ export function AppConnectCard({
   const [localStatus, setLocalStatus] = useState<"pending" | "connected">(block.status);
   const [error, setError] = useState<string | null>(null);
   const connectionAttempt = useRef<AbortController | null>(null);
+  // Retrying a lost acknowledgement must not create another provider account.
+  const authorized = useRef(false);
   const status = block.status === "connected" ? "connected" : localStatus;
   useEffect(() => () => connectionAttempt.current?.abort(), []);
 
@@ -171,34 +173,46 @@ export function AppConnectCard({
     connectionAttempt.current = controller;
     setBusy(true);
     setError(null);
+    const popup = authorized.current
+      ? null
+      : window.open(
+          "about:blank",
+          `vnbot-app-connect:${crypto.randomUUID()}`,
+          "popup,width=560,height=720",
+        );
     try {
-      const started = await rpc.connections.begin({
-        connectorId: block.connectorId,
-        provider: block.provider,
-        displayName: block.name,
-      });
-      if (started.authorizationUrl) {
-        window.open(started.authorizationUrl, "rakazo-app-connect", "popup,width=560,height=720");
+      if (!authorized.current) {
+        const started = await rpc.connections.begin({
+          connectorId: block.connectorId,
+          provider: block.provider,
+          displayName: block.name,
+        });
+        if (started.authorizationUrl) {
+          if (!popup) throw new Error(t`Allow popups for this site and try again.`);
+          popup.location.replace(started.authorizationUrl);
+        } else {
+          popup?.close();
+        }
+        const result = await waitForConnection(
+          started.connectionId,
+          (input) => rpc.connections.complete(input, { signal: controller.signal }),
+          { signal: controller.signal, attempts: 60 },
+        );
+        if (result.status === "aborted") return;
+        if (result.status !== "connected") {
+          setError(t`Authorization timed out. Please try again.`);
+          return;
+        }
+        authorized.current = true;
       }
-      const result = await waitForConnection(
-        started.connectionId,
-        (input) => rpc.connections.complete(input, { signal: controller.signal }),
-        { signal: controller.signal, attempts: 60 },
-      );
-      if (result.status === "aborted") return;
-      if (result.status === "connected") {
-        setLocalStatus("connected");
-        await rpc.onboarding
-          .appConnected(appConnectedInput(botId, threadId, block, messageId))
-          .catch(() => undefined);
-        return;
-      }
-      setError(t`Authorization timed out. Please try again.`);
+      await rpc.onboarding.appConnected(appConnectedInput(botId, threadId, block, messageId));
+      if (!controller.signal.aborted) setLocalStatus("connected");
     } catch (error) {
       if (!controller.signal.aborted) {
         setError(errorText(error, t`Could not authorize this app`));
       }
     } finally {
+      popup?.close();
       if (connectionAttempt.current === controller) {
         connectionAttempt.current = null;
         setBusy(false);

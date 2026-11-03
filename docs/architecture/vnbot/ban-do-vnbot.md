@@ -1,5 +1,7 @@
 # Bản đồ VNBot
 
+Kết nối Composio dùng key riêng từng tài khoản, mã hóa trên node và tách cache/phiên theo chủ sở hữu. MCP thủ công không cần Composio. Callback OAuth ở tab mới nối lại đúng node trước khi hoàn tất; hosted gateway vẫn chỉ phục vụ tài khoản và signaling. Xem [ADR 0012](adr/0012-personal-connector-credentials.md).
+
 VNBot hôm nay vẫn chạy hệ Rakazo trên máy khách. Web đã đổi lớp nhìn thấy: màu ôliu, đăng nhập bằng email rồi mã 6 số, và tiếng Việt là ngôn ngữ mặc định. Đường ghép nối và kênh dữ liệu WebRTC đã có mã cho web và desktop; triển khai thực tế và đường qua TURN chưa được kiểm chứng trong thay đổi này. Bản đóng băng tại commit `c4b24547` nằm ở `docs/architecture/rakazo-baseline/ban-do-rakazo-goc.md`. Những gì đã đổi được ghi ở `docs/architecture/vnbot/CHANGELOG-ARCHITECTURE.md`.
 
 Đăng nhập có thể chỉ còn mã email: `AUTH_EMAIL_CODE_ONLY` đóng đường mật khẩu, passkey vẫn dùng được. `AUTH_EMAIL_ALLOWLIST=on` thì chỉ email trong bảng `auth_email_allowlist` nhận được mã, tạo được tài khoản, hoặc mở được phiên. Địa chỉ không có trong danh sách nhận HTTP 403 `EMAIL_NOT_INVITED` và không có email. Bot mới mặc định bộ avatar `vnbot`; bot cũ giữ bộ đã lưu.
@@ -48,3 +50,5 @@ Desktop native xác minh email OTP ở dịch vụ tài khoản, mở phiên tr�
 ### Màn hình máy tính qua P2P
 
 Web hosted dùng noVNC đã đóng gói trong ứng dụng và nhận luồng màn hình qua kênh node đã xác thực. Quyền xem/tiếp quản vẫn do dịch vụ node và phiên điều khiển hiện có quyết định, kiểm tra lại trong khi kết nối. Gateway không giữ dữ liệu màn hình và không mở HTTP/VNC công khai của node. Voice và các luồng media HTTP khác chưa được chuyển theo thay đổi này. Xem [ADR 0011](adr/0011-p2p-computer-screen.md).
+
+Native voice dùng OAuth model thuộc người dùng để mở phiên trên node; browser chỉ nhận SDP. Pi vẫn sở hữu công cụ và tác vụ, CallCard dùng lại giao diện hiện có. Bộ kiểm tra hoàn tất opt-in nằm ở finishTurn của Pi, có ngân sách và usage riêng; xem ADR 0013.

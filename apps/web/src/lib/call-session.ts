@@ -25,6 +25,7 @@ import {
   webLogoAvatarActivity,
 } from "./logo-avatar-activity.js";
 import { reportClientError } from "./monitoring";
+import { NativeVoice } from "./native-voice.js";
 import { rpc } from "./rpc.js";
 import { isThreadSnapshotEvent, reduceThreadSnapshot } from "./thread-events.js";
 import { speaker } from "./tts.js";
@@ -58,6 +59,10 @@ const RUN_ACTIVE = ["running", "queued", "leased"];
  */
 export const ECHO_GUARD_MS = 600;
 let state: CallState | null = null;
+let native: NativeVoice | null = null;
+let nativeLease: ReturnType<typeof setInterval> | null = null;
+let nativeLeaseController: AbortController | null = null;
+const nativePending = new Set<string>();
 /** Shared by every message this call sends, so the thread can group one call's exchange. */
 let callId = "";
 /** Cancels the ringing of a call that is hung up before it picks up. */
@@ -129,6 +134,7 @@ export function startCall(call: {
   botColor?: string;
   botAvatarSet?: BotAvatarSet;
   transcribe?: boolean;
+  realtime?: boolean;
   /** The bot called and the user picked up: no ringing, and the bot speaks first. */
   answered?: { callId: string; opening: string };
 }): void {
@@ -155,6 +161,91 @@ export function startCall(call: {
     exchanges: [],
   };
   setCallActive(true);
+  if (call.realtime) {
+    const activeCallId = callId;
+    const isCurrent = () => Boolean(state && callId === activeCallId);
+    const voice = new NativeVoice({
+      connect: async (offer, signal) =>
+        (await rpc.voice.realtime.connect({ botId: call.botId, offer }, { signal })).answer,
+      ready: () => {
+        if (isCurrent()) set({ connectedAt: Date.now(), phase: "listening" });
+      },
+      transcript: (role, text) => {
+        if (!isCurrent() || !state) return;
+        set({
+          exchanges: [...state.exchanges, { role, text }],
+          caption: role === "bot" ? text : "",
+          heard: role === "user" ? text : "",
+          phase: "listening",
+        });
+      },
+      delegate: async (id, text) => {
+        if (!isCurrent()) return;
+        await feed?.load();
+        if (!isCurrent()) return;
+        if (pendingSecretAsk(thread)) {
+          voice.reply(
+            id,
+            "Protected input is pending. Ask the user to enter it on screen, never by voice.",
+          );
+          return;
+        }
+        // Historical messages are context, never a new delegation's result.
+        for (const message of thread?.messages ?? []) spokenMessageIds.add(message.id);
+        nativePending.add(id);
+        awaitingReply = true;
+        set({ phase: "thinking", heard: text });
+        const clientNonce = callClientNonce(activeCallId);
+        const send = runActive(thread)
+          ? rpc.threads.followUp({ botId: call.botId, text, clientNonce })
+          : rpc.threads.send({ botId: call.botId, text, clientNonce });
+        const release = callSends.track(activeCallId, send);
+        try {
+          await send;
+        } catch (error) {
+          nativePending.delete(id);
+          throw error;
+        } finally {
+          release();
+        }
+        if (isCurrent()) await feed?.load();
+      },
+      error: (message) => {
+        if (isCurrent()) set({ caption: message, phase: "listening", muted: true });
+      },
+    });
+    native = voice;
+    const leaseController = new AbortController();
+    nativeLeaseController = leaseController;
+    nativeLease = setInterval(() => {
+      void rpc.voice.realtime
+        .status(undefined, {
+          signal: AbortSignal.any([leaseController.signal, AbortSignal.timeout(8_000)]),
+        })
+        .then((status) => {
+          if (!status.enabled && isCurrent()) {
+            voice.close();
+            set({
+              caption: t`Voice calls were turned off. Hang up to close this call.`,
+              muted: true,
+            });
+          }
+        })
+        .catch(() => {
+          if (!leaseController.signal.aborted && isCurrent()) {
+            voice.close();
+            set({
+              caption: t`The computer connection was lost. Hang up and reconnect.`,
+              muted: true,
+            });
+          }
+        });
+    }, 10_000);
+    watchThread(call.botId);
+    emit();
+    void voice.start();
+    return;
+  }
   unsubSpeech = speaker.subscribe((speech) => {
     if (!state || state.phase === "ringing") return;
     if (openingPending && speech.status === "idle") openingPending = false;
@@ -226,6 +317,13 @@ export function endCall(): void {
       });
     callSends.closeAfterSends(closingCallId, closeServerCall);
   }
+  native?.close();
+  native = null;
+  if (nativeLease) clearInterval(nativeLease);
+  nativeLease = null;
+  nativeLeaseController?.abort();
+  nativeLeaseController = null;
+  nativePending.clear();
   pickup?.abort();
   pickup = null;
   openingPending = false;
@@ -260,6 +358,10 @@ export function toggleMute(): void {
   if (!state) return;
   const muted = !state.muted;
   set({ muted });
+  if (native) {
+    native.mute(muted);
+    return;
+  }
   if (muted) {
     dictation.stop("cancel");
     micOpen = false;
@@ -509,6 +611,26 @@ function watchInterim(text: string) {
 function reactToThread() {
   // Nothing is spoken before the call picks up, or over the bot's opening.
   if (!state || state.phase === "ringing" || openingPending) return;
+  if (native) {
+    if (!nativePending.size) return;
+    const latest = [...(thread?.messages ?? [])]
+      .reverse()
+      .find(
+        (message) =>
+          message.role === "bot" && !spokenMessageIds.has(message.id) && replyFinished(message),
+      );
+    if (!latest) return;
+    const text = pendingSecretAsk(thread)
+      ? "Protected input is required. Ask the user to enter it on screen, never by voice."
+      : speechFromBlocks(latest.blocks);
+    if (!text) return;
+    spokenMessageIds.add(latest.id);
+    for (const id of nativePending) native.reply(id, text);
+    nativePending.clear();
+    awaitingReply = false;
+    set({ phase: "listening" });
+    return;
+  }
   // The bot already said goodbye: neither its marker nor the work it files after it is spoken.
   if (botEndedCall) return;
   if (pendingSecretAsk(thread)) {

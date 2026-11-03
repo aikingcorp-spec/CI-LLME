@@ -615,6 +615,10 @@ msgstr "트리거 추가"
 msgid "Add workspace"
 msgstr "워크스페이스 추가"
 
+#: src/pages/PluginsOverlay.tsx
+msgid "Add your Composio key or connect an MCP server."
+msgstr ""
+
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Added"
@@ -686,6 +690,11 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Allow once"
 msgstr "한 번 허용"
+
+#: src/pages/PluginsOverlay.tsx
+#: src/pages/shell/message-cards.tsx
+msgid "Allow popups for this site and try again."
+msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Allow rule"
@@ -1254,6 +1263,10 @@ msgstr "Slack에서 봇과 채팅하세요."
 msgid "ChatGPT subscription"
 msgstr ""
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "ChatGPT voice calls"
+msgstr ""
+
 #: src/lib/identity-display.ts
 msgid "Chats"
 msgstr "채팅"
@@ -1261,6 +1274,10 @@ msgstr "채팅"
 #: src/components/ComputersUnavailableHint.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
+msgstr ""
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Check and save"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -1314,6 +1331,7 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdateViews.tsx
+#: src/components/integrations/personal-composio.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "확인 중…"
@@ -1530,6 +1548,10 @@ msgstr ""
 msgid "Completed"
 msgstr "완료"
 
+#: src/components/integrations/personal-composio.tsx
+msgid "Composio connected"
+msgstr ""
+
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/message-view.tsx
@@ -1574,10 +1596,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, novita, daytona, or boat with its API key. Recreate the stack after changing .env."
 msgstr "컴퓨터가 꺼져 있습니다. SANDBOX_PROVIDER=docker와 SANDBOX_SUPERVISOR_TOKEN을 설정하거나, SANDBOX_PROVIDER를 e2b, novita, daytona, boat 중 하나로 두고 해당 API 키를 넣으세요. .env 변경 후 스택을 다시 만드세요."
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Configure a plugin catalog on the server to connect apps."
-msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Configured servers"
@@ -1650,6 +1668,10 @@ msgstr ""
 msgid "Connect apps"
 msgstr "앱 연결"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Connect ChatGPT in Models to use its voice."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "MCP 서버 ‘{name}’ 연결"
@@ -1665,6 +1687,10 @@ msgstr "OAuth 연결"
 #: src/lib/agent-import-errors.ts
 msgid "Connect this model's provider first."
 msgstr "먼저 이 모델의 제공자를 연결하세요."
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Connect with your Composio key"
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -2209,6 +2235,14 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
 msgstr "선택 내용을 저장하지 못했습니다."
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Could not save voice settings"
+msgstr ""
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Could not save your Composio key"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not search catalog"
@@ -3140,6 +3174,10 @@ msgstr "모바일 앱 다운로드"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Get ticket"
+msgstr ""
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Get your project key"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -4356,6 +4394,10 @@ msgstr "OAuth 연결 실패"
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "OAuth 만료됨"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Off"
+msgstr ""
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/Pairing.tsx
@@ -6059,6 +6101,10 @@ msgstr "봇과 가져오기로 추가된 항목이 제거됩니다."
 msgid "The bot can use the file but won't see the picture."
 msgstr "Bot은 파일을 사용할 수 있지만 이미지는 볼 수 없습니다."
 
+#: src/lib/call-session.ts
+msgid "The computer connection was lost. Hang up and reconnect."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "연결 시간이 초과되었습니다."
@@ -6375,6 +6421,10 @@ msgstr "테스트를 다시 시도하세요."
 msgid "Tuesday"
 msgstr "화요일"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Turn off voice calls"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Type"
 msgstr ""
@@ -6599,6 +6649,10 @@ msgstr "내 컴퓨터의 경로를 사용합니다"
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "이 서버의 자체 {hostCredentialSource} 자격 증명으로 {selectedProviderName}에 액세스합니다."
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Uses your ChatGPT account. Voice availability and limits follow your plan."
+msgstr ""
+
 #: src/lib/tool-activity-label.ts
 msgid "Using {name}"
 msgstr ""
@@ -6672,12 +6726,17 @@ msgstr ""
 msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
 msgstr ""
 
+#: src/components/call/NativeVoiceSettings.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
 msgstr "음성"
+
+#: src/lib/call-session.ts
+msgid "Voice calls were turned off. Hang up to close this call."
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
@@ -6864,6 +6923,10 @@ msgstr "직접 조작 중"
 #: src/lib/run-error.ts
 msgid "Your Anthropic"
 msgstr "사용 중인 Anthropic"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Your Composio API key"
+msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Your defaults"

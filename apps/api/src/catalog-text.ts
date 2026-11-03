@@ -146,10 +146,25 @@ export function isPluginPreviewAllowed(
 ): boolean {
   return isCatalogContentAllowed({
     name: preview.name,
-    homepage: preview.homepage,
-    repository: preview.repository,
+    // A registry's hosting repository is provenance, not the app being connected.
+    // Its brand remains hidden in display copy; real service endpoints still pass policy.
+    homepage: isRegistryRepository(preview.homepage) ? null : preview.homepage,
     endpoints: preview.mcpServers.map((server) => server.endpoint),
   });
+}
+
+function isRegistryRepository(value: string | null): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "github.com" &&
+      url.pathname.split("/").filter(Boolean).length >= 2
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Scan content and URLs, leaving registry/protocol identifiers out of the product policy. */

@@ -151,6 +151,8 @@ async function lockProviderConnectionScope(
   connectorId: string,
   provider: string,
 ): Promise<void> {
+  if (connectorId === "composio")
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('personal-composio'), hashtext(${owner.userId}))`;
   // Avoid NUL separators in the lock key; text params may truncate at a zero byte and break begin.
   const scope = `space:${owner.spaceId}|user:${owner.userId}|connector:${connectorId}|provider:${provider}`;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('connection-provider'), hashtext(${scope}))`;
@@ -163,6 +165,12 @@ async function tryLockProviderConnectionScope(
   connectorId: string,
   provider: string,
 ): Promise<boolean> {
+  if (connectorId === "composio") {
+    const [personal] = await tx.$queryRaw<
+      Array<{ locked: boolean }>
+    >`SELECT pg_try_advisory_xact_lock(hashtext('personal-composio'), hashtext(${owner.userId})) AS locked`;
+    if (!personal?.locked) return false;
+  }
   const scope = `space:${owner.spaceId}|user:${owner.userId}|connector:${connectorId}|provider:${provider}`;
   const [row] = await tx.$queryRaw<Array<{ locked: boolean }>>`
     SELECT pg_try_advisory_xact_lock(hashtext('connection-provider'), hashtext(${scope})) AS locked`;
@@ -261,21 +269,22 @@ export function connectionsRoutes(ctx: RouterContext) {
         }));
       }),
       begin: authed.connections.begin.handler(async ({ context, input }) => {
-        const connector =
-          deps.integrationSettings &&
-          (input.connectorId === "composio" || input.connectorId === "pipedream")
-            ? await deps.integrationSettings.resolve(input.connectorId)
-            : deps.connectors.managed(input.connectorId);
-        if (!connector) {
+        const configured = deps.connectors.managed(input.connectorId);
+        const prepared = configured
+          ? await prepareManagedConnectorForTransaction(configured, context.actor.userId)
+          : undefined;
+        const connector = prepared?.provider;
+        if (!connector)
           throw new ORPCError("BAD_REQUEST", {
             message: `Connector ${input.connectorId} is not configured`,
           });
-        }
         // Share the revoke scope lock so a slug-wide remote delete cannot miss a
         // row that is inserted after SELECT FOR UPDATE and before remote revoke.
         // Complete and revoke hold that lock across provider calls, so wait as long as they may.
         const row = await providerLockTransaction(deps.prisma, async (tx) => {
           await lockProviderConnectionScope(tx, context.actor, input.connectorId, input.provider);
+          if (prepared?.recheck && !(await prepared.recheck(tx)))
+            throw new ORPCError("CONFLICT", { message: "Integration credentials changed; retry." });
           const existing = await tx.connection.findMany({
             where: {
               spaceId: context.actor.spaceId,
@@ -482,7 +491,7 @@ export function connectionsRoutes(ctx: RouterContext) {
         }
         const prepared =
           existing.status !== "connected"
-            ? await prepareManagedConnectorForTransaction(connector)
+            ? await prepareManagedConnectorForTransaction(connector, context.actor.userId)
             : { provider: connector, recheck: undefined };
         const transactionConnector = prepared.provider;
         if (!transactionConnector)
@@ -871,7 +880,7 @@ export function connectionsRoutes(ctx: RouterContext) {
           ? deps.connectors.managed(snapshot.connectorId)
           : undefined;
         const prepared = configured
-          ? await prepareManagedConnectorForTransaction(configured)
+          ? await prepareManagedConnectorForTransaction(configured, context.actor.userId)
           : undefined;
         const outcome = await providerLockTransaction(deps.prisma, async (tx) => {
           const row = await tx.connection.findFirst({

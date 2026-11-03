@@ -24,6 +24,28 @@ function fixture() {
       }),
     },
   };
+  Object.assign(prisma, {
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+    $executeRaw: vi.fn(),
+    connection: { count: vi.fn(async () => 0) },
+    userIntegrationProviderConfig: {
+      findUnique: vi.fn(
+        async ({ where }: { where: { userId_provider: { userId: string; provider: string } } }) =>
+          rows.get(`${where.userId_provider.userId}:${where.userId_provider.provider}`) ?? null,
+      ),
+      upsert: vi.fn(
+        async ({
+          create,
+        }: {
+          create: { userId: string; provider: string; ciphertext: string };
+        }) => {
+          const row = { id: `${create.userId}:${create.provider}`, ciphertext: create.ciphertext };
+          rows.set(row.id, row);
+          return row;
+        },
+      ),
+    },
+  });
   const adapter = {
     listConnectedExternalIds: vi.fn(async () => []),
     catalog: vi.fn(async () => []),
@@ -41,6 +63,29 @@ function fixture() {
   return { rows, prisma, adapter, factory, secrets, settings };
 }
 describe("integration provider settings", () => {
+  it("isolates personal keys and never falls back to deployment Composio credentials", async () => {
+    const f = fixture();
+    const fallback = { catalog: vi.fn() } as unknown as ManagedConnectorProvider;
+    const settings = new IntegrationProviderSettings(
+      f.prisma as unknown as PrismaClient,
+      f.secrets,
+      "test",
+      { composio: fallback },
+      f.factory,
+    );
+    const other = { ...context, userId: "other" };
+    await settings.save({ provider: "composio", apiKey: "fake-owner-key" }, context);
+    expect(await settings.configured("composio", other.userId)).toBe(false);
+    expect(await settings.resolve("composio", other.userId)).toBeUndefined();
+    expect(await settings.resolve("composio")).toBeUndefined();
+    expect(await settings.resolve("composio", context.userId)).toBe(f.adapter);
+    await settings.save({ provider: "composio", apiKey: "fake-other-key" }, other);
+    await settings.resolve("composio", other.userId);
+    expect(f.factory).toHaveBeenLastCalledWith({ provider: "composio", apiKey: "fake-other-key" });
+    await settings.resolve("composio", context.userId);
+    expect(f.rows.size).toBe(2);
+    expect(fallback.catalog).not.toHaveBeenCalled();
+  });
   it("encrypts credentials and shares updates with a separately created worker resolver", async () => {
     const f = fixture();
     const worker = new IntegrationProviderSettings(
@@ -50,13 +95,13 @@ describe("integration provider settings", () => {
       {},
       f.factory,
     );
-    expect(await worker.resolve("composio")).toBeUndefined();
+    expect(await worker.resolve("composio", context.userId)).toBeUndefined();
     await f.settings.save({ provider: "composio", apiKey: "fake-first-key" }, context);
     expect(JSON.stringify([...f.rows.values()])).not.toContain("fake-first-key");
-    expect(await worker.resolve("composio")).toBe(f.adapter);
+    expect(await worker.resolve("composio", context.userId)).toBe(f.adapter);
     expect(f.factory).toHaveBeenLastCalledWith({ provider: "composio", apiKey: "fake-first-key" });
     await f.settings.save({ provider: "composio", apiKey: "fake-replacement-key" }, context);
-    await worker.resolve("composio");
+    await worker.resolve("composio", context.userId);
     expect(f.factory).toHaveBeenLastCalledWith({
       provider: "composio",
       apiKey: "fake-replacement-key",
@@ -65,14 +110,14 @@ describe("integration provider settings", () => {
   it("preserves working settings and hides provider error details on failed verification", async () => {
     const f = fixture();
     await f.settings.save({ provider: "composio", apiKey: "fake-working-key" }, context);
-    const before = f.rows.get("composio");
+    const before = f.rows.get("user:composio");
     vi.mocked(f.adapter.listConnectedExternalIds).mockRejectedValueOnce(
       new Error("fake-secret-in-provider-response"),
     );
     await expect(
       f.settings.save({ provider: "composio", apiKey: "fake-bad-key" }, context),
     ).rejects.toThrow("Could not verify these credentials");
-    expect(f.rows.get("composio")).toBe(before);
+    expect(f.rows.get("user:composio")).toBe(before);
   });
   it("declines routeless lookups for unconfigured providers but still requires setup for routed calls", async () => {
     const f = fixture();
@@ -131,7 +176,9 @@ describe("integration provider settings", () => {
     expect(warm).not.toHaveBeenCalled();
     await settings.save({ provider: "composio", apiKey: "fake-warm-key" }, context);
     settings.warmDirectories();
-    await vi.waitFor(() => expect(warm).toHaveBeenCalledOnce());
+    expect(warm).not.toHaveBeenCalled();
+    await settings.resolve("composio", context.userId);
+    expect(f.factory).toHaveBeenCalledWith({ provider: "composio", apiKey: "fake-warm-key" });
   });
 });
 
@@ -165,6 +212,12 @@ describe("integration credentials with Infisical", () => {
         }),
       },
     };
+    Object.assign(prisma, {
+      $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+      $executeRaw: vi.fn(),
+      connection: { count: vi.fn(async () => 0) },
+      userIntegrationProviderConfig: prisma.integrationProviderConfig,
+    });
     const adapter = {
       listConnectedExternalIds: vi.fn(async () => []),
     } as unknown as ManagedConnectorProvider;
@@ -188,13 +241,13 @@ describe("integration credentials with Infisical", () => {
       await pending;
       const changed = vi.fn();
       store.onChange(changed);
-      await settings.resolve("composio");
+      await settings.resolve("composio", context.userId);
       expect(changed).toHaveBeenCalledExactlyOnceWith(row!.ciphertext);
       expect(factory).toHaveBeenLastCalledWith({ provider: "composio", apiKey: "fake-rotated" });
       changed.mockClear();
       const calls = factory.mock.calls.length;
       await vi.advanceTimersByTimeAsync(100);
-      await settings.resolve("composio");
+      await settings.resolve("composio", context.userId);
       expect(factory).toHaveBeenCalledTimes(calls);
       expect(changed).not.toHaveBeenCalled();
       await store.put("unrelated", context);
@@ -204,7 +257,7 @@ describe("integration credentials with Infisical", () => {
         JSON.stringify({ provider: "composio", apiKey: "fake-again" }),
       );
       await vi.advanceTimersByTimeAsync(100);
-      await settings.resolve("composio");
+      await settings.resolve("composio", context.userId);
       expect(factory).toHaveBeenLastCalledWith({ provider: "composio", apiKey: "fake-again" });
       expect(changed).not.toHaveBeenCalled();
     } finally {

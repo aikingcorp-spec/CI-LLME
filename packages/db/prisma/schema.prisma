@@ -483,6 +483,7 @@ model UserModelCredential {
   roleChoices SpaceModelRoleChoice[]
   userPreferences UserModelPreference[]
   userRoleChoices UserModelRoleChoice[]
+  realtimeVoicePreferences UserRealtimeVoicePreference[]
 
   @@unique([id, userId])
   @@index([userId, provider, updatedAt])
@@ -1137,6 +1138,28 @@ model AgentSkill {
   @@index([installId])
   // Case-insensitive unique index agent_skills_spaceId_userId_name_lower_key is created in SQL.
   @@map("agent_skills")
+}
+
+/// Opt-in native voice reuses an owned ChatGPT connection; no duplicate OAuth secret.
+model UserRealtimeVoicePreference {
+  userId       String @id
+  credentialId String
+  credential   UserModelCredential @relation(fields: [credentialId, userId], references: [id, userId], onDelete: Cascade)
+  voiceId      String @default("cove")
+  updatedAt    DateTime @updatedAt
+
+  @@map("user_realtime_voice_preferences")
+}
+
+/// Personal broker credentials; never fall back to another user's deployment key.
+model UserIntegrationProviderConfig {
+  userId     String
+  provider   String
+  ciphertext String
+  updatedAt  DateTime @updatedAt
+
+  @@id([userId, provider])
+  @@map("user_integration_provider_configs")
 }
 
 model Connection {

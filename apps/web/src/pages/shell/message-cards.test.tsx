@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => ({
   begin: vi.fn(async () => ({ connectionId: "connection", authorizationUrl: null })),
@@ -24,6 +24,11 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 import { AppConnectCard } from "./message-cards";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.spyOn(window, "open").mockReturnValue(null);
+});
 
 it("authorizes a card in a normal chat and marks its thread connected", async () => {
   const host = document.createElement("div");
@@ -57,6 +62,42 @@ it("authorizes a card in a normal chat and marks its thread connected", async ()
     });
     expect(host.textContent).toContain("Connected");
     expect(host.querySelector("button")).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("keeps the card retryable after a lost acknowledgement without beginning OAuth again", async () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  calls.mark.mockRejectedValueOnce(new Error("Computer disconnected"));
+  try {
+    await act(async () =>
+      root.render(
+        <AppConnectCard
+          botId="bot"
+          threadId="chat"
+          block={{
+            kind: "app_connect",
+            connectorId: "fake",
+            provider: "gmail",
+            name: "Gmail",
+            description: "",
+            logo: null,
+            status: "pending",
+          }}
+        />,
+      ),
+    );
+    await act(async () => host.querySelector("button")?.click());
+    expect(host.textContent).toContain("Computer disconnected");
+    expect(host.querySelector("button")?.textContent).toBe("Authorize");
+    await act(async () => host.querySelector("button")?.click());
+    expect(calls.begin).toHaveBeenCalledTimes(1);
+    expect(calls.mark).toHaveBeenCalledTimes(2);
+    expect(host.textContent).toContain("Connected");
   } finally {
     await act(async () => root.unmount());
     host.remove();

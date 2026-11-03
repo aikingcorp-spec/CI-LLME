@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import {
+  CODEX_REALTIME_VOICES,
   deploymentAutoReviewDefault,
   effectiveModelRole,
   hasHostedModelCredits,
@@ -32,6 +33,7 @@ import {
 import { aiConsentStatus, allowAiConsent } from "../ai-consent.js";
 import type { BillingService } from "../billing.js";
 import { firstModelConnectAnalytics } from "../model-connect-analytics.js";
+import { configureRealtimeVoice, connectRealtimeVoice } from "../realtime-voice.js";
 import type { RouterDeps } from "../router.js";
 import { withSerializableRetry } from "../serializable-retry.js";
 import {
@@ -250,6 +252,31 @@ export function accountRoutes(ctx: RouterContext) {
       }),
     },
     voice: {
+      realtime: {
+        status: authed.voice.realtime.status.handler(async ({ context }) => {
+          const preference = await deps.prisma.userRealtimeVoicePreference.findUnique({
+            where: { userId: context.actor.userId },
+          });
+          return {
+            enabled: Boolean(preference),
+            credentialId: preference?.credentialId ?? null,
+            voiceId: preference?.voiceId ?? "cove",
+            voices: [...CODEX_REALTIME_VOICES],
+          };
+        }),
+        configure: authed.voice.realtime.configure.handler(async ({ context, input }) => {
+          await configureRealtimeVoice(deps, context.actor, input);
+          return { ok: true as const };
+        }),
+        connect: authed.voice.realtime.connect.handler(({ context, input }) =>
+          connectRealtimeVoice(
+            deps,
+            context.actor,
+            input,
+            context.signal ?? new AbortController().signal,
+          ),
+        ),
+      },
       catalog: authed.voice.catalog.handler(async () =>
         listVoiceCatalog({ allowPrivateEndpoint: deps.env?.mcpAllowPrivateEndpoint }),
       ),

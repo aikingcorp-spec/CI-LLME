@@ -42,6 +42,9 @@ import {
 
 const withRoleDeps = (deps: RouterDeps) => {
   withModelRoles(deps.prisma);
+  deps.prisma.userRealtimeVoicePreference ??= {
+    findUnique: vi.fn().mockResolvedValue(null),
+  } as unknown as PrismaClient["userRealtimeVoicePreference"];
   return deps;
 };
 const createRouter = (deps: RouterDeps) => createRouterWith(withRoleDeps(deps));
@@ -2619,7 +2622,7 @@ describe("connections.complete", () => {
           userId: "user-1",
           signal: new AbortController().signal,
         },
-        { recordId: "integration-provider:composio" },
+        { recordId: "integration-provider:user:user-1:composio" },
       );
       let ref = stored.ref;
       let inTransaction = false;
@@ -2640,7 +2643,7 @@ describe("connections.complete", () => {
         createdAt: new Date(0),
       };
       const client = {
-        integrationProviderConfig: {
+        userIntegrationProviderConfig: {
           findUnique: vi.fn(async () => ({ id: "composio", ciphertext: ref })),
         },
         connection: {
@@ -3666,11 +3669,11 @@ describe("computer terminal and file transfer", () => {
 
 describe("integration setup authorization", () => {
   it.each([
-    { owner: false, configured: false, needsSetup: false },
-    { owner: true, configured: false, needsSetup: false },
+    { owner: false, configured: false, needsSetup: true },
+    { owner: true, configured: false, needsSetup: true },
     { owner: true, configured: true, needsSetup: false },
   ])(
-    "never offers server setup to an app account: %j",
+    "offers only personal Composio setup regardless of deployment owner: %j",
     async ({ owner, configured, needsSetup }) => {
       const lookup = vi.fn(async () => configured);
       const deps = {
@@ -3698,13 +3701,13 @@ describe("integration setup authorization", () => {
         },
       );
       const result = (await response.json()).json;
-      expect(result).toMatchObject({ canConfigure: false, needsSetup });
-      expect(result.providers).toEqual([]);
-      expect(lookup).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ canConfigure: true, needsSetup });
+      expect(result.providers).toEqual([{ id: "composio", configured }]);
+      expect(lookup).toHaveBeenCalledWith("composio", "user");
     },
   );
 
-  it("rejects provider credentials from a non-owner before verification or persistence", async () => {
+  it("allows a member to save their own Composio credentials", async () => {
     const save = vi.fn();
     const deps = {
       prisma: {},
@@ -3730,8 +3733,11 @@ describe("integration setup authorization", () => {
         },
       },
     );
-    expect(response.status).toBe(403);
-    expect(save).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(save).toHaveBeenCalledWith(
+      { provider: "composio", apiKey: "fake-key" },
+      expect.objectContaining({ userId: "member", spaceId: "space" }),
+    );
   });
 });
 

@@ -12,7 +12,6 @@ test("signup never grants server authority and settings contain only account con
     ["deployment/update", { signupsEnabled: true }],
     ["updater/apply", {}],
     ["security/events", {}],
-    ["integrationSetup/save", { provider: "composio", apiKey: "fake-key" }],
   ] as const) {
     expect((await page.request.post(`/rpc/${path}`, { data: { json: input } })).status()).toBe(403);
   }
@@ -22,6 +21,42 @@ test("signup never grants server authority and settings contain only account con
   await expect(page.getByRole("link", { name: "Server integrations", exact: true })).toBeHidden();
   await expect(page.getByTestId("settings-nav-updates")).toBeHidden();
   await captureScreenshot(page, testInfo, "account-settings-without-server-admin");
+});
+
+test("personal Composio setup checks and clears the key without exposing server administration", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `personal-broker-${Date.now()}@rakazo.test`, "password12", "Personal Broker");
+  await completeOnboarding(page);
+  let configured = false;
+  await page.route("**/rpc/integrationSetup/get", (route) =>
+    route.fulfill({
+      json: {
+        json: {
+          canConfigure: true,
+          needsSetup: !configured,
+          webUrl: "https://example.test/integrations/setup",
+          providers: [{ id: "composio", configured }],
+        },
+      },
+    }),
+  );
+  await page.route("**/rpc/integrationSetup/save", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({
+      json: { provider: "composio", apiKey: "fake-personal-key" },
+    });
+    configured = true;
+    await route.fulfill({ json: { json: { ok: true } } });
+  });
+  await page.goto("/integrations/setup");
+  await page.getByText("Connect with your Composio key", { exact: true }).click();
+  const key = page.getByLabel("Your Composio API key", { exact: true });
+  await expect(key).toHaveAttribute("type", "password");
+  await key.fill("fake-personal-key");
+  await page.getByRole("button", { name: "Check and save", exact: true }).click();
+  await expect(page.getByText("Composio connected", { exact: true })).toBeVisible();
+  await expect(key).toHaveValue("");
+  await captureScreenshot(page, testInfo, "personal-composio-configured");
 });
 
 test("ordinary accounts can add personal MCP connections without server setup", async ({

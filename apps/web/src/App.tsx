@@ -285,12 +285,18 @@ function SessionApp() {
                 path="/integrations/setup"
                 element={
                   user ? (
-                    <IntegrationSetupPage />
+                    remoteClient ? (
+                      <RemoteNodeGate client={remoteClient} />
+                    ) : (
+                      <IntegrationSetupPage />
+                    )
                   ) : (
                     <Navigate to="/sign-in?next=/integrations/setup" replace />
                   )
                 }
-              />
+              >
+                <Route index element={<IntegrationSetupPage />} />
+              </Route>
               <Route
                 element={
                   user ? (

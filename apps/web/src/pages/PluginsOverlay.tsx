@@ -54,6 +54,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
+import { PersonalComposio } from "../components/integrations/personal-composio";
 import type {
   ManagedAppLink,
   PluginSelection,
@@ -431,13 +432,11 @@ export function PluginsOverlay({
 
   async function notifyAppConnected(item: ConnectionCatalogItem) {
     if (!activeBotId) return;
-    await rpc.onboarding
-      .appConnected({
-        botId: activeBotId,
-        provider: item.slug,
-        connectorId: item.connectorId,
-      })
-      .catch(() => undefined);
+    await rpc.onboarding.appConnected({
+      botId: activeBotId,
+      provider: item.slug,
+      connectorId: item.connectorId,
+    });
   }
 
   function setItemConnected(item: ConnectionCatalogItem, connected: boolean) {
@@ -454,17 +453,25 @@ export function PluginsOverlay({
     setCatalogError(null);
     const key = catalogItemKey(item);
     setPending(key);
+    const popup = window.open(
+      "about:blank",
+      `vnbot-plugin-connect:${crypto.randomUUID()}`,
+      "popup,width=560,height=720",
+    );
     try {
       const result = await connectCatalogItem(item, connections, {
         begin: (input) => rpc.connections.begin(input),
         complete: (input) => rpc.connections.complete(input),
-        openUrl: (url) => window.open(url, "rakazo-plugin-connect", "noopener,noreferrer"),
+        openUrl: (url) => {
+          if (!popup) throw new Error(t`Allow popups for this site and try again.`);
+          popup.location.replace(url);
+        },
         signal: controller.signal,
       });
       if (result.status === "aborted") return;
       if (result.status === "connected") {
+        await notifyAppConnected(item);
         await setItemConnected(item, true);
-        void notifyAppConnected(item);
         await refresh().catch(() => undefined);
         refreshTools();
         return;
@@ -477,6 +484,7 @@ export function PluginsOverlay({
       if (controller.signal.aborted) return;
       setCatalogError(errorText(err, t`Could not connect`));
     } finally {
+      popup?.close();
       if (connectionAttempt.current === controller) {
         connectionAttempt.current = null;
         setPending(null);
@@ -1547,6 +1555,7 @@ export function PluginsOverlay({
 
         {browsing ? (
           <div className="space-y-4 px-8 pt-4">
+            <PersonalComposio onSaved={refresh} />
             <Input
               disabled={loading}
               value={query}
@@ -1675,7 +1684,7 @@ export function PluginsOverlay({
                   {catalog.length === 0 ? (
                     plugins.length ? null : (
                       <p className="text-[13.5px] leading-6 text-muted-foreground/80">
-                        <Trans>Configure a plugin catalog on the server to connect apps.</Trans>
+                        <Trans>Add your Composio key or connect an MCP server.</Trans>
                       </p>
                     )
                   ) : (

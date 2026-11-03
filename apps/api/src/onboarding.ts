@@ -1,3 +1,6 @@
+import { ORPCError } from "@orpc/server";
+import type { JobPublisher } from "@rakazo/adapter-kit";
+import { runContinueJob } from "@rakazo/adapter-kit";
 import type { ConnectorRegistry } from "@rakazo/adapters";
 import type { Actor, MessageBlock } from "@rakazo/contracts";
 import {
@@ -25,6 +28,7 @@ type OnboardingDeps = {
   prisma: PrismaClient;
   events: ThreadEvents;
   connectors: ConnectorRegistry;
+  jobs?: JobPublisher;
 };
 
 type FocusOption = {
@@ -329,7 +333,7 @@ export async function markAppConnected(
     thread = { ...ownThread, id: target.threadId };
   }
   const providerAdapter = deps.connectors.managed(connectorId);
-  if (!providerAdapter) return;
+  if (!providerAdapter) throw new ORPCError("BAD_REQUEST");
   const catalog = await providerAdapter.catalog(
     {
       operationId: "onboarding.appConnected",
@@ -345,14 +349,17 @@ export async function markAppConnected(
     catalog.filter((item) => item.connectorId === connectorId),
     provider,
   );
-  if (!entry?.connected) return;
+  if (!entry?.connected)
+    throw new ORPCError("CONFLICT", {
+      message: "This app is not connected yet. Try again after authorization.",
+    });
   const target = { spaceId: actor.spaceId, botId: bot.id, threadId: thread.id };
   const updates = await deps.prisma.$transaction(async (tx) => {
     // Two authorizations may finish together on an onboarding message with multiple cards.
     await tx.$executeRaw`SELECT id FROM threads WHERE id = ${thread.id} FOR UPDATE`;
     // Onboarding cards sit at the start of the chat and inline cards near the end;
     // bound both reads so a long chat is never scanned in full.
-    const select = { id: true, blocks: true } as const;
+    const select = { id: true, blocks: true, runId: true } as const;
     const first = await tx.message.findMany({
       where: { threadId: thread.id },
       select,
@@ -370,6 +377,7 @@ export async function markAppConnected(
       : [];
     const messages = [...new Map([...first, ...latest, ...own].map((m) => [m.id, m])).values()];
     const events = [];
+    let sourceRunId: string | null = null;
     for (const message of messages) {
       const blocks = message.blocks as MessageBlock[];
       if (
@@ -380,6 +388,7 @@ export async function markAppConnected(
       )
         continue;
       const next = connectedAppBlocks(blocks, connectorId, entry.slug);
+      if (message.id === messageId && message.runId) sourceRunId = message.runId;
       await tx.message.update({ where: { id: message.id }, data: { blocks: next } });
       events.push(
         await appendEventInTransaction(tx, {
@@ -389,9 +398,42 @@ export async function markAppConnected(
         }),
       );
     }
-    return events;
+    let continuationRunId: string | null = null;
+    if (deps.jobs && sourceRunId) {
+      // A later user turn, a cancellation, or a still-running task owns what happens next.
+      // Only the just-resolved inline card may wake its own completed source run.
+      const latestRun = await tx.run.findFirst({
+        where: { threadId: thread.id, botId: bot.id, userId: actor.userId, spaceId: actor.spaceId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, status: true },
+      });
+      if (latestRun?.id === sourceRunId && latestRun.status === "completed") {
+        const task = await tx.task.create({
+          data: {
+            ...target,
+            userId: actor.userId,
+            status: "queued",
+            prompt: `The app ${JSON.stringify(entry.name)} was verified connected from the inline card you showed. Recheck its available tools and resume only unfinished work already authorized in this chat. Do not repeat completed actions. Respect later stop or scope changes; if nothing remains, confirm briefly.`,
+          },
+        });
+        const run = await tx.run.create({
+          data: {
+            ...target,
+            userId: actor.userId,
+            status: "queued",
+            trigger: "user",
+            taskId: task.id,
+          },
+          select: { id: true },
+        });
+        continuationRunId = run.id;
+      }
+    }
+    return { events, continuationRunId };
   });
-  for (const event of updates) await deps.events.notify(thread.id, event.seq);
+  for (const event of updates.events) await deps.events.notify(thread.id, event.seq);
+  if (updates.continuationRunId)
+    await deps.jobs?.enqueue(runContinueJob(updates.continuationRunId));
 }
 
 function capitalize(value: string): string {

@@ -22,6 +22,17 @@ function account(id: string, status: Connection["status"], provider = "gmail") {
 }
 
 describe("connection catalog", () => {
+  it("surfaces permanent authorization errors without polling them into a timeout", async () => {
+    const failure = Object.assign(new Error("Permission denied"), { code: "FORBIDDEN" });
+    const complete = vi.fn().mockRejectedValue(failure);
+    await expect(
+      waitForConnection("account", complete, {
+        signal: new AbortController().signal,
+        attempts: 45,
+      }),
+    ).rejects.toBe(failure);
+    expect(complete).toHaveBeenCalledOnce();
+  });
   it("counts only this app's live accounts", () => {
     const rows = [
       account("a", "connected"),

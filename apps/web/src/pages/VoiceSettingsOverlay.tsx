@@ -28,6 +28,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { NativeVoiceSettings } from "../components/call/NativeVoiceSettings";
 import { useSpaceQueries } from "../lib/query";
 import { useBoundSpaceId, useSpaceRpc } from "../lib/space-rpc";
 import { speaker } from "../lib/tts";
@@ -321,6 +322,7 @@ export function VoiceSettingsOverlay({
 
   const content = (
     <>
+      {scope === "account" ? <NativeVoiceSettings /> : null}
       {loading && !catalog.length ? (
         <p className="text-sm text-muted-foreground">
           <Spinner aria-label={t`Loading voice providers…`} />

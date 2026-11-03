@@ -484,7 +484,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "connect_app",
     description:
-      "Show an inline card to connect an app in this chat when you need an unconnected app or the user asks to connect one. Then wait for the user instead of directing them elsewhere.",
+      "Show an inline card to connect an app in this chat. If setup_required is returned, explain the personal-key setup or manual MCP alternative; never request keys in chat. A pending authorization blocks only work that depends on this app; continue independent work.",
     inputSchema: {
       type: "object",
       properties: { app: { type: "string", minLength: 1, maxLength: 100 } },

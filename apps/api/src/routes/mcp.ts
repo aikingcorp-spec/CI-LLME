@@ -967,14 +967,38 @@ export function mcpRoutes(ctx: RouterContext) {
       }),
     },
     integrationSetup: {
-      get: authed.integrationSetup.get.handler(() => ({
-        canConfigure: false,
-        needsSetup: false,
-        webUrl: new URL("/integrations/setup", deps.env.webOrigin).toString(),
-        providers: [],
-      })),
-      save: authed.integrationSetup.save.handler(() => {
-        throw new ORPCError("FORBIDDEN");
+      get: authed.integrationSetup.get.handler(async ({ context }) => {
+        const configured = Boolean(
+          await deps.integrationSettings?.configured("composio", context.actor.userId),
+        );
+        return {
+          canConfigure: Boolean(deps.integrationSettings),
+          needsSetup: !configured,
+          webUrl: new URL("/integrations/setup", deps.env.webOrigin).toString(),
+          providers: [{ id: "composio" as const, configured }],
+        };
+      }),
+      save: authed.integrationSetup.save.handler(async ({ context, input }) => {
+        if (input.provider !== "composio" || !deps.integrationSettings)
+          throw new ORPCError("FORBIDDEN");
+        try {
+          await deps.integrationSettings.save(input, {
+            userId: context.actor.userId,
+            spaceId: context.actor.spaceId,
+            operationId: "integrationSetup.save",
+            traceId: "integrationSetup.save",
+            signal: AbortSignal.any([
+              context.signal ?? new AbortController().signal,
+              AbortSignal.timeout(15_000),
+            ]),
+          });
+          return { ok: true as const };
+        } catch {
+          throw new ORPCError("BAD_REQUEST", {
+            message:
+              "Could not save your Composio key. Check the key and disconnect existing apps before replacing it.",
+          });
+        }
       }),
     },
   };

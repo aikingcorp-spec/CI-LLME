@@ -94,19 +94,26 @@ export async function waitForConnection<Row extends { status: string }>(
   options: { signal: AbortSignal; isCurrent?: () => boolean; attempts: number },
 ): Promise<{ status: "connected"; row: Row } | { status: "pending" } | { status: "aborted" }> {
   const stopped = () => options.signal.aborted || options.isCurrent?.() === false;
+  let lastError: unknown;
   for (let attempt = 0; attempt < options.attempts; attempt += 1) {
     if (stopped()) return { status: "aborted" };
     let row: Row | undefined;
     try {
       row = await complete({ connectionId });
+      lastError = undefined;
     } catch (error) {
       if (isNotFound(error)) return { status: "aborted" };
+      const code = (error as { code?: unknown } | null)?.code;
+      if (["UNAUTHORIZED", "FORBIDDEN", "BAD_REQUEST", "NOT_IMPLEMENTED"].includes(String(code)))
+        throw error;
+      lastError = error;
     }
     if (stopped()) return { status: "aborted" };
     if (row?.status === "connected") return { status: "connected", row };
     if (row?.status === "revoked") return { status: "aborted" };
     await abortableDelay(CATALOG_CONNECT_POLL_MS, options.signal);
   }
+  if (!stopped() && lastError) throw lastError;
   return stopped() ? { status: "aborted" } : { status: "pending" };
 }
 

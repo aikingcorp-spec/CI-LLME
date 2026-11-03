@@ -36,6 +36,14 @@ type Tenant = {
 function rowsFor(t: Tenant, tag: string): Array<[string, Record<string, unknown>]> {
   return [
     [
+      "userRealtimeVoicePreference",
+      { userId: t.userId, credentialId: `rls-model-${t.userId}`, voiceId: "cove" },
+    ],
+    [
+      "userIntegrationProviderConfig",
+      { userId: t.userId, provider: `test-${tag}`, ciphertext: "encrypted-fixture" },
+    ],
+    [
       "spaceModelRoleChoice",
       {
         spaceId: t.spaceId,
@@ -192,7 +200,13 @@ describePostgres("row-level security (PostgreSQL)", () => {
         data: { id: t.personalSecretId, userId: t.userId, kind: "model", ciphertext: "c" },
       });
       await o.userModelCredential.create({
-        data: { userId: t.userId, provider: "p", label: "l", secretId: t.personalSecretId },
+        data: {
+          id: `rls-model-${t.userId}`,
+          userId: t.userId,
+          provider: "p",
+          label: "l",
+          secretId: t.personalSecretId,
+        },
       });
       // Free secret for the agent secret the write test tries to create.
       await o.secret.create({
@@ -693,6 +707,38 @@ describePostgres("row-level security (PostgreSQL)", () => {
       await expect(create(), table).rejects.toThrow(/row-level security/);
     }
     // The unscoped reads and writes above are deliberate.
+    drainUnscopedDatabaseAccess();
+  });
+
+  it("keeps personal broker credentials private across users and available across their spaces", async () => {
+    const read = () =>
+      db.userIntegrationProviderConfig.findMany({ select: { userId: true, provider: true } });
+    expect(await runAsTenant({ spaceId: b.spaceId, userId: a.userId }, read)).toEqual([
+      { userId: a.userId, provider: "test-fixture" },
+    ]);
+    expect(await runAsTenant(b, read)).toEqual([{ userId: b.userId, provider: "test-fixture" }]);
+    expect(await read()).toEqual([]);
+    drainUnscopedDatabaseAccess();
+  });
+
+  it("keeps native voice selection personal and rejects a foreign model connection", async () => {
+    const read = () =>
+      db.userRealtimeVoicePreference.findMany({ select: { userId: true, credentialId: true } });
+    expect(await runAsTenant({ spaceId: b.spaceId, userId: a.userId }, read)).toEqual([
+      { userId: a.userId, credentialId: `rls-model-${a.userId}` },
+    ]);
+    expect(await runAsTenant(b, read)).toEqual([
+      { userId: b.userId, credentialId: `rls-model-${b.userId}` },
+    ]);
+    await expect(
+      runAsTenant(a, () =>
+        db.userRealtimeVoicePreference.update({
+          where: { userId: a.userId },
+          data: { credentialId: `rls-model-${b.userId}` },
+        }),
+      ),
+    ).rejects.toThrow(/foreign key constraint/i);
+    expect(await read()).toEqual([]);
     drainUnscopedDatabaseAccess();
   });
 

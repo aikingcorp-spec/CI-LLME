@@ -13,7 +13,6 @@ import type {
 import { getLogger } from "@rakazo/logging";
 import type { ToolkitDirectoryEntry } from "./composio-catalog-cache.js";
 import {
-  composioToolkitDirectory,
   createToolkitDirectoryCache,
   mergeCatalogWithConnected,
 } from "./composio-catalog-cache.js";
@@ -335,13 +334,13 @@ export function planLiveConnectionSync(
 export class ComposioConnector implements ComposioProvider {
   private client: ComposioClient | undefined;
   private readonly apiKey: string | undefined;
-  /** An injected client has its own catalog, so it must not share the process-wide cache. */
-  private readonly directoryCache: typeof composioToolkitDirectory;
+  /** Each personal project owns its catalog, including custom toolkits. */
+  private readonly directoryCache: ReturnType<typeof createToolkitDirectoryCache>;
 
   constructor(options: { apiKey?: string; client?: ComposioClient } = {}) {
     this.apiKey = options.apiKey;
     this.client = options.client;
-    this.directoryCache = options.client ? createToolkitDirectoryCache() : composioToolkitDirectory;
+    this.directoryCache = createToolkitDirectoryCache();
   }
   private readonly catalogSessions = new Map<string, string>();
   private readonly executeSessions = new Map<string, { sessionId: string; key: string }>();

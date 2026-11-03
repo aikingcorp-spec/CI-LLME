@@ -1229,6 +1229,27 @@ export const appContract = {
     list: oc.input(z.object({ filter: z.enum(["active", "recent"]) })).output(RunsListOutputSchema),
   },
   voice: {
+    realtime: {
+      status: oc.output(
+        z.object({
+          enabled: z.boolean(),
+          credentialId: Id.nullable(),
+          voiceId: z.string(),
+          voices: z.array(z.string()),
+        }),
+      ),
+      configure: oc
+        .input(
+          z.object({
+            credentialId: Id.nullable(),
+            voiceId: z.string().min(1).max(40).default("cove"),
+          }),
+        )
+        .output(z.object({ ok: z.literal(true) })),
+      connect: oc
+        .input(z.object({ botId: Id, offer: z.string().min(1).max(131072) }))
+        .output(z.object({ answer: z.string().max(131072) })),
+    },
     catalog: oc.output(z.array(VoiceCatalogEntrySchema)),
     status: oc.input(settingsScopeInput.optional()).output(VoiceStatusSchema),
     credentials: oc.input(settingsScopeInput.optional()).output(z.array(VoiceCredentialSchema)),

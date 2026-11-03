@@ -64,6 +64,22 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 describe("connect_app execution", () => {
+  it("returns personal setup guidance instead of inventing an OAuth card when no key exists", async () => {
+    const f = fixture([]);
+    const provider = {
+      describe: () => ({ id: "composio" }),
+      catalog: async () => [],
+      configuration: async () => ({ configured: false, personal: true }),
+    } as unknown as ManagedConnectorProvider;
+    expect(
+      await connectApp(f.deps, [provider], f.context, f.target, "Gmail", "effect"),
+    ).toMatchObject({
+      status: "setup_required",
+      provider: "composio",
+      setupPath: "/integrations/setup",
+    });
+    expect(stored).toHaveLength(0);
+  });
   it("uses only catalog fields and actor context", async () => {
     const f = fixture();
     await f.call("GMAIL");

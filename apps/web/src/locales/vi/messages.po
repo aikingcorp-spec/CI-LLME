@@ -615,6 +615,10 @@ msgstr "Thêm điều kiện kích hoạt"
 msgid "Add workspace"
 msgstr "Thêm vùng làm việc"
 
+#: src/pages/PluginsOverlay.tsx
+msgid "Add your Composio key or connect an MCP server."
+msgstr "Thêm key Composio của bạn hoặc kết nối máy chủ MCP."
+
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Added"
@@ -686,6 +690,11 @@ msgstr "Cho phép trong cuộc trò chuyện này"
 #: src/components/AskCard.tsx
 msgid "Allow once"
 msgstr "Cho phép một lần"
+
+#: src/pages/PluginsOverlay.tsx
+#: src/pages/shell/message-cards.tsx
+msgid "Allow popups for this site and try again."
+msgstr "Cho phép cửa sổ bật lên trên trang này rồi thử lại."
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Allow rule"
@@ -1254,6 +1263,10 @@ msgstr "Trò chuyện với bot của bạn từ Slack."
 msgid "ChatGPT subscription"
 msgstr "Gói đăng ký ChatGPT"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "ChatGPT voice calls"
+msgstr "Gọi thoại ChatGPT"
+
 #: src/lib/identity-display.ts
 msgid "Chats"
 msgstr "Trò chuyện"
@@ -1262,6 +1275,10 @@ msgstr "Trò chuyện"
 #: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
 msgstr "Kiểm tra lại"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Check and save"
+msgstr "Kiểm tra và lưu"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Check every"
@@ -1314,6 +1331,7 @@ msgstr "Đang kiểm tra các bot của bạn"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdateViews.tsx
+#: src/components/integrations/personal-composio.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "Đang kiểm tra…"
@@ -1530,6 +1548,10 @@ msgstr "Hoàn tất mục trong sổ nháp"
 msgid "Completed"
 msgstr "Đã hoàn tất"
 
+#: src/components/integrations/personal-composio.tsx
+msgid "Composio connected"
+msgstr "Đã kết nối Composio"
+
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/message-view.tsx
@@ -1574,10 +1596,6 @@ msgstr "Máy tính đã sẵn sàng. Bạn hãy tải lại hoặc mở một bo
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, novita, daytona, or boat with its API key. Recreate the stack after changing .env."
 msgstr "Máy tính đang tắt. Đặt SANDBOX_PROVIDER=docker cùng SANDBOX_SUPERVISOR_TOKEN, hoặc đặt SANDBOX_PROVIDER thành e2b, novita, daytona hay boat cùng khóa API tương ứng. Tạo lại hệ thống sau khi đổi .env."
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Configure a plugin catalog on the server to connect apps."
-msgstr "Cấu hình danh mục tiện ích mở rộng trên máy chủ để kết nối ứng dụng."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Configured servers"
@@ -1650,6 +1668,10 @@ msgstr "Kết nối ứng dụng"
 msgid "Connect apps"
 msgstr "Kết nối ứng dụng"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Connect ChatGPT in Models to use its voice."
+msgstr "Kết nối ChatGPT trong phần Mô hình để dùng giọng nói."
+
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "Kết nối máy chủ MCP “{name}”"
@@ -1665,6 +1687,10 @@ msgstr "Kết nối OAuth"
 #: src/lib/agent-import-errors.ts
 msgid "Connect this model's provider first."
 msgstr "Hãy kết nối nhà cung cấp của mô hình này trước."
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Connect with your Composio key"
+msgstr "Kết nối bằng key Composio của bạn"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -2209,6 +2235,14 @@ msgstr "Không thể lưu thông tin xác thực"
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
 msgstr "Không thể lưu lựa chọn này"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Could not save voice settings"
+msgstr "Không lưu được cài đặt giọng nói"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Could not save your Composio key"
+msgstr "Không lưu được key Composio của bạn"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not search catalog"
@@ -3141,6 +3175,10 @@ msgstr "Tải ứng dụng di động"
 #: src/lib/builtin-tool-labels.ts
 msgid "Get ticket"
 msgstr "Xem phiếu"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Get your project key"
+msgstr "Lấy key dự án của bạn"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -4356,6 +4394,10 @@ msgstr "Kết nối OAuth không thành công"
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "OAuth đã hết hạn"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Off"
+msgstr "Tắt"
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/Pairing.tsx
@@ -6059,6 +6101,10 @@ msgstr "Bot và những gì lần nhập thêm vào sẽ bị gỡ."
 msgid "The bot can use the file but won't see the picture."
 msgstr "Bot dùng được tệp nhưng không xem được ảnh."
 
+#: src/lib/call-session.ts
+msgid "The computer connection was lost. Hang up and reconnect."
+msgstr "Mất kết nối với máy tính. Hãy kết thúc cuộc gọi và kết nối lại."
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "Kết nối đã hết thời gian chờ."
@@ -6375,6 +6421,10 @@ msgstr "Bạn hãy kiểm tra lại."
 msgid "Tuesday"
 msgstr "Thứ Ba"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Turn off voice calls"
+msgstr "Tắt gọi thoại"
+
 #: src/components/VaultSettings.tsx
 msgid "Type"
 msgstr "Loại"
@@ -6599,6 +6649,10 @@ msgstr "Dùng đường dẫn trên máy của bạn"
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Dùng thông tin xác thực {hostCredentialSource} riêng của máy chủ này để truy cập {selectedProviderName}."
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Uses your ChatGPT account. Voice availability and limits follow your plan."
+msgstr "Dùng tài khoản ChatGPT của bạn. Khả năng sử dụng và giới hạn thoại tùy theo gói."
+
 #: src/lib/tool-activity-label.ts
 msgid "Using {name}"
 msgstr "Đang dùng {name}"
@@ -6672,12 +6726,17 @@ msgstr "vd: vnbot-congty"
 msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
 msgstr "vnbot-shared và các ID bắt đầu bằng bot- là của riêng VNBot."
 
+#: src/components/call/NativeVoiceSettings.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
 msgstr "Giọng nói"
+
+#: src/lib/call-session.ts
+msgid "Voice calls were turned off. Hang up to close this call."
+msgstr "Gọi thoại đã được tắt. Hãy kết thúc cuộc gọi này."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
@@ -6864,6 +6923,10 @@ msgstr "Bạn đang điều khiển"
 #: src/lib/run-error.ts
 msgid "Your Anthropic"
 msgstr "Anthropic của bạn"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Your Composio API key"
+msgstr "API key Composio của bạn"
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Your defaults"

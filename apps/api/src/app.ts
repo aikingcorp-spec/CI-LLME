@@ -482,6 +482,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     (env.agentRuntime === "scripted"
       ? new ScriptedAgentRuntime()
       : new PiAgentRuntime({
+          continuityReview: process.env.AGENT_CONTINUITY_REVIEW === "1",
           sessionRoot: env.piSessionRecording ? piSessionsRoot(env.dataDir) : undefined,
         }));
   const pushTokens = new PrismaPushTokenStore(prisma, env.encryptionKey);
@@ -602,7 +603,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     connector: stack.connector,
     connectors: stack.connector,
     listConnectedPluginSlugs: async (userId) => {
-      const provider = await integrationSettings.resolve("composio");
+      const provider = await integrationSettings.resolve("composio", userId);
       if (!provider) return [];
       return provider.listConnectedExternalIds({
         userId,

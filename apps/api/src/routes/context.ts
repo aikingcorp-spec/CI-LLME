@@ -94,7 +94,12 @@ export function createRouterContext(deps: RouterDeps) {
     phoneCallsEnabled: deps.env?.phoneCallsEnabled,
     phoneCallRingSeconds: deps.env?.phoneCallRingSeconds,
   });
-  const onboardingDeps = { prisma: deps.prisma, events: deps.events, connectors: deps.connectors };
+  const onboardingDeps = {
+    prisma: deps.prisma,
+    events: deps.events,
+    connectors: deps.connectors,
+    jobs: deps.jobs,
+  };
   const mcpOAuth = deps.mcpOAuth ?? new McpOAuthBroker(deps.prisma, deps.secrets);
   const {
     mcpAwaitsOAuth,
@@ -365,8 +370,14 @@ export function createRouterContext(deps: RouterDeps) {
       return result;
     });
 
-  const callsEnabled = authed.use(async ({ next }) => {
-    if (!deps.env?.phoneCallsEnabled) throw new ORPCError("NOT_FOUND");
+  const callsEnabled = authed.use(async ({ context, next }) => {
+    if (
+      !deps.env?.phoneCallsEnabled &&
+      !(await deps.prisma.userRealtimeVoicePreference.findUnique({
+        where: { userId: context.actor.userId },
+      }))
+    )
+      throw new ORPCError("NOT_FOUND");
     return next();
   });
 

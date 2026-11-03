@@ -47,7 +47,7 @@ import {
   subscribeBotsSidebarDensity,
 } from "../lib/bots-sidebar-density-pref";
 import { readBotsSidebarCollapsed, writeBotsSidebarCollapsed } from "../lib/bots-sidebar-pref";
-import { setCallMinimized, startCall, useCallSession } from "../lib/call-session";
+import { endCall, setCallMinimized, startCall, useCallSession } from "../lib/call-session";
 import {
   getComposerEnterToSend,
   subscribeComposerEnterToSend,
@@ -222,7 +222,7 @@ function SpaceShell() {
   /** Calls a bot, or opens voice settings first when no voice is connected. */
   const callBot = (bot: Bot) => {
     if (!bootstrapMe?.phoneCallsEnabled) return;
-    if (!voiceStatus?.ready) {
+    if (!voiceStatus?.ready && !nativeVoice?.enabled) {
       openSettings("voice");
       return;
     }
@@ -232,10 +232,12 @@ function SpaceShell() {
       botColor: bot.color,
       botAvatarSet: bot.avatarSet,
       transcribe: voiceStatus ? Boolean(voiceStatus.transcribe) : undefined,
+      realtime: nativeVoice?.enabled,
     });
   };
   const voiceStatus: VoiceStatus | null =
     useQuery(queries.voice.status.queryOptions()).data ?? null;
+  const nativeVoice = useQuery(queries.voice.realtime.status.queryOptions()).data;
   const { mobileSidebarOpen, setMobileSidebarOpen, swipeHandlers } = useMobileSidebar();
   const isMobileSidebar = useIsMobile();
   const miniSidebar = botsSidebarCollapsed && !isMobileSidebar;
@@ -243,6 +245,7 @@ function SpaceShell() {
   const [botMenu, setBotMenu] = useState<{ kind: "bot" | "group"; id: string } | null>(null);
   const closeBotMenu = useCallback(() => setBotMenu(null), []);
   const currentSpaceId = selectedSpaceId() ?? bootstrapMe?.spaceId ?? null;
+  useEffect(() => () => endCall(), [session.data?.user.id, currentSpaceId]);
   // null: settings follow the space the app is showing.
   const settingsSpaceId = overlay?.kind === "settings" ? overlay.spaceId : null;
   const settingsSpace =

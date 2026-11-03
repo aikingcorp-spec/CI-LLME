@@ -75,6 +75,7 @@ import { withBotIdentity } from "./product-identity.js";
 import type { RuntimeContextDecision } from "./runtime-context.js";
 import { createRuntimeContextPolicy } from "./runtime-context.js";
 import { deliverFinishedShells } from "./shell-command-stream.js";
+import { continuityEvidence, TASK_CONTINUITY_RULES, TaskContinuity } from "./task-continuity.js";
 import {
   restoreTurnCheckpoint,
   serializeTurnCheckpoint,
@@ -121,6 +122,8 @@ export const SILENT_ALLOWED_TOOL_CONTINUATION_PROMPT = automated(
 export { MISSING_TOOL_FINAL_RESPONSE_ERROR } from "@rakazo/core";
 
 export interface PiAgentRuntimeOptions {
+  /** Bounded semantic completion review. Composition roots opt in; nested/review agents do not. */
+  continuityReview?: boolean;
   /** Directory where Pi JSONL sessions are written. Omit to disable recording. */
   sessionRoot?: string;
   /** Explicit transport for tests and synthetic wire diagnostics. */
@@ -141,8 +144,10 @@ export class PiAgentRuntime implements AgentRuntime {
   private readonly modelFetch?: typeof globalThis.fetch;
   private readonly modelCallObserver?: ModelCallObserver;
   private readonly onContextDecision?: PiAgentRuntimeOptions["onContextDecision"];
+  private readonly continuityReview: boolean;
 
   constructor(options: PiAgentRuntimeOptions = {}) {
+    this.continuityReview = options.continuityReview ?? false;
     this.modelFetch = options.modelFetch;
     this.modelCallObserver = options.modelCallObserver;
     this.onContextDecision = options.onContextDecision;
@@ -263,6 +268,7 @@ export class PiAgentRuntime implements AgentRuntime {
         };
         resumeHost = host;
         const tools = toAgentTools(toolDefs, host);
+        const continuity = new TaskContinuity(this.continuityReview && !request.allowSilentEmpty);
         const seenSteeringIds: string[] = [];
         const initialSteering = request.claimSteering ? await request.claimSteering([]) : [];
         let hasCurrentImages = Boolean(
@@ -467,6 +473,64 @@ export class PiAgentRuntime implements AgentRuntime {
               turn,
               turnSignal,
             );
+            if (
+              !continuity.shouldReview(turn, {
+                paused: host.pausePending,
+                aborted: signal.aborted || Boolean(turnSignal?.aborted),
+                steered: seenSteeringIds.length > 0,
+                budgetExceeded: host.toolCallBudget.exceeded,
+              })
+            )
+              return;
+            try {
+              const followUp = await continuity.review(async () => {
+                const target = activeStreamTarget;
+                const reviewSignal = AbortSignal.any([
+                  signal,
+                  ...(turnSignal ? [turnSignal] : []),
+                  AbortSignal.timeout(20_000),
+                ]);
+                const reviewContext: Context = {
+                  systemPrompt: TASK_CONTINUITY_RULES,
+                  messages: [
+                    {
+                      role: "user",
+                      content: continuityEvidence(request.prompt, turn),
+                      timestamp: Date.now(),
+                    },
+                  ],
+                };
+                const reviewModel = modelForCompletion(target.model, 1024);
+                const reviewThinking = thinkingLevelFor(reviewModel, "low");
+                const result = await observedPiStream(
+                  target.models,
+                  reviewModel,
+                  reviewContext,
+                  withCloudflareAuth(target.config, {
+                    apiKey: target.credentials?.accessToken ?? target.apiKey,
+                    signal: reviewSignal,
+                    maxTokens: 1024,
+                    reasoning: reviewThinking === "off" ? undefined : reviewThinking,
+                    fetch: this.modelFetch,
+                  }),
+                  (event) => {
+                    if (event.type === "usage") queue.push(event);
+                  },
+                  target.config.callObserver ?? this.modelCallObserver,
+                  { operationKind: "setup", userId: context?.userId, runId: request.runId },
+                  { recordUsage: request.onUsage },
+                ).result();
+                if (result.stopReason !== "stop") throw new Error("Completion review unavailable");
+                return assistantText(result);
+              });
+              if (followUp && !signal.aborted && !host.pausePending) {
+                agent.followUp({ role: "user", content: followUp, timestamp: Date.now() });
+                return { action: "continue" };
+              }
+            } catch {
+              // A review outage cannot invalidate completed effects or trigger tool retries.
+              getLogger().warn("task completion review unavailable", { runId: request.runId });
+            }
           },
           prepareNextTurnWithContext: async () => {
             if (!request.claimSteering) return undefined;

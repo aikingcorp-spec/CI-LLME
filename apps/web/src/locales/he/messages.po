@@ -615,6 +615,10 @@ msgstr "הוספת טריגר"
 msgid "Add workspace"
 msgstr "הוספת סביבת עבודה"
 
+#: src/pages/PluginsOverlay.tsx
+msgid "Add your Composio key or connect an MCP server."
+msgstr ""
+
 #: src/components/integrations/plugin-marketplace.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "Added"
@@ -686,6 +690,11 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Allow once"
 msgstr "אישור חד-פעמי"
+
+#: src/pages/PluginsOverlay.tsx
+#: src/pages/shell/message-cards.tsx
+msgid "Allow popups for this site and try again."
+msgstr ""
 
 #: src/components/ApprovalRulePreview.tsx
 msgid "Allow rule"
@@ -1254,6 +1263,10 @@ msgstr "שוחחו עם הבוט שלכם מ-Slack."
 msgid "ChatGPT subscription"
 msgstr ""
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "ChatGPT voice calls"
+msgstr ""
+
 #: src/lib/identity-display.ts
 msgid "Chats"
 msgstr "צ׳אטים"
@@ -1262,6 +1275,10 @@ msgstr "צ׳אטים"
 #: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
 msgstr "בדיקה חוזרת"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Check and save"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Check every"
@@ -1314,6 +1331,7 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdateViews.tsx
+#: src/components/integrations/personal-composio.tsx
 #: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "בודק…"
@@ -1530,6 +1548,10 @@ msgstr ""
 msgid "Completed"
 msgstr "הושלם"
 
+#: src/components/integrations/personal-composio.tsx
+msgid "Composio connected"
+msgstr ""
+
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/message-view.tsx
@@ -1574,10 +1596,6 @@ msgstr "המחשבים זמינים. אפשר לטעון מחדש או לפתו�
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, novita, daytona, or boat with its API key. Recreate the stack after changing .env."
 msgstr "המחשבים כבויים. יש להגדיר SANDBOX_PROVIDER=docker עם SANDBOX_SUPERVISOR_TOKEN, או להגדיר את SANDBOX_PROVIDER ל-e2b, novita, daytona או boat עם מפתח ה-API שלו. אחרי שינוי .env יש ליצור מחדש את ה-stack."
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Configure a plugin catalog on the server to connect apps."
-msgstr "כדי לחבר אפליקציות, יש להגדיר קטלוג תוספים בשרת."
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Configured servers"
@@ -1650,6 +1668,10 @@ msgstr ""
 msgid "Connect apps"
 msgstr "חיבור אפליקציות"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Connect ChatGPT in Models to use its voice."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "חיבור שרת MCP “{name}”"
@@ -1665,6 +1687,10 @@ msgstr "חיבור OAuth"
 #: src/lib/agent-import-errors.ts
 msgid "Connect this model's provider first."
 msgstr "יש לחבר קודם את הספק של המודל הזה."
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Connect with your Composio key"
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
@@ -2209,6 +2235,14 @@ msgstr "לא ניתן לשמור את פרטי הגישה"
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
 msgstr "לא ניתן לשמור את הבחירה הזו"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Could not save voice settings"
+msgstr ""
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Could not save your Composio key"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not search catalog"
@@ -3140,6 +3174,10 @@ msgstr "הורדת האפליקציה לנייד"
 
 #: src/lib/builtin-tool-labels.ts
 msgid "Get ticket"
+msgstr ""
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Get your project key"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -4356,6 +4394,10 @@ msgstr "חיבור OAuth נכשל"
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "תוקף OAuth פג"
+
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Off"
+msgstr ""
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/pages/Pairing.tsx
@@ -6059,6 +6101,10 @@ msgstr "הבוט ומה שהייבוא שלו הוסיף יוסרו."
 msgid "The bot can use the file but won't see the picture."
 msgstr "הבוט יוכל להשתמש בקובץ, אבל לא יראה את התמונה."
 
+#: src/lib/call-session.ts
+msgid "The computer connection was lost. Hang up and reconnect."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "תם הזמן הקצוב לחיבור."
@@ -6375,6 +6421,10 @@ msgstr "אפשר לנסות את הבדיקה שוב."
 msgid "Tuesday"
 msgstr "יום שלישי"
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Turn off voice calls"
+msgstr ""
+
 #: src/components/VaultSettings.tsx
 msgid "Type"
 msgstr "סוג"
@@ -6599,6 +6649,10 @@ msgstr "משתמש בנתיבים במחשב שלך"
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "משתמש בפרטי הגישה של {hostCredentialSource} של השרת עצמו כדי לגשת ל-{selectedProviderName}."
 
+#: src/components/call/NativeVoiceSettings.tsx
+msgid "Uses your ChatGPT account. Voice availability and limits follow your plan."
+msgstr ""
+
 #: src/lib/tool-activity-label.ts
 msgid "Using {name}"
 msgstr ""
@@ -6672,12 +6726,17 @@ msgstr ""
 msgid "vnbot-shared and IDs starting with bot- are reserved for VNBot."
 msgstr ""
 
+#: src/components/call/NativeVoiceSettings.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/SpaceSettingOverrides.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
 msgstr "קול"
+
+#: src/lib/call-session.ts
+msgid "Voice calls were turned off. Hang up to close this call."
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
@@ -6864,6 +6923,10 @@ msgstr "השליטה אצלך"
 #: src/lib/run-error.ts
 msgid "Your Anthropic"
 msgstr "Anthropic"
+
+#: src/components/integrations/personal-composio.tsx
+msgid "Your Composio API key"
+msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Your defaults"

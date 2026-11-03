@@ -132,7 +132,9 @@ it("does not trust a client's connected claim", async () => {
     { connectorId: "pipedream", slug: "slack", connected: false },
   ]);
   deps.prisma.message = { findMany: vi.fn() } as never;
-  await markAppConnected(deps, actor, "bot", "slack", "pipedream", "thread");
+  await expect(
+    markAppConnected(deps, actor, "bot", "slack", "pipedream", "thread"),
+  ).rejects.toMatchObject({ code: "CONFLICT" });
   expect(deps.prisma.message.findMany).not.toHaveBeenCalled();
   expect(tx.message.update).not.toHaveBeenCalled();
 });
@@ -238,3 +240,39 @@ it("updates the authorized card's own message even outside the bounded scan", as
     data: { blocks: [{ ...card, status: "connected" }] },
   });
 });
+
+it.each(["completed", "cancelled", "running"])(
+  "wakes verified inline work only after its source run completed (%s)",
+  async (status) => {
+    const { deps, actor, tx } = fixture([
+      { connectorId: "pipedream", slug: "slack", name: "Slack", connected: true },
+    ]);
+    let blocks = [
+      {
+        kind: "app_connect",
+        connectorId: "pipedream",
+        provider: "slack",
+        name: "Slack",
+        status: "pending",
+      },
+    ];
+    tx.message.findMany = vi.fn(async () => [
+      { id: "inline-card", runId: "source", blocks },
+    ]) as never;
+    tx.message.update = vi.fn(async ({ data }) => {
+      blocks = data.blocks;
+    }) as never;
+    const runs = {
+      findFirst: vi.fn(async () => ({ id: "source", status })),
+      create: vi.fn(async () => ({ id: "resumed" })),
+    };
+    const tasks = { create: vi.fn(async () => ({ id: "task" })) };
+    Object.assign(tx, { run: runs, task: tasks });
+    const enqueue = vi.fn(async () => undefined);
+    deps.jobs = { enqueue } as never;
+    await markAppConnected(deps, actor, "bot", "slack", "pipedream", "thread", "inline-card");
+    await markAppConnected(deps, actor, "bot", "slack", "pipedream", "thread", "inline-card");
+    expect(runs.create).toHaveBeenCalledTimes(status === "completed" ? 1 : 0);
+    expect(enqueue).toHaveBeenCalledTimes(status === "completed" ? 1 : 0);
+  },
+);
