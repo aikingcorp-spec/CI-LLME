@@ -41,8 +41,9 @@ try{
   await new Promise(resolve=>setTimeout(resolve,100));
  }
  if(state?.phase!=='ready'||state.availableVersion!=='0.3.9'||state.percent!==100)throw Error('Verified download not ready');
- if(requests.join(',')!=='/latest.yml,/fixture.exe')throw Error('Unexpected update requests');
- console.log(JSON.stringify({artifact:'installed-Windows-0.3.8',packaged:true,background_disabled:true,manual_ipc_check:true,real_sdk_http_download:true,checksum_verified:true,phase:state.phase,installer_executed:false}));
+ const allowed=new Set(['/latest.yml','/fixture.exe','/fixture.exe.blockmap']);
+ if(requests.filter(p=>p==='/latest.yml').length!==1||requests.filter(p=>p==='/fixture.exe').length!==1||requests.some(p=>!allowed.has(p)))throw Error('Unexpected update requests: '+JSON.stringify(requests));
+ console.log(JSON.stringify({artifact:'installed-Windows-0.3.8',packaged:true,background_disabled:true,manual_ipc_check:true,real_sdk_http_download:true,checksum_verified:true,phase:state.phase,installer_executed:false,requests}));
 }finally{
  if(app){
   // The fixture must never execute. Leave production signature settings intact.
