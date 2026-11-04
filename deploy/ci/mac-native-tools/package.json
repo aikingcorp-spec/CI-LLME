@@ -1,0 +1,6 @@
+{
+  "name": "vnbot-mac-native-build-tools",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": { "cmake-js": "7.4.0", "node-addon-api": "7.1.1" }
+}

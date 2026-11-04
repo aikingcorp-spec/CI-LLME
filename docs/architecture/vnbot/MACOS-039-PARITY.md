@@ -75,3 +75,14 @@ separately. The native P2P RPC integration also creates/lists a personal MCP
 server and reads integration setup over the DataChannel, checking that secrets
 are not returned. This does not yet certify vendor OAuth callback delivery over
 an Internet P2P connection. Live vendor credentials remain a release gate.
+
+
+## Build issue found through macOS execution
+
+The pinned node-datachannel 0.32.0 upstream release supplies a Darwin arm64
+prebuild, but no Darwin x64 prebuild. electron-builder reused the installed ARM
+addon in both temporary app bundles, so Universal merging correctly failed.
+Do not whitelist this shared-path addon as a thin binary. Compile its unchanged
+source on an Intel runner with a locked build toolchain, combine Intel and ARM
+addons with lipo, and require both slices in the final artifact. No library or
+protocol replacement is involved. This compile path is pending verification.
