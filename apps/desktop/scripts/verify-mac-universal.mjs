@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { access, lstat, readdir } from "node:fs/promises";
+import { access, lstat, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
 if (process.platform !== "darwin") throw new Error("Requires macOS tools and a packaged app");
@@ -11,6 +11,10 @@ async function walk(root) {
     const file = path.join(root, name);
     const info = await lstat(file);
     if (info.isSymbolicLink()) {
+      const target = path.relative(app, await realpath(file));
+      if (target === ".." || target.startsWith(`..${path.sep}`) || path.isAbsolute(target)) {
+        throw new Error(`Symlink escapes application: ${path.relative(app, file)}`);
+      }
       await access(file);
       continue;
     }

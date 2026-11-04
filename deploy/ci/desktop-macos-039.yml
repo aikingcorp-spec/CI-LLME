@@ -109,11 +109,15 @@ jobs:
         env:
           DESKTOP_POPUP_TEST_EXECUTABLE: ${{ github.workspace }}/candidate/app/VNBot.app/Contents/MacOS/VNBot
         run: pnpm --filter @rakazo/desktop exec playwright test --config e2e/playwright.config.ts oauth-popup.spec.ts
-      - name: Real Chromium, candidate PostgreSQL and isolated node RPC fixture
+      - name: Real Chromium, Marketplace OAuth fixtures and isolated P2P RPC
         run: |
           pnpm --filter @rakazo/web exec playwright install chromium
+          brew list libpq >/dev/null 2>&1 || brew install libpq
+          export PATH="$(brew --prefix libpq)/bin:$PATH"
           node apps/desktop/scripts/build-p2p-agent.mjs
           pnpm exec tsx apps/desktop/scripts/smoke-mac-p2p.ts candidate/app/VNBot.app/Contents/Resources
+      - name: Connector and OAuth regression tests
+        run: pnpm exec vitest run packages/adapters/src/composio-connector.test.ts packages/adapters/src/composio-catalog-cache.test.ts packages/adapters/src/mcp-oauth.test.ts packages/adapters/src/mcp-transport.test.ts packages/adapters/src/plugin-connectors.test.ts apps/api/src/plugin-installs.test.ts apps/api/src/plugin-marketplace.test.ts --maxWorkers=2
       - name: Connectivity regression tests on macOS
         run: pnpm exec vitest run packages/p2p-prototype/src apps/web/src/lib/p2p-client.test.ts --maxWorkers=2
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

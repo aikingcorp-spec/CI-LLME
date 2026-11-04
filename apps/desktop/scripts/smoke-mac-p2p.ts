@@ -20,20 +20,26 @@ const postgres = new NativePostgres({
 });
 try {
   const { migrationUrl } = await postgres.start();
-  const child = spawn(
-    "pnpm",
-    ["exec", "tsx", "packages/testkit/src/cli/harness.ts", "--integration", "--spec=p2p-node-rpc"],
-    {
+  const suites = [
+    ["--integration", "--spec=p2p-node-rpc"],
+    [
+      "--e2e",
+      "--spec=plugin-marketplace|integration-setup|direct-mcp-integrations|mcp-oauth|integration-callback",
+      "--workers=1",
+    ],
+  ];
+  for (const suite of suites) {
+    const child = spawn("pnpm", ["exec", "tsx", "packages/testkit/src/cli/harness.ts", ...suite], {
       env: { ...process.env, E2E_LOCAL_PG_ADMIN_URL: migrationUrl, P2P_TEST_BROWSER: "1" },
       stdio: "inherit",
-      timeout: 300_000,
-    },
-  );
-  const code = await new Promise<number>((resolve, reject) => {
-    child.once("error", reject);
-    child.once("exit", (code) => resolve(code ?? 1));
-  });
-  if (code !== 0) throw new Error("macOS P2P fixture failed");
+      timeout: 600_000,
+    });
+    const code = await new Promise<number>((resolve, reject) => {
+      child.once("error", reject);
+      child.once("exit", (code) => resolve(code ?? 1));
+    });
+    if (code !== 0) throw new Error("macOS connectivity/marketplace fixture failed");
+  }
 } finally {
   await postgres.stop();
   await rm(root, { recursive: true, force: true });

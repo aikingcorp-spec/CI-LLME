@@ -258,6 +258,21 @@ it.skipIf(!databaseUrl)(
           instructions: "Help.",
         });
         expect(typeof bot.id).toBe("string");
+        // Marketplace management must stay on the authenticated node RPC path.
+        const mcp = await call("mcp/servers/create", {
+          slug: "remote-fixture",
+          name: "Remote MCP fixture",
+          transport: "streamable_http",
+          endpoint: "https://tools.example.test/mcp",
+          secret: "fixture-mcp-secret",
+        });
+        const servers = await call("mcp/servers/list");
+        expect(servers).toEqual(
+          expect.arrayContaining([expect.objectContaining({ id: mcp.id, hasSecret: true })]),
+        );
+        expect(JSON.stringify(servers)).not.toContain("fixture-mcp-secret");
+        expect(await call("integrationSetup/get")).toMatchObject({ canConfigure: true });
+
         await call("threads/send", { botId: bot.id, text: "Message sent over WebRTC" });
         expect(JSON.stringify(await call("threads/get", { botId: bot.id }))).toContain(
           "Message sent over WebRTC",

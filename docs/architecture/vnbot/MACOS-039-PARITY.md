@@ -63,3 +63,15 @@ the required evidence exists. Preserve Windows/Linux metadata and artifacts.
 Source rollback is removal of these Mac packaging changes. Candidate runs never
 mutate production. If a Mac candidate has been installed, retain its application
 data and restore the previous application; never reset a database as rollback.
+
+
+## Marketplace verification added
+
+On each Mac CPU, the candidate database backs browser suites for marketplace
+installation/removal, skill packs, direct MCP, personal Composio setup and
+OAuth callbacks. Existing emulators/fake providers are used; these do not certify
+Google, Stripe or another live vendor. Packaged Electron popup isolation runs
+separately. The native P2P RPC integration also creates/lists a personal MCP
+server and reads integration setup over the DataChannel, checking that secrets
+are not returned. This does not yet certify vendor OAuth callback delivery over
+an Internet P2P connection. Live vendor credentials remain a release gate.
