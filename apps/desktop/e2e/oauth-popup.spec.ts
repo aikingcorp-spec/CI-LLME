@@ -32,10 +32,11 @@ for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-o
     const origin = `http://127.0.0.1:${address.port}`;
     const profile = await mkdtemp(path.join(tmpdir(), "desktop-popup-"));
     const executable = process.env.DESKTOP_POPUP_TEST_EXECUTABLE;
+    const sandboxArgs = process.platform === "darwin" ? [] : ["--no-sandbox"];
     const app = await electron.launch({
       ...(executable
-        ? { executablePath: executable, args: ["--no-sandbox"] }
-        : { args: [".", "--no-sandbox"] }),
+        ? { executablePath: executable, args: sandboxArgs }
+        : { args: [".", ...sandboxArgs] }),
       cwd: path.resolve(import.meta.dirname, ".."),
       env: {
         ...process.env,
@@ -100,7 +101,17 @@ for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-o
       );
       await child.close();
     } finally {
-      await app.close();
+      if (process.platform === "darwin") {
+        // Context.close closes pages first; the normal Mac warm-window handler
+        // intentionally hides them. Exercise actual Quit before context teardown.
+        const closed = app.waitForEvent("close", { timeout: 10_000 });
+        await app.evaluate(({ app }) => {
+          setImmediate(() => app.quit());
+        });
+        await closed;
+      } else {
+        await app.close();
+      }
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await rm(profile, { recursive: true, force: true });

@@ -114,11 +114,6 @@ jobs:
           cp .ci-source.json apps/desktop/out/source-provenance.json
           cd apps/desktop/out
           shasum -a 256 *.dmg *.zip > SHA256SUMS-mac.txt
-      - name: Require native inspection success even when collecting further evidence
-        if: always()
-        env:
-          NATIVE_INVENTORY_RESULT: ${{ steps.native_inventory.outcome }}
-        run: test "$NATIVE_INVENTORY_RESULT" = success
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -213,6 +208,11 @@ jobs:
         run: pnpm exec vitest run packages/adapters/src/composio-connector.test.ts packages/adapters/src/composio-catalog-cache.test.ts packages/adapters/src/mcp-oauth.test.ts packages/adapters/src/mcp-transport.test.ts packages/adapters/src/plugin-connectors.test.ts apps/api/src/plugin-installs.test.ts apps/api/src/plugin-marketplace.test.ts --maxWorkers=2
       - name: Connectivity regression tests on macOS
         run: pnpm exec vitest run packages/p2p-prototype/src apps/web/src/lib/p2p-client.test.ts --maxWorkers=2
+      - name: Require native inspection success even when collecting further evidence
+        if: always()
+        env:
+          NATIVE_INVENTORY_RESULT: ${{ steps.native_inventory.outcome }}
+        run: test "$NATIVE_INVENTORY_RESULT" = success
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -221,4 +221,6 @@ jobs:
             evidence/
             test-report/
             apps/desktop/test-results/
+            apps/web/test-results/
+            blob-report/
           if-no-files-found: warn
