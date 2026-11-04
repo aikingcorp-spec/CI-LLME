@@ -12,5 +12,5 @@ export function chooseRuntime(input: {
   const requested = input.settings?.runtime?.trim() || input.env?.RAKAZO_DESKTOP_RUNTIME?.trim();
   if (requested === "docker") return "docker";
   if (requested === "native") return "native";
-  return input.platform === "darwin" ? "docker" : "native";
+  return "native";
 }

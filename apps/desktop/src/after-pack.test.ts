@@ -79,3 +79,27 @@ describe("embedded Postgres package hydration", () => {
     await expect(hydratePostgresSymlinks(appOutDir)).rejects.toThrow(/escape/i);
   });
 });
+
+it("hydrates Darwin libraries inside the actual app bundle for both CPU packages", async () => {
+  const appOutDir = await mkdtemp(path.join(tmpdir(), "desktop-mac-pack-"));
+  dirs.push(appOutDir);
+  for (const arch of ["x64", "arm64"]) {
+    const root = path.join(
+      appOutDir,
+      "Fixture.app/Contents/Resources/app.asar.unpacked/node_modules/@embedded-postgres",
+      `darwin-${arch}`,
+    );
+    await mkdir(path.join(root, "native/lib"), { recursive: true });
+    await writeFile(path.join(root, "native/lib/libfixture.1.dylib"), "library");
+    await writeFile(
+      path.join(root, "native/pg-symlinks.json"),
+      JSON.stringify([
+        { source: "native/lib/libfixture.1.dylib", target: "native/lib/libfixture.dylib" },
+      ]),
+    );
+    await hydratePostgresSymlinks(appOutDir, "Fixture");
+    expect(await readlink(path.join(root, "native/lib/libfixture.dylib"))).toBe(
+      "libfixture.1.dylib",
+    );
+  }
+});

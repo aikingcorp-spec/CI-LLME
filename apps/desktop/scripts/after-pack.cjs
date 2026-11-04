@@ -27,10 +27,12 @@ async function exists(file) {
   }
 }
 
-async function hydratePostgresSymlinks(appOutDir) {
+async function hydratePostgresSymlinks(appOutDir, macProductFilename) {
   const scope = path.join(
     appOutDir,
-    "resources",
+    ...(macProductFilename
+      ? [`${macProductFilename}.app`, "Contents", "Resources"]
+      : ["resources"]),
     "app.asar.unpacked",
     "node_modules",
     "@embedded-postgres",
@@ -74,6 +76,11 @@ async function hydratePostgresSymlinks(appOutDir) {
 
 module.exports = async function afterPack(context) {
   if (context.electronPlatformName === "win32") return;
-  await hydratePostgresSymlinks(context.appOutDir);
+  await hydratePostgresSymlinks(
+    context.appOutDir,
+    context.electronPlatformName === "darwin"
+      ? context.packager.appInfo.productFilename
+      : undefined,
+  );
 };
 module.exports.hydratePostgresSymlinks = hydratePostgresSymlinks;

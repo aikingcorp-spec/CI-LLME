@@ -10,7 +10,7 @@ Bản cài đặt dùng kho `aikingcorp-spec/vnbot` và image cùng tên trên G
 
 Ví thanh toán đã được gỡ khỏi giao diện và RPC của node. Bảng `payment_wallets` và dữ liệu cũ được giữ nguyên; không có migration xóa bảng.
 
-Desktop Linux và Windows đã có mã chạy node cục bộ không cần Docker: PostgreSQL 16 đi kèm, API và worker chạy bằng Electron utility process, giao diện web dùng lại bản chung. macOS vẫn dùng Docker. Bản phát hành native còn chờ đóng gói binary và tài nguyên server; chưa phải bản cài đặt đã kiểm chứng. Quyền chạy lệnh trên máy vẫn theo thiết lập hiện có. Xem [ADR 0009](adr/0009-native-desktop-local-runtime.md).
+Desktop Linux và Windows đã có mã chạy node cục bộ không cần Docker: PostgreSQL 16 đi kèm, API và worker chạy bằng Electron utility process, giao diện web dùng lại bản chung. Bản macOS Universal đang được bổ sung để dùng cùng runtime native, không cần Docker; chưa được xác nhận đủ điều kiện phát hành. Bản phát hành native còn chờ đóng gói binary và tài nguyên server; chưa phải bản cài đặt đã kiểm chứng. Quyền chạy lệnh trên máy vẫn theo thiết lập hiện có. Xem [ADR 0009](adr/0009-native-desktop-local-runtime.md).
 
 ## Cổng vnbot.run và máy của khách: đã có đường web P2P
 

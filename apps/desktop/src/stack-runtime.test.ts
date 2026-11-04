@@ -6,8 +6,11 @@ describe("chooseRuntime", () => {
     expect(chooseRuntime({ platform: "linux" })).toBe("native");
     expect(chooseRuntime({ platform: "win32" })).toBe("native");
   });
-  it("uses Docker on macOS unless overridden", () => {
-    expect(chooseRuntime({ platform: "darwin" })).toBe("docker");
+  it("uses native on macOS and preserves explicit Docker opt-in", () => {
+    expect(chooseRuntime({ platform: "darwin" })).toBe("native");
+    expect(chooseRuntime({ platform: "darwin", env: { RAKAZO_DESKTOP_RUNTIME: "docker" } })).toBe(
+      "docker",
+    );
     expect(chooseRuntime({ platform: "darwin", env: { RAKAZO_DESKTOP_RUNTIME: "native" } })).toBe(
       "native",
     );

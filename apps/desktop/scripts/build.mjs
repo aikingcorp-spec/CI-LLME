@@ -42,13 +42,14 @@ if (process.argv.includes("--native") || process.env.DESKTOP_NATIVE === "1") {
   // Platform packages (sharp's libvips, koffi's addon) are optional dependencies
   // gated by os/cpu/libc. Install only the one this build targets, so the host
   // platform (process.platform) decides: win32 packages on Windows CI, linux
-  // glibc or musl variants on Linux, never every platform at once.
+  // glibc or musl variants on Linux. Darwin stages both CPUs for Universal.
   const hostLibc =
     process.platform === "linux"
       ? process.report?.getReport().header.glibcVersionRuntime
         ? "glibc"
         : "musl"
       : undefined;
+  const targetArchitectures = process.platform === "darwin" ? ["x64", "arm64"] : [process.arch];
   function matchesHost(manifest) {
     const allows = (list, value) =>
       !Array.isArray(list) || list.length === 0 || (value !== undefined && list.includes(value));
@@ -58,12 +59,14 @@ if (process.argv.includes("--native") || process.env.DESKTOP_NATIVE === "1") {
         manifest.os?.filter((x) => !x.startsWith("!")),
         process.platform,
       ) &&
-      allows(
-        manifest.cpu?.filter((x) => !x.startsWith("!")),
-        process.arch,
+      targetArchitectures.some(
+        (arch) =>
+          allows(
+            manifest.cpu?.filter((x) => !x.startsWith("!")),
+            arch,
+          ) && !denies(manifest.cpu, arch),
       ) &&
       !denies(manifest.os, process.platform) &&
-      !denies(manifest.cpu, process.arch) &&
       (!manifest.libc || hostLibc === undefined || manifest.libc.includes(hostLibc))
     );
   }
@@ -134,6 +137,21 @@ if (process.argv.includes("--native") || process.env.DESKTOP_NATIVE === "1") {
   // Preserve their package layouts and installed optional binary dependencies.
   for (const name of ["sharp", "koffi"]) {
     await install(name, path.resolve(desktop, "../../packages/adapters"));
+  }
+  if (process.platform === "darwin") {
+    // Optional dependencies are required for BOTH slices of a Universal runtime.
+    for (const arch of targetArchitectures) {
+      for (const name of [
+        `@img/sharp-darwin-${arch}`,
+        `@img/sharp-libvips-darwin-${arch}`,
+        `@koromix/koffi-darwin-${arch}`,
+      ]) {
+        if (!existsSync(path.join(server, "node_modules", name, "package.json"))) {
+          throw new Error(`Missing Universal runtime dependency: ${name}`);
+        }
+      }
+      await packageRoot(`@embedded-postgres/darwin-${arch}`, desktop);
+    }
   }
   // pg-native is optional: pg catches its absence and uses the JavaScript driver.
   const externals = ["pg", "graphile-worker", "pg-native", "sharp", "koffi"];

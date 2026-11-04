@@ -531,3 +531,15 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
 - Modules and files: desktop main/preload, OTP/enrollment/session helpers and native services; API local-settings and auth composition; auth local-node-session plugin reused from PR #29; contracts desktop/local-settings; gateway registration and hosted-app Worker; web Auth, Pairing, session gate and P2P client; shared key-file, node-channel-server and agent node-room routing; Cloudflare app configuration. Marketplace and Composio code are unchanged.
 - Invariants affected: enrollment needs an account credential plus possession of the machine key; remote RPC uses a pinned local user session; credentials never reach the gateway or renderer. Canonical RPC paths prevent traversal. Revoked machine identities cannot re-register. Existing HTTP/local usage and Docker networking remain separate. No product records move to D1. No deployment or cross-network certification is implied by this entry.
 - ADR: [0010](adr/0010-desktop-account-enrollment.md).
+
+## 2026-11-04 — macOS native Universal candidate (PR pending)
+
+- Versus baseline: macOS selects the existing native desktop stack by default,
+  stages both Darwin CPU dependency variants and bundles the native API, worker,
+  migrations and PostgreSQL packages. Windows/Linux defaults are unchanged.
+- Why: a Mac install should start independently of Docker or external Node.js.
+- Modules: apps/desktop/package.json, scripts/build.mjs, scripts/after-pack.cjs,
+  src/stack-runtime.ts; candidate-only workflow in deploy/ci/desktop-macos-039.yml.
+- Invariants: same engine, RPC/auth/P2P, app ID, userData and database layout;
+  explicit Docker override preserved. No implicit Docker data migration.
+- Evidence and release gates: MACOS-039-PARITY.md. ADR: [0015](adr/0015-macos-universal-native-runtime.md).

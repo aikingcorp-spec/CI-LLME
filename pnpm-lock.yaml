@@ -113,15 +113,21 @@ importers:
         specifier: 0.32.0
         version: 0.32.0
     optionalDependencies:
-      '@koromix/koffi-linux-x64':
-        specifier: 3.3.4
-        version: 3.3.4
+      '@embedded-postgres/darwin-arm64':
+        specifier: 16.14.0-beta.17
+        version: 16.14.0-beta.17
+      '@embedded-postgres/darwin-x64':
+        specifier: 16.14.0-beta.17
+        version: 16.14.0-beta.17
       '@embedded-postgres/linux-x64':
         specifier: 16.14.0-beta.17
         version: 16.14.0-beta.17
       '@embedded-postgres/windows-x64':
         specifier: 16.14.0-beta.17
         version: 16.14.0-beta.17
+      '@koromix/koffi-linux-x64':
+        specifier: 3.3.4
+        version: 3.3.4
     devDependencies:
       '@playwright/test':
         specifier: 1.64.1
@@ -371,12 +377,12 @@ importers:
       '@rakazo/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@rakazo/p2p-prototype':
-        specifier: workspace:*
-        version: link:../../packages/p2p-prototype
       '@rakazo/logging':
         specifier: workspace:*
         version: link:../../packages/logging
+      '@rakazo/p2p-prototype':
+        specifier: workspace:*
+        version: link:../../packages/p2p-prototype
       '@rakazo/ui-tokens':
         specifier: workspace:*
         version: link:../../packages/ui-tokens
@@ -2353,6 +2359,18 @@ packages:
     resolution: {integrity: sha512-dfZeox66AvdPtb2lD8OsIIQh12Tp0GNCRUDfBHIKGpbmopZto2/A8nSpYYLoedPIHpqkeblZ/k8OV0Gy7PYuyQ==}
     engines: {node: '>=14.14'}
     hasBin: true
+
+  '@embedded-postgres/darwin-arm64@16.14.0-beta.17':
+    resolution: {integrity: sha512-CB1DFZ08zfmNapx231rAJW74UZfs1jQmeGLwbQSaAIRVs2uqEdMhVNLwVlztFG3ZPSeuCsgTn/0yeYDmKF67og==}
+    engines: {node: '>=16'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@embedded-postgres/darwin-x64@16.14.0-beta.17':
+    resolution: {integrity: sha512-zikibpPYGWokfT/OFWNHCwerA3ZGat0ZyCIXOIbIucLBMDHztQ2WZQ9R5zil6oOxzElrMz2Q4aEOssGNrMDdyg==}
+    engines: {node: '>=16'}
+    cpu: [x64]
+    os: [darwin]
 
   '@embedded-postgres/linux-x64@16.14.0-beta.17':
     resolution: {integrity: sha512-8fr7hEiI7XlbPDPsLZJ4RU1NR6jTIDWpf81Sfiwk3T845V0yJJGxjawjkQZmIWVgPW/qY/dMSv0o08FRWJ/zsg==}
@@ -13016,6 +13034,12 @@ snapshots:
       postject: 1.0.0-alpha.6
     transitivePeerDependencies:
       - supports-color
+    optional: true
+
+  '@embedded-postgres/darwin-arm64@16.14.0-beta.17':
+    optional: true
+
+  '@embedded-postgres/darwin-x64@16.14.0-beta.17':
     optional: true
 
   '@embedded-postgres/linux-x64@16.14.0-beta.17':

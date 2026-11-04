@@ -1,5 +1,6 @@
 {
   "repository": "aikingcorp-spec/vnbot",
-  "ref": "feat/voice-connectors-continuity",
-  "commit": "c1b53a39ba6a9518f753e200920855ee542fc415"
+  "ref": "feat/macos-native-039",
+  "commit": "352249d7f0290b5a44a3a3a5acb569d57bdbb264",
+  "baseline": "c1b53a39ba6a9518f753e200920855ee542fc415"
 }

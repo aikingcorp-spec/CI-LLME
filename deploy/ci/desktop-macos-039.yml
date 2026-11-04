@@ -1,0 +1,111 @@
+# Install in CI-LLME as .github/workflows/release-desktop.yml on the Mac-only branch.
+# No publication: artifacts remain candidates until the manual release gates pass.
+name: macOS Universal 0.3.9 candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.repository == 'aikingcorp-spec/CI-LLME'
+    runs-on: macos-26
+    timeout-minutes: 50
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: test "$(uname -m)" = arm64
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm --filter @rakazo/desktop test
+      - run: pnpm --filter @rakazo/web build && pnpm --filter @rakazo/desktop build:native
+      - name: Build ad-hoc candidate only; do not publish an update feed
+        run: pnpm --filter @rakazo/desktop exec electron-builder --mac --universal --publish never -c.mac.identity=- -c.mac.notarize=false
+      - name: Inspect every Mach-O and required payload
+        run: node apps/desktop/scripts/verify-mac-universal.mjs apps/desktop/out/mac-universal/VNBot.app > apps/desktop/out/native-inventory.json
+      - name: Archive final app for testing the identical artifact on both CPUs
+        run: |
+          cd apps/desktop/out/mac-universal
+          ditto -c -k --sequesterRsrc --keepParent VNBot.app ../universal-app.zip
+      - name: Record provenance and checksums
+        run: |
+          cp .ci-source.json apps/desktop/out/source-provenance.json
+          cd apps/desktop/out
+          shasum -a 256 *.dmg *.zip > SHA256SUMS-mac.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-039-candidate
+          path: |
+            apps/desktop/out/*.dmg
+            apps/desktop/out/*.zip
+            apps/desktop/out/*inventory.json
+            apps/desktop/out/source-provenance.json
+            apps/desktop/out/SHA256SUMS-mac.txt
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+  verify:
+    needs: build
+    if: github.repository == 'aikingcorp-spec/CI-LLME'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            arch: arm64
+          - os: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      RAKAZO_ALLOW_DEV_SECRETS: '1'
+      RAKAZO_DESKTOP_AUTO_UPDATE: '0'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: test "$(uname -m)" = '${{ matrix.arch }}'
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-039-candidate
+          path: candidate
+      - run: ditto -x -k candidate/universal-app.zip candidate/app
+      - run: pnpm install --frozen-lockfile && pnpm db:generate
+      - name: Load addons with the final packaged Electron on the actual CPU
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        run: candidate/app/VNBot.app/Contents/MacOS/VNBot apps/desktop/scripts/smoke-mac-addons.cjs candidate/app/VNBot.app/Contents/Resources
+      - name: Cold start and restart without Docker or external Node runtime
+        run: |
+          mkdir -p evidence
+          export RAKAZO_PERFORMANCE_USER_DATA="$RUNNER_TEMP/mac-native-data"
+          export RAKAZO_DESKTOP_SMOKE=1
+          for pass in 1 2; do
+            candidate/app/VNBot.app/Contents/MacOS/VNBot > "evidence/start-$pass.log" 2>&1
+            grep -E '^RAKAZO_DESKTOP_SMOKE ok http://127.0.0.1:[0-9]+$' "evidence/start-$pass.log"
+            test -f "$RAKAZO_PERFORMANCE_USER_DATA/pg/data/PG_VERSION"
+            if pgrep -f 'candidate/app/VNBot.app.*native/bin/postgres'; then exit 1; fi
+          done
+      - name: OAuth popup security with the final app
+        env:
+          DESKTOP_POPUP_TEST_EXECUTABLE: ${{ github.workspace }}/candidate/app/VNBot.app/Contents/MacOS/VNBot
+        run: pnpm --filter @rakazo/desktop exec playwright test --config e2e/playwright.config.ts oauth-popup.spec.ts
+      - name: Connectivity regression tests on macOS
+        run: pnpm exec vitest run packages/p2p-prototype/src apps/web/src/lib/p2p-client.test.ts --maxWorkers=2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-039-verification-${{ matrix.arch }}
+          path: |
+            evidence/
+            apps/desktop/test-results/
+          if-no-files-found: warn

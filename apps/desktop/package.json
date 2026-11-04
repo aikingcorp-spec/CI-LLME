@@ -20,7 +20,8 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. apps/desktop/src",
     "test:e2e": "pnpm build && playwright test --config e2e/playwright.config.ts",
-    "release": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --publish never"
+    "release": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --publish never",
+    "pack:mac": "pnpm --filter @rakazo/web build && pnpm build:native && electron-builder --mac --universal --publish never"
   },
   "dependencies": {
     "@rakazo/contracts": "workspace:*",
@@ -43,7 +44,9 @@
   "optionalDependencies": {
     "@embedded-postgres/linux-x64": "16.14.0-beta.17",
     "@koromix/koffi-linux-x64": "3.3.4",
-    "@embedded-postgres/windows-x64": "16.14.0-beta.17"
+    "@embedded-postgres/windows-x64": "16.14.0-beta.17",
+    "@embedded-postgres/darwin-x64": "16.14.0-beta.17",
+    "@embedded-postgres/darwin-arm64": "16.14.0-beta.17"
   },
   "build": {
     "appId": "run.vnbot.desktop",
@@ -80,7 +83,7 @@
     "mac": {
       "icon": "assets/icon.icns",
       "category": "public.app-category.productivity",
-      "x64ArchFiles": "{**/node_modules/@koromix/koffi-darwin-*/darwin_*/koffi.node,**/node_modules/@oxc-parser/binding-darwin-*/parser.darwin-*.node}",
+      "x64ArchFiles": "{**/node_modules/@koromix/koffi-darwin-*/darwin_*/koffi.node,**/node_modules/@oxc-parser/binding-darwin-*/parser.darwin-*.node,**/node_modules/@embedded-postgres/darwin-*/**/*,**/node_modules/@img/sharp-darwin-*/*.node,**/node_modules/@img/sharp-darwin-*/lib/*.node,**/node_modules/@img/sharp-libvips-darwin-*/lib/*.dylib}",
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
       "extendInfo": {
@@ -92,6 +95,29 @@
       ],
       "notarize": true,
       "extraResources": [
+        {
+          "from": "native/server",
+          "to": "server",
+          "filter": [
+            "**/*",
+            "!**/*.map"
+          ]
+        },
+        {
+          "from": "native/server/node_modules",
+          "to": "server/node_modules",
+          "filter": [
+            "**/*",
+            "!**/*.map"
+          ]
+        },
+        {
+          "from": "../../packages/db/prisma/migrations",
+          "to": "migrations",
+          "filter": [
+            "*/migration.sql"
+          ]
+        },
         {
           "from": "../../infra/compose/docker-compose.images.yml",
           "to": "stack/docker-compose.images.yml"
