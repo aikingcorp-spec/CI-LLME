@@ -102,16 +102,16 @@ for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-o
       await child.close();
     } finally {
       if (process.platform === "darwin") {
-        // Context.close closes pages first; the normal Mac warm-window handler
-        // intentionally hides them. Exercise actual Quit before context teardown.
-        const closed = app.waitForEvent("close", { timeout: 10_000 });
-        await app.evaluate(({ app }) => {
-          setImmediate(() => app.quit());
+        // Context.close closes pages before it calls app.quit. Mac intentionally
+        // hides those windows, so destroy only these completed fixture windows.
+        await app.evaluate(({ BrowserWindow }) => {
+          for (const win of BrowserWindow.getAllWindows()) win.destroy();
         });
-        await closed;
-      } else {
-        await app.close();
       }
+      // Let Playwright request Quit AND detach its Node inspector, then require
+      // an actual clean process exit. Do not disable the product's warm-window mode.
+      await app.close();
+      if (process.platform === "darwin") await expect.poll(() => app.process().exitCode).toBe(0);
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await rm(profile, { recursive: true, force: true });

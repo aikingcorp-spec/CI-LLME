@@ -141,3 +141,17 @@ the final artifact's Universal RTC addon for source-based P2P fixtures. This
 avoids a second unpinned Intel fallback build during test installation. The
 candidate_run input re-verifies an existing immutable CI artifact without
 repackaging it; its recorded build provenance remains authoritative.
+
+
+## Optional PostgreSQL language plugins
+
+A direct Mach-O audit of both pinned Darwin packages found nine plugins loading
+unbundled Perl, Python or Tcl runtimes. VNBot has no migration or application
+reference to those SQL languages/extensions. Mac staging excludes their dylibs
+and extension control/install SQL files, rather than requiring an EDB language
+pack or weakening the dependency check. SQL, PL/pgSQL, all VNBot migrations and
+all other PostgreSQL components are retained. Windows/Linux packaging is unchanged.
+These optional vendor SQL language extensions are NOT SUPPORTED in this Mac
+bundle; this is explicit packaging scope, not removal of a VNBot customization.
+The final binary closure check and native startup/migration tests protect this
+boundary if a future dependency or migration introduces another requirement.

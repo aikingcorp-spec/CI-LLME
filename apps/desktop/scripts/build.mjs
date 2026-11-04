@@ -153,7 +153,21 @@ if (process.argv.includes("--native") || process.env.DESKTOP_NATIVE === "1") {
       const postgres = await packageRoot(`@embedded-postgres/darwin-${arch}`, desktop);
       const target = path.join(desktop, "native/postgres", `darwin-${arch}`);
       await rm(target, { recursive: true, force: true });
-      await cp(postgres, target, { recursive: true, dereference: true });
+      await cp(postgres, target, {
+        recursive: true,
+        dereference: true,
+        filter(file) {
+          const relative = path.relative(postgres, file).split(path.sep).join("/");
+          // These optional SQL language plugins depend on an unbundled EDB
+          // language pack. VNBot's migrations use SQL/PLpgSQL, never these.
+          const plugin =
+            relative.startsWith("native/lib/postgresql/") ||
+            relative.startsWith("native/share/postgresql/extension/");
+          return (
+            !plugin || !/(?:^|_)(?:plperlu?|plpython3u?|pltclu?)(?:--|\.)/.test(path.basename(file))
+          );
+        },
+      });
     }
   }
   // pg-native is optional: pg catches its absence and uses the JavaScript driver.

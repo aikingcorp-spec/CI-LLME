@@ -177,10 +177,14 @@ jobs:
           cp candidate/app/VNBot.app/Contents/Resources/app.asar.unpacked/node_modules/node-datachannel/build/Release/node_datachannel.node "$rtc/"
           pnpm db:generate
       - name: Load addons with the final packaged Electron on the actual CPU
+        id: native_addons
+        continue-on-error: true
         env:
           ELECTRON_RUN_AS_NODE: '1'
         run: candidate/app/VNBot.app/Contents/MacOS/VNBot apps/desktop/scripts/smoke-mac-addons.cjs candidate/app/VNBot.app/Contents/Resources
       - name: Cold start and restart without Docker or external Node runtime
+        id: native_runtime
+        continue-on-error: true
         run: |
           mkdir -p evidence
           export RAKAZO_PERFORMANCE_USER_DATA="$RUNNER_TEMP/mac-native-data"
@@ -192,10 +196,14 @@ jobs:
             if pgrep -f 'candidate/app/VNBot.app.*native/bin/postgres'; then exit 1; fi
           done
       - name: OAuth popup security with the final app
+        id: native_oauth
+        continue-on-error: true
         env:
           DESKTOP_POPUP_TEST_EXECUTABLE: ${{ github.workspace }}/candidate/app/VNBot.app/Contents/MacOS/VNBot
         run: pnpm --filter @rakazo/desktop exec playwright test --config e2e/playwright.config.ts oauth-popup.spec.ts
       - name: Real Chromium, Marketplace OAuth fixtures and isolated P2P RPC
+        id: marketplace_p2p
+        continue-on-error: true
         run: |
           pnpm --filter @rakazo/web exec playwright install chromium
           brew list libpq >/dev/null 2>&1 || brew install libpq
@@ -203,16 +211,22 @@ jobs:
           node apps/desktop/scripts/build-p2p-agent.mjs
           pnpm exec tsx apps/desktop/scripts/smoke-mac-p2p.ts candidate/app/VNBot.app/Contents/Resources
       - name: Native files, commands and permission revocation
+        id: native_operations
+        continue-on-error: true
         run: pnpm exec vitest run packages/adapters/src/desktop-sandbox-paths.test.ts packages/adapters/src/desktop-sandbox-write-containment.test.ts packages/adapters/src/desktop-sandbox-command.test.ts packages/adapters/src/host-computer.test.ts --maxWorkers=2
       - name: Connector and OAuth regression tests
+        id: connectors
+        continue-on-error: true
         run: pnpm exec vitest run packages/adapters/src/composio-connector.test.ts packages/adapters/src/composio-catalog-cache.test.ts packages/adapters/src/mcp-oauth.test.ts packages/adapters/src/mcp-transport.test.ts packages/adapters/src/plugin-connectors.test.ts apps/api/src/plugin-installs.test.ts apps/api/src/plugin-marketplace.test.ts --maxWorkers=2
       - name: Connectivity regression tests on macOS
+        id: connectivity
+        continue-on-error: true
         run: pnpm exec vitest run packages/p2p-prototype/src apps/web/src/lib/p2p-client.test.ts --maxWorkers=2
-      - name: Require native inspection success even when collecting further evidence
+      - name: Require every independent verification result to pass
         if: always()
         env:
-          NATIVE_INVENTORY_RESULT: ${{ steps.native_inventory.outcome }}
-        run: test "$NATIVE_INVENTORY_RESULT" = success
+          VERIFICATION_RESULTS: ${{ steps.native_inventory.outcome }},${{ steps.native_addons.outcome }},${{ steps.native_runtime.outcome }},${{ steps.native_oauth.outcome }},${{ steps.marketplace_p2p.outcome }},${{ steps.native_operations.outcome }},${{ steps.connectors.outcome }},${{ steps.connectivity.outcome }}
+        run: node -e "const results=process.env.VERIFICATION_RESULTS.split(','); if(results.length!==8 || results.some(x=>x!=='success')) process.exit(1)"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
