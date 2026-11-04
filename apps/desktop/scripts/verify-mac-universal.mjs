@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { closeSync, openSync } from "node:fs";
 import { access, lstat, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
@@ -6,6 +7,19 @@ if (process.platform !== "darwin") throw new Error("Requires macOS tools and a p
 const app = path.resolve(process.argv[2]);
 const resources = path.join(app, "Contents/Resources");
 const inventory = [];
+// otool interprets a trailing (GPU) in Electron helper names as archive(member).
+// Inspect the identical open file through an inherited descriptor, not that syntax.
+function inspectLibraries(flag, file) {
+  const fd = openSync(file, "r");
+  try {
+    return execFileSync("otool", [flag, "/dev/fd/3"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe", fd],
+    });
+  } finally {
+    closeSync(fd);
+  }
+}
 async function walk(root) {
   for (const name of await readdir(root)) {
     const file = path.join(root, name);
@@ -38,13 +52,13 @@ async function walk(root) {
     const required = selected ? [selected === "x64" ? "x86_64" : "arm64"] : ["x86_64", "arm64"];
     if (!required.every((arch) => arches.includes(arch)))
       throw new Error(`Wrong slices: ${relative}: ${arches}`);
-    const linked = execFileSync("otool", ["-L", file], { encoding: "utf8" })
+    const linked = inspectLibraries("-L", file)
       .split("\n")
       .filter((line) => line.startsWith("\t"))
       .map((line) => line.trim().replace(/ \(compatibility version.*$/, ""));
     const ids = new Set(
       kind.includes("shared library")
-        ? execFileSync("otool", ["-D", file], { encoding: "utf8" })
+        ? inspectLibraries("-D", file)
             .split("\n")
             .map((line) => line.trim())
             .filter((line) => !line.endsWith(":"))

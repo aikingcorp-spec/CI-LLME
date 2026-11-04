@@ -114,6 +114,11 @@ jobs:
           cp .ci-source.json apps/desktop/out/source-provenance.json
           cd apps/desktop/out
           shasum -a 256 *.dmg *.zip > SHA256SUMS-mac.txt
+      - name: Require native inspection success even when collecting further evidence
+        if: always()
+        env:
+          NATIVE_INVENTORY_RESULT: ${{ steps.native_inventory.outcome }}
+        run: test "$NATIVE_INVENTORY_RESULT" = success
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -164,6 +169,8 @@ jobs:
           github-token: ${{ github.token }}
       - run: ditto -x -k candidate/universal-app.zip candidate/app
       - name: Inspect slices and external library dependencies in the final artifact
+        id: native_inventory
+        continue-on-error: true
         run: |
           mkdir -p evidence
           node apps/desktop/scripts/verify-mac-universal.mjs candidate/app/VNBot.app > evidence/native-inventory.json
