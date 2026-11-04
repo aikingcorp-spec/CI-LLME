@@ -13,9 +13,14 @@ jobs:
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      # CI-LLME reuses a registered dispatch entry point. Test the unchanged SOURCE
+      # release workflow, rather than this candidate-only CI dispatch wrapper.
+      - run: cp .ci/release-desktop.source.yml .github/workflows/release-desktop.yml
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
@@ -37,7 +42,7 @@ jobs:
           cp .ci-source.json apps/desktop/out/source-provenance.json
           cd apps/desktop/out
           shasum -a 256 *.dmg *.zip > SHA256SUMS-mac.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: macos-039-candidate
@@ -67,14 +72,19 @@ jobs:
       RAKAZO_ALLOW_DEV_SECRETS: '1'
       RAKAZO_DESKTOP_AUTO_UPDATE: '0'
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      # CI-LLME reuses a registered dispatch entry point. Test the unchanged SOURCE
+      # release workflow, rather than this candidate-only CI dispatch wrapper.
+      - run: cp .ci/release-desktop.source.yml .github/workflows/release-desktop.yml
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
       - run: test "$(uname -m)" = '${{ matrix.arch }}'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: macos-039-candidate
           path: candidate
@@ -90,7 +100,7 @@ jobs:
           export RAKAZO_PERFORMANCE_USER_DATA="$RUNNER_TEMP/mac-native-data"
           export RAKAZO_DESKTOP_SMOKE=1
           for pass in 1 2; do
-            candidate/app/VNBot.app/Contents/MacOS/VNBot > "evidence/start-$pass.log" 2>&1
+            PATH="/usr/bin:/bin:/usr/sbin:/sbin" candidate/app/VNBot.app/Contents/MacOS/VNBot > "evidence/start-$pass.log" 2>&1
             grep -E '^RAKAZO_DESKTOP_SMOKE ok http://127.0.0.1:[0-9]+$' "evidence/start-$pass.log"
             test -f "$RAKAZO_PERFORMANCE_USER_DATA/pg/data/PG_VERSION"
             if pgrep -f 'candidate/app/VNBot.app.*native/bin/postgres'; then exit 1; fi
@@ -99,13 +109,19 @@ jobs:
         env:
           DESKTOP_POPUP_TEST_EXECUTABLE: ${{ github.workspace }}/candidate/app/VNBot.app/Contents/MacOS/VNBot
         run: pnpm --filter @rakazo/desktop exec playwright test --config e2e/playwright.config.ts oauth-popup.spec.ts
+      - name: Real Chromium, candidate PostgreSQL and isolated node RPC fixture
+        run: |
+          pnpm --filter @rakazo/web exec playwright install chromium
+          node apps/desktop/scripts/build-p2p-agent.mjs
+          pnpm exec tsx apps/desktop/scripts/smoke-mac-p2p.ts candidate/app/VNBot.app/Contents/Resources
       - name: Connectivity regression tests on macOS
         run: pnpm exec vitest run packages/p2p-prototype/src apps/web/src/lib/p2p-client.test.ts --maxWorkers=2
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: macos-039-verification-${{ matrix.arch }}
           path: |
             evidence/
+            test-report/
             apps/desktop/test-results/
           if-no-files-found: warn
