@@ -30,10 +30,11 @@ jobs:
           rsync -a --exclude=node_modules --exclude=build apps/desktop/node_modules/node-datachannel/ "$rtc_source/"
           ln -s "$GITHUB_WORKSPACE/deploy/ci/mac-native-tools/node_modules" "$rtc_source/node_modules"
           deploy/ci/mac-native-tools/node_modules/.bin/cmake-js compile --directory "$rtc_source" --arch x64 --CDCMAKE_POLICY_VERSION_MINIMUM=3.5 --CDCMAKE_OSX_DEPLOYMENT_TARGET=12.0
-          lipo -verify_arch x86_64 "$rtc_source/build/Release/node_datachannel.node"
+          lipo "$rtc_source/build/Release/node_datachannel.node" -verify_arch x86_64
           mkdir native-intel
           cp "$rtc_source/build/Release/node_datachannel.node" native-intel/
           otool -L native-intel/node_datachannel.node
+          node -e "require(process.argv[1]); console.log('Intel WebRTC addon loads')" "$GITHUB_WORKSPACE/native-intel/node_datachannel.node"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: mac-intel-rtc
@@ -70,9 +71,9 @@ jobs:
       - name: Create and verify a genuinely Universal WebRTC addon
         run: |
           rtc="apps/desktop/node_modules/node-datachannel/build/Release/node_datachannel.node"
-          lipo -verify_arch arm64 "$rtc"
+          lipo "$rtc" -verify_arch arm64
           lipo -create native-intel/node_datachannel.node "$rtc" -output "$RUNNER_TEMP/node_datachannel.node"
-          lipo -verify_arch x86_64 arm64 "$RUNNER_TEMP/node_datachannel.node"
+          lipo "$RUNNER_TEMP/node_datachannel.node" -verify_arch x86_64 arm64
           cp "$RUNNER_TEMP/node_datachannel.node" "$rtc"
       - name: Build ad-hoc candidate only; do not publish an update feed
         run: pnpm --filter @rakazo/desktop exec electron-builder --mac --universal --publish never -c.mac.identity=- -c.mac.notarize=false
@@ -161,6 +162,8 @@ jobs:
           export PATH="$(brew --prefix libpq)/bin:$PATH"
           node apps/desktop/scripts/build-p2p-agent.mjs
           pnpm exec tsx apps/desktop/scripts/smoke-mac-p2p.ts candidate/app/VNBot.app/Contents/Resources
+      - name: Native files, commands and permission revocation
+        run: pnpm exec vitest run packages/adapters/src/desktop-sandbox-paths.test.ts packages/adapters/src/desktop-sandbox-write-containment.test.ts packages/adapters/src/desktop-sandbox-command.test.ts packages/adapters/src/host-computer.test.ts --maxWorkers=2
       - name: Connector and OAuth regression tests
         run: pnpm exec vitest run packages/adapters/src/composio-connector.test.ts packages/adapters/src/composio-catalog-cache.test.ts packages/adapters/src/mcp-oauth.test.ts packages/adapters/src/mcp-transport.test.ts packages/adapters/src/plugin-connectors.test.ts apps/api/src/plugin-installs.test.ts apps/api/src/plugin-marketplace.test.ts --maxWorkers=2
       - name: Connectivity regression tests on macOS

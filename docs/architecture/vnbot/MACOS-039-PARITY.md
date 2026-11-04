@@ -86,3 +86,33 @@ Do not whitelist this shared-path addon as a thin binary. Compile its unchanged
 source on an Intel runner with a locked build toolchain, combine Intel and ARM
 addons with lipo, and require both slices in the final artifact. No library or
 protocol replacement is involved. This compile path is pending verification.
+
+## Live Composio OAuth acceptance (not a fixture)
+
+Status: NOT VERIFIED. Requires a test user's personal Composio configuration,
+a working final Mac app and an interactive vendor login. Do not copy credentials
+into CI or publish authorization URLs, tokens, cookies or callback query strings.
+
+1. Install the final Universal candidate, open Marketplace and configure the
+   test user's own Composio key through the existing private setup UI.
+2. Choose a real OAuth connector available to that user's Composio account.
+   Generate its authorization URL through Composio; never substitute a fixture
+   URL or construct a vendor login page by hand.
+3. Click Connect from Marketplace. Confirm the actual login window/browser
+   opens and reaches the real provider's consent flow. A returned URL, an
+   about:blank window or a successful openExternal promise is insufficient.
+4. First cancel the login: VNBot must remain disconnected and allow a retry.
+   Retry, complete consent, and confirm VNBot receives the matching completion,
+   updates the same connector on the same node, and survives an app restart.
+5. Let a bot invoke a harmless read-only action against that connected app.
+   Check that the result is returned through the real connector, not a fixture.
+6. Repeat from the web connected to that Mac through P2P. The callback must reach
+   the correct node and requesting user; a second browser/account must not gain
+   the connection. Do not count the direct local flow as proof of P2P callback
+   delivery.
+
+Record CPU, final artifact checksum, provider, permission scope, pass/fail and
+sanitized screenshots. Run on Intel and Apple Silicon. The accepted UX preserves the existing isolated Electron OAuth window.
+The live Composio URL must reach the real provider inside that window; opening
+the OS default browser is not required. Preserve the existing session partition
+and callback delivery; do not silently replace the window policy.
