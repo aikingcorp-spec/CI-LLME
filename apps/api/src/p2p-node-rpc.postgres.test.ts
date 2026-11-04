@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
-import { EmailEmulator, FakeSandboxProvider } from "@rakazo/adapters";
+import { EmailEmulator, FakeSandboxProvider, ThirdPartyConnectorEmulator } from "@rakazo/adapters";
 import { LOCAL_NODE_SESSION_PATH, LOCAL_SETTINGS_TOKEN_HEADER } from "@rakazo/contracts";
 import { expect, it } from "vitest";
 import { DataChannelClientTransport } from "../../../packages/p2p-prototype/src/client-transport.js";
@@ -92,12 +92,17 @@ it.skipIf(!databaseUrl)(
   "real WebRTC carries authenticated node RPC, persists chat and rejects a foreign account",
   async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "rakazo-local-session-"));
+    const thirdParties = new ThirdPartyConnectorEmulator();
     const handles = await createApp({
       databaseUrl: databaseUrl!,
       dataDir,
       sandboxProvider: "fake",
       sandbox: new FakeSandboxProvider(),
       desktopStackToken: token,
+      remoteConnectors: {
+        fetch: thirdParties.fetch,
+        resolveHostname: thirdParties.resolveHostname,
+      },
       passwordAuth: false,
       emailAllowlist: true,
       agentRuntime: "scripted",

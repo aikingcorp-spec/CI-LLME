@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
+import type { WebContents, WebPreferences } from "electron";
 
 for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-oauth"]) {
   test(`${prefix}: reserved blank popup reaches provider and callback`, async () => {
@@ -46,6 +47,7 @@ for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-o
         RAKAZO_PERFORMANCE_USER_DATA: profile,
       },
     });
+    const appPid = process.platform === "darwin" ? await app.evaluate(() => process.pid) : null;
     try {
       const main = await app.firstWindow();
       await expect(main.locator("#connect")).toBeVisible();
@@ -77,7 +79,10 @@ for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-o
         const popup = windows.find((w) =>
           w.webContents.getURL().startsWith("https://provider.example.test"),
         );
-        const prefs = popup!.webContents.getLastWebPreferences();
+        const contents = popup!.webContents as WebContents & {
+          getLastWebPreferences(): WebPreferences;
+        };
+        const prefs = contents.getLastWebPreferences();
         return {
           sandbox: prefs.sandbox,
           isolated: prefs.contextIsolation,
@@ -111,7 +116,19 @@ for (const prefix of ["vnbot-plugin-connect", "vnbot-app-connect", "rakazo-mcp-o
       // Let Playwright request Quit AND detach its Node inspector, then require
       // an actual clean process exit. Do not disable the product's warm-window mode.
       await app.close();
-      if (process.platform === "darwin") await expect.poll(() => app.process().exitCode).toBe(0);
+      if (appPid !== null) {
+        await expect
+          .poll(() => {
+            try {
+              process.kill(appPid, 0);
+              return true;
+            } catch (error) {
+              if ((error as NodeJS.ErrnoException).code === "ESRCH") return false;
+              throw error;
+            }
+          })
+          .toBe(false);
+      }
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await rm(profile, { recursive: true, force: true });

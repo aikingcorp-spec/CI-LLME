@@ -23,6 +23,7 @@ try {
       "--workers=1",
     ],
   ];
+  const failed: string[] = [];
   for (const suite of suites) {
     const child = spawn("pnpm", ["exec", "tsx", "packages/testkit/src/cli/harness.ts", ...suite], {
       env: { ...process.env, E2E_LOCAL_PG_ADMIN_URL: migrationUrl, P2P_TEST_BROWSER: "1" },
@@ -33,8 +34,9 @@ try {
       child.once("error", reject);
       child.once("exit", (code) => resolve(code ?? 1));
     });
-    if (code !== 0) throw new Error("macOS connectivity/marketplace fixture failed");
+    if (code !== 0) failed.push(suite[1]!);
   }
+  if (failed.length) throw new Error(`macOS fixtures failed: ${failed.join(", ")}`);
 } finally {
   await postgres.stop();
   await rm(root, { recursive: true, force: true });
