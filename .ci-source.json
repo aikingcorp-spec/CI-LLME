@@ -1,7 +1,8 @@
 {
   "repository": "aikingcorp-spec/vnbot",
   "ref": "feat/macos-native-039",
-  "commit": "cc7ffb7c00424df966665fc689e9f3178ae95133",
+  "commit": "0037a05b4ead601461af185badbb04dafbaa887f",
   "baseline": "c1b53a39ba6a9518f753e200920855ee542fc415",
-  "nativeIntelAddonRun": 41779703037
+  "nativeIntelAddonRun": 41779703037,
+  "candidateArtifactRun": 41781198833
 }

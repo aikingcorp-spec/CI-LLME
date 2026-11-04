@@ -23,6 +23,9 @@ async function walk(root) {
       continue;
     }
     const kind = execFileSync("file", ["-b", file], { encoding: "utf8" });
+    if (/ELF|PE32|MS-DOS executable/.test(kind)) {
+      throw new Error(`Foreign operating-system binary: ${path.relative(app, file)}`);
+    }
     if (!kind.includes("Mach-O")) {
       if (file.endsWith(".node") || file.endsWith(".dylib"))
         throw new Error(`Non-Mach-O native binary: ${path.relative(app, file)}`);
@@ -35,7 +38,31 @@ async function walk(root) {
     const required = selected ? [selected === "x64" ? "x86_64" : "arm64"] : ["x86_64", "arm64"];
     if (!required.every((arch) => arches.includes(arch)))
       throw new Error(`Wrong slices: ${relative}: ${arches}`);
-    inventory.push({ file: relative, arches });
+    const linked = execFileSync("otool", ["-L", file], { encoding: "utf8" })
+      .split("\n")
+      .filter((line) => line.startsWith("\t"))
+      .map((line) => line.trim().replace(/ \(compatibility version.*$/, ""));
+    const ids = new Set(
+      kind.includes("shared library")
+        ? execFileSync("otool", ["-D", file], { encoding: "utf8" })
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => !line.endsWith(":"))
+        : [],
+    );
+    const dependencies = linked.filter((dependency) => !ids.has(dependency));
+    for (const dependency of dependencies) {
+      if (
+        dependency.startsWith("/usr/lib/") ||
+        dependency.startsWith("/System/Library/") ||
+        dependency.startsWith("@loader_path/") ||
+        dependency.startsWith("@executable_path/") ||
+        dependency.startsWith("@rpath/")
+      )
+        continue;
+      throw new Error(`Unbundled dependency in ${relative}: ${path.basename(dependency)}`);
+    }
+    inventory.push({ file: relative, arches, dependencies });
   }
 }
 await walk(app);

@@ -4,6 +4,10 @@ name: macOS Universal 0.3.9 candidate
 on:
   workflow_dispatch:
     inputs:
+      candidate_run:
+        description: 'Optional CI-LLME run whose final Mac artifact should be verified without rebuilding'
+        type: string
+        required: false
       intel_addon_run:
         description: 'Optional CI-LLME run containing the verified 0.32.0 Intel addon'
         type: string
@@ -13,7 +17,7 @@ permissions:
   actions: read
 jobs:
   intel-rtc:
-    if: github.repository == 'aikingcorp-spec/CI-LLME'
+    if: github.repository == 'aikingcorp-spec/CI-LLME' && inputs.candidate_run == ''
     runs-on: macos-15-intel
     timeout-minutes: 40
     steps:
@@ -64,7 +68,7 @@ jobs:
           if-no-files-found: error
   build:
     needs: intel-rtc
-    if: github.repository == 'aikingcorp-spec/CI-LLME'
+    if: github.repository == 'aikingcorp-spec/CI-LLME' && inputs.candidate_run == ''
     runs-on: macos-26
     timeout-minutes: 50
     env:
@@ -125,7 +129,7 @@ jobs:
           if-no-files-found: error
   verify:
     needs: build
-    if: github.repository == 'aikingcorp-spec/CI-LLME'
+    if: always() && github.repository == 'aikingcorp-spec/CI-LLME' && (needs.build.result == 'success' || inputs.candidate_run != '')
     strategy:
       fail-fast: false
       matrix:
@@ -156,8 +160,20 @@ jobs:
         with:
           name: macos-039-candidate
           path: candidate
+          run-id: ${{ inputs.candidate_run || github.run_id }}
+          github-token: ${{ github.token }}
       - run: ditto -x -k candidate/universal-app.zip candidate/app
-      - run: pnpm install --frozen-lockfile && pnpm db:generate
+      - name: Inspect slices and external library dependencies in the final artifact
+        run: |
+          mkdir -p evidence
+          node apps/desktop/scripts/verify-mac-universal.mjs candidate/app/VNBot.app > evidence/native-inventory.json
+      - name: Install test tools without rebuilding another host-architecture RTC addon
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          rtc="apps/desktop/node_modules/node-datachannel/build/Release"
+          mkdir -p "$rtc"
+          cp candidate/app/VNBot.app/Contents/Resources/app.asar.unpacked/node_modules/node-datachannel/build/Release/node_datachannel.node "$rtc/"
+          pnpm db:generate
       - name: Load addons with the final packaged Electron on the actual CPU
         env:
           ELECTRON_RUN_AS_NODE: '1'

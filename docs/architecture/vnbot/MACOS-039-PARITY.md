@@ -134,3 +134,10 @@ inside app.asar.unpacked. Mac PostgreSQL now lives under Resources/postgres/
 darwin-{x64,arm64}, excluded from Mac ASAR only. The Mac main process supplies
 that architecture-selected binDir; data directories remain unchanged. Windows
 and Linux retain their existing ASAR packaging and binary resolver.
+
+
+Verification installs test tools without dependency postinstall scripts and uses
+the final artifact's Universal RTC addon for source-based P2P fixtures. This
+avoids a second unpinned Intel fallback build during test installation. The
+candidate_run input re-verifies an existing immutable CI artifact without
+repackaging it; its recorded build provenance remains authoritative.
