@@ -1234,7 +1234,20 @@ app.whenReady().then(async () => {
       ? path.join(process.resourcesPath, "server", "db")
       : path.resolve(app.getAppPath(), "..", "..", "packages", "db");
     nativeStack = new NativeStack({
-      postgres: new NativePostgres({ userDataDir, dbDir }),
+      postgres: new NativePostgres({
+        userDataDir,
+        dbDir,
+        ...(app.isPackaged && process.platform === "darwin"
+          ? {
+              binDir: path.join(
+                process.resourcesPath,
+                "postgres",
+                `darwin-${process.arch}`,
+                "native/bin",
+              ),
+            }
+          : {}),
+      }),
       dbDir,
       migrationsDir: nativeMigrationsDir(layout),
       services: createNativeServices({ ...layout, userDataDir }),

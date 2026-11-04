@@ -150,7 +150,10 @@ if (process.argv.includes("--native") || process.env.DESKTOP_NATIVE === "1") {
           throw new Error(`Missing Universal runtime dependency: ${name}`);
         }
       }
-      await packageRoot(`@embedded-postgres/darwin-${arch}`, desktop);
+      const postgres = await packageRoot(`@embedded-postgres/darwin-${arch}`, desktop);
+      const target = path.join(desktop, "native/postgres", `darwin-${arch}`);
+      await rm(target, { recursive: true, force: true });
+      await cp(postgres, target, { recursive: true, dereference: true });
     }
   }
   // pg-native is optional: pg catches its absence and uses the JavaScript driver.

@@ -539,7 +539,7 @@ Proposed decisions are listed so reviewers can see them. They do not change the 
   migrations and PostgreSQL packages. Windows/Linux defaults are unchanged.
 - Why: a Mac install should start independently of Docker or external Node.js.
 - Modules: apps/desktop/package.json, scripts/build.mjs, scripts/after-pack.cjs,
-  src/stack-runtime.ts; candidate-only workflow in deploy/ci/desktop-macos-039.yml.
+  src/stack-runtime.ts, src/main-app.ts (Mac-only packaged binary lookup); candidate-only workflow in deploy/ci/desktop-macos-039.yml.
 - Invariants: same engine, RPC/auth/P2P, app ID, userData and database layout;
   explicit Docker override preserved. No implicit Docker data migration.
 - Evidence and release gates: MACOS-039-PARITY.md. ADR: [0015](adr/0015-macos-universal-native-runtime.md).

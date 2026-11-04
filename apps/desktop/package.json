@@ -83,7 +83,7 @@
     "mac": {
       "icon": "assets/icon.icns",
       "category": "public.app-category.productivity",
-      "x64ArchFiles": "{**/node_modules/@koromix/koffi-darwin-*/darwin_*/koffi.node,**/node_modules/@oxc-parser/binding-darwin-*/parser.darwin-*.node,**/node_modules/@embedded-postgres/darwin-*/**/*,**/node_modules/@img/sharp-darwin-*/*.node,**/node_modules/@img/sharp-darwin-*/lib/*.node,**/node_modules/@img/sharp-libvips-darwin-*/lib/*.dylib}",
+      "x64ArchFiles": "{**/node_modules/@koromix/koffi-darwin-*/darwin_*/koffi.node,**/node_modules/@oxc-parser/binding-darwin-*/parser.darwin-*.node,**/Resources/postgres/darwin-*/**/*,**/node_modules/@img/sharp-darwin-*/*.node,**/node_modules/@img/sharp-darwin-*/lib/*.node,**/node_modules/@img/sharp-libvips-darwin-*/lib/*.dylib}",
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
       "extendInfo": {
@@ -95,6 +95,10 @@
       ],
       "notarize": true,
       "extraResources": [
+        {
+          "from": "native/postgres",
+          "to": "postgres"
+        },
         {
           "from": "native/server",
           "to": "server",
@@ -126,6 +130,9 @@
           "from": "../../infra/compose/.env.images.example",
           "to": "stack/.env.images.example"
         }
+      ],
+      "files": [
+        "!**/node_modules/@embedded-postgres/**/*"
       ]
     },
     "dmg": {

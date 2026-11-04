@@ -41,15 +41,7 @@ async function walk(root) {
 await walk(app);
 for (const arch of ["x64", "arm64"]) {
   for (const executable of ["initdb", "pg_ctl", "postgres"]) {
-    await access(
-      path.join(
-        resources,
-        "app.asar.unpacked/node_modules/@embedded-postgres",
-        `darwin-${arch}`,
-        "native/bin",
-        executable,
-      ),
-    );
+    await access(path.join(resources, "postgres", `darwin-${arch}`, "native/bin", executable));
   }
 }
 for (const file of [

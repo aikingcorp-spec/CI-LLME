@@ -10,12 +10,7 @@ const resources = path.resolve(process.argv[2]!);
 const root = await mkdtemp(path.join(tmpdir(), "mac-p2p-fixture-"));
 const postgres = new NativePostgres({
   userDataDir: root,
-  binDir: path.join(
-    resources,
-    "app.asar.unpacked/node_modules/@embedded-postgres",
-    `darwin-${process.arch}`,
-    "native/bin",
-  ),
+  binDir: path.join(resources, "postgres", `darwin-${process.arch}`, "native/bin"),
   dbDir: path.join(resources, "server/db"),
 });
 try {

@@ -43,7 +43,7 @@ Windows/Linux behavior is the unchanged baseline, not re-certified by this port.
 | Pairing, RPC, chat, streaming | Existing P2P implementation | Same node-datachannel/protocol | Live browser to packaged host; pending |
 | ICE/TURN/reconnect/revocation | Known existing limitations | Unmodified | Real relay, network switching and revoke; pending |
 | Voice/microphone | Existing voice adapter | Shared with audio-input entitlement | Real permission prompt and call; pending |
-| Screen/control | Host computer integration | Existing adapters, no replacement | Screen Recording and Accessibility, real capture/input; pending |
+| Screen/control | Native desktop adapter is non-graphical | Same adapter, graphical:false and takeover:false | NOT SUPPORTED by this adapter; screen/input observations are placeholders, not real OS capture/control |
 | Updates/rollback | Existing platform updater | Existing macOS updater | Signing, update/install, data retention; pending |
 | Distribution | Existing platform installers | Universal DMG/ZIP candidate | Clean Mac install/Gatekeeper; pending |
 
@@ -116,3 +116,21 @@ sanitized screenshots. Run on Intel and Apple Silicon. The accepted UX preserves
 The live Composio URL must reach the real provider inside that window; opening
 the OS default browser is not required. Preserve the existing session partition
 and callback delivery; do not silently replace the window policy.
+
+
+Known functional limitation from source: packages/adapters/src/desktop-sandbox.ts
+advertises graphical:false/takeover:false and implements connectScreen,
+observe/act/sendInput with desktop:// metadata and placeholder state. No
+production macOS desktopCapturer/ScreenCaptureKit adapter was found in the
+inspected desktop/adapter source. This also limits the existing native desktop
+path on Windows/Linux; it is different from a VPS graphical sandbox. Do not
+certify actual Mac screen capture/control based on P2P chat or command access.
+Adding a real OS graphical adapter is not silently included in a packaging port.
+
+
+The ASAR merge implementation enumerates every unpacked file into one minimatch
+pattern, exceeding its 64 KiB limit when both PostgreSQL distributions are
+inside app.asar.unpacked. Mac PostgreSQL now lives under Resources/postgres/
+darwin-{x64,arm64}, excluded from Mac ASAR only. The Mac main process supplies
+that architecture-selected binDir; data directories remain unchanged. Windows
+and Linux retain their existing ASAR packaging and binary resolver.

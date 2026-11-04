@@ -84,11 +84,7 @@ it("hydrates Darwin libraries inside the actual app bundle for both CPU packages
   const appOutDir = await mkdtemp(path.join(tmpdir(), "desktop-mac-pack-"));
   dirs.push(appOutDir);
   for (const arch of ["x64", "arm64"]) {
-    const root = path.join(
-      appOutDir,
-      "Fixture.app/Contents/Resources/app.asar.unpacked/node_modules/@embedded-postgres",
-      `darwin-${arch}`,
-    );
+    const root = path.join(appOutDir, "Fixture.app/Contents/Resources/postgres", `darwin-${arch}`);
     await mkdir(path.join(root, "native/lib"), { recursive: true });
     await writeFile(path.join(root, "native/lib/libfixture.1.dylib"), "library");
     await writeFile(

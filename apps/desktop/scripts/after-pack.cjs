@@ -28,15 +28,9 @@ async function exists(file) {
 }
 
 async function hydratePostgresSymlinks(appOutDir, macProductFilename) {
-  const scope = path.join(
-    appOutDir,
-    ...(macProductFilename
-      ? [`${macProductFilename}.app`, "Contents", "Resources"]
-      : ["resources"]),
-    "app.asar.unpacked",
-    "node_modules",
-    "@embedded-postgres",
-  );
+  const scope = macProductFilename
+    ? path.join(appOutDir, `${macProductFilename}.app`, "Contents/Resources/postgres")
+    : path.join(appOutDir, "resources/app.asar.unpacked/node_modules/@embedded-postgres");
   let packages;
   try {
     packages = await readdir(scope, { withFileTypes: true });
