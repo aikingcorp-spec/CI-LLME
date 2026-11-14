@@ -64,7 +64,9 @@ jobs:
         env:
           DATABASE_URL: postgres://rakazo:rakazo@127.0.0.1:5433/rakazo
 
+      # The desktop unit suite assumes POSIX temp paths; the packaged smoke below is the cross-OS check.
       - name: Desktop unit tests
+        if: runner.os == 'Linux'
         run: pnpm --filter @rakazo/desktop test
 
       - name: Install PostgreSQL 18 and 16
@@ -141,7 +143,7 @@ jobs:
           esac
           current="$(node .github/scripts/staging-desktop-verify.mjs prepare-current --root "$current_root" --major 18 --dest "$RUNNER_TEMP/pg18")"
           legacy="$(node .github/scripts/staging-desktop-verify.mjs prepare-legacy --root "$legacy_root" --major 16 --dest "$RUNNER_TEMP/pg16")"
-          pnpm --filter @rakazo/desktop run build:native -- \
+          pnpm --filter @rakazo/desktop run build:native \
             --node "$(command -v node)" \
             --postgres "$current" \
             --legacy-postgres "$legacy"

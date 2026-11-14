@@ -304,7 +304,7 @@ test("the workflow stays on staging branches and read-only contents", async () =
   assert.match(workflow, /pnpm --filter @rakazo\/worker build/);
   assert.match(workflow, /pnpm --filter @rakazo\/web build/);
   assert.match(workflow, /pnpm --filter @rakazo\/desktop build\n/);
-  assert.match(workflow, /run build:native --/);
+  assert.match(workflow, /run build:native \\\n\s+--node /);
   assert.match(workflow, /plan --runner/);
   assert.match(workflow, /CSC_IDENTITY_AUTO_DISCOVERY: "false"/);
   assert.match(workflow, /node --test \.github\/scripts\/staging-desktop-verify\.test\.mjs/);
