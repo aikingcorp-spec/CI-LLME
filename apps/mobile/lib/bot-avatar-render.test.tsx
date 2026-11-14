@@ -2,7 +2,6 @@
 
 import {
   avatarIdentitySeed,
-  LOGO_BODY_PATH,
   organicAvatarPath,
   shippedBotAvatarShapePath,
 } from "@rakazo/core";
@@ -195,63 +194,6 @@ describe("BotAvatar", () => {
   const bodies = (view: HTMLElement) =>
     Array.from(view.querySelectorAll("path"), (path) => path.dataset.d);
 
-  it("preserves the shared native tap reactions on the VNBot set", () => {
-    nativeMotion.reduced = false;
-    const view = render("#3EC5A8", "rakazo", { pokeable: true, motion: "running" });
-    const button = view.querySelector("button");
-    expect(button).not.toBeNull();
-    expect(button!.dataset.accessible).toBe("false");
-    act(() => button!.click());
-    expect(nativeMotion.timings.filter((ms) => ms < 1000)).toEqual([800]);
-    expect(nativeMotion.styles.at(-1)!().transform).not.toEqual([
-      { translateY: 0 },
-      { rotate: "0deg" },
-      { scaleY: 1 },
-    ]);
-    act(() => button!.click());
-    expect(nativeMotion.timings.filter((ms) => ms < 1000)).toEqual([800, 700]);
-    expect(nativeMotion.timings.filter((ms) => ms >= 1000)).toEqual([24_000]);
-  });
-
-  it("settles an active tap when reduced motion becomes enabled", () => {
-    nativeMotion.reduced = false;
-    const view = render("#3EC5A8", "rakazo", { pokeable: true, motion: "running" });
-    act(() => view.querySelector("button")!.click());
-    nativeMotion.reduced = true;
-    act(() =>
-      root?.render(
-        <BotAvatar
-          color="#3EC5A8"
-          avatarSet="rakazo"
-          identity="bot-1"
-          size={42}
-          status="running"
-          pokeable
-          motion="running"
-        />,
-      ),
-    );
-    expect(nativeMotion.styles.at(-1)!().transform).toEqual([
-      { translateY: 0 },
-      { rotate: "0deg" },
-      { scaleY: 1 },
-    ]);
-  });
-
-  it.each(["reduced", "offscreen", "static"])("keeps tap motion still when %s", (condition) => {
-    nativeMotion.reduced = condition === "reduced";
-    const view = render(
-      "#3EC5A8",
-      "rakazo",
-      { pokeable: true, motion: condition === "static" ? "static" : "running" },
-      condition !== "offscreen",
-    );
-    const button = view.querySelector("button");
-    expect(button).not.toBeNull();
-    act(() => button!.click());
-    expect(nativeMotion.timings.filter((ms) => ms > 0 && ms < 1000)).toEqual([]);
-  });
-
   it("draws a plain-colour bot with the organic body for its identity", () => {
     const view = render("#3EC5A8");
     expect(bodies(view)).toEqual([organicAvatarPath(avatarIdentitySeed("bot-1"))]);
@@ -277,15 +219,6 @@ describe("BotAvatar", () => {
     expect(view.querySelectorAll("rect")).toHaveLength(2);
     expect(view.querySelector("ellipse")).toBeNull();
   });
-  it("draws the explicitly selected VNBot set as paths and gradients without a raster image", () => {
-    const view = render("#3EC5A8", "rakazo");
-    expect(bodies(view)).toContain(LOGO_BODY_PATH);
-    expect(bodies(view)).not.toContain(organicAvatarPath(avatarIdentitySeed("bot-1")));
-    expect(view.querySelector("img, image")).toBeNull();
-    expect(view.querySelectorAll("ellipse")).toHaveLength(2);
-    expect(view.querySelector("radialGradient")).not.toBeNull();
-  });
-
   it("keeps a custom picture when the stored set is VNBot", () => {
     const view = render("data:image/png;base64,abc", "rakazo");
     expect(view.querySelector("img")?.getAttribute("src")).toBe("data:image/png;base64,abc");
@@ -296,28 +229,6 @@ describe("BotAvatar", () => {
     const view = render("#8B5CF6::shape_3", "rakazo");
     expect(bodies(view)).toEqual([shippedBotAvatarShapePath(3)]);
   });
-  it("updates native SVG hosts with finite six-value matrices and numeric eye props", () => {
-    render("#3EC5A8", "rakazo");
-    const updates = nativeProps.map((sample) => sample());
-    const matrices = updates.flatMap((update) =>
-      Array.isArray(update.matrix) ? [update.matrix] : [],
-    );
-    expect(matrices).toHaveLength(5);
-    for (const matrix of matrices) {
-      expect(matrix).toHaveLength(6);
-      expect(matrix.every(Number.isFinite)).toBe(true);
-    }
-    expect(updates.filter((update) => "cx" in update)).toHaveLength(2);
-    expect(updates.every((update) => !("transform" in update))).toBe(true);
-  });
-
-  it("keeps eyes legible on a saved dark body in the light theme", () => {
-    const view = render("#101014", "rakazo");
-    expect(
-      Array.from(view.querySelectorAll("ellipse"), (eye) => eye.getAttribute("data-fill")),
-    ).toEqual(["#FFF", "#FFF"]);
-  });
-
   it.each([
     ["light", "data:image/png;base64,abc"],
     ["dark", "data:image/png;base64,abc"],

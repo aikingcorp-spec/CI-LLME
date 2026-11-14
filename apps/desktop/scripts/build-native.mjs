@@ -231,7 +231,8 @@ async function scanServer(repoRoot, platform) {
   while (pending.length > 0) {
     const file = pending.pop();
     if (file === undefined || seen.has(file)) continue;
-    const relative = path.relative(repoRoot, file);
+    // Bundle entries are forward-slash paths on every platform, including Windows.
+    const relative = path.relative(repoRoot, file).split(path.sep).join("/");
     if (!(await exists(file))) throw new Error(`Missing native bundle source: ${relative}`);
     const real = await realpath(file);
     if (!inside(repoRoot, real)) throw new Error(`Missing native bundle source: ${relative}`);

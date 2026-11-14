@@ -5,7 +5,7 @@ import {
   createAuth,
   removeAllowlistEmail,
 } from "@rakazo/auth";
-import { createDb, createPool, runAsSystem } from "@rakazo/db";
+import { createDb, createPool, rlsBypassKey, runAsSystem } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const databaseUrl = process.env.VERIFY_DATABASE === "1" ? process.env.DATABASE_URL : undefined;
@@ -22,7 +22,11 @@ describePostgres("invite list on PostgreSQL (runtime login)", () => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      if (bypass) await client.query("SELECT set_config('app.rls_bypass', 'on', true)");
+      if (bypass)
+        await client.query(
+          "SELECT set_config('app.rls_bypass', 'on', true), set_config('app.rls_bypass_key', $1, true)",
+          [rlsBypassKey(databaseUrl!)],
+        );
       const result = await client.query(text, values);
       await client.query("COMMIT");
       return result;

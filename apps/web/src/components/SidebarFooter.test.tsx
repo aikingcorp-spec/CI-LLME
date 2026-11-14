@@ -166,7 +166,9 @@ it("sends the mobile app and docs links to VNBot", async () => {
   expect(links.find((link) => link.textContent === "Get the mobile app")!.href).toBe(
     "https://vnbot.run/#tai-ve",
   );
-  expect(links.find((link) => link.textContent === "Docs")!.href).toBe("https://vnbot.run/");
+  expect(links.find((link) => link.textContent === "Docs")!.href).toBe(
+    "https://vnbot.run/help/",
+  );
 });
 
 it("falls back when app artwork fails and accepts replacement artwork", async () => {

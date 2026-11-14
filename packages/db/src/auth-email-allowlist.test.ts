@@ -18,8 +18,17 @@ describe("auth email allowlist migration", () => {
     );
     expect(sql).toContain("ENABLE ROW LEVEL SECURITY");
     expect(sql).toContain('ALTER TABLE "auth_email_allowlist" FORCE ROW LEVEL SECURITY');
-    expect(sql).toContain("WITH CHECK (current_setting('app.rls_bypass', true) = 'on')");
-    expect(sql).toContain("current_setting('app.rls_bypass', true) = 'on'");
+    const keyed = readFileSync(
+      new URL(
+        "../prisma/migrations/20261211160000_vnbot_system_policies_key_check/migration.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    // The original policy is replaced by the shared key check.
+    expect(keyed).toContain(
+      'CREATE POLICY auth_email_allowlist_system ON "auth_email_allowlist"\n  USING ((SELECT app_rls_bypass()));',
+    );
     expect(ROW_SECURITY_MODELS.has("AuthEmailAllowlist")).toBe(true);
   });
 });

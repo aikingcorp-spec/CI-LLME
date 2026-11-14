@@ -1,6 +1,16 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { access, chmod, cp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  cp,
+  mkdir,
+  readdir,
+  readFile,
+  realpath,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { acceptSmokeOutput } from "../../apps/desktop/src/native-smoke.ts";
@@ -152,6 +162,19 @@ export async function discoverPostgres(root, major, platform = process.platform)
       shareDir: path.join(root, "share"),
     },
     {
+      // Versioned Homebrew kegs, such as postgresql@16.
+      kind: "nested-share",
+      binDir: path.join(root, "bin"),
+      libDir: path.join(root, "lib", `postgresql@${version}`),
+      shareDir: path.join(root, "share", `postgresql@${version}`),
+    },
+    {
+      kind: "nested-share",
+      binDir: path.join(root, "bin"),
+      libDir: path.join(root, "lib", "postgresql"),
+      shareDir: path.join(root, "share", `postgresql@${version}`),
+    },
+    {
       kind: "nested-share",
       binDir: path.join(root, "bin"),
       libDir: path.join(root, "lib"),
@@ -175,9 +198,37 @@ async function copyTree(from, to) {
   await cp(from, to, { recursive: true, dereference: true });
 }
 
+async function copyResolved(from, to) {
+  await mkdir(to, { recursive: true });
+  for (const entry of await readdir(from, { withFileTypes: true })) {
+    const source = path.join(from, entry.name);
+    const target = path.join(to, entry.name);
+    let real = source;
+    if (entry.isSymbolicLink()) {
+      try {
+        real = await realpath(source);
+      } catch {
+        continue;
+      }
+    }
+    const info = await stat(real);
+    if (info.isDirectory()) await copyResolved(real, target);
+    else if (info.isFile()) await cp(real, target);
+  }
+}
+
 export async function prepareCurrentPrefix({ root, major, dest, platform = process.platform }) {
   const found = await discoverPostgres(root, major, platform);
   if (!found) throw new Error(`Missing native bundle source: postgres ${major} under ${root}`);
+  if (found.kind === "debian" || found.kind === "debian-usr") {
+    // Debian links tsearch dictionaries into /var/cache, outside the prefix the bundle accepts.
+    // Copy the same relative layout with every link resolved, dropping links that dangle.
+    const version = String(major);
+    await copyResolved(found.binDir, path.join(dest, "lib", "postgresql", version, "bin"));
+    await copyResolved(found.libDir, path.join(dest, "lib", "postgresql", version, "lib"));
+    await copyResolved(found.shareDir, path.join(dest, "share", "postgresql", version));
+    return path.resolve(dest);
+  }
   if (found.kind !== "nested-share") return path.resolve(root);
   await copyTree(found.binDir, path.join(dest, "bin"));
   await copyTree(found.libDir, path.join(dest, "lib"));

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -117,7 +117,7 @@ async function writePostgres(layout) {
   await writeFile(path.join(layout.shareDir, "postgres.bki"), "bki");
 }
 
-test("keeps a Debian prefix and stages a legacy prefix inside the bundle root", async () => {
+test("copies a Debian prefix without links that leave it and stages a legacy prefix inside the bundle root", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "staging-desktop-pg-"));
   try {
     await writePostgres({
@@ -132,10 +132,22 @@ test("keeps a Debian prefix and stages a legacy prefix inside the bundle root", 
     });
     const currentDest = path.join(root, "current");
     const legacyDest = path.join(root, "legacy");
-    assert.equal(
-      await prepareCurrentPrefix({ root, major: 18, dest: currentDest, platform: "linux" }),
-      path.resolve(root),
+    await symlink(
+      "/nonexistent/dicts/en_us.dict",
+      path.join(root, "share", "postgresql", "18", "en_us.dict"),
     );
+    const current = await prepareCurrentPrefix({
+      root,
+      major: 18,
+      dest: currentDest,
+      platform: "linux",
+    });
+    assert.equal(current, path.resolve(currentDest));
+    assert.equal(
+      await readFile(path.join(current, "share", "postgresql", "18", "postgres.bki"), "utf8"),
+      "bki",
+    );
+    await assert.rejects(access(path.join(current, "share", "postgresql", "18", "en_us.dict")));
     const legacy = await prepareLegacyPrefix({
       root,
       major: 16,
