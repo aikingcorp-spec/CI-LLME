@@ -29,14 +29,21 @@ const pkg = JSON.parse(await readFile(path.join(repoRoot, "apps/desktop/package.
 test("plans unsigned installers from the desktop package targets", () => {
   const linux = planStagingDesktop(pkg.build, "ubuntu-24.04");
   assert.deepEqual(linux.extensions, [".AppImage", ".deb"]);
-  assert.deepEqual(linux.args, ["--linux", "--x64", "--publish", "never", "-c.publish=null"]);
+  assert.deepEqual(linux.args, [
+    "--linux",
+    "--x64",
+    "--publish",
+    "never",
+    "--config",
+    "electron-builder.staging.json",
+  ]);
 
   const windows = planStagingDesktop(pkg.build, "windows-2025");
   assert.deepEqual(windows.extensions, [".exe", ".msi"]);
   assert.ok(windows.args.includes("--win"));
   assert.ok(windows.args.includes("--x64"));
   assert.equal(windows.args[windows.args.indexOf("--publish") + 1], "never");
-  assert.ok(windows.args.includes("-c.publish=null"));
+  assert.ok(windows.args.includes("electron-builder.staging.json"));
 
   const intel = planStagingDesktop(pkg.build, "macos-26-intel");
   const arm = planStagingDesktop(pkg.build, "macos-26");

@@ -467,9 +467,14 @@ describePostgres("directory provisioning over SCIM (PostgreSQL)", () => {
     const signedUp = await auth("/sign-up/email", { ...credentials, name: "Carol" });
     expect(signedUp.status).toBe(200);
     const bystander = { email: "dave@example.test", password: "test-password-123" };
-    const daveSignedUp = await auth("/sign-up/email", { ...bystander, name: "Dave" });
-    const daveCookie = cookieOf(daveSignedUp);
+    expect((await auth("/sign-up/email", { ...bystander, name: "Dave" })).status).toBe(200);
     const carol = await accountOf(credentials.email);
+    // This deployment sends mail, so a password session needs a verified mailbox.
+    await system.user.update({
+      where: { id: (await accountOf(bystander.email)).id },
+      data: { emailVerified: true },
+    });
+    const daveCookie = cookieOf(await auth("/sign-in/email", bystander));
     // Carol opened the link in her verification email.
     await system.user.update({ where: { id: carol.id }, data: { emailVerified: true } });
 

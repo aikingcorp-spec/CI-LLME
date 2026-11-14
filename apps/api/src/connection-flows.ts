@@ -3,6 +3,7 @@ import type { AdapterContext } from "@rakazo/adapter-kit";
 import { ConnectorAuthUnavailableError } from "@rakazo/adapter-kit";
 import {
   advisoryLock,
+  isSettingsBackedConnector,
   pickReusableConnection,
   prepareManagedConnectorForTransaction,
   sanitizeIntegrationError,
@@ -175,10 +176,14 @@ export async function beginConnection(
   input: { connectorId: string; provider: string; displayName: string },
   requestOrigin?: string | null,
 ) {
+  const managed = deps.connectors.managed(input.connectorId);
+  // A provider the deployment injected serves tools from the connector stack, so it starts the
+  // connection too. One backed by saved settings needs a key this account can use.
   const connector =
     deps.integrationSettings && isIntegrationProviderId(input.connectorId)
-      ? await deps.integrationSettings.resolve(input.connectorId, context.actor.userId)
-      : deps.connectors.managed(input.connectorId);
+      ? ((await deps.integrationSettings.resolve(input.connectorId, context.actor.userId)) ??
+        (managed && !isSettingsBackedConnector(managed) ? managed : undefined))
+      : managed;
   if (!connector) {
     throw new ORPCError("BAD_REQUEST", {
       message: `Connector ${input.connectorId} is not configured`,

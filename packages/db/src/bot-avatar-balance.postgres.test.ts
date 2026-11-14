@@ -111,12 +111,12 @@ describePostgres("new bot avatars (PostgreSQL)", () => {
     expect(after).toEqual(expect.arrayContaining(before));
   });
 
-  it("defaults new creation to Original and reloads explicit sets without altering photos or shapes", async () => {
+  it("defaults new creation to the VNBot set and reloads explicit sets without altering photos or shapes", async () => {
     const repos = createRepos(prisma);
     const created = await runAsTenant(owner, () =>
       repos.createBot(actor(), botInput("Original default")),
     );
-    expect(created.avatarSet).toBe("organic");
+    expect(created.avatarSet).toBe("vnbot");
     expect(BOT_COLORS).toContain(created.color);
     for (const color of ["#8B5CF6", "#8B5CF6::shape_3", "data:image/png;base64,aGVsbG8="]) {
       const original = await runAsTenant(owner, () =>

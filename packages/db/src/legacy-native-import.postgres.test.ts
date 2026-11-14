@@ -3,7 +3,8 @@ import { Client } from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 import { importLegacyNativeDatabase } from "./legacy-native-import.js";
 
-const databaseUrl = process.env.DATABASE_URL;
+// Creating scratch databases needs the owner login, not the runtime one.
+const databaseUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
 const verify = process.env.VERIFY_DATABASE && databaseUrl ? describe : describe.skip;
 verify("copy-only native database import", () => {
   const clients: Client[] = [];

@@ -41,10 +41,14 @@ it.skipIf(!databaseUrl)(
       expect((await post("/api/auth/sign-up/email", { ...credentials, name: "New" })).status).toBe(
         200,
       );
+      // This deployment sends mail, so password sign-in needs a verified mailbox.
+      await handles.prisma.user.update({
+        where: { email: address },
+        data: { emailVerified: true },
+      });
+      expect((await post("/api/auth/sign-in/email", credentials)).status).toBe(200);
       await vi.waitFor(() => expect(welcomes()).toHaveLength(1));
       expect(welcomes()[0]!.to).toBe(address);
-
-      expect((await post("/api/auth/sign-in/email", credentials)).status).toBe(200);
 
       const header = welcomes()[0]!.headers!["List-Unsubscribe"]!;
       const unsubscribe = new URL(header.slice(1, -1));
@@ -72,6 +76,11 @@ it.skipIf(!databaseUrl)(
 
       const older = { email: `older-${Date.now()}@example.test`, password: "test-password-123" };
       expect((await post("/api/auth/sign-up/email", { ...older, name: "Older" })).status).toBe(200);
+      await handles.prisma.user.update({
+        where: { email: older.email },
+        data: { emailVerified: true },
+      });
+      expect((await post("/api/auth/sign-in/email", older)).status).toBe(200);
       await vi.waitFor(() => expect(welcomes()).toHaveLength(3));
       await runAsSystem("age an account and reopen its welcome claim", async () => {
         const { id } = await handles.prisma.user.update({

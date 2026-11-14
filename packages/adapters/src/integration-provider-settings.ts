@@ -344,6 +344,11 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
   }
 }
 
+/** Whether this connector reads its key from saved integration settings rather than the deployment. */
+export function isSettingsBackedConnector(connector: ManagedConnectorProvider): boolean {
+  return connector instanceof ConfiguredIntegrationProvider;
+}
+
 export async function prepareManagedConnectorForTransaction(
   connector: ManagedConnectorProvider,
   userId?: string,

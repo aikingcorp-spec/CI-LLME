@@ -45,6 +45,13 @@ const EXTENSIONS = {
   zip: ".zip",
 };
 
+export const STAGING_BUILDER_CONFIG = "electron-builder.staging.json";
+
+/** package.json build without publish: a staging installer must not read the production feed. */
+export function stagingBuilderConfig(build) {
+  return { ...build, publish: null };
+}
+
 function targetName(target) {
   return typeof target === "string" ? target : target.target;
 }
@@ -69,7 +76,8 @@ export function planStagingDesktop(build, runnerLabel) {
     if (!extension) throw new Error(`Unsupported installer target: ${name}`);
     return extension;
   });
-  const args = [...runner.targetFlags, "--publish", "never", "-c.publish=null"];
+  // The staging config is package.json build with publish removed, so no update feed ships.
+  const args = [...runner.targetFlags, "--publish", "never", "--config", STAGING_BUILDER_CONFIG];
   if (runner.platform === "darwin") args.push("-c.mac.identity=null", "-c.mac.notarize=false");
   return {
     runner: runner.runner,
@@ -565,6 +573,10 @@ async function main(argv) {
       await readFile(path.join(repoRoot, "apps/desktop/package.json"), "utf8"),
     );
     const plan = planStagingDesktop(pkg.build, required(flags, "runner"));
+    await writeFile(
+      path.join(repoRoot, "apps/desktop", STAGING_BUILDER_CONFIG),
+      `${JSON.stringify(stagingBuilderConfig(pkg.build), null, 2)}\n`,
+    );
     process.stdout.write(`${plan.args.join("\n")}\n`);
     return;
   }
