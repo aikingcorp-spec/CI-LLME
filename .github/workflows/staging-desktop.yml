@@ -84,25 +84,20 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-18 postgresql-16
 
-      - name: Install PostgreSQL 18 and 16
-        if: runner.os == 'macOS'
+      # macOS and Windows use the relocatable @embedded-postgres builds; 16.14.0-beta.17 is the
+      # server 0.3.9 shipped, so its data directory upgrades with the same binaries.
+      - name: Fetch embedded PostgreSQL 18 and 16
+        if: runner.os != 'Linux'
+        shell: bash
         run: |
           set -euo pipefail
-          brew install postgresql@18 postgresql@16
-
-      - name: Install PostgreSQL 18 and 16
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          function Install-Postgres([string]$Id, [string]$Binary) {
-            if (Test-Path -LiteralPath $Binary) { return }
-            winget install --id $Id -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-            if ($LASTEXITCODE -ne 0) { throw "winget failed for $Id ($LASTEXITCODE)" }
-            if (-not (Test-Path -LiteralPath $Binary)) { throw "Missing $Binary after installing $Id" }
-          }
-          Install-Postgres "PostgreSQL.PostgreSQL.18" "C:\Program Files\PostgreSQL\18\bin\postgres.exe"
-          Install-Postgres "PostgreSQL.PostgreSQL.16" "C:\Program Files\PostgreSQL\16\bin\postgres.exe"
+          case "${{ matrix.artifact }}" in
+            macos-arm64) package=@embedded-postgres/darwin-arm64 ;;
+            macos-x64) package=@embedded-postgres/darwin-x64 ;;
+            windows-x64) package=@embedded-postgres/windows-x64 ;;
+          esac
+          node .github/scripts/staging-desktop-verify.mjs fetch-embedded --package "$package" --version 18.4.0-beta.17 --dest "$RUNNER_TEMP/ep18" > "$RUNNER_TEMP/ep18.path"
+          node .github/scripts/staging-desktop-verify.mjs fetch-embedded --package "$package" --version 16.14.0-beta.17 --dest "$RUNNER_TEMP/ep16" > "$RUNNER_TEMP/ep16.path"
 
       - name: Build API, worker, web, and desktop
         shell: bash
@@ -128,13 +123,9 @@ jobs:
               current_root=/usr
               legacy_root=/usr
               ;;
-            macOS)
-              current_root="$(brew --prefix postgresql@18)"
-              legacy_root="$(brew --prefix postgresql@16)"
-              ;;
-            Windows)
-              current_root="/c/Program Files/PostgreSQL/18"
-              legacy_root="/c/Program Files/PostgreSQL/16"
+            macOS|Windows)
+              current_root="$(cat "$RUNNER_TEMP/ep18.path")"
+              legacy_root="$(cat "$RUNNER_TEMP/ep16.path")"
               ;;
             *)
               echo "Unsupported runner OS ${{ runner.os }}" >&2

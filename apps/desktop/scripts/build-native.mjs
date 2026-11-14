@@ -312,10 +312,12 @@ async function pnpmClosure(repoRoot, ids) {
     const modules = path.join(directory, "node_modules");
     if (!(await exists(modules))) continue;
     for (const link of await dependencyLinks(modules)) {
-      const target = await readlink(link);
-      const match = target.match(/^(?:\.\.\/)+(.+?)\/node_modules\//);
-      if (!match?.[1]) throw new Error(`Unsupported native bundle import: ${target}`);
-      pending.push(match[1]);
+      // Windows links read back with backslashes, and junctions as absolute paths.
+      const target = path.resolve(path.dirname(link), await readlink(link));
+      const [dependency, nested] = path.relative(pnpmRoot, target).split(path.sep);
+      if (!dependency || dependency === ".." || nested !== "node_modules")
+        throw new Error(`Unsupported native bundle import: ${target}`);
+      pending.push(dependency);
     }
   }
   return seen;
@@ -352,7 +354,12 @@ async function copyPreservingStoreLinks(source, destination, pnpmRoot) {
       const target = await readlink(from);
       const resolved = path.resolve(path.dirname(from), target);
       if (inside(pnpmRoot, resolved)) {
-        await symlink(target, to);
+        // Windows installers do not carry links, so the package is copied in place there.
+        if (process.platform === "win32") {
+          await cp(await realpath(from), to, { recursive: true, dereference: true });
+        } else {
+          await symlink(target, to);
+        }
         continue;
       }
       const real = await realpath(from);
@@ -505,6 +512,16 @@ async function stagePostgres(request, staging) {
       const entry = path.join(staging, file);
       await mkdir(path.dirname(entry), { recursive: true });
       await symlink(path.relative(path.dirname(entry), destination), entry);
+    }
+  }
+  if (request.platform === "win32") {
+    // Windows loads the server's DLLs from beside the executable.
+    for (const name of await readdir(layout.bin)) {
+      if (name.toLowerCase().endsWith(".dll")) {
+        await cp(path.join(layout.bin, name), path.join(binaryDirectory, name), {
+          dereference: true,
+        });
+      }
     }
   }
   await copyDereferenced(layout.lib, path.join(staging, "pg/lib"), request.postgresPrefix);

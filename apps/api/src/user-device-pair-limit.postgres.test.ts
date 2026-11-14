@@ -59,6 +59,8 @@ describe.skipIf(!databaseUrl)("pairing holds the per-user device limit under rac
     const address = `device-pair-limit-${stamp}-${++account}@example.test`;
     const password = "test-password-123";
     await auth("/sign-up/email", { email: address, password, name: "Owner" });
+    // This deployment sends mail, so password sign-in needs a verified mailbox.
+    await handles.prisma.user.update({ where: { email: address }, data: { emailVerified: true } });
     const signIn = async () =>
       sessionCookieHeader(await auth("/sign-in/email", { email: address, password }));
     return { signIn };

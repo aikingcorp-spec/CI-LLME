@@ -117,10 +117,14 @@ export async function runNativeSmoke(input: {
   let state: { phase: string; message: string | null };
   try {
     state = await input.stack.start();
-  } catch {
+  } catch (error) {
+    printError(`RAKAZO_DESKTOP_SMOKE reason=${error instanceof Error ? error.message : "unknown"}`);
     return fail("startup");
   }
-  if (state.phase !== "ready") return fail(failureCheck(state.message));
+  if (state.phase !== "ready") {
+    printError(`RAKAZO_DESKTOP_SMOKE reason=${state.phase}: ${state.message ?? ""}`);
+    return fail(failureCheck(state.message));
+  }
 
   const web = input.stack.webUrl();
   if (!loopbackWebUrl(web)) return fail("web");

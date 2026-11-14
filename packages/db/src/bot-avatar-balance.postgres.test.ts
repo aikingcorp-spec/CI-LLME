@@ -5,6 +5,7 @@ import {
   organicAvatarFamily,
   organicAvatarLook,
   seededLogoAvatarColor,
+  seededVnbotBodyColor,
 } from "@rakazo/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
@@ -117,7 +118,8 @@ describePostgres("new bot avatars (PostgreSQL)", () => {
       repos.createBot(actor(), botInput("Original default")),
     );
     expect(created.avatarSet).toBe("vnbot");
-    expect(BOT_COLORS).toContain(created.color);
+    // A VNBot mascot wears one of its own body colours, not the plain palette.
+    expect(created.color).toBe(seededVnbotBodyColor(created.id));
     for (const color of ["#8B5CF6", "#8B5CF6::shape_3", "data:image/png;base64,aGVsbG8="]) {
       const original = await runAsTenant(owner, () =>
         repos.createBot(actor(), { ...botInput("Original look"), avatarSet: "organic", color }),

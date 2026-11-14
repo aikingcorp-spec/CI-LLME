@@ -241,7 +241,31 @@ export async function prepareCurrentPrefix({ root, major, dest, platform = proce
   await copyTree(found.binDir, path.join(dest, "bin"));
   await copyTree(found.libDir, path.join(dest, "lib"));
   await copyTree(found.shareDir, path.join(dest, "share"));
+  // The server still looks for its data where it was built, such as share/postgresql.
+  await copyTree(found.shareDir, path.join(dest, "share", path.basename(found.shareDir)));
   return path.resolve(dest);
+}
+
+/** Unpacks an @embedded-postgres package, the relocatable server 0.3.9 shipped, without npm install. */
+export async function fetchEmbeddedPostgres({ name, version, dest }) {
+  await mkdir(dest, { recursive: true });
+  const packed = spawnSync("npm", ["pack", "--silent", `${name}@${version}`], {
+    cwd: dest,
+    encoding: "utf8",
+    shell: process.platform === "win32",
+  });
+  if (packed.status !== 0) throw new Error(`npm pack failed for ${name}@${version}`);
+  const tarball = packed.stdout.trim().split(/\r?\n/).at(-1);
+  const unpacked = spawnSync("tar", ["xzf", tarball], { cwd: dest, encoding: "utf8" });
+  if (unpacked.status !== 0) throw new Error(`Could not unpack ${tarball}`);
+  const root = path.join(dest, "package");
+  // npm drops links, so the package lists them; materialize each as a copy.
+  const links = JSON.parse(await readFile(path.join(root, "native", "pg-symlinks.json"), "utf8"));
+  for (const link of links) {
+    const target = path.join(root, link.target);
+    if (!(await exists(target))) await cp(path.join(root, link.source), target);
+  }
+  return path.join(root, "native");
 }
 
 export async function prepareLegacyPrefix({ root, major, dest, platform = process.platform }) {
@@ -249,7 +273,12 @@ export async function prepareLegacyPrefix({ root, major, dest, platform = proces
   if (!found) throw new Error(`Missing native bundle source: postgres ${major} under ${root}`);
   await copyTree(found.binDir, path.join(dest, "bin"));
   await copyTree(found.shareDir, path.join(dest, "share", "postgresql"));
-  await copyTree(found.libDir, path.join(dest, "lib", "postgresql"));
+  // @embedded-postgres keeps server modules in lib/postgresql beside its shared libraries.
+  const modules = path.join(found.libDir, "postgresql");
+  await copyTree(
+    (await exists(modules)) ? modules : found.libDir,
+    path.join(dest, "lib", "postgresql"),
+  );
   const entries = await readdir(found.libDir, { withFileTypes: true });
   for (const entry of entries) {
     const lower = entry.name.toLowerCase();
@@ -578,6 +607,15 @@ async function main(argv) {
       `${JSON.stringify(stagingBuilderConfig(pkg.build), null, 2)}\n`,
     );
     process.stdout.write(`${plan.args.join("\n")}\n`);
+    return;
+  }
+  if (command === "fetch-embedded") {
+    const prefix = await fetchEmbeddedPostgres({
+      name: required(flags, "package"),
+      version: required(flags, "version"),
+      dest: required(flags, "dest"),
+    });
+    process.stdout.write(`${prefix}\n`);
     return;
   }
   if (command === "prepare-current" || command === "prepare-legacy") {
