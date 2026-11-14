@@ -33,7 +33,7 @@ export function parseHermes(
 ): AgentImportParse {
   const byName = fileMap(files);
   const bundled = bundledSkillNames(byName.get(BUNDLED_MANIFEST) ?? "");
-  // Offering Hermes' own library would flood Rakazo's; only the user's skills are imported.
+  // Offering Hermes' own library would flood VNBot's; only the user's skills are imported.
   const all = skillItems(byName, skillFiles);
   const builtIn = all.skills.filter((skill) => {
     const folder = skill.id.split("/").at(-2) ?? "";

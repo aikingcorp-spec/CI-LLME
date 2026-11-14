@@ -43,7 +43,8 @@ export type PlaywrightScreenshot = {
 export type PlaywrightScreenshotManifest = {
   attempt?: number;
   id?: string;
-  screenshots: PlaywrightScreenshotMetadata[];
+  // Older manifests predate fileName; it lets agents link a run's images.
+  screenshots: Array<PlaywrightScreenshotMetadata & { fileName?: string }>;
   version: 1;
 };
 
@@ -85,8 +86,9 @@ export function createScreenshotManifest(
 ): PlaywrightScreenshotManifest {
   return {
     ...(run === undefined ? {} : { attempt: run.attempt, id: run.id }),
-    screenshots: screenshots.map(({ captureType, hash, source, testId, title }) => ({
+    screenshots: screenshots.map(({ captureType, fileName, hash, source, testId, title }) => ({
       captureType,
+      fileName,
       hash,
       source,
       testId,
@@ -153,7 +155,7 @@ export function shouldPublishStableMainBaseline(input: {
 }): boolean {
   const history = Array.isArray(input.history) ? input.history.filter(isPlaywrightRun) : [];
   const latestMain = history.find(
-    (run) => run.event === "push" && run.branch === "main" && run.result === "success",
+    (run) => run.event !== "pull_request" && run.branch === "main" && run.result === "success",
   );
   if (
     latestMain === undefined ||
@@ -249,7 +251,7 @@ export function renderPlaywrightDashboard(history: PlaywrightRun[]): string {
       <div class="actions">
         <a class="button" href="#" id="latest-screenshots">Latest screenshots</a>
         <a class="button" href="#" id="latest-report">Latest report</a>
-        <a class="button" href="https://github.com/aikingcorp-spec/vnbot/actions">GitHub Actions</a>
+        <a class="button" href="https://github.com/elie222/rakazo/actions">GitHub Actions</a>
       </div>
     </header>
 

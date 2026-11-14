@@ -18,11 +18,7 @@ function isSwitchLocale(value: unknown): value is SwitchLocale {
   return (PICKER_LOCALES as readonly unknown[]).includes(value);
 }
 
-/**
- * Compact vi/en picker for Welcome and AuthFrame (email-otp spec §6).
- * Same functions as Settings: optimistic state, and a request id so the last click wins.
- * It renders a plain button, so inside a form it never submits.
- */
+/** Same save path as Settings. The last click wins. */
 export default function LanguageSwitchMenu({ className }: { className: string }) {
   const { t } = useLingui();
   const [locale, setLocale] = useState<UiLocale>(() => getActiveUiLocale());
@@ -66,7 +62,7 @@ export default function LanguageSwitchMenu({ className }: { className: string })
               key={option}
               value={option}
               lang={option}
-              closeOnClick
+              // off-scale: 14px matches the 0.3.9 language menu.
               className="h-9 max-md:h-11 rounded-lg px-2.5 text-[14px] data-highlighted:bg-accent data-checked:font-medium [&_[data-slot=dropdown-menu-radio-item-indicator]_svg]:text-primary"
             >
               {UI_LOCALE_LABELS[option]}

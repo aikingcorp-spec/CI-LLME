@@ -34,7 +34,9 @@ vi.mock("@rakazo/chat-ui/web", () => ({
   useLinkFavicon: () => ({ icon: null, unusable: () => undefined }),
 }));
 vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({ t: (parts: TemplateStringsArray) => parts.join("") }),
+  useLingui: () => ({
+    t: (parts: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: parts }, ...values),
+  }),
   Trans: ({ children }: { children: ReactNode }) => children,
   Plural: ({ value, other }: { value: number; other: string }) => other.replace("#", `${value}`),
 }));
@@ -56,8 +58,7 @@ vi.mock("@rakazo/ui-web", () => {
   };
 });
 
-import { renderToStaticMarkup } from "react-dom/server";
-import { PluginDetail, PluginRow } from "./plugin-marketplace";
+import { PluginDetail } from "./plugin-marketplace";
 
 const source = "https://github.com/example/notes";
 const preview = {
@@ -100,9 +101,13 @@ const server = {
   installId: install.id,
   name: "notes: notes-mcp",
   endpoint: "https://notes.example.test/mcp",
+  enabled: true,
   oauthStatus: "none",
   health: { status: "unknown", message: null, toolCount: null, checkedAt: null },
 } as McpServer;
+
+const ok = { status: "ok", message: null, toolCount: 1, checkedAt: null } as const;
+const failed = { status: "error", message: "HTTP 500", toolCount: null, checkedAt: null } as const;
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -199,6 +204,21 @@ describe("plugin detail", () => {
     expect(api.approve).toHaveBeenCalledWith({ botId: "bot-1", serverId: server.id });
   });
 
+  it("offers the shared troubleshooting guide for a documented sign-in error", async () => {
+    api.connect.mockRejectedValue(
+      Object.assign(new Error("Sign-in configuration mismatch"), {
+        code: "MCP_OAUTH_REDIRECT_MISMATCH",
+      }),
+    );
+    await render({ install, servers: [server] });
+    await click("Sign in");
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.querySelector("a")?.getAttribute("href")).toBe("https://vnbot.run/help/");
+    api.connect.mockRejectedValue(new Error("Could not sign in"));
+    await click("Sign in");
+    expect(container.querySelector('[role="alert"] a')).toBeNull();
+  });
+
   it("removes the connector only after confirmation and keeps the skills", async () => {
     await render({ install, servers: [server] });
     await click("Remove");
@@ -225,6 +245,18 @@ describe("plugin detail", () => {
     expect(container.textContent).toContain("Not added: hooks/");
     await click("Add");
     expect(api.install).toHaveBeenCalledWith(expect.objectContaining({ pluginParts: ["skills"] }));
+  });
+
+  it("says why a skill repeating a built-in one was not added", async () => {
+    api.preview.mockResolvedValue({
+      ...preview,
+      skipped: [{ kind: "editor_only", name: "hooks/", reason: "Runs only inside an editor" }],
+      builtinNames: ["interrogate"],
+    });
+    await render();
+    expect(container.textContent).toContain(
+      "Not added: hooks/, interrogate (same name as a built-in skill)",
+    );
   });
 
   it("connects the managed app of the same brand instead of the plugin's connector", async () => {
@@ -283,32 +315,27 @@ describe("plugin detail", () => {
     expect(container.querySelector('[aria-label="Connected"]')).not.toBeNull();
     expect(() => button("Sign in")).toThrow();
   });
-});
 
-it("filters catalog descriptions only when rendering a plugin row", () => {
-  const description = "An open-source Cursor tool";
-  const html = renderToStaticMarkup(
-    <PluginRow
-      name="Example"
-      description={description}
-      installed={false}
-      onOpen={() => undefined}
-    />,
+  it.each([
+    ["signed in", { oauthStatus: "connected" }, true, []],
+    ["signed in with a failed check", { oauthStatus: "connected", health: failed }, false, []],
+    ["never signed in with a failed check", { health: failed }, false, ["Sign in"]],
+    ["disabled", { oauthStatus: "connected", enabled: false }, false, []],
+    [
+      "signed out after an ok check",
+      { oauthStatus: "reconnect", health: ok },
+      false,
+      ["Reconnect"],
+    ],
+  ] as const)(
+    "marks a connector %s the way Your apps does",
+    async (_, change, connected, actions) => {
+      await render({ install, servers: [{ ...server, ...change }] });
+      expect(container.querySelector('[aria-label="Connected"]') !== null).toBe(connected);
+      const signIn = [...container.querySelectorAll("button")]
+        .map((node) => node.textContent?.trim())
+        .filter((text) => text === "Sign in" || text === "Reconnect");
+      expect(signIn).toEqual(actions);
+    },
   );
-  expect(html).toContain("A tool");
-  expect(html).not.toContain("Cursor");
-  expect(html).not.toContain("open-source");
-  expect(description).toBe("An open-source Cursor tool");
-});
-
-it("hides a plugin row named after another product", () => {
-  const html = renderToStaticMarkup(
-    <PluginRow
-      name="Grok Voice"
-      description="Add voice to an app"
-      installed={false}
-      onOpen={() => undefined}
-    />,
-  );
-  expect(html).toBe("");
 });

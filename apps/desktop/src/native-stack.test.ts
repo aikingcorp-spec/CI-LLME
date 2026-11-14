@@ -1,312 +1,339 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { lstat, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
-import { createMigrationClient } from "./native-migrate.js";
-import type { RunProcessResult } from "./native-postgres.js";
+import { expect, it } from "vitest";
+import { CURRENT_NATIVE_DIRECTORY } from "./native-postgres-layout.js";
 import {
-  NativePostgres,
-  NativePostgresError,
-  PG_BIN_DIR_ENV,
-  runProcess,
-} from "./native-postgres.js";
-import { NativeStack } from "./native-stack.js";
+  assertNativeBundleManifest,
+  assertNativeBundleTree,
+  assertNativeProfileSafe,
+  ensureNativeDeviceFile,
+  NativeStackController,
+  nativeBundleDirectory,
+  nativeBundleManifest,
+  nativeEnvironment,
+  nativeHostComputerEnv,
+  prepareCurrentNativeLayout,
+  readNativeDeviceConfig,
+  selectDesktopStack,
+} from "./native-stack.js";
+import { writePrivateFile } from "./setup-store.js";
 
-const ok: RunProcessResult = { code: 0, timedOut: false, stdout: "", stderr: "" };
-const endpoints = {
-  port: 40001,
-  databaseUrl: "postgres://runtime:fake@127.0.0.1:40001/rakazo",
-  migrationUrl: "postgres://owner:fake@127.0.0.1:40001/rakazo",
+const device = {
+  kind: "local",
+  issuer: "https://identity.example.test",
+  audience: "vnbot-local",
+  publicKey: "ed25519-public",
+  deviceId: "device-1",
+  centralAuthUrl: "https://identity.example.test/api/auth",
+  centralOrigin: "https://app.example.test",
 };
 
-function fixture(withServices = true) {
-  const calls: string[] = [];
-  const postgres = {
-    start: vi.fn(async () => {
-      calls.push("pg.start");
-      return endpoints;
-    }),
-    stop: vi.fn(async () => {
-      calls.push("pg.stop");
-    }),
-  };
-  const services = {
-    start: vi.fn(async (_env?: Record<string, string>) => {
-      calls.push("services.start");
-      return { webUrl: "http://127.0.0.1:40002" };
-    }),
-    stop: vi.fn(async () => {
-      calls.push("services.stop");
-    }),
-  };
-  const run = vi.fn(async () => {
-    calls.push("migrate");
-    return ok;
-  });
-  const stack = new NativeStack({
-    postgres,
-    services: withServices ? services : undefined,
-    dbDir: "/repo/packages/db",
-    env: { DATABASE_URL: "stale", DATABASE_MIGRATION_URL: "stale-owner" },
-    run,
-  });
-  return { stack, postgres, services, run, calls };
+const pin = {
+  issuer: device.issuer,
+  audience: device.audience,
+  publicKey: device.publicKey,
+  centralAuthUrl: device.centralAuthUrl,
+  centralOrigin: device.centralOrigin,
+};
+
+async function tempProfile() {
+  return mkdtemp(path.join(tmpdir(), "native-stack-"));
 }
 
-describe("NativeStack", () => {
-  it("keeps a database refusal code without its original cause", async () => {
-    const f = fixture();
-    const reason = new NativePostgresError(
-      "data-dir-version-missing",
-      "Thiếu PG_VERSION trong thư mục dữ liệu.",
-      { cause: new Error("private child output postgres://owner:secret@localhost/db") },
-    );
-    f.postgres.start.mockRejectedValueOnce(new Error("wrapped", { cause: reason }));
-
-    const failure = await f.stack.start().catch((error: unknown) => error);
-    if (!(failure instanceof Error)) throw new Error("Expected a stack startup error.");
-    expect(failure.message).toBe("The local stack could not start.");
-    expect(failure.cause).toBeInstanceOf(NativePostgresError);
-    if (!(failure.cause instanceof NativePostgresError)) {
-      throw new Error("Expected a sanitized PostgreSQL cause.");
-    }
-    expect(failure.cause.code).toBe("data-dir-version-missing");
-    expect(failure.cause.message).toBe(reason.message);
-    expect(failure.cause.cause).toBeUndefined();
-  });
-
-  it("leaves unrelated failures without a cause", async () => {
-    const f = fixture();
-    f.postgres.start.mockRejectedValueOnce(new Error("private child output"));
-
-    const failure = await f.stack.start().catch((error: unknown) => error);
-    if (!(failure instanceof Error)) throw new Error("Expected a stack startup error.");
-    expect(failure.message).toBe("The local stack could not start.");
-    expect(failure).not.toHaveProperty("cause");
-  });
-
-  it("migrates with the owner before services start with the runtime login", async () => {
-    const f = fixture();
-    expect(f.stack.status()).toBe("stopped");
-    expect(await f.stack.start()).toEqual({
-      databaseUrl: endpoints.databaseUrl,
-      migrationUrl: endpoints.migrationUrl,
-      webUrl: "http://127.0.0.1:40002",
-    });
-    expect(f.calls).toEqual(["pg.start", "migrate", "services.start"]);
-    expect(f.run).toHaveBeenCalledWith(
-      "migrate",
-      [],
-      expect.objectContaining({
-        cwd: "/repo/packages/db",
-        env: expect.objectContaining({
-          DATABASE_URL: endpoints.migrationUrl,
-          DATABASE_MIGRATION_URL: endpoints.migrationUrl,
-        }),
-      }),
-    );
-    expect(f.services.start).toHaveBeenCalledWith({
-      DATABASE_URL: endpoints.databaseUrl,
-      SANDBOX_PROVIDER: "desktop",
-    });
-    expect(f.stack.status()).toBe("running");
-    await f.stack.stop();
-    expect(f.calls.slice(-2)).toEqual(["services.stop", "pg.stop"]);
-    expect(f.stack.status()).toBe("stopped");
-  });
-
-  it("supports a database-only stack and idempotent start/stop", async () => {
-    const f = fixture(false);
-    const first = f.stack.start();
-    expect(f.stack.start()).toBe(first);
-    const result = await first;
-    expect(result).not.toHaveProperty("webUrl");
-    result.databaseUrl = "changed";
-    expect((await f.stack.start()).databaseUrl).toBe(endpoints.databaseUrl);
-    await Promise.all([f.stack.stop(), f.stack.stop()]);
-    await f.stack.stop();
-    expect(f.postgres.stop).toHaveBeenCalledTimes(1);
-    await f.stack.start();
-    expect(f.postgres.start).toHaveBeenCalledTimes(2);
-    await f.stack.stop();
-  });
-
-  it.each(["postgres", "migrate", "services"] as const)(
-    "cleans up a partial %s failure and allows retry",
-    async (stage) => {
-      const f = fixture();
-      const error = new Error("private output postgres://owner:fake@localhost/db");
-      if (stage === "postgres") f.postgres.start.mockRejectedValueOnce(error);
-      if (stage === "migrate") f.run.mockRejectedValueOnce(error);
-      if (stage === "services") f.services.start.mockRejectedValueOnce(error);
-      await expect(f.stack.start()).rejects.toThrow("The local stack could not start.");
-      expect(f.stack.status()).toBe("failed");
-      expect(f.calls.at(-1)).toBe("pg.stop");
-      if (stage === "services") expect(f.calls.slice(-2)).toEqual(["services.stop", "pg.stop"]);
-      else expect(f.services.start).not.toHaveBeenCalled();
-      await f.stack.start();
-      await f.stack.stop();
-    },
-  );
-
-  it.each([
-    { ...ok, code: 1 },
-    { ...ok, timedOut: true },
-  ])("cleans up an unsuccessful migration result", async (result) => {
-    const f = fixture();
-    f.run.mockImplementationOnce(async () => {
-      f.calls.push("migrate");
-      return result;
-    });
-    await expect(f.stack.start()).rejects.toThrow("The local stack could not start.");
-    expect(f.services.start).not.toHaveBeenCalled();
-    expect(f.calls).toEqual(["pg.start", "migrate", "pg.stop"]);
-  });
-
-  it("stops postgres even if services fail to stop, and retries failed cleanup", async () => {
-    const f = fixture();
-    await f.stack.start();
-    f.services.stop.mockRejectedValueOnce(new Error("private details"));
-    await expect(f.stack.stop()).rejects.toThrow("The local stack did not stop.");
-    expect(f.postgres.stop).toHaveBeenCalledOnce();
-    expect(f.stack.status()).toBe("failed");
-    await f.stack.stop();
-    expect(f.services.stop).toHaveBeenCalledTimes(2);
-    expect(f.stack.status()).toBe("stopped");
-  });
-
-  it("aborts migration, waits for cleanup, then starts a fresh request", async () => {
-    const f = fixture();
-    let finish!: (result: RunProcessResult) => void;
-    f.run.mockImplementationOnce(
-      async () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const starting = f.stack.start();
-    const rejected = expect(starting).rejects.toThrow("The local stack could not start.");
-    await vi.waitFor(() => expect(f.stack.status()).toBe("migrating"));
-    const signal = (
-      f.run.mock.calls[0] as unknown as [string, string[], { signal: AbortSignal }]
-    )[2].signal;
-    const stopping = f.stack.stop();
-    expect(signal.aborted).toBe(true);
-    const restarted = f.stack.start();
-    finish(ok);
-    await rejected;
-    await stopping;
-    await restarted;
-    expect(f.calls).toEqual(["pg.start", "pg.stop", "pg.start", "migrate", "services.start"]);
-    await f.stack.stop();
-  });
-
-  it("does not launch services when stopped during postgres startup", async () => {
-    const f = fixture();
-    let finish!: (result: typeof endpoints) => void;
-    f.postgres.start.mockImplementationOnce(
-      async () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const starting = f.stack.start();
-    const rejected = expect(starting).rejects.toThrow();
-    await vi.waitFor(() => expect(f.stack.status()).toBe("starting"));
-    const stopping = f.stack.stop();
-    finish(endpoints);
-    await rejected;
-    await stopping;
-    expect(f.run).not.toHaveBeenCalled();
-    expect(f.services.start).not.toHaveBeenCalled();
-    expect(f.stack.status()).toBe("stopped");
-  });
+it("keeps repository credentials and database targets out of native children", () => {
+  expect(
+    nativeEnvironment({
+      PATH: "/fake/bin",
+      DATABASE_URL: "postgresql://secret@127.0.0.1/db",
+      NODE_OPTIONS: "--require /tmp/inject.js",
+      ENCRYPTION_KEY: "secret",
+      EMAIL_API_KEY: "secret",
+      SANDBOX_HOST_TOKEN: "secret",
+      RAKAZO_LOAD_ROOT_ENV: "true",
+    }),
+  ).toEqual({ PATH: "/fake/bin", NODE_ENV: "production", RAKAZO_LOAD_ROOT_ENV: "false" });
 });
 
-describe("in-process migration", () => {
-  it("reports a failed migration with a redacted cause and cleans up", async () => {
-    const postgres = {
-      start: vi.fn(async () => ({
-        ...endpoints,
-        migrationUrl: "postgres://owner:fakepw@127.0.0.1:1/rakazo",
-      })),
-      stop: vi.fn(async () => {}),
-    };
-    const onFailure = vi.fn();
-    const stack = new NativeStack({
-      postgres,
-      dbDir: path.resolve("packages/db"),
+it("uses native for packaged apps and leaves development on Docker without a bundle", () => {
+  expect(selectDesktopStack({ packaged: true, nativeBundlePresent: false })).toBe("native");
+  expect(selectDesktopStack({ packaged: false, nativeBundlePresent: false })).toBe("docker");
+  expect(selectDesktopStack({ packaged: false, nativeBundlePresent: true })).toBe("native");
+  expect(
+    nativeBundleDirectory({
+      packaged: true,
+      resourcesPath: "/resources",
+      appPath: "/app",
+    }),
+  ).toBe(path.join("/resources", "native"));
+});
+
+it("refuses every legacy cluster without changing its files", async () => {
+  const root = await tempProfile();
+  try {
+    await expect(assertNativeProfileSafe(root)).resolves.toBeUndefined();
+    const version = path.join(root, "pg", "PG_VERSION");
+    await mkdir(path.dirname(version));
+    await writeFile(version, "18");
+    await expect(assertNativeProfileSafe(root)).rejects.toThrow("copy-only migration");
+    expect(await readFile(version, "utf8")).toBe("18");
+    const stack = new NativeStackController({
+      profile: root,
+      bundle: path.join(root, "missing-bundle"),
       env: {},
-      onFailure,
+      issuerPin: JSON.stringify(pin),
+      onState() {},
     });
-    await expect(stack.start()).rejects.toThrow("The local stack could not start.");
-    expect(postgres.stop).toHaveBeenCalledOnce();
-    expect(stack.status()).toBe("failed");
-    const [stage, error] = onFailure.mock.calls[0]!;
-    expect(stage).toBe("migrate");
-    expect(String((error as Error).message)).toMatch(
-      /Migration exited with code 1\. stage=migrate/,
-    );
-    expect(String((error as Error).message)).not.toContain("fakepw");
-  });
+    const state = await stack.start();
+    expect(state.phase).toBe("failed");
+    expect(state.message).toContain("copy-only migration");
+    expect(await readdir(root)).toEqual(["pg"]);
+    expect(await readFile(version, "utf8")).toBe("18");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
-it.runIf(
-  Boolean(process.env[PG_BIN_DIR_ENV]) && process.platform === "linux" && process.getuid?.() !== 0,
-)(
-  "deploys the real packages/db migrations on the bundled Postgres",
-  async () => {
-    const userDataDir = await mkdtemp(path.join(tmpdir(), "rakazo-stack-real-"));
-    const dbDir = path.resolve("packages/db");
-    const postgres = new NativePostgres({ userDataDir });
-    const stack = new NativeStack({
-      postgres,
-      dbDir,
+it("requires a local device identity before creating current data", async () => {
+  const root = await tempProfile();
+  try {
+    await expect(readNativeDeviceConfig(root)).rejects.toThrow(
+      "Native identity setup is required.",
+    );
+    const stack = new NativeStackController({
+      profile: root,
+      bundle: path.join(root, "missing-bundle"),
+      env: { DATABASE_URL: "postgresql://secret@127.0.0.1/db" },
+      onState() {},
     });
-    try {
-      await stack.start();
-      expect(stack.status()).toBe("running");
-      const status = await runProcess(
-        process.execPath,
-        [
-          createRequire(path.join(dbDir, "package.json")).resolve("prisma/build/index.js"),
-          "migrate",
-          "status",
-        ],
-        {
-          cwd: dbDir,
-          env: { ...process.env, DATABASE_MIGRATION_URL: (await stack.start()).migrationUrl },
-          timeoutMs: 120_000,
-        },
-      );
-      expect(status.code, status.stderr).toBe(0);
-      expect(status.stdout).toContain("Database schema is up to date");
-      const runtime = createMigrationClient((await stack.start()).databaseUrl, dbDir);
-      try {
-        await runtime.connect();
-        expect(
-          (
-            await runtime.query(
-              "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user",
-            )
-          ).rows[0],
-        ).toEqual({ rolsuper: false, rolbypassrls: false });
-        expect(
-          (await runtime.query("SELECT count(*)::int AS count FROM messages")).rows[0]!.count,
-        ).toBe(0);
-        await runtime.query("SELECT count(*) FROM graphile_worker._private_jobs");
-        await expect(runtime.query('SELECT * FROM "_prisma_migrations"')).rejects.toThrow();
-      } finally {
-        await runtime.end();
-      }
-      // Deploy is idempotent against the same persisted cluster.
-      await stack.stop();
-      await stack.start();
-    } finally {
-      await stack.stop();
-      await rm(userDataDir, { recursive: true, force: true });
+    const state = await stack.start();
+    expect(state.phase).toBe("failed");
+    expect(state.message).toBe("Native identity setup is required.");
+    expect(state.message).not.toContain("secret");
+    expect(await readdir(root)).toEqual([]);
+    await writeFile(
+      path.join(root, "native-device.json"),
+      JSON.stringify({ ...device, kind: "issuer", privateKey: "secret" }),
+    );
+    await expect(readNativeDeviceConfig(root)).rejects.toThrow(
+      "Native identity setup is required.",
+    );
+    await writeFile(path.join(root, "native-device.json"), JSON.stringify(device));
+    const admitted = await stack.start();
+    expect(admitted.phase).toBe("failed");
+    expect(admitted.message).not.toContain(root);
+    expect(await readdir(root)).toEqual(["native-device.json"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("binds one device id to the pinned issuer and does not create database files", async () => {
+  const root = await tempProfile();
+  try {
+    const first = await ensureNativeDeviceFile(root, pin);
+    expect(await ensureNativeDeviceFile(root, pin)).toEqual(first);
+    expect(first.deviceId).toMatch(/^[a-f0-9]{64}$/);
+    const file = path.join(root, "native-device.json");
+    const before = await readFile(file, "utf8");
+    await expect(ensureNativeDeviceFile(root, { ...pin, audience: "other" })).rejects.toThrow(
+      "Native identity setup is required.",
+    );
+    expect(await readFile(file, "utf8")).toBe(before);
+
+    const stack = new NativeStackController({
+      profile: root,
+      bundle: path.join(root, "missing-bundle"),
+      env: { DATABASE_URL: "postgresql://secret@127.0.0.1/db" },
+      issuerPin: JSON.stringify({ ...pin, privateKey: "secret-key" }),
+      onState() {},
+    });
+    const rejected = await stack.start();
+    expect(rejected.phase).toBe("failed");
+    expect(rejected.message).toBe("Invalid identity exchange configuration");
+    expect(rejected.message).not.toContain("secret-key");
+    expect(await readFile(file, "utf8")).toBe(before);
+
+    const admitted = new NativeStackController({
+      profile: root,
+      bundle: path.join(root, "missing-bundle"),
+      env: {},
+      issuerPin: JSON.stringify(pin),
+      onState() {},
+    });
+    const started = await admitted.start();
+    expect(started.message ?? "").not.toContain(root);
+    expect(await readdir(root)).toEqual(["native-device.json"]);
+    const saved = JSON.parse(await readFile(file, "utf8")) as {
+      deviceId: string;
+      devicePrivateKey?: string;
+    };
+    expect(saved.deviceId).toBe(first.deviceId);
+    expect(saved.devicePrivateKey).toContain("PRIVATE KEY");
+    expect(first.devicePrivateKey).toBe(saved.devicePrivateKey);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("persists credentials and the loopback origin without following a foreign directory", async () => {
+  const root = await tempProfile();
+  try {
+    const marked = path.join(root, CURRENT_NATIVE_DIRECTORY);
+    await mkdir(marked);
+    await writePrivateFile(path.join(marked, "layout"), "foreign");
+    await expect(prepareCurrentNativeLayout(root)).rejects.toThrow(
+      "Unrecognized native data directory.",
+    );
+    expect(await readFile(path.join(marked, "layout"), "utf8")).toBe("foreign");
+    await rm(marked, { recursive: true });
+
+    const outside = path.join(root, "outside");
+    await mkdir(outside);
+    await writeFile(path.join(outside, "kept"), "kept");
+    await symlink(outside, marked);
+    await expect(prepareCurrentNativeLayout(root)).rejects.toThrow(
+      "Unrecognized native data directory.",
+    );
+    expect(await readFile(path.join(outside, "kept"), "utf8")).toBe("kept");
+    await rm(marked);
+
+    const first = await prepareCurrentNativeLayout(root);
+    const second = await prepareCurrentNativeLayout(root);
+    expect(second.secrets).toEqual(first.secrets);
+    expect(second.webPort).toBe(first.webPort);
+    expect(first.needsInit).toBe(true);
+    expect(second.needsInit).toBe(true);
+    const secretFile = path.join(first.root, "credentials.json");
+    expect((await lstat(secretFile)).mode & 0o077).toBe(0);
+
+    await writeFile(path.join(first.root, "web-port"), "80");
+    await expect(prepareCurrentNativeLayout(root)).rejects.toThrow("Invalid native origin.");
+    await writeFile(path.join(first.root, "web-port"), String(first.webPort));
+
+    const version = path.join(first.dataDir, "PG_VERSION");
+    await mkdir(first.dataDir);
+    await writeFile(version, "16\n");
+    await expect(prepareCurrentNativeLayout(root)).rejects.toThrow(
+      "Native database version mismatch.",
+    );
+    expect(await readFile(version, "utf8")).toBe("16\n");
+    await rm(first.dataDir, { recursive: true });
+
+    const scratch = path.join(first.root, "data.initializing");
+    await mkdir(scratch);
+    await writeFile(path.join(scratch, "PG_VERSION"), "18\n");
+    await expect(prepareCurrentNativeLayout(root)).rejects.toThrow("inspection");
+    expect(await readFile(path.join(scratch, "PG_VERSION"), "utf8")).toBe("18\n");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("keeps an existing PostgreSQL 18 data directory for the next start", async () => {
+  const root = await tempProfile();
+  try {
+    const first = await prepareCurrentNativeLayout(root);
+    const version = path.join(first.dataDir, "PG_VERSION");
+    await mkdir(first.dataDir);
+    await writeFile(version, "18\n");
+    const again = await prepareCurrentNativeLayout(root);
+    expect(again.needsInit).toBe(false);
+    expect(again.secrets).toEqual(first.secrets);
+    expect(again.webPort).toBe(first.webPort);
+    expect(await readFile(version, "utf8")).toBe("18\n");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("accepts only a PostgreSQL 18 manifest whose files stay inside the bundle", async () => {
+  const root = await tempProfile();
+  try {
+    const manifest = nativeBundleManifest({ platform: process.platform, arch: process.arch });
+    expect(manifest.postgresMajor).toBe(18);
+    expect(assertNativeBundleManifest(manifest)).toBe(manifest.files);
+    expect(() => assertNativeBundleManifest({ ...manifest, postgresMajor: 16 })).toThrow(
+      "Native bundle target mismatch.",
+    );
+    const bundle = path.join(root, "bundle");
+    for (const file of Object.keys(manifest.files)) {
+      const destination = path.join(bundle, file);
+      await mkdir(path.dirname(destination), { recursive: true });
+      await writeFile(destination, "");
     }
-  },
-  180_000,
-);
+    const library = path.join(bundle, "pg/lib");
+    const migration = path.join(bundle, "packages/db/prisma/migrations/001_init/migration.sql");
+    await mkdir(library, { recursive: true });
+    await writeFile(path.join(library, "library"), "fixture");
+    await mkdir(path.dirname(migration), { recursive: true });
+    await writeFile(migration, "select 1;");
+    await assertNativeBundleTree(bundle, manifest.files);
+    await rm(migration);
+    await expect(assertNativeBundleTree(bundle, manifest.files)).rejects.toThrow(
+      "Invalid native bundle asset.",
+    );
+    await writeFile(migration, "select 1;");
+    await rm(path.join(library, "library"));
+    await expect(assertNativeBundleTree(bundle, manifest.files)).rejects.toThrow(
+      "Invalid native bundle asset.",
+    );
+    await writeFile(path.join(library, "library"), "fixture");
+    const outside = path.join(root, "outside.txt");
+    await writeFile(outside, "kept");
+    await symlink(outside, path.join(bundle, "escape"));
+    await expect(
+      assertNativeBundleTree(bundle, { ...manifest.files, escape: true }),
+    ).rejects.toThrow("Invalid native bundle asset.");
+    expect(await readFile(outside, "utf8")).toBe("kept");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("gives API and worker the loopback host connection and ignores inherited credentials", () => {
+  const managed = "cd".repeat(32);
+  const inherited = "ab".repeat(32);
+  const parent = nativeEnvironment({
+    PATH: "/fake/bin",
+    NODE_ENV: "development",
+    SANDBOX_PROVIDER: "desktop",
+    SANDBOX_HOST_URL: "http://host.docker.internal:45175",
+    SANDBOX_HOST_TOKEN: inherited,
+  });
+  const assigned = nativeHostComputerEnv({
+    url: "http://127.0.0.1:45175",
+    token: managed,
+  });
+  const child: NodeJS.ProcessEnv = { ...parent, ...assigned };
+  expect(parent).toEqual({
+    PATH: "/fake/bin",
+    NODE_ENV: "production",
+    RAKAZO_LOAD_ROOT_ENV: "false",
+  });
+  expect(assigned).toEqual({
+    SANDBOX_PROVIDER: "none",
+    SANDBOX_HOST_URL: "http://127.0.0.1:45175",
+    SANDBOX_HOST_TOKEN: managed,
+  });
+  expect(child.SANDBOX_PROVIDER).toBe("none");
+  expect(child.NODE_ENV).toBe("production");
+  expect(child.SANDBOX_HOST_URL).toBe("http://127.0.0.1:45175");
+  expect(child.SANDBOX_HOST_TOKEN).toBe(managed);
+  expect(child.SANDBOX_HOST_URL).not.toContain(managed);
+  expect(
+    nativeHostComputerEnv({
+      url: "http://host.docker.internal:45175",
+      token: managed,
+    }),
+  ).toEqual({
+    SANDBOX_PROVIDER: "none",
+    SANDBOX_HOST_URL: "",
+    SANDBOX_HOST_TOKEN: "",
+  });
+  expect(nativeHostComputerEnv(undefined)).toEqual({
+    SANDBOX_PROVIDER: "none",
+    SANDBOX_HOST_URL: "",
+    SANDBOX_HOST_TOKEN: "",
+  });
+});

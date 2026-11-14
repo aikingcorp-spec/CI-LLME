@@ -2,7 +2,7 @@
 set -uo pipefail
 source /usr/local/lib/rakazo-user-env.sh
 export DISPLAY="${DISPLAY:-:1}"
-export HOME="${HOME:-/home/rakazo}"
+export HOME="${HOME:-/home/aiking}"
 AGENT_HOME="$HOME"
 mkdir -p "$AGENT_HOME" "$AGENT_HOME/.local/bin" "$AGENT_HOME/.config" /tmp/rakazo /tmp/.X11-unix /tmp/fluxbox-home
 # Login shells re-apply ~/.local/bin from /etc/profile.d/rakazo-local-bin.sh.
@@ -120,8 +120,9 @@ if [[ ! -f "$NOVNC_ROOT/mobile-keyboard.js" ]]; then
   echo "noVNC mobile-keyboard.js is missing from the computer image" >&2
   exit 1
 fi
-# The screen proxy reaches this isolated container through its bridge interface.
-websockify --heartbeat=30 --web="$NOVNC_ROOT" --token-plugin=TokenFile --token-source=/tmp/rakazo/view-target-1 0.0.0.0:6080 >/tmp/rakazo/novnc.log 2>&1 &
+# The screen proxy reaches this isolated container through its bridge interface. Started by its
+# full path and without the user's site-packages, so nothing in the home runs inside it.
+PYTHONNOUSERSITE=1 /usr/bin/websockify --heartbeat=30 --web="$NOVNC_ROOT" --token-plugin=TokenFile --token-source=/tmp/rakazo/view-target-1 0.0.0.0:6080 >/tmp/rakazo/novnc.log 2>&1 &
 
 wait "$XVFB_PID"
 echo "Xvfb exited" >&2

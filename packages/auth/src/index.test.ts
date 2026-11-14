@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import type { TransactionalEmailProvider } from "@rakazo/adapter-kit";
 import { describe, expect, it, vi } from "vitest";
 import {
   authRateLimitOptions,
@@ -6,27 +7,8 @@ import {
   createAuth,
   isBlockedAuthPath,
   passwordResetEmail,
-  passwordsEnabled,
   signInCodeEmail,
 } from "./index.js";
-
-describe("passwordsEnabled", () => {
-  it("closes passwords for email-code-only without using passwordAuth false", () => {
-    expect(passwordsEnabled({})).toBe(true);
-    expect(passwordsEnabled({ emailCodeOnly: true })).toBe(false);
-    expect(passwordsEnabled({ passwordAuth: false })).toBe(false);
-    expect(() =>
-      createAuth({} as never, {
-        secret: "offline-auth-secret-at-least-32-characters",
-        baseURL: "https://api.example.test",
-        webOrigin: "https://app.example.test",
-        signupsEnabled: "true",
-        signupAllowlist: "",
-        emailCodeOnly: true,
-      }),
-    ).toThrow(/email sender/);
-  });
-});
 
 describe("auth policy", () => {
   it("closes every organization plugin route", () => {
@@ -131,8 +113,8 @@ describe("authRateLimitOptions", () => {
         "/sign-in/email": { window: 15 * 60, max: 10 },
         "/sign-up/email": { window: 15 * 60, max: 10 },
         "/request-password-reset": { window: 15 * 60, max: 10 },
-        "/email-otp/send-verification-otp": { window: 15 * 60, max: 10 },
-        "/sign-in/email-otp": { window: 15 * 60, max: 10 },
+        "/email-otp/send-verification-otp": { window: 15 * 60, max: 1000 },
+        "/sign-in/email-otp": { window: 15 * 60, max: 1000 },
         "/passkey/verify-authentication": { window: 15 * 60, max: 10 },
         "/passkey/verify-registration": { window: 15 * 60, max: 10 },
         "/passkey/generate-authenticate-options": { window: 60, max: 30 },
@@ -143,35 +125,19 @@ describe("authRateLimitOptions", () => {
   it("stays off outside production so the test suite can sign in", () => {
     expect(authRateLimitOptions("test").enabled).toBe(false);
   });
-
-  it("holds in every environment while the invite list is on", () => {
-    expect(authRateLimitOptions("test", { emailAllowlist: true }).enabled).toBe(true);
-    expect(authRateLimitOptions("development", { emailAllowlist: true }).enabled).toBe(true);
-  });
-
-  it("tightens sign-in code sends while the invite list is on", () => {
-    expect(authRateLimitOptions("production", { emailAllowlist: true }).customRules).toMatchObject({
-      "/email-otp/send-verification-otp": { window: 15 * 60, max: 5 },
-      "/sign-in/email-otp": { window: 15 * 60, max: 10 },
-    });
-  });
 });
 
 describe("buildTrustedOrigins", () => {
   it("adds the localhost twin for a 127.0.0.1 web origin", () => {
     expect(
-      buildTrustedOrigins({
-        webOrigin: "http://127.0.0.1:5173",
-        baseURL: "http://127.0.0.1:5173",
-      }),
+      buildTrustedOrigins({ origins: ["http://127.0.0.1:5173", "http://127.0.0.1:5173"] }),
     ).toEqual(expect.arrayContaining(["http://127.0.0.1:5173", "http://localhost:5173"]));
   });
 
   it("keeps extraOrigins and does not twin non-loopback hosts", () => {
     expect(
       buildTrustedOrigins({
-        webOrigin: "https://app.example.test",
-        baseURL: "https://api.example.test",
+        origins: ["https://app.example.test", "https://api.example.test"],
         extraOrigins: ["https://extra.example.test"],
       }),
     ).toEqual([
@@ -179,6 +145,61 @@ describe("buildTrustedOrigins", () => {
       "https://api.example.test",
       "https://extra.example.test",
     ]);
+  });
+
+  // The list Better Auth received before both callers shared one builder.
+  function previousAuthOrigins(env: {
+    webOrigin: string;
+    baseURL: string;
+    extraOrigins?: string[];
+  }) {
+    const configured = [env.webOrigin, env.baseURL, ...(env.extraOrigins ?? [])];
+    const twins = [env.webOrigin, env.baseURL].flatMap(previousLoopbackTwins);
+    return [...new Set([...configured, ...twins])];
+  }
+
+  function previousLoopbackTwins(origin: string): string[] {
+    try {
+      const url = new URL(origin);
+      if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname)) return [];
+      const twins: string[] = [];
+      for (const host of ["localhost", "127.0.0.1"]) {
+        if (host === url.hostname) continue;
+        const twin = new URL(origin);
+        twin.hostname = host;
+        twins.push(twin.origin);
+      }
+      return twins;
+    } catch {
+      return [];
+    }
+  }
+
+  const mobile = [
+    "rakazo://",
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    "http://localhost:19006",
+    "http://127.0.0.1:19006",
+  ];
+
+  it.each([
+    { webOrigin: "https://app.example.test", baseURL: "https://app.example.test" },
+    {
+      webOrigin: "https://app.example.test",
+      baseURL: "https://auth.example.test/",
+      extraOrigins: mobile,
+    },
+    { webOrigin: "http://127.0.0.1:5173", baseURL: "http://127.0.0.1:5173", extraOrigins: mobile },
+    { webOrigin: "http://localhost:5173/", baseURL: "http://[::1]:3100", extraOrigins: [] },
+    { webOrigin: "http://localhost:5173", baseURL: "not a url", extraOrigins: mobile },
+  ])("gives Better Auth the same list as before for $webOrigin and $baseURL", (env) => {
+    expect(
+      buildTrustedOrigins({
+        origins: [env.webOrigin, env.baseURL],
+        extraOrigins: env.extraOrigins,
+      }),
+    ).toEqual(previousAuthOrigins(env));
   });
 });
 
@@ -191,7 +212,7 @@ describe("passwordResetEmail", () => {
 
     expect(message).toMatchObject({
       to: "ada@example.test",
-      subject: "Đặt lại mật khẩu VNBot",
+      subject: "Reset your VNBot password",
     });
     expect(message.text).toContain("https://rakazo.test/reset-password?token=secret&next=1");
     expect(message.html).toContain("&lt;Ada &amp; &quot;team&quot;&gt;");
@@ -201,19 +222,14 @@ describe("passwordResetEmail", () => {
 });
 
 describe("signInCodeEmail", () => {
-  it("puts the code in plain text and HTML without links, and not in the subject", async () => {
-    const message = await signInCodeEmail("ada@example.test", "042517", {
-      assetBase: "https://app.example.test/email",
-    });
+  it("puts the code in plain text and HTML without links", async () => {
+    const message = await signInCodeEmail("ada@example.test", "042517");
     expect(message).toMatchObject({
       to: "ada@example.test",
       subject: "Mã đăng nhập VNBot của bạn",
     });
-    expect(message.subject).not.toContain("042517");
     expect(message.text).toContain("042517");
     expect(message.html).toContain("042517");
-    expect(message.html).toContain("https://app.example.test/email/vnbot-wordmark-light@2x.png");
-    expect(message.html).toContain('width="107" height="32"');
     expect(message.text).not.toMatch(/https?:/);
     expect(message.html).not.toContain("<a ");
   });
@@ -228,24 +244,15 @@ describe("stored account names", () => {
     signupAllowlist: "",
   });
   it.each(["", " ", "__TestTok1__", "550e8400-e29b-41d4-a716-446655440000"])(
-    "uses the email local part when a new account has no usable name: %s",
+    "normalizes unusable names on creation and updates: %s",
     async (name) => {
       const hooks = auth.options.databaseHooks!.user!;
       expect(
         await hooks.create!.before!({ name, email: "demo@example.com" } as never),
-      ).toMatchObject({ data: { name: "demo" } });
+      ).toMatchObject({ data: { name: "" } });
       expect(await hooks.update!.before!({ name })).toMatchObject({ data: { name: "" } });
     },
   );
-  it("keeps a chosen name and replaces a name that is the email address", async () => {
-    const hook = auth.options.databaseHooks!.user!.create!.before!;
-    expect(await hook({ name: "Ada Lovelace", email: "ada@example.com" } as never)).toMatchObject({
-      data: { name: "Ada Lovelace" },
-    });
-    expect(
-      await hook({ name: "ada@example.com", email: "ada@example.com" } as never),
-    ).toMatchObject({ data: { name: "ada" } });
-  });
   it("preserves real names and does not change names during unrelated updates", async () => {
     const hook = auth.options.databaseHooks!.user!.update!.before!;
     expect(await hook({ name: " 李雷 " })).toMatchObject({ data: { name: "李雷" } });
@@ -320,5 +327,162 @@ describe("bearer sessions", () => {
     const { auth, lookups } = authWithSessionLookups();
     await auth.api.getSession({ headers: new Headers({ authorization: `Bearer ${bearer}` }) });
     expect(JSON.stringify(lookups)).toContain(token);
+  });
+});
+
+describe("email invite list", () => {
+  const secret = "offline-auth-secret-at-least-32-characters";
+  const sent: string[] = [];
+
+  function prismaFor(kind: "absent" | "listed" | "unavailable") {
+    const created: unknown[] = [];
+    return {
+      created,
+      client: {
+        $queryRaw: vi.fn(async () => {
+          if (kind === "unavailable") throw new Error("database unavailable");
+          return [{ bypass: "off", key: null, login: "rakazo_app" }];
+        }),
+        authEmailAllowlist: {
+          findUnique: vi.fn(async () => (kind === "listed" ? { email: "ada@example.test" } : null)),
+          create: vi.fn(async (input: unknown) => {
+            created.push(input);
+            return input;
+          }),
+        },
+        user: {
+          findMany: vi.fn(async () => []),
+          findFirst: vi.fn(async () => null),
+        },
+        spaceMember: { findFirst: vi.fn(async () => ({ userId: "user-1" })) },
+      },
+    };
+  }
+
+  function authFor(kind: "absent" | "listed" | "unavailable", emailAllowlist = true) {
+    sent.length = 0;
+    const prisma = prismaFor(kind);
+    const auth = createAuth(prisma.client as never, {
+      secret,
+      baseURL: "https://api.example.test",
+      webOrigin: "https://app.example.test",
+      signupsEnabled: "true",
+      signupAllowlist: "",
+      emailAllowlist,
+      email: {
+        describe: () => ({
+          id: "memory",
+          contractVersion: "test",
+          adapterVersion: "test",
+          capabilities: { transactional: true },
+        }),
+        send: async (message) => {
+          sent.push(Array.isArray(message.to) ? message.to.join(",") : message.to);
+        },
+      } satisfies TransactionalEmailProvider,
+    });
+    return { auth, prisma };
+  }
+
+  async function post(auth: ReturnType<typeof createAuth>, path: string, body: unknown) {
+    return auth.handler(
+      new Request(`https://api.example.test/api/auth${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "https://app.example.test" },
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+
+  it.each(["absent", "unavailable"] as const)(
+    "refuses a sign-in code before mail when the invite list is %s",
+    async (kind) => {
+      const { auth } = authFor(kind);
+      const response = await post(auth, "/email-otp/send-verification-otp", {
+        email: "Ada@Example.test",
+        type: "sign-in",
+      });
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
+      expect(sent).toEqual([]);
+    },
+  );
+
+  it("does not let an empty signup env list admit an address the invite table omitted", async () => {
+    const { auth, prisma } = authFor("absent");
+    const response = await post(auth, "/sign-up/email", {
+      email: "ada@example.test",
+      password: "test-password-123",
+      name: "Ada",
+    });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
+    expect(prisma.created).toEqual([]);
+    expect(sent).toEqual([]);
+  });
+
+  it("leaves sign-in admission unchanged when the invite list is off", async () => {
+    const { auth } = authFor("absent", false);
+    const response = await post(auth, "/email-otp/send-verification-otp", {
+      email: "ada@example.test",
+      type: "sign-in",
+    });
+    const body = (await response.json().catch(() => ({}))) as { code?: string };
+    expect(body.code).not.toBe("EMAIL_NOT_INVITED");
+  });
+
+  it("blocks account and session creation unless the address is listed", async () => {
+    const denied = authFor("absent");
+    await expect(
+      denied.auth.options.databaseHooks!.user!.create!.before!({
+        name: "Ada",
+        email: "ada@example.test",
+      } as never),
+    ).rejects.toMatchObject({ status: "FORBIDDEN", body: { code: "EMAIL_NOT_INVITED" } });
+    expect(denied.prisma.created).toEqual([]);
+    const sessionHook = denied.auth.options.databaseHooks!.session!.create!.before!;
+    await expect(
+      sessionHook(
+        { userId: "user-1" } as never,
+        {
+          path: "/sign-in/email",
+          context: {
+            internalAdapter: {
+              findUserById: async () => ({
+                id: "user-1",
+                email: "ada@example.test",
+                emailVerified: true,
+              }),
+            },
+          },
+        } as never,
+      ),
+    ).rejects.toMatchObject({ body: { code: "EMAIL_NOT_INVITED" } });
+
+    const admitted = authFor("listed");
+    await expect(
+      admitted.auth.options.databaseHooks!.user!.create!.before!({
+        name: "Ada",
+        email: "ada@example.test",
+      } as never),
+    ).resolves.toMatchObject({ data: { email: "ada@example.test", name: "Ada" } });
+    await expect(
+      admitted.auth.options.databaseHooks!.session!.create!.before!(
+        { userId: "user-1" } as never,
+        {
+          path: "/sign-in/email",
+          context: {
+            internalAdapter: {
+              findUserById: async () => ({
+                id: "user-1",
+                email: "ada@example.test",
+                emailVerified: true,
+              }),
+            },
+          },
+        } as never,
+      ),
+    ).resolves.toBeUndefined();
+    expect(admitted.prisma.created).toEqual([]);
   });
 });

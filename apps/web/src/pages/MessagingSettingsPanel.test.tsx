@@ -22,6 +22,11 @@ const messaging = vi.hoisted(() => ({
       expiresAt: new Date(Date.now() + 20_000).toISOString(),
     })),
   },
+  configuration: {
+    list: vi.fn(async () => ({ canManage: false, connections: [] as MessagingConnection[] })),
+    set: vi.fn(),
+    remove: vi.fn(),
+  },
 }));
 
 const api = vi.hoisted(() => ({
@@ -77,10 +82,19 @@ vi.mock("@rakazo/ui-web", () => {
     ),
     NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
     NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
+    Input: (props: ComponentProps<"input">) => <input {...props} />,
   };
 });
 
 import { MessagingSettingsPanel } from "./MessagingSettingsPanel";
+
+type MessagingConnection = {
+  id: string;
+  label: string;
+  configured: boolean;
+  state: "unconfigured" | "starting" | "ready" | "error";
+  canConfigure: boolean;
+};
 
 const identity = {
   id: "mi-1",
@@ -134,6 +148,10 @@ afterEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
   messaging.status.mockReset();
+  messaging.configuration.list.mockReset();
+  messaging.configuration.list.mockResolvedValue({ canManage: false, connections: [] });
+  messaging.configuration.set.mockReset();
+  messaging.configuration.remove.mockReset();
   messaging.channels.list.mockReset();
   messaging.channels.list.mockResolvedValue([]);
 });
@@ -547,4 +565,198 @@ it("keeps a teammate's DM link next to the user's own workspace elsewhere", asyn
   expect(links).toHaveLength(2);
   await act(async () => links[1]!.click());
   expect(messaging.link.start).toHaveBeenCalledWith({ botId: "bot-1" });
+});
+
+it("shows Telegram and Slack as not connected when this machine has neither", async () => {
+  messaging.status.mockResolvedValue({
+    enabled: false,
+    providers: [],
+    openSignup: false,
+    identities: [],
+  });
+  messaging.installations.list.mockResolvedValue({ available: false, installations: [] });
+  await renderOverlay();
+  expect(
+    container.querySelector('[data-testid="messaging-absent-telegram"]')?.textContent,
+  ).toContain("Telegram");
+  expect(
+    container.querySelector('[data-testid="messaging-absent-telegram"]')?.textContent,
+  ).toContain("Not connected");
+  expect(container.querySelector('[data-testid="messaging-absent-slack"]')?.textContent).toContain(
+    "Slack",
+  );
+  expect(container.querySelector("input, textarea")).toBeNull();
+  const labels = [...container.querySelectorAll("button")].map((button) => button.textContent);
+  expect(labels).not.toContain("Connect");
+  expect(labels).not.toContain("Telegram");
+  expect(labels).not.toContain("Slack");
+  expect(messaging.link.start).not.toHaveBeenCalled();
+  expect(messaging.installations.start).not.toHaveBeenCalled();
+});
+
+it("keeps Telegram linking when Slack is the only app missing", async () => {
+  messaging.status.mockResolvedValue({ ...statusWith([]), enabled: false });
+  messaging.installations.list.mockResolvedValue({ available: false, installations: [] });
+  await renderOverlay();
+  expect(container.querySelector('[data-testid="messaging-absent-telegram"]')).toBeNull();
+  expect(container.querySelector('[data-testid="messaging-absent-slack"]')).not.toBeNull();
+  expect(telegramItem()).toBeTruthy();
+  await act(async () => telegramItem()?.click());
+  expect(messaging.link.start).toHaveBeenCalledWith({ botId: "bot-1" });
+  expect(messaging.installations.start).not.toHaveBeenCalled();
+});
+
+it("shows a load error instead of a connect control when messaging cannot be read", async () => {
+  messaging.status.mockRejectedValue(Object.assign(new Error("forbidden"), { status: 403 }));
+  messaging.installations.list.mockRejectedValue(
+    Object.assign(new Error("forbidden"), { status: 403 }),
+  );
+  await renderOverlay();
+  expect(container.textContent).toContain("Couldn't load messaging settings");
+  expect(container.querySelector('[data-testid="messaging-absent-telegram"]')).toBeNull();
+  expect(container.querySelector('[data-testid="messaging-absent-slack"]')).toBeNull();
+  expect(container.querySelector("input, textarea")).toBeNull();
+  expect(container.textContent).not.toContain("Connect");
+});
+
+it("reports a refused Telegram link and does not store a token", async () => {
+  messaging.status.mockResolvedValue(statusWith([]));
+  messaging.link.start.mockRejectedValue(Object.assign(new Error("forbidden"), { status: 403 }));
+  const setItem = vi.spyOn(Storage.prototype, "setItem");
+  try {
+    await renderOverlay();
+    await act(async () => telegramItem()?.click());
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(container.textContent).toContain("Couldn't update messaging settings");
+    expect(container.querySelector('[data-testid="messaging-link-code"]')).toBeNull();
+    expect(container.querySelector("input, textarea")).toBeNull();
+    expect(setItem).not.toHaveBeenCalled();
+  } finally {
+    setItem.mockRestore();
+  }
+});
+
+it("reports a refused Slack install and closes the blank window", async () => {
+  messaging.status.mockResolvedValue({ ...statusWith([]), providers: ["slack"] });
+  messaging.installations.list.mockResolvedValue({ available: true, installations: [] });
+  messaging.installations.start.mockRejectedValue(
+    Object.assign(new Error("forbidden"), { status: 403 }),
+  );
+  const popup = { opener: window, location: { href: "about:blank" }, close: vi.fn() };
+  const open = vi.spyOn(window, "open").mockReturnValue(popup as never);
+  try {
+    await renderOverlay();
+    await act(async () =>
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Connect")!
+        .click(),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(container.textContent).toContain("Couldn't update messaging settings");
+    expect(popup.close).toHaveBeenCalled();
+    expect(messaging.link.start).not.toHaveBeenCalled();
+    expect(container.querySelector("input, textarea")).toBeNull();
+  } finally {
+    open.mockRestore();
+  }
+});
+
+const TOKEN = "111111111:FAKE_TELEGRAM_TOKEN";
+
+function connection(
+  state: MessagingConnection["state"],
+  configured = state !== "unconfigured",
+): MessagingConnection {
+  return { id: "telegram", label: "Telegram", configured, state, canConfigure: true };
+}
+
+function emptyStatus() {
+  return { enabled: false, providers: [], openSignup: false, identities: [] };
+}
+
+async function typeToken(value: string) {
+  const input = container.querySelector("input");
+  if (!input) throw new Error("missing token field");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+it("lets the owner save a bot token and then shows that field empty", async () => {
+  messaging.status.mockResolvedValue(emptyStatus());
+  messaging.configuration.list.mockResolvedValue({
+    canManage: true,
+    connections: [connection("unconfigured", false)],
+  });
+  messaging.configuration.set.mockImplementation(async () => {
+    const next = { canManage: true, connections: [connection("ready")] };
+    messaging.configuration.list.mockResolvedValue(next);
+    return next;
+  });
+  await renderOverlay();
+  expect(container.textContent).toContain("Not connected");
+  expect(container.querySelector('[data-testid="messaging-absent-telegram"]')).toBeNull();
+  expect(container.querySelector('[data-testid="messaging-absent-slack"]')).not.toBeNull();
+  const field = container.querySelector("input");
+  expect(field?.getAttribute("type")).toBe("password");
+  expect(field?.getAttribute("placeholder")).toBe("Bot token");
+  await typeToken(TOKEN);
+  await act(async () => {
+    [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Save")
+      ?.click();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(messaging.configuration.set).toHaveBeenCalledWith({
+    connectionId: "telegram",
+    credential: TOKEN,
+  });
+  expect(container.textContent).not.toContain(TOKEN);
+  expect(container.textContent).toContain("Connected");
+  expect(container.querySelector("input")).toBeNull();
+});
+
+it("keeps a failed connection honest", async () => {
+  messaging.status.mockResolvedValue(emptyStatus());
+  messaging.configuration.list.mockResolvedValue({
+    canManage: true,
+    connections: [connection("error")],
+  });
+  await renderOverlay();
+  expect(container.textContent).toContain("Could not connect");
+  expect(container.textContent).not.toContain("Connected");
+  expect(container.querySelector("input")?.getAttribute("type")).toBe("password");
+});
+
+it("hides the token field while a connection is starting", async () => {
+  messaging.status.mockResolvedValue(emptyStatus());
+  messaging.configuration.list.mockResolvedValue({
+    canManage: true,
+    connections: [connection("starting")],
+  });
+  await renderOverlay();
+  expect(container.textContent).toContain("Starting");
+  expect(container.querySelector("input, textarea")).toBeNull();
+});
+
+it("offers Edit on a connected bot and does not refill the saved token", async () => {
+  messaging.status.mockResolvedValue({ ...emptyStatus(), enabled: true, providers: ["telegram"] });
+  messaging.configuration.list.mockResolvedValue({
+    canManage: true,
+    connections: [connection("ready")],
+  });
+  await renderOverlay();
+  expect(container.querySelector("input")).toBeNull();
+  await act(async () =>
+    [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Edit")
+      ?.click(),
+  );
+  const field = container.querySelector("input");
+  expect(field?.getAttribute("type")).toBe("password");
+  expect(field?.value).toBe("");
+  expect(container.textContent).not.toContain(TOKEN);
 });

@@ -110,18 +110,5 @@ describe("per-bot avatar sets", () => {
       expect(imported.avatarSet).toBe("rakazo");
       expect(imported.color).toBe(color);
     }
-    const vnbot = ExportManifestSchema.parse({
-      ...base,
-      bot: { ...base.bot, avatarSet: "vnbot", color: "#8B5CF6" },
-    });
-    expect(
-      AgentImportCreateInput.parse({
-        name: "Scout",
-        color: vnbot.bot.color,
-        avatarSet: vnbot.bot.avatarSet,
-        files: [{ path: "SOUL.md", content: "Be helpful." }],
-        selection: { instructions: [], memory: [], skills: [] },
-      }).avatarSet,
-    ).toBe("vnbot");
   });
 });

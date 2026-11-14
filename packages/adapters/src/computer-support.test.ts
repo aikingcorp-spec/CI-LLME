@@ -1,11 +1,48 @@
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  computerScreenSize,
   displayBotWorkspacePath,
   resolveBotUploadPath,
   resolveBotWorkspaceCwd,
   resolveBotWorkspacePath,
   teamBotWorkspaceDirectory,
+  teamWorkspaceInstruction,
+  workspaceCwd,
 } from "./computer-support.js";
+
+describe("workspaceCwd", () => {
+  const root = "/home/user/rakazo-home";
+
+  it("maps empty, '.', '/', the root and home aliases to the root", () => {
+    for (const cwd of [undefined, "", ".", "/", root, "/home/aiking", "/home/user"]) {
+      expect(workspaceCwd(root, cwd, ["/home/user"])).toBe(root);
+    }
+  });
+
+  it("keeps paths inside the root, a home alias or the bot-visible home", () => {
+    expect(workspaceCwd(root, `${root}/notes/a`, ["/home/user"])).toBe(`${root}/notes/a`);
+    expect(workspaceCwd(root, "/home/aiking/notes", ["/home/user"])).toBe(`${root}/notes`);
+    expect(workspaceCwd(root, "/home/user/notes", ["/home/user"])).toBe(`${root}/notes`);
+    expect(workspaceCwd(root, "notes/a")).toBe(`${root}/notes/a`);
+    expect(workspaceCwd(root, "/etc")).toBe(`${root}/etc`);
+  });
+
+  it("rejects '..' and '.' segments, including under an absolute workspace path", () => {
+    for (const cwd of [
+      `${root}/../etc`,
+      `${root}/notes/../../..`,
+      "/home/aiking/../etc",
+      "/home/user/../../etc",
+      "../etc",
+      "notes/./a",
+    ]) {
+      expect(() => workspaceCwd(root, cwd, ["/home/user"])).toThrow(
+        "Path escapes the computer workspace",
+      );
+    }
+  });
+});
 
 describe("Team Computer bot folders", () => {
   it("uses the bot folder for relative paths and cwd", () => {
@@ -19,6 +56,17 @@ describe("Team Computer bot folders", () => {
       "bots/bot-1/projects/site",
     );
     expect(resolveBotWorkspaceCwd("team", "bot-1", "/Users/me/project")).toBe("/Users/me/project");
+  });
+
+  it("tells the bot how its shell reaches the same shared folder as the file tools", () => {
+    const shellDefaultCwd = resolveBotWorkspaceCwd("team", "bot-1", undefined) ?? "";
+    const sharedForFileTools = resolveBotWorkspacePath("team", "bot-1", "shared/report.xlsx");
+    const instruction = teamWorkspaceInstruction("bot-1");
+    const shellPath = instruction.match(/(\.\.\/)+shared\//)?.[0];
+    expect(shellPath).toBeDefined();
+    expect(path.posix.join(shellDefaultCwd, `${shellPath}report.xlsx`)).toBe(sharedForFileTools);
+    expect(instruction).toContain("shell cwd of shared");
+    expect(resolveBotWorkspaceCwd("team", "bot-1", "shared")).toBe("shared");
   });
 
   it("preserves Windows absolute working directories even when the backend runs on Linux", () => {
@@ -53,32 +101,32 @@ describe("Team Computer bot folders", () => {
     expect(displayBotWorkspacePath("team", "bot-1", "~/bots", "bots/bot-1")).toBe("bots/bot-1");
   });
 
-  it("treats a leading /home/rakazo as the workspace root", () => {
-    expect(resolveBotWorkspacePath("team", "bot-1", "/home/rakazo")).toBe("");
-    expect(resolveBotWorkspacePath("team", "bot-1", "/home/rakazo/notes/x.md")).toBe("notes/x.md");
+  it("treats a leading /home/aiking as the workspace root", () => {
+    expect(resolveBotWorkspacePath("team", "bot-1", "/home/aiking")).toBe("");
+    expect(resolveBotWorkspacePath("team", "bot-1", "/home/aiking/notes/x.md")).toBe("notes/x.md");
     expect(resolveBotWorkspacePath("team", "bot-1", String.raw`\home\rakazo\notes\x.md`)).toBe(
       "notes/x.md",
     );
-    expect(resolveBotWorkspacePath("team", "bot-1", "/home/rakazo/shared/brief.md")).toBe(
+    expect(resolveBotWorkspacePath("team", "bot-1", "/home/aiking/shared/brief.md")).toBe(
       "shared/brief.md",
     );
-    expect(resolveBotWorkspacePath("dedicated", "bot-1", "/home/rakazo/notes/x.md")).toBe(
+    expect(resolveBotWorkspacePath("dedicated", "bot-1", "/home/aiking/notes/x.md")).toBe(
       "/notes/x.md",
     );
-    expect(resolveBotWorkspacePath("dedicated", "bot-1", "/home/rakazo")).toBe("/");
+    expect(resolveBotWorkspacePath("dedicated", "bot-1", "/home/aiking")).toBe("/");
     expect(resolveBotWorkspacePath("dedicated", "bot-1", String.raw`\home\rakazo\notes\x.md`)).toBe(
       String.raw`\notes\x.md`,
     );
     expect(resolveBotWorkspacePath("team", "bot-1", "/home/rakazotest/file.txt")).toBe(
       "home/rakazotest/file.txt",
     );
-    expect(() => resolveBotWorkspacePath("team", "bot-1", "/home/rakazo/../x")).toThrow(
+    expect(() => resolveBotWorkspacePath("team", "bot-1", "/home/aiking/../x")).toThrow(
       "Path escapes the computer workspace",
     );
   });
 
-  it("keeps root paths for a listing requested under /home/rakazo", () => {
-    expect(displayBotWorkspacePath("team", "bot-1", "/home/rakazo/bots", "bots/bot-1")).toBe(
+  it("keeps root paths for a listing requested under /home/aiking", () => {
+    expect(displayBotWorkspacePath("team", "bot-1", "/home/aiking/bots", "bots/bot-1")).toBe(
       "bots/bot-1",
     );
   });
@@ -115,5 +163,15 @@ describe("resolveBotUploadPath", () => {
     expect(() => resolveBotUploadPath("team", "bot-1", "bots/bot-2/secret.txt")).toThrow(
       /escapes the bot workspace/,
     );
+  });
+});
+
+describe("computerScreenSize", () => {
+  it("uses boat geometry and the 1280x800 default for other sandboxes", () => {
+    expect(computerScreenSize("boat")).toEqual({ width: 1920, height: 1080 });
+    expect(computerScreenSize("e2b")).toEqual({ width: 1280, height: 800 });
+    expect(computerScreenSize("daytona")).toEqual({ width: 1280, height: 800 });
+    expect(computerScreenSize(null)).toEqual({ width: 1280, height: 800 });
+    expect(computerScreenSize(undefined)).toEqual({ width: 1280, height: 800 });
   });
 });

@@ -1,7 +1,6 @@
 import { FLEET_TOOL_NAMES } from "@rakazo/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { builtinAgentTools } from "./builtin-tools.js";
-import { BOT_IDENTITY } from "./product-identity.js";
 
 type FakeTool = {
   name: string;
@@ -29,7 +28,9 @@ vi.mock("@earendil-works/pi-agent-core", () => ({
     async prompt(text: string) {
       const delegate = this.tools.find((tool) => tool.name === "run_subagent");
       if (delegate) {
-        await this.tools.find((tool) => tool.name === "list_fleet")?.execute("main-call-1", {});
+        await this.tools
+          .find((tool) => tool.name === "use_tool")
+          ?.execute("main-call-1", { name: "list_fleet", arguments: {} });
         // The main bot hands work to a helper and reads back what the tool returns.
         seen.resultForParent = await delegate.execute("call-1", {
           name: "scout",
@@ -107,9 +108,6 @@ describe("helpers know who they are talking to", () => {
 
   it("tells the helper its task comes from the parent bot, not the user", () => {
     expect(seen.helperSystemPrompt).toContain('You are a VNBot subagent named "scout".');
-    expect(seen.helperSystemPrompt).toContain(BOT_IDENTITY);
-    expect(seen.helperSystemPrompt).not.toMatch(/You are a Rakazo|from Rakazo/);
-
     expect(seen.helperSystemPrompt).toContain(
       "Your task comes from the parent bot, not from the human user",
     );

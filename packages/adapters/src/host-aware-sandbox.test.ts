@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { ComputerRef, SandboxProvider } from "@rakazo/adapter-kit";
@@ -10,6 +11,15 @@ import { DockerSandboxProvider } from "./docker-sandbox.js";
 import { FakeSandboxProvider } from "./fake-sandbox.js";
 import { createRunSandbox, HostAwareSandbox, sandboxKindForBot } from "./host-aware-sandbox.js";
 import { HostComputerSandbox } from "./host-computer-sandbox.js";
+import { startHostComputerServer } from "./host-computer-server.js";
+
+function ownerComputerPrisma(computerHost: string, role = "owner") {
+  return {
+    deploymentSettings: { findUnique: vi.fn(async () => ({ computerHost })) },
+    space: { findUnique: vi.fn(async () => ({ organizationId: "org-1" })) },
+    member: { findUnique: vi.fn(async () => ({ role })) },
+  } as unknown as PrismaClient;
+}
 
 const ctx = {
   operationId: "1",
@@ -28,12 +38,36 @@ describe("host-aware sandbox", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
+  it("streams workspace files and refuses export after host access is revoked", async () => {
+    const host = new FakeSandboxProvider();
+    const file = { path: "notes.bin", content: new Uint8Array([3, 1, 4]) };
+    const exported = vi.spyOn(host, "exportWorkspace").mockImplementation(async function* () {
+      yield file;
+    });
+    let enabled = true;
+    const sandbox = new HostAwareSandbox(new FakeSandboxProvider(), host, async () => enabled);
+    const computer: ComputerRef = {
+      id: "host",
+      botId: "home",
+      kind: "desktop",
+      providerRef: "host",
+    };
+    const collect = async () => {
+      const files = [];
+      for await (const entry of sandbox.exportWorkspace(computer, ctx)) files.push(entry);
+      return files;
+    };
+    expect(await collect()).toEqual([file]);
+    expect(exported).toHaveBeenCalledOnce();
+    enabled = false;
+    await expect(collect()).rejects.toThrow("disabled");
+    expect(exported).toHaveBeenCalledOnce();
+  });
+
   it("never falls back to backend execution when the native connection is missing", async () => {
     const provision = vi.spyOn(DesktopSandboxProvider.prototype, "provision");
-    const sandbox = createRunSandbox("docker", {
-      prisma: {
-        deploymentSettings: { findUnique: vi.fn(async () => ({ computerHost: "this-mac" })) },
-      } as unknown as PrismaClient,
+    const sandbox = await createRunSandbox("docker", {
+      prisma: ownerComputerPrisma("this-mac"),
     });
     await expect(sandbox.provision({ botId: "host", homePath: "/unused" }, ctx)).rejects.toThrow(
       "requires the desktop app",
@@ -59,6 +93,37 @@ describe("host-aware sandbox", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  it("keeps a guest on the isolated computer when this machine is offered", async () => {
+    const hostProvision = vi.spyOn(HostComputerSandbox.prototype, "provision");
+    const sandbox = await createRunSandbox("docker", {
+      prisma: ownerComputerPrisma("this-mac", "guest"),
+    });
+    await sandbox.provision({ botId: "guest", homePath: "/unused" }, ctx).catch(() => undefined);
+    expect(hostProvision).not.toHaveBeenCalled();
+  });
+
+  it("refuses a desktop command when the caller is not the organization owner", async () => {
+    const host = new DesktopSandboxProvider();
+    const execute = vi.spyOn(host, "execute");
+    const sandbox = new HostAwareSandbox(
+      new FakeSandboxProvider(),
+      host,
+      async (context) => context?.userId === "owner",
+    );
+    const computer: ComputerRef = {
+      id: "host-computer",
+      botId: "host",
+      kind: "desktop",
+      providerRef: "host-computer",
+    };
+    const attempt = async () => {
+      for await (const _event of sandbox.execute(computer, { argv: ["echo", "no"] }, ctx)) {
+      }
+    };
+    await expect(attempt()).rejects.toThrow("disabled");
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it("exposes and routes page commands through the production Docker wrapper", async () => {
     const result = {
       ok: true,
@@ -70,7 +135,7 @@ describe("host-aware sandbox", () => {
     const pageBrowser = vi
       .spyOn(DockerSandboxProvider.prototype, "pageBrowser")
       .mockResolvedValue(result);
-    const sandbox = createRunSandbox("docker", {
+    const sandbox = await createRunSandbox("docker", {
       prisma: { deploymentSettings: { findUnique: vi.fn() } } as unknown as PrismaClient,
     });
     const browser = new ComputerBrowserProvider({ sandbox });
@@ -205,10 +270,10 @@ describe("host-aware sandbox", () => {
     await desktop.destroy(computer, ctx);
   });
 
-  it("never runs bot commands on a production backend host", () => {
+  it("never runs bot commands on a production backend host", async () => {
     vi.stubEnv("NODE_ENV", "production");
     try {
-      expect(() => createRunSandbox("desktop", {})).toThrow(
+      await expect(createRunSandbox("desktop", {})).rejects.toThrow(
         "SANDBOX_PROVIDER=desktop runs bot commands directly on this host",
       );
       // The desktop app's backend reaches this computer only through the authenticated bridge.
@@ -221,6 +286,218 @@ describe("host-aware sandbox", () => {
       expect(new HostComputerSandbox("", "").describe().id).toBe("desktop");
     } finally {
       vi.unstubAllEnvs();
+    }
+  });
+
+  it("refuses a stored host file, write, and terminal once local access is off", async () => {
+    const host = new DesktopSandboxProvider();
+    const readFile = vi.spyOn(host, "readFile");
+    const writeFile = vi.spyOn(host, "writeFile");
+    const listFiles = vi.spyOn(host, "listFiles");
+    const execute = vi.spyOn(host, "execute");
+    const sandbox = new HostAwareSandbox(new FakeSandboxProvider(), host, async () => false);
+    const computer: ComputerRef = {
+      id: "old-host",
+      botId: "host",
+      kind: "desktop",
+      providerRef: "old-host",
+    };
+    const file = { path: "notes.txt", content: new Uint8Array([1]) };
+    await expect(sandbox.readFile(computer, "notes.txt", ctx)).rejects.toThrow(/disabled/i);
+    await expect(sandbox.writeFile(computer, file, ctx)).rejects.toThrow(/disabled/i);
+    await expect(sandbox.listFiles(computer, ".", ctx)).rejects.toThrow(/disabled/i);
+    await expect(sandbox.connectTerminal(computer, {} as never, ctx)).rejects.toThrow(/disabled/i);
+    const command = async () => {
+      for await (const _event of sandbox.execute(computer, { argv: ["echo", "no"] }, ctx)) {
+      }
+    };
+    await expect(command()).rejects.toThrow(/disabled/i);
+    expect(readFile).not.toHaveBeenCalled();
+    expect(writeFile).not.toHaveBeenCalled();
+    expect(listFiles).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("sends a granted native none computer through the loopback bridge", async () => {
+    const hostProvision = vi.spyOn(HostComputerSandbox.prototype, "provision");
+    const direct = vi.spyOn(DesktopSandboxProvider.prototype, "provision");
+    const sandbox = await createRunSandbox("none", {
+      hostComputerUrl: "http://127.0.0.1:9",
+      hostComputerToken: "ab".repeat(32),
+      prisma: {
+        deploymentSettings: { findUnique: vi.fn(async () => ({ computerHost: "this-mac" })) },
+        space: { findUnique: vi.fn(async () => ({ organizationId: "org-1" })) },
+        member: { findUnique: vi.fn(async () => ({ role: "owner" })) },
+        user: { findFirst: vi.fn(async () => ({ id: "u" })) },
+      } as unknown as PrismaClient,
+    });
+    expect(sandbox.describe().capabilities.graphical).toBe(false);
+    await sandbox.provision({ botId: "host", homePath: "/unused" }, ctx).catch(() => undefined);
+    expect(hostProvision).toHaveBeenCalled();
+    expect(direct).not.toHaveBeenCalled();
+    expect(
+      String(
+        await sandbox
+          .provision({ botId: "host", homePath: "/unused" }, ctx)
+          .catch((error: unknown) => error),
+      ),
+    ).not.toContain("ab".repeat(32));
+  });
+
+  it("keeps a personal-space owner, an admin, and a guest off the native host", async () => {
+    const token = "ef".repeat(32);
+    const bridge = {
+      hostComputerUrl: "http://127.0.0.1:9",
+      hostComputerToken: token,
+    };
+    const readers = (role: string, ownerId: string | null) =>
+      ({
+        deploymentSettings: { findUnique: vi.fn(async () => ({ computerHost: "this-mac" })) },
+        space: { findUnique: vi.fn(async () => ({ organizationId: "personal" })) },
+        member: { findUnique: vi.fn(async () => ({ role })) },
+        user: { findFirst: vi.fn(async () => (ownerId ? { id: ownerId } : null)) },
+      }) as unknown as PrismaClient;
+    const stored: ComputerRef = {
+      id: "stored-host",
+      botId: "stored",
+      kind: "desktop",
+      providerRef: "stored-host",
+    };
+    const cases = [
+      { role: "owner", actorId: "guest", ownerId: "machine-owner" },
+      { role: "admin", actorId: "machine-owner", ownerId: "machine-owner" },
+      { role: "guest", actorId: "machine-owner", ownerId: "machine-owner" },
+      { role: "owner,guest", actorId: "machine-owner", ownerId: "machine-owner" },
+      { role: "owner", actorId: "machine-owner", ownerId: null },
+    ];
+    for (const item of cases) {
+      const read = vi.spyOn(HostComputerSandbox.prototype, "readFile");
+      const provision = vi.spyOn(HostComputerSandbox.prototype, "provision");
+      const sandbox = await createRunSandbox("none", {
+        ...bridge,
+        prisma: readers(item.role, item.ownerId),
+      });
+      const actor = { ...ctx, userId: item.actorId };
+      await expect(
+        sandbox.provision({ botId: item.actorId, homePath: "/unused" }, actor),
+      ).rejects.toThrow();
+      await expect(sandbox.readFile(stored, "secret.txt", actor)).rejects.toThrow(/disabled/i);
+      await expect(
+        sandbox.writeFile(stored, { path: "secret.txt", content: new Uint8Array([1]) }, actor),
+      ).rejects.toThrow(/disabled/i);
+      expect(read).not.toHaveBeenCalled();
+      expect(provision).not.toHaveBeenCalled();
+      read.mockRestore();
+      provision.mockRestore();
+    }
+  });
+
+  it("does not attach the native bridge to another provider or a non-loopback url", async () => {
+    const provision = vi.spyOn(HostComputerSandbox.prototype, "provision");
+    const token = "ab".repeat(32);
+    const prisma = {
+      deploymentSettings: { findUnique: vi.fn(async () => ({ computerHost: "this-mac" })) },
+      space: { findUnique: vi.fn(async () => ({ organizationId: "org-1" })) },
+      member: { findUnique: vi.fn(async () => ({ role: "owner" })) },
+      user: { findFirst: vi.fn(async () => ({ id: "u" })) },
+    } as unknown as PrismaClient;
+    for (const options of [
+      { hostComputerUrl: "http://host.docker.internal:45175", hostComputerToken: token, prisma },
+      { hostComputerUrl: "http://localhost:9", hostComputerToken: token, prisma },
+      { hostComputerUrl: "http://127.0.0.1:9", hostComputerToken: "", prisma },
+      { hostComputerUrl: "http://127.0.0.1:9/computer", hostComputerToken: token, prisma },
+    ]) {
+      await createRunSandbox("none", options)
+        .then((sandbox) => sandbox.provision({ botId: "host", homePath: "/unused" }, ctx))
+        .catch(() => undefined);
+    }
+    await createRunSandbox("e2b", {
+      hostComputerUrl: "http://127.0.0.1:9",
+      hostComputerToken: token,
+      prisma,
+    })
+      .then((sandbox) => sandbox.provision({ botId: "host", homePath: "/unused" }, ctx))
+      .catch(() => undefined);
+    expect(provision).not.toHaveBeenCalled();
+  });
+
+  it("uses the enabled loopback bridge for files and one command, then denies after revoke", async () => {
+    const root = await realpath(await mkdtemp(path.join(tmpdir(), "rakazo-native-bridge-")));
+    const token = "cd".repeat(32);
+    const server = await startHostComputerServer({ root, token, hostname: "127.0.0.1" });
+    let computerHost: string | null = "this-mac";
+    const prisma = {
+      deploymentSettings: { findUnique: vi.fn(async () => ({ computerHost })) },
+      space: { findUnique: vi.fn(async () => ({ organizationId: "org-1" })) },
+      member: { findUnique: vi.fn(async () => ({ role: "owner" })) },
+      user: { findFirst: vi.fn(async () => ({ id: "u" })) },
+    } as unknown as PrismaClient;
+    const nodeEnv = process.versions.electron ? { ELECTRON_RUN_AS_NODE: "1" } : undefined;
+    try {
+      const sandbox = await createRunSandbox("none", {
+        hostComputerUrl: `http://127.0.0.1:${server.port}`,
+        hostComputerToken: token,
+        prisma,
+      });
+      expect(sandbox.describe().id).toBe("none");
+      expect(sandbox.describe().capabilities.graphical).toBe(false);
+      const direct = vi.spyOn(DesktopSandboxProvider.prototype, "provision");
+      await expect(
+        sandbox.provision({ botId: "bridge", homePath: "/unused" }, ctx),
+      ).rejects.toThrow(/unavailable/i);
+      expect(direct).not.toHaveBeenCalled();
+      direct.mockRestore();
+      server.setEnabled(true);
+      const computer = await sandbox.provision({ botId: "bridge", homePath: "/unused" }, ctx);
+      expect(computer.kind).toBe("desktop");
+      const content = new Uint8Array([4, 5, 6]);
+      await sandbox.writeFile(computer, { path: "note.bin", content }, ctx);
+      expect(await sandbox.readFile(computer, "note.bin", ctx)).toEqual(content);
+      let stdout = "";
+      for await (const event of sandbox.execute(
+        computer,
+        { argv: [process.execPath, "-e", "process.stdout.write('once')"], env: nodeEnv },
+        ctx,
+      )) {
+        if (event.type === "stdout") stdout += event.data;
+      }
+      expect(stdout).toBe("once");
+      const marker = path.join(root, "runs.txt");
+      const abort = new AbortController();
+      const script = `require('fs').appendFileSync(${JSON.stringify(marker)}, 'y'); setInterval(() => {}, 1000)`;
+      const running = (async () => {
+        for await (const _event of sandbox.execute(
+          computer,
+          { argv: [process.execPath, "-e", script], env: nodeEnv },
+          { ...ctx, signal: abort.signal },
+        )) {
+        }
+      })();
+      const deadline = Date.now() + 4000;
+      while (Date.now() < deadline) {
+        const written = await readFile(marker, "utf8").catch(() => "");
+        if (written.includes("y")) break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      abort.abort();
+      await expect(running).rejects.toThrow();
+      expect(await readFile(marker, "utf8")).toBe("y");
+      await expect(sandbox.observe(computer, ctx)).rejects.toThrow(/screen/i);
+      computerHost = "docker";
+      await expect(sandbox.readFile(computer, "note.bin", ctx)).rejects.toThrow(/disabled/i);
+      const again = async () => {
+        for await (const _event of sandbox.execute(
+          computer,
+          { argv: [process.execPath, "-e", "process.stdout.write('no')"], env: nodeEnv },
+          ctx,
+        )) {
+        }
+      };
+      await expect(again()).rejects.toThrow(/disabled/i);
+    } finally {
+      server.setEnabled(false);
+      await server.close();
+      await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
     }
   });
 
@@ -253,4 +530,24 @@ describe("host-aware sandbox", () => {
     ]);
     await sandbox.destroy(computer, ctx);
   });
+});
+
+it("starts even when the saved computer settings cannot be read", async () => {
+  const sandbox = await createRunSandbox("docker", {
+    prisma: {
+      deploymentSettings: {
+        findUnique: vi.fn(async () => ({
+          computerProvider: "wuying",
+          computerProviderCipher: "c",
+        })),
+      },
+    } as unknown as PrismaClient,
+    secrets: {
+      load: async () => {
+        throw new Error("secret store unavailable");
+      },
+      onChange: () => () => {},
+    },
+  });
+  expect(sandbox.describe().id).toBe("docker");
 });

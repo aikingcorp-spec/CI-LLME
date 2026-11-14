@@ -5,7 +5,6 @@ import {
   organicAvatarFamily,
   organicAvatarLook,
   seededLogoAvatarColor,
-  seededVnbotBodyColor,
 } from "@rakazo/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
@@ -15,8 +14,7 @@ import { createRepos } from "./repos.js";
 import { asSystem, runAsSystem, runAsTenant } from "./row-security.js";
 
 const databaseUrl = process.env.DATABASE_URL;
-const describePostgres =
-  process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
+const describePostgres = process.env.VERIFY_DATABASE && databaseUrl ? describe : describe.skip;
 
 describePostgres("new bot avatars (PostgreSQL)", () => {
   const provider = "sendblue";
@@ -100,7 +98,7 @@ describePostgres("new bot avatars (PostgreSQL)", () => {
     expect(
       created.every((bot) => organicAvatarFamily(bot.id) !== ORGANIC_AVATAR_HEART_FAMILY),
     ).toBe(true);
-    // The starter bot counts too: the first seven bots share no colour.
+    // The starter bot counts too: no colour repeats until the palette is used up.
     const firstColors = all.slice(0, BOT_COLORS.length).map((bot) => bot.color);
     expect(new Set(firstColors).size).toBe(firstColors.length);
     expect(created.every((bot) => /^c[a-z0-9]{24}$/.test(bot.id))).toBe(true);
@@ -113,15 +111,13 @@ describePostgres("new bot avatars (PostgreSQL)", () => {
     expect(after).toEqual(expect.arrayContaining(before));
   });
 
-  it("defaults only new creation to vnbot and reloads explicit original sets without altering photos or shapes", async () => {
+  it("defaults new creation to Original and reloads explicit sets without altering photos or shapes", async () => {
     const repos = createRepos(prisma);
     const created = await runAsTenant(owner, () =>
-      repos.createBot(actor(), botInput("Logo default")),
+      repos.createBot(actor(), botInput("Original default")),
     );
-    expect(created.avatarSet).toBe("vnbot");
-    expect(created.color).toBe(seededVnbotBodyColor(created.id));
-    const restored = await runAsTenant(owner, () => repos.getBot(actor(), created.id));
-    expect(restored.color).toBe(seededVnbotBodyColor(restored.id));
+    expect(created.avatarSet).toBe("organic");
+    expect(BOT_COLORS).toContain(created.color);
     for (const color of ["#8B5CF6", "#8B5CF6::shape_3", "data:image/png;base64,aGVsbG8="]) {
       const original = await runAsTenant(owner, () =>
         repos.createBot(actor(), { ...botInput("Original look"), avatarSet: "organic", color }),

@@ -1,11 +1,8 @@
-import { Trans as LocalizedText } from "@lingui/react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { LinkFavicons } from "@rakazo/chat-ui/web-providers";
-import { LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web-providers";
+import type { LinkFavicons } from "@rakazo/chat-ui/web";
+import { LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web";
 import { analyticsScreen } from "@rakazo/core";
-import { buttonVariants } from "@rakazo/ui-web/components/ui/button-variants";
-import { cn } from "@rakazo/ui-web/lib/utils";
-import type { ComponentProps, ComponentType } from "react";
+import { Button } from "@rakazo/ui-web";
 import {
   Suspense,
   useEffect,
@@ -15,27 +12,34 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  Link,
   Navigate,
   Outlet,
   Route,
   Routes,
   useLocation,
+  useParams,
   useSearchParams,
 } from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
+import { CallLayout } from "./components/call/CallLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LocalRemotePresence } from "./components/LocalRemotePresence";
 import { MarkdownLinkPrompt } from "./components/markdown-link-prompt";
 import { PageLoading } from "./components/PageLoading";
+import { RemotePortalPage } from "./components/RemotePortal";
+import { SubscriptionGate } from "./components/SubscriptionGate";
 import { authClient } from "./lib/auth";
 import { getTicketBoardEnabled, subscribeTicketBoardEnabled } from "./lib/bootstrap";
+import { syncCallIdentity } from "./lib/call-session";
 import { desktopBridge } from "./lib/desktop";
 import { syncWebLogoAvatarIdentity } from "./lib/logo-avatar-activity";
 import { identifyMonitoringUser } from "./lib/monitoring";
 import { markAfterPaint, markOnce } from "./lib/performance";
 import { lazyComponent } from "./lib/preload-recovery";
 import { QueryUserProvider, setQueryUser } from "./lib/query";
-import { getRemoteImagesEnabled, subscribeRemoteImages } from "./lib/remote-images-preference";
+import { remoteImagesPreference } from "./lib/remote-images-preference";
+import { isRemotePortalHost } from "./lib/remote-portal-host";
+import { rememberSignedIn } from "./lib/returning-user";
 import { rpc } from "./lib/rpc";
 import {
   holdAnonymousGate,
@@ -44,62 +48,52 @@ import {
   sessionRetryDelayMs,
   showSessionUnavailable,
 } from "./lib/session-gate";
-import { readSignInProgress } from "./lib/sign-in-progress";
+import {
+  MCP_OAUTH_CALLBACK_PATH,
+  newAccountDestination,
+  remoteEnterDestination,
+  SLACK_INSTALL_CALLBACK_PATH,
+  signInNext,
+} from "./lib/sign-in-next";
+import { syncLogOutFailure, useSignOut } from "./lib/sign-out";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
-
+import { errorCode } from "./lib/user-error";
 import { IntegrationCallbackPage } from "./pages/IntegrationCallback";
+import { IntegrationSetupPage } from "./pages/IntegrationSetup";
+import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
+import { SharedPagePage } from "./pages/SharedPage";
+import { ShellPage } from "./pages/Shell";
+import { SlackInstallCallbackPage } from "./pages/SlackInstallCallback";
 
-function lazyPage(load: () => Promise<ComponentType>) {
-  return lazyComponent(async () => {
-    const [Page, { TooltipScope }] = await Promise.all([
-      load(),
-      import("./components/TooltipScope"),
-    ]);
-    return function PageWithTooltips() {
-      return (
-        <TooltipScope>
-          <Page />
-        </TooltipScope>
-      );
-    };
-  });
-}
-
-function FallbackButton({ className, ...props }: ComponentProps<"button">) {
-  return (
-    <button
-      type="button"
-      data-slot="button"
-      className={cn(buttonVariants({ variant: "secondary" }), className)}
-      {...props}
-    />
-  );
-}
-
-const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => module.AuthPage));
-const OnboardingPage = lazyPage(() =>
-  import("./pages/Onboarding").then((module) => module.OnboardingPage),
-);
 const WelcomePage = lazyComponent(() =>
   import("./pages/Welcome").then((module) => module.WelcomePage),
 );
-const ArtifactsPage = lazyPage(() =>
+const AuthPage = lazyComponent(() => import("./pages/Auth").then((module) => module.AuthPage));
+const PasswordResetPage = lazyComponent(() =>
+  import("./pages/Auth").then((module) => module.PasswordResetPage),
+);
+const OnboardingPage = lazyComponent(() =>
+  import("./pages/Onboarding").then((module) => module.OnboardingPage),
+);
+const NotFoundPage = lazyComponent(() =>
+  import("./pages/NotFound").then((module) => module.NotFoundPage),
+);
+const ArtifactsPage = lazyComponent(() =>
   import("./pages/Artifacts").then((module) => module.ArtifactsPage),
 );
-const BoardPage = lazyPage(() => import("./pages/Board").then((module) => module.BoardPage));
-const NavLinkPage = lazyPage(() =>
+const BoardPage = lazyComponent(() => import("./pages/Board").then((module) => module.BoardPage));
+const AdminPluginsPage = lazyComponent(() =>
+  import("./pages/AdminPluginsPage").then((module) => module.AdminPluginsPage),
+);
+const AdminAccessPage = lazyComponent(() =>
+  import("./pages/AdminAccessPage").then((module) => module.AdminAccessPage),
+);
+const NavLinkPage = lazyComponent(() =>
   import("./pages/NavLinkPage").then((module) => module.NavLinkPage),
 );
-
-const IntegrationSetupPage = lazyPage(() =>
-  import("./pages/IntegrationSetup").then((module) => module.IntegrationSetupPage),
+const InvitePage = lazyComponent(() =>
+  import("./pages/Invite").then((module) => module.InvitePage),
 );
-
-const McpOAuthCallbackPage = lazyPage(() =>
-  import("./pages/McpOAuthCallback").then((module) => module.McpOAuthCallbackPage),
-);
-
-const ShellPage = lazyPage(() => import("./pages/Shell").then((module) => module.ShellPage));
 
 function SsoCallbackPage() {
   useEffect(() => {
@@ -108,31 +102,175 @@ function SsoCallbackPage() {
   return null;
 }
 
+const REMOTE_JOIN_KEY = "rakazo-remote-join";
+
+function enterFragment(hash: string): { ticket: string; invite?: string } {
+  const raw = hash.startsWith("#") ? hash.slice(1) : hash;
+  if (!raw.startsWith("ticket=")) return { ticket: raw };
+  const params = new URLSearchParams(raw);
+  const invite = params.get("invite");
+  return { ticket: params.get("ticket") ?? "", ...(invite ? { invite } : {}) };
+}
+
+function RemoteEnterPage() {
+  const [{ ticket, invite }] = useState(() => enterFragment(window.location.hash));
+  const [failed, setFailed] = useState(false);
+  const destination = remoteEnterDestination(invite);
+  const signInDestination =
+    destination === "/app" ? "/sign-in" : `/sign-in?next=${encodeURIComponent(destination)}`;
+  useEffect(() => {
+    const next = `${window.location.pathname}${window.location.search}`;
+    window.history.replaceState(null, "", next);
+    if (!ticket) {
+      setFailed(true);
+      return;
+    }
+    let active = true;
+    void fetch("/api/auth/remote-enter", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ticket, ...(invite ? { invite } : {}) }),
+    })
+      .then((response) => {
+        if (!active) return;
+        if (response.ok) window.location.assign(destination);
+        else setFailed(true);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  if (!failed) return <PageLoading />;
+  return <RemoteAccessFailure signInDestination={signInDestination} />;
+}
+
+function RemoteAccessFailure({ signInDestination }: { signInDestination: string }) {
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const { signingOut, logOut } = useSignOut(signInDestination, setLogoutError);
+  return (
+    <div className="grid h-full place-items-center bg-background px-6 text-center">
+      <div className="flex flex-col items-center">
+        <p role="alert" className="text-body text-muted-foreground/80">
+          <Trans>Something went wrong. Try again.</Trans>
+        </p>
+        <div className="mt-4 flex items-center gap-2">
+          <Button variant="secondary" render={<a href={signInDestination} />}>
+            <Trans>Open VNBot</Trans>
+          </Button>
+          <Button variant="ghost" disabled={signingOut} onClick={() => void logOut()}>
+            <Trans>Log out</Trans>
+          </Button>
+        </div>
+        {logoutError ? <p role="alert">{logoutError}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function RemoteJoinPage() {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const raw = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : (sessionStorage.getItem(REMOTE_JOIN_KEY) ?? "");
+    window.history.replaceState(null, "", window.location.pathname);
+    if (!raw) {
+      setFailed(true);
+      return;
+    }
+    sessionStorage.setItem(REMOTE_JOIN_KEY, raw);
+    const params = new URLSearchParams(raw);
+    const deviceId = params.get("device");
+    const invite = params.get("invite");
+    if (!deviceId) {
+      setFailed(true);
+      return;
+    }
+    void rpc.remoteHosts
+      .enter({ deviceId })
+      .then((result) => {
+        if (!result.href) {
+          setFailed(true);
+          return;
+        }
+        sessionStorage.removeItem(REMOTE_JOIN_KEY);
+        const url = new URL(result.href);
+        const ticket = url.hash.startsWith("#") ? url.hash.slice(1) : "";
+        url.hash = invite ? new URLSearchParams({ ticket, invite }).toString() : ticket;
+        window.location.assign(url.toString());
+      })
+      .catch((error: unknown) => {
+        if (errorCode(error) === "UNAUTHORIZED")
+          window.location.assign(`/sign-in?next=${encodeURIComponent("/remote-join")}`);
+        else setFailed(true);
+      });
+  }, []);
+  return failed ? (
+    <RemoteAccessFailure signInDestination="/sign-in?next=%2Fremote-join" />
+  ) : (
+    <PageLoading />
+  );
+}
+
+function UnsignedInvite() {
+  const { token = "" } = useParams();
+  const [stay, setStay] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/remote-entry")
+      .then(async (response) => {
+        if (!response.ok) {
+          if (active) setStay(true);
+          return;
+        }
+        const body: unknown = await response.json();
+        const deviceId =
+          body && typeof body === "object" && "deviceId" in body
+            ? Reflect.get(body, "deviceId")
+            : "";
+        const portalOrigin =
+          body && typeof body === "object" && "portalOrigin" in body
+            ? Reflect.get(body, "portalOrigin")
+            : "";
+        if (typeof deviceId !== "string" || typeof portalOrigin !== "string" || !token) {
+          if (active) setStay(true);
+          return;
+        }
+        const hash = new URLSearchParams({ device: deviceId, invite: token }).toString();
+        window.location.assign(`${portalOrigin}/remote-join#${hash}`);
+      })
+      .catch(() => {
+        if (active) setStay(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [token]);
+  if (!stay) return null;
+  return <Navigate to={`/sign-in?next=${encodeURIComponent(`/invite/${token}`)}`} replace />;
+}
+
 // Link icons come from our API, which fetches and caches them; the browser never asks the site.
 const linkFavicons: LinkFavicons = {
   load: (origin) => rpc.links.favicon({ origin }),
 };
 
-/** Email and code are one flow. `/sign-up` keeps `?next` and lands on sign-in. */
-function SignUpRedirect({ signedIn }: { signedIn: boolean }) {
-  const [params] = useSearchParams();
-  if (signedIn) return <Navigate to="/onboarding" replace />;
-  const next = params.get("next");
-  return <Navigate to={next ? `/sign-in?next=${encodeURIComponent(next)}` : "/sign-in"} replace />;
-}
-
 export function App() {
-  const loadRemoteImages = useSyncExternalStore(
-    subscribeRemoteImages,
-    getRemoteImagesEnabled,
-    () => false,
-  );
+  const loadRemoteImages = remoteImagesPreference.use();
   return (
     <RemoteImagesContext.Provider value={loadRemoteImages}>
       <LinkFaviconsContext.Provider value={linkFavicons}>
         <ErrorBoundary fallback={<AppFailed />}>
           {window.location.pathname === SSO_CALLBACK_PATH ? (
             <SsoCallbackPage />
+          ) : window.location.pathname === "/remote-enter" ? (
+            <RemoteEnterPage />
+          ) : window.location.pathname === "/remote-join" ? (
+            <RemoteJoinPage />
           ) : window.location.pathname === "/integrations/callback" ? (
             <IntegrationCallbackPage />
           ) : (
@@ -144,16 +282,14 @@ export function App() {
   );
 }
 
-const MCP_OAUTH_CALLBACK_PATH = "/mcp/oauth/callback";
+function ShellOrPortal() {
+  if (isRemotePortalHost(window.location.hostname)) return <RemotePortalPage />;
+  return <ShellPage />;
+}
 
 function SessionApp() {
   const [searchParams] = useSearchParams();
-  const next = searchParams.get("next") ?? "";
-  // A connector sign-in started on another device lands here signed out; finish it after sign-in.
-  const signInDestination =
-    next.startsWith("/") && !next.startsWith("//") && !/^\/sign-(?:in|up)(?:[/?#]|$)/.test(next)
-      ? next
-      : "/app";
+  const next = signInNext(searchParams.get("next"));
   const ticketBoardEnabled = useSyncExternalStore(
     subscribeTicketBoardEnabled,
     getTicketBoardEnabled,
@@ -184,8 +320,11 @@ function SessionApp() {
   }, [analyticsUserId, screen]);
   const gate = sessionGate(session);
   useLayoutEffect(() => {
-    if (gate === "authenticated" || gate === "anonymous")
-      syncWebLogoAvatarIdentity(analyticsUserId ?? null);
+    if (gate !== "authenticated" && gate !== "anonymous") return;
+    syncWebLogoAvatarIdentity(analyticsUserId ?? null);
+    syncCallIdentity(analyticsUserId ?? null);
+    syncLogOutFailure(gate === "authenticated");
+    if (gate === "authenticated") rememberSignedIn();
   }, [gate, analyticsUserId]);
   useEffect(() => {
     if (gate === "authenticated" || gate === "anonymous") setQueryUser(analyticsUserId ?? null);
@@ -215,27 +354,52 @@ function SessionApp() {
     <QueryUserProvider value={user?.id ?? null}>
       <MarkdownLinkPrompt>
         <div className="h-full" data-rakazo-app-state="ready">
+          {user ? <LocalRemotePresence /> : null}
           <Suspense fallback={<PageLoading />}>
             <Routes>
               <Route path="/" element={user ? <Navigate to="/app" replace /> : <WelcomePage />} />
               <Route
                 path="/sign-in"
                 element={
-                  user && readSignInProgress()?.step !== "machine" ? (
-                    <Navigate to={signInDestination} replace />
+                  user ? <Navigate to={next ?? "/app"} replace /> : <AuthPage key="in" mode="in" />
+                }
+              />
+              <Route
+                path="/sign-up"
+                element={
+                  user ? (
+                    <Navigate to={newAccountDestination(next)} replace />
                   ) : (
-                    <AuthPage key="in" signedIn={Boolean(user)} />
+                    <AuthPage key="up" mode="up" />
                   )
                 }
               />
-              <Route path="/sign-up" element={<SignUpRedirect signedIn={Boolean(user)} />} />
-              <Route path="/forgot-password" element={<Navigate to="/sign-in" replace />} />
-              <Route path="/reset-password" element={<Navigate to="/sign-in" replace />} />
+              <Route
+                path="/forgot-password"
+                element={
+                  user ? <Navigate to="/app" replace /> : <AuthPage key="forgot" mode="forgot" />
+                }
+              />
+              <Route path="/reset-password" element={<PasswordResetPage />} />
+              <Route path="/p/:slugToken" element={<SharedPagePage />} />
               <Route
                 path={MCP_OAUTH_CALLBACK_PATH}
                 element={
                   user ? (
                     <McpOAuthCallbackPage />
+                  ) : (
+                    <Navigate
+                      to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
+                      replace
+                    />
+                  )
+                }
+              />
+              <Route
+                path={SLACK_INSTALL_CALLBACK_PATH}
+                element={
+                  user ? (
+                    <SlackInstallCallbackPage />
                   ) : (
                     <Navigate
                       to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
@@ -255,39 +419,45 @@ function SessionApp() {
                 }
               />
               <Route
+                path="/admin/plugins"
                 element={
                   user ? (
-                    <Outlet />
+                    <AdminPluginsPage />
                   ) : (
-                    <Navigate
-                      to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
-                      replace
-                    />
-                  )
-                }
-              >
-                <Route path="/onboarding/:step?" element={<OnboardingPage />} />
-                <Route path="/app" element={<ShellPage />} />
-                <Route path="/app/g/:groupId" element={<ShellPage />} />
-                <Route path="/app/artifacts" element={<ArtifactsPage />} />
-                <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage />} />
-                {ticketBoardEnabled ? <Route path="/app/board" element={<BoardPage />} /> : null}
-                <Route path="/app/x/:linkId" element={<NavLinkPage />} />
-                <Route path="/app/:botId" element={<ShellPage />} />
-              </Route>
-              <Route
-                path="*"
-                element={
-                  user ? (
-                    <NotFoundPage />
-                  ) : (
-                    <Navigate
-                      to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
-                      replace
-                    />
+                    <Navigate to="/sign-in?next=/admin/plugins" replace />
                   )
                 }
               />
+              <Route path="/invite/:token" element={user ? <InvitePage /> : <UnsignedInvite />} />
+              <Route
+                path="/admin/access"
+                element={
+                  user ? <AdminAccessPage /> : <Navigate to="/sign-in?next=/admin/access" replace />
+                }
+              />
+              <Route
+                element={
+                  user ? (
+                    <SubscriptionGate fallback={<PageLoading />}>
+                      <Outlet />
+                    </SubscriptionGate>
+                  ) : (
+                    <Navigate to="/sign-in" replace />
+                  )
+                }
+              >
+                <Route path="/app" element={<ShellOrPortal />} />
+                <Route path="/app/g/:groupId" element={<ShellOrPortal />} />
+                <Route path="/app/:botId" element={<ShellOrPortal />} />
+                <Route element={<CallLayout />}>
+                  <Route path="/onboarding/:step?" element={<OnboardingPage />} />
+                  <Route path="/app/artifacts" element={<ArtifactsPage />} />
+                  <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage />} />
+                  {ticketBoardEnabled ? <Route path="/app/board" element={<BoardPage />} /> : null}
+                  <Route path="/app/x/:linkId" element={<NavLinkPage />} />
+                </Route>
+              </Route>
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
         </div>
@@ -303,6 +473,8 @@ function SessionApp() {
  */
 function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
   const { t } = useLingui();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const { signingOut, logOut } = useSignOut("/sign-in", setLogoutError);
   const [attempt, setAttempt] = useState(0);
   const [retryKey, setRetryKey] = useState(0);
   const retryImmediately = useRef(false);
@@ -328,11 +500,12 @@ function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
     <div className="grid h-full place-items-center bg-background px-6 text-center">
       <div className="flex flex-col items-center">
         <LoadingState label={t`Reconnecting`} />
-        <p className="mt-3 text-[13.5px] text-muted-foreground/80">
+        <p className="mt-3 text-body text-muted-foreground/80">
           <Trans>Can&apos;t reach the server.</Trans>
         </p>
         <div className="mt-4">
-          <FallbackButton
+          <Button
+            variant="secondary"
             onClick={() => {
               retryImmediately.current = true;
               setAttempt(0);
@@ -340,8 +513,16 @@ function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
             }}
           >
             <Trans>Retry now</Trans>
-          </FallbackButton>
+          </Button>
+          <Button variant="ghost" disabled={signingOut} onClick={() => void logOut()}>
+            <Trans>Log out</Trans>
+          </Button>
         </div>
+        {logoutError ? (
+          <p role="alert" className="mt-3 text-body-sm text-destructive">
+            {logoutError}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -349,42 +530,31 @@ function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
 
 /** Last resort for a render failure no inner boundary caught: offer a reload instead of a blank page. */
 function AppFailed() {
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const { signingOut, logOut } = useSignOut("/sign-in", setLogoutError);
   return (
     <div
       className="grid h-full place-items-center bg-background px-6 text-center"
       data-rakazo-app-state="failed"
     >
       <div className="flex flex-col items-center">
-        <p className="text-[13.5px] text-muted-foreground/80">
+        <p className="text-body text-muted-foreground/80">
           <Trans>Something went wrong. Try again.</Trans>
         </p>
         <div className="mt-4">
-          <FallbackButton onClick={() => window.location.reload()}>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
             <Trans>Refresh</Trans>
-          </FallbackButton>
+          </Button>
+          <Button variant="ghost" disabled={signingOut} onClick={() => void logOut()}>
+            <Trans>Log out</Trans>
+          </Button>
         </div>
+        {logoutError ? (
+          <p role="alert" className="mt-3 text-body-sm text-destructive">
+            {logoutError}
+          </p>
+        ) : null}
       </div>
     </div>
-  );
-}
-
-function NotFoundPage() {
-  const { i18n } = useLingui();
-  const vietnamese = i18n.locale === "vi";
-  return (
-    <main className="grid h-full place-content-center gap-3 text-center">
-      <h1>
-        <LocalizedText
-          id="Page not found"
-          message={vietnamese ? "Không tìm thấy trang" : "Page not found"}
-        />
-      </h1>
-      <Link
-        to="/app"
-        className="text-link underline max-md:inline-flex max-md:min-h-11 max-md:items-center"
-      >
-        <LocalizedText id="Go home" message={vietnamese ? "Về trang chủ" : "Go home"} />
-      </Link>
-    </main>
   );
 }

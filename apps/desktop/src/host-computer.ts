@@ -1,10 +1,30 @@
 import { randomBytes } from "node:crypto";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import { startHostComputerServer } from "@rakazo/adapters/host-computer-server";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
 
+function hostComputerEndpoint(networking: "docker" | "native"): {
+  hostname?: "127.0.0.1";
+  urlHost: "127.0.0.1" | "host.docker.internal";
+} {
+  switch (networking) {
+    case "native":
+      return { hostname: "127.0.0.1", urlHost: "127.0.0.1" };
+    case "docker":
+      return { urlHost: "host.docker.internal" };
+    default: {
+      const unreachable: never = networking;
+      throw new Error(`Invalid local computer network: ${String(unreachable)}`);
+    }
+  }
+}
+
 /** App-private credentials and consent, never sent to a renderer or a connected remote server. */
-export async function prepareHostComputer(userDataDir: string) {
+export async function prepareHostComputer(
+  userDataDir: string,
+  networking: "docker" | "native" = "docker",
+) {
   const configFile = path.join(userDataDir, "host-computer.json");
   const consentFile = path.join(userDataDir, "host-computer-consent");
   const raw = await readPrivateFile(configFile, 1024);
@@ -19,12 +39,17 @@ export async function prepareHostComputer(userDataDir: string) {
     /* Invalid local configuration is replaced. */
   }
   let server: Awaited<ReturnType<typeof startHostComputerServer>>;
-  const options = { root: path.join(userDataDir, "computers"), token };
+  const endpoint = hostComputerEndpoint(networking);
+  const options = {
+    root: path.join(userDataDir, "computers"),
+    token,
+    ...(endpoint.hostname ? { hostname: endpoint.hostname } : {}),
+  };
   try {
     server = await startHostComputerServer({ ...options, port });
   } catch (error) {
-    if (!error || typeof error !== "object" || !("code" in error) || error.code !== "EADDRINUSE")
-      throw error;
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    if (code !== "EADDRINUSE" && code !== "EACCES") throw error;
     // A listener on the old port may have received the old credential from a still-running backend.
     token = randomBytes(32).toString("hex");
     server = await startHostComputerServer({ ...options, token });
@@ -40,12 +65,20 @@ export async function prepareHostComputer(userDataDir: string) {
   let consentIntent = 0;
   let consentWrites: Promise<void> = Promise.resolve();
   function persistConsent(value: string) {
-    const write = consentWrites.then(() => writePrivateFile(consentFile, value));
+    const write = consentWrites.then(() =>
+      writePrivateFile(consentFile, value).catch(async (error) => {
+        if (value) throw error;
+        // A stale token left on disk would re-enable the host computer on the next launch.
+        await rm(consentFile, { force: true }).catch(() => {
+          throw error;
+        });
+      }),
+    );
     consentWrites = write.catch(() => undefined);
     return write;
   }
   return {
-    connection: { url: `http://host.docker.internal:${server.port}`, token },
+    connection: { url: `http://${endpoint.urlHost}:${server.port}`, token },
     isEnabled: server.isEnabled,
     activate(value: boolean) {
       active = value;

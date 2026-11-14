@@ -1,7 +1,9 @@
 import type {
   ApiResponse,
   ArtifactRequest,
+  AttachCommandRequest,
   Command200Response,
+  CommandAttachFrame,
   CommandOperationRequest,
   CommandResponse,
   CommandStatusRequest,
@@ -24,6 +26,7 @@ import type {
   SandboxActionResponse,
   SandboxInfoResponse,
   SandboxStateEnum,
+  SandboxTypeEnum,
   SavedSnapshot,
   SavedSnapshotInfoResponse,
   SavedSnapshotSavingResponse,
@@ -36,7 +39,11 @@ import { ResponseError } from "@boatdev/sdk";
 import { parse } from "shell-quote";
 import { vi } from "vitest";
 import type { BoatSandboxSdk } from "./boat-sandbox.js";
-import { BOAT_COMPUTER_SNAPSHOT, BoatSandboxProvider } from "./boat-sandbox.js";
+import {
+  BOAT_COMPUTER_SNAPSHOT,
+  BOAT_WRITABLE_WORKSPACE_COMMAND,
+  BoatSandboxProvider,
+} from "./boat-sandbox.js";
 import { shouldSkipPortableWorkspaceFile } from "./computer-workspace.js";
 import { desktopCommandResponder, simpleCommand } from "./linux-desktop.test-support.js";
 import { workspaceArchive } from "./workspace-archive.test-support.js";
@@ -51,12 +58,19 @@ export type BoatRecovery =
   | "recover_unsupported"
   | "reset_failed";
 
+interface FakeFile {
+  content: Uint8Array;
+  executable: boolean;
+  /** Like a git pack: Boat's file API cannot overwrite it. */
+  readOnly?: boolean;
+}
+
 interface FakeSandbox {
   sandbox: Sandbox;
   env: Record<string, string>;
-  files: Map<string, { content: Uint8Array; executable: boolean }>;
+  files: Map<string, FakeFile>;
   /** The disk as of Boat's last good snapshot. */
-  snapshot: Map<string, { content: Uint8Array; executable: boolean }>;
+  snapshot: Map<string, FakeFile>;
   recovery: BoatRecovery;
   /** Set while Boat's storage under the sandbox is broken; whether a resume mends it. */
   damaged?: "resume_heals" | "persists";
@@ -113,13 +127,28 @@ const SETTLES_TO: Partial<Record<SandboxStateEnum, SandboxStateEnum>> = {
 export class FakeBoatApi implements BoatSandboxSdk {
   private readonly sandboxes = new Map<string, FakeSandbox>();
   private readonly desktop = desktopCommandResponder();
-  private readonly detached = new Map<number, CommandResponse>();
+  private readonly detached = new Map<number, { result: CommandResponse; endsAt: number }>();
+  /** How long a detached command runs before it exits. */
+  detachedRunMs = 0;
+  /** Connections to a detached command's output that end in `reconnect` before one sees it exit. */
+  attachReconnects = 0;
+  /** Answer attaches as a sandbox agent too old to stream output does. */
+  attachOutdated = false;
+  /** Answers a command that reads its stdin from a private file, given that file's content. */
+  withInput: (command: string, input: string) => Partial<CommandResponse> = () => ({});
   private created = 0;
   private readonly uploads = new Map<string, { sandboxId: string; path: string }>();
   private readonly downloads = new Map<string, { sandboxId: string; path: string }>();
   private startsExhausted = false;
+  private requestLimitSeconds?: number;
+  /** When each request that reached a sandbox or the account arrived. */
+  readonly requestTimes: number[] = [];
   private rejectAll?: { status: number; code: string; message: string };
   readonly creates: CreateSandboxRequest[] = [];
+  /** Machine types the account may start; Boat refuses the rest as needing a higher plan. */
+  availableTypes = new Set<SandboxTypeEnum>(["small", "default", "large"]);
+  /** Machine types a sandbox's files would not fit, so a resume onto them is refused. */
+  tooSmallTypes = new Set<SandboxTypeEnum>();
   /** Saved snapshots; the current computer snapshot is ready unless a test removes it. */
   readonly savedSnapshots = new Map<string, SavedSnapshot>([
     [
@@ -173,6 +202,11 @@ export class FakeBoatApi implements BoatSandboxSdk {
     this.sandboxes.delete(id);
   }
 
+  /** Refuses the next request as over Boat's per-IP request limit, asking for a wait. */
+  limitRequests(retryAfterSeconds: number): void {
+    this.requestLimitSeconds = retryAfterSeconds;
+  }
+
   /** Refuses every later create and resume as over the account's machine-start limit. */
   rateLimit(): void {
     this.startsExhausted = true;
@@ -186,12 +220,20 @@ export class FakeBoatApi implements BoatSandboxSdk {
     return this.sandboxes.get(id)?.sandbox.state;
   }
 
-  files(id: string): Map<string, { content: Uint8Array; executable: boolean }> {
+  files(id: string): Map<string, FakeFile> {
     return this.require(id).files;
+  }
+
+  /** Refuses a machine type the account's plan does not include, as Boat does. */
+  private checkType(type: SandboxTypeEnum | undefined): void {
+    if (type && !this.availableTypes.has(type)) {
+      throw boatError(403, "machine_class_plan_required", "This machine type needs a higher plan");
+    }
   }
 
   async create(request: CreateRequest = {}): Promise<CreateSandboxResponse> {
     this.start();
+    this.checkType(request.createSandboxRequest?.type);
     const from = request.createSandboxRequest?.from;
     if (from && this.savedSnapshots.get(from)?.status !== "ready") {
       throw boatError(404, "snapshot_not_found", "Snapshot not found");
@@ -202,6 +244,7 @@ export class FakeBoatApi implements BoatSandboxSdk {
       id,
       name: "Fake Boat",
       state: "ready",
+      type: request.createSandboxRequest?.type ?? "default",
       dataExpiredAt: null,
       desktopAvailable: true,
       snapshotAvailable: false,
@@ -261,13 +304,22 @@ export class FakeBoatApi implements BoatSandboxSdk {
     };
   }
 
-  async resume({ sandboxId }: ResumeOperationRequest): Promise<SandboxActionResponse> {
+  async resume({
+    sandboxId,
+    resumeRequest,
+  }: ResumeOperationRequest): Promise<SandboxActionResponse> {
     const box = this.require(sandboxId);
     if (box.sandbox.dataExpiredAt) {
       throw boatError(409, "snapshot_data_expired", "The snapshot data of this sandbox expired");
     }
     if (box.sandbox.state === "archived" || box.sandbox.state === "error") {
       this.start();
+      const type = resumeRequest?.type;
+      this.checkType(type);
+      if (type && this.tooSmallTypes.has(type)) {
+        throw boatError(409, "type_too_small", "The sandbox's data does not fit this type");
+      }
+      if (type) box.sandbox.type = type;
       box.sandbox.state = "ready";
       if (box.damaged === "resume_heals") {
         box.damaged = undefined;
@@ -414,6 +466,13 @@ export class FakeBoatApi implements BoatSandboxSdk {
     if (content.byteLength > 5 * 1024 * 1024) {
       throw boatError(400, "sandbox_direct_failed", "File exceeds the inline write limit");
     }
+    if (box.files.get(fileWriteRequest.path)?.readOnly) {
+      throw boatError(
+        400,
+        "sandbox_direct_failed",
+        `EACCES: permission denied, open '${fileWriteRequest.path}'`,
+      );
+    }
     box.files.set(fileWriteRequest.path, { content, executable: false });
     return {
       ok: true,
@@ -454,7 +513,7 @@ export class FakeBoatApi implements BoatSandboxSdk {
       : this.shell(box, commandRequest.command);
     if (!commandRequest.detached) return result;
     const processId = this.detached.size + 1;
-    this.detached.set(processId, result);
+    this.detached.set(processId, { result, endsAt: Date.now() + this.detachedRunMs });
     return {
       ok: true,
       type: "command.started",
@@ -471,18 +530,73 @@ export class FakeBoatApi implements BoatSandboxSdk {
     processId,
   }: CommandStatusRequest): Promise<CommandStatusResponse> {
     this.require(sandboxId);
-    const result = this.detached.get(processId);
-    if (!result) throw boatError(404, "not_found", "Process not found");
+    const detached = this.detached.get(processId);
+    if (!detached) throw boatError(404, "not_found", "Process not found");
+    const { result, endsAt } = detached;
+    const running = Date.now() < endsAt;
     return {
       ok: true,
       type: "command.status",
       success: true,
       processId,
-      status: "exited",
-      running: false,
-      exitCode: result.exitCode,
+      status: running ? "running" : "exited",
+      running,
+      exitCode: running ? null : result.exitCode,
       stdout: result.stdout,
       stderr: result.stderr,
+    };
+  }
+
+  /**
+   * A detached command's output as NDJSON from the given offsets, ending with its exit. While
+   * `attachReconnects` lasts, a connection carries half the remaining stdout and ends in
+   * `reconnect`, as Boat ends every connection after ten minutes.
+   */
+  async attachCommandRaw({
+    sandboxId,
+    processId,
+    stdoutOffset = 0,
+    stderrOffset = 0,
+  }: AttachCommandRequest): Promise<ApiResponse<CommandAttachFrame>> {
+    this.require(sandboxId);
+    if (this.attachOutdated) {
+      throw boatError(409, "agent_outdated", "Sandbox agent does not support offsets");
+    }
+    const detached = this.detached.get(processId);
+    if (!detached) throw boatError(404, "not_found", "Process not found");
+    const { stdout, stderr, exitCode } = detached.result;
+    const frames: CommandAttachFrame[] = [
+      { type: "attached", processId, stdoutOffset, stderrOffset },
+    ];
+    if (this.attachReconnects > 0) {
+      this.attachReconnects -= 1;
+      const half = stdoutOffset + Math.ceil((stdout.length - stdoutOffset) / 2);
+      frames.push(
+        { type: "stdout", data: stdout.slice(stdoutOffset, half), nextOffset: half },
+        { type: "reconnect", stdoutOffset: half, stderrOffset },
+      );
+    } else {
+      if (stdout.length > stdoutOffset) {
+        frames.push({
+          type: "stdout",
+          data: stdout.slice(stdoutOffset),
+          nextOffset: stdout.length,
+        });
+      }
+      if (stderr.length > stderrOffset) {
+        frames.push({
+          type: "stderr",
+          data: stderr.slice(stderrOffset),
+          nextOffset: stderr.length,
+        });
+      }
+      frames.push({ type: "exit", status: "exited", exitCode: exitCode ?? 1 });
+    }
+    return {
+      raw: new Response(frames.map((frame) => `${JSON.stringify(frame)}\n`).join(""), {
+        headers: { "content-type": "application/x-ndjson" },
+      }),
+      value: async () => frames[0] as CommandAttachFrame,
     };
   }
 
@@ -492,6 +606,18 @@ export class FakeBoatApi implements BoatSandboxSdk {
   }
 
   private check(): void {
+    this.requestTimes.push(Date.now());
+    if (this.requestLimitSeconds !== undefined) {
+      const retryAfter = this.requestLimitSeconds;
+      this.requestLimitSeconds = undefined;
+      throw new ResponseError(
+        Response.json(
+          { code: "IP_RATE_LIMIT_EXCEEDED", message: "Too many requests", retryAfter },
+          { status: 429, headers: { "Retry-After": String(retryAfter) } },
+        ),
+        "Response returned an error code",
+      );
+    }
     if (this.rejectAll) {
       const { status, code, message } = this.rejectAll;
       throw boatError(status, code, message);
@@ -542,9 +668,9 @@ export class FakeBoatApi implements BoatSandboxSdk {
     const desktop = this.desktop(command);
     if (desktop) return finished(desktop);
 
-    // `exec 3< FILE || exit 1; rm -f -- FILE; . /dev/fd/3 || exit 1; exec 3<&-; argv`
+    // `exec 3< FILE || exit 1; rm -f -- FILE; eval "$(cat <&3 || echo exit 1)" || exit 1; exec 3<&-; argv`
     const sourced = command.match(
-      /^exec 3< ('[^']*') \|\| exit 1; rm -f -- \1; \. \/dev\/fd\/3 \|\| exit 1; exec 3<&-; ([\s\S]*)$/,
+      /^exec 3< ('[^']*') \|\| exit 1; rm -f -- \1; eval "\$\(cat <&3 \|\| echo exit 1\)" \|\| exit 1; exec 3<&-; ([\s\S]*)$/,
     );
     if (sourced) {
       const envFile = String(parse(sourced[1]!)[0]);
@@ -559,6 +685,16 @@ export class FakeBoatApi implements BoatSandboxSdk {
       }
       const argv = parse(sourced[2]!).filter((token): token is string => typeof token === "string");
       return finished(simpleCommand(argv, env));
+    }
+
+    // `exec 0< FILE || exit 1; rm -f -- FILE; command`
+    const withInput = command.match(/^exec 0< ('[^']*') \|\| exit 1; rm -f -- \1; ([\s\S]*)$/);
+    if (withInput) {
+      const inputFile = String(parse(withInput[1]!)[0]);
+      const file = box.files.get(inputFile);
+      if (!file) return finished({ exitCode: 1, stderr: "No such file or directory\n" });
+      box.files.delete(inputFile);
+      return finished(this.withInput(withInput[2]!, Buffer.from(file.content).toString("utf8")));
     }
 
     const directory = command.match(/^directory=(.*)$/m)?.[1];
@@ -600,6 +736,13 @@ export class FakeBoatApi implements BoatSandboxSdk {
       return finished({});
     }
 
+    if (command === BOAT_WRITABLE_WORKSPACE_COMMAND) {
+      for (const [filePath, file] of box.files) {
+        if (filePath.startsWith(`${BOAT_WORKSPACE}/`) && file.readOnly)
+          box.files.set(filePath, { ...file, readOnly: false });
+      }
+      return finished({});
+    }
     const parsed = parse(command, (name) => box.env[name] ?? "");
     const argv = parsed.filter((token): token is string => typeof token === "string");
     if (argv[0] === "chmod") {

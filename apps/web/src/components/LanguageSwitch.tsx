@@ -11,13 +11,10 @@ const LanguageSwitchMenu = lazy(loadMenu);
 const preloadMenu = () => void loadMenu().catch(() => undefined);
 
 const triggerClass =
+  // off-scale: 14px matches the 0.3.9 language switch.
   "app-no-drag inline-flex h-9 max-md:h-11 items-center gap-1.5 rounded-full border border-border bg-background ps-3 pe-2.5 text-[14px] font-medium text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
-/**
- * Compact vi/en picker for Welcome and AuthFrame (email-otp spec §6).
- * It renders a plain button and loads the Base UI menu on first use, so the
- * signed-out entry pages download no Base UI. It never submits a surrounding form.
- */
+/** Compact vi/en picker. A plain button, so it never submits a surrounding form. */
 export function LanguageSwitch({ className }: { className?: string }) {
   const { t } = useLingui();
   const [armed, setArmed] = useState(false);

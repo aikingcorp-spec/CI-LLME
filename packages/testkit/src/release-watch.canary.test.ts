@@ -103,7 +103,7 @@ describeLive("live release-watch eval (GPT 5.6 Luna + GitHub emulator)", () => {
     await rpc(handles.app, cookie, "threads/send", {
       botId: bot.id,
       text: [
-        "Create a daily task to watch for new releases of aikingcorp-spec/vnbot",
+        "Create a daily task to watch for new releases of elie222/rakazo",
         "and stay current on the project's capabilities.",
       ].join(" "),
     });
@@ -191,7 +191,7 @@ describeLive("live release-watch eval (GPT 5.6 Luna + GitHub emulator)", () => {
   }, 420_000);
 });
 
-type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
+type App = { request: (input: string, init?: RequestInit) => Response | Promise<Response> };
 type Snap = {
   messages: Array<{ role: string; blocks: unknown[] }>;
   run: {

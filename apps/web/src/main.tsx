@@ -1,7 +1,8 @@
+import "./zod-config";
 import "./monitoring-bootstrap";
-import { BotAvatarActivityProvider } from "@rakazo/ui-web/bot-avatar-activity";
+import { BotAvatarActivityProvider, Toaster, TooltipProvider } from "@rakazo/ui-web";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { lazy, StrictMode, Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import { StrictMode, useEffect, useLayoutEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, useLocation } from "react-router-dom";
 import { App } from "./App";
@@ -14,24 +15,21 @@ import { reportCaughtReactError } from "./lib/monitoring";
 import { markAfterPaint, markOnce } from "./lib/performance";
 import { installPreloadRecovery } from "./lib/preload-recovery";
 import { queryClient } from "./lib/query";
+import { captureReferral } from "./lib/referral";
 import { applyUiAppearance, watchSystemAppearance } from "./lib/ui-appearance";
-import { migrateStoredUiLocale, resolveUiLocale } from "./lib/ui-locale";
+import { resolveUiLocale } from "./lib/ui-locale";
 import { registerServiceWorker } from "./pwa/register";
 import { lockStandaloneZoom } from "./pwa/standalone";
 import "./styles.css";
-
-const Toaster = lazy(() =>
-  import("@rakazo/ui-web/components/ui/sonner").then((module) => ({ default: module.Toaster })),
-);
 
 markOnce("rk:renderer:module-evaluated");
 installPreloadRecovery();
 clientUpdates().install();
 registerServiceWorker();
 lockStandaloneZoom();
-migrateStoredUiLocale();
 applyUiDirection(resolveUiLocale());
 applyUiAppearance();
+captureReferral(window.location.search);
 
 function PerformanceProbe() {
   useLayoutEffect(() => {
@@ -72,12 +70,12 @@ createRoot(document.getElementById("root")!, { onCaughtError: reportCaughtReactE
         <ClientUpdateOnNavigate />
         <QueryClientProvider client={queryClient}>
           <DesktopUpdatesProvider>
-            <BotAvatarActivityProvider source={webLogoAvatarActivity}>
-              <App />
-            </BotAvatarActivityProvider>
-            <Suspense fallback={null}>
-              <Toaster />
-            </Suspense>
+            <TooltipProvider>
+              <BotAvatarActivityProvider source={webLogoAvatarActivity}>
+                <App />
+              </BotAvatarActivityProvider>
+            </TooltipProvider>
+            <Toaster />
           </DesktopUpdatesProvider>
         </QueryClientProvider>
       </BrowserRouter>

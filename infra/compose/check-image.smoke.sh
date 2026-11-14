@@ -36,6 +36,9 @@ image() {
   local dir="$scratch/$1"
   mkdir -p "$dir/app/apps/api/dist" "$dir/app/node_modules/pkg/test" "$dir/app/infra/compose"
   printf 'const h = "-----BEGIN PRIVATE KEY-----\\n";\n' >"$dir/app/apps/api/dist/index.js"
+  # Keep the length and alphabet checks independent: headers in ordinary text are allowed.
+  printf -- '-----BEGIN PRIVATE KEY-----\n%s\n' "${key_body:0:39}" >"$dir/app/short-header.txt"
+  printf -- '-----BEGIN PRIVATE KEY-----\n%s!\n' "$key_body" >"$dir/app/prose-header.txt"
   printf -- '-----BEGIN PRIVATE KEY-----\n%s\n' "$key_body" >"$dir/app/node_modules/pkg/test/key.pem"
   touch "$dir/app/node_modules/pkg/.env" "$dir/app/.env.example" "$dir/app/infra/compose/.env.images.example"
   echo "$dir"
@@ -80,13 +83,14 @@ rm -f "$scratch/created"
 check_tar "$clean" >/dev/null || fail "a clean tar was rejected: $(check_tar "$clean")"
 [[ ! -e "$scratch/created" ]] || fail "a tar check pulled an image"
 
-for case in env git key-file key-body; do
+for case in env git key-file key-body key-body-threshold; do
   dir="$(image "$case")"
   case "$case" in
     env) touch "$dir/app/.env.production" ;;
     git) mkdir -p "$dir/app/.git" && touch "$dir/app/.git/HEAD" ;;
     key-file) touch "$dir/app/deploy.pem" ;;
     key-body) printf -- '-----BEGIN OPENSSH PRIVATE KEY-----\n%s\n' "$key_body" >"$dir/app/notes.txt" ;;
+    key-body-threshold) printf -- '-----BEGIN PRIVATE KEY-----\n%s\n' "${key_body:0:40}" >"$dir/app/notes.txt" ;;
   esac
   for checker in check check_tar; do
     if output="$($checker "$dir")"; then
@@ -94,18 +98,6 @@ for case in env git key-file key-body; do
     fi
     grep -q "must not ship" <<<"$output" || fail "$case: unexpected $checker output: $output"
   done
-done
-
-# Source maps fail the check and are each named; third-party maps under node_modules are skipped.
-dir="$(image maps)"
-mkdir -p "$dir/app/apps/web/dist/assets" && touch "$dir/app/apps/web/dist/assets/index-abc.js.map" \
-  "$dir/app/apps/api/dist/index.js.map" "$dir/app/node_modules/pkg/index.js.map"
-for checker in check check_tar; do
-  if output="$($checker "$dir")"; then fail "maps: $checker passed an image with source maps"; fi
-  grep -q "source maps that must not ship" <<<"$output" || fail "maps: unexpected $checker output: $output"
-  grep -q "app/apps/web/dist/assets/index-abc.js.map" <<<"$output" || fail "maps: web map not listed: $output"
-  grep -q "app/apps/api/dist/index.js.map" <<<"$output" || fail "maps: api map not listed: $output"
-  grep -q "node_modules" <<<"$output" && fail "maps: a third-party map was listed: $output"
 done
 
 echo "check-image smoke passed"

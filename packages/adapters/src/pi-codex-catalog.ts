@@ -3,13 +3,15 @@ import type { SecretStore } from "@rakazo/adapter-kit";
 import type { ThinkingLevel } from "@rakazo/contracts";
 import { ThinkingLevelSchema } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
+import type { StoredModelSecret } from "./model-secret.js";
+import { parseModelSecret } from "./model-secret.js";
+import { listAvailablePiCatalog } from "./pi-catalog-availability.js";
 import { LiveCatalogCache, liveModelCatalogEnabled } from "./pi-live-cache.js";
 import type { CatalogSpaceAuth } from "./pi-live-catalog.js";
 import { liveCatalogEntry, overlayLiveCatalog } from "./pi-live-catalog.js";
 import type { PiCatalogEntry } from "./pi-models.js";
 import { listPiCatalog } from "./pi-models.js";
-import type { StoredModelSecret } from "./pi-oauth.js";
-import { CHATGPT_OAUTH_PROVIDER, oauthCredentialAccountId, parseModelSecret } from "./pi-oauth.js";
+import { CHATGPT_OAUTH_PROVIDER, oauthCredentialAccountId } from "./pi-oauth.js";
 
 /**
  * The ChatGPT backend reports which Codex models a subscription account can call.
@@ -318,7 +320,7 @@ export async function codexLiveModel(
   modelId: string,
   opts?: CodexLiveReadOptions,
 ): Promise<CodexCatalogModel | undefined> {
-  if (!catalog || secret.kind !== "oauth") return undefined;
+  if (!catalog || secret.kind !== "oauth" || secret.reconnectRequired) return undefined;
   const account = codexAccountHandle(secret.credential, opts?.onExpiredToken);
   if (!account) return undefined;
   const models = await catalog.read(userId, account, opts).catch(() => undefined);
@@ -334,6 +336,51 @@ export async function codexLiveListsModel(
   opts?: CodexLiveReadOptions,
 ): Promise<boolean> {
   return Boolean(await codexLiveModel(catalog, userId, secret, modelId, opts));
+}
+
+function knownCodexSlugs(): Set<string> {
+  return new Set(
+    listPiCatalog()
+      .filter((entry) => entry.provider === CHATGPT_OAUTH_PROVIDER)
+      .map((entry) => entry.id),
+  );
+}
+
+/**
+ * Select a usable default for a newly connected ChatGPT account. A requested
+ * model stays selected when that account lists it; otherwise use the account's
+ * recommended (or first) model. Failed and untrusted catalog reads retain the
+ * requested value so the normal static fallback remains intact.
+ */
+export async function resolveCodexOAuthDefaultModel(
+  catalog: CodexLiveCatalog | undefined,
+  userId: string,
+  secret: StoredModelSecret,
+  requestedModelId: string | null | undefined,
+  opts?: CodexLiveReadOptions,
+): Promise<string | undefined> {
+  const requested = requestedModelId?.trim() || undefined;
+  if (!catalog || secret.kind !== "oauth" || secret.reconnectRequired) return requested;
+  const account = codexAccountHandle(secret.credential, opts?.onExpiredToken);
+  if (!account) return requested;
+  const models = await catalog.read(userId, account, opts).catch(() => undefined);
+  if (!models?.length || !models.some((model) => knownCodexSlugs().has(model.slug)))
+    return requested;
+
+  const secretId = "new-oauth-connection";
+  const auth: CodexCatalogSpaceAuth = {
+    byProvider: { [CHATGPT_OAUTH_PROVIDER]: "oauth" },
+    byModel: {},
+    secretIdByProvider: { [CHATGPT_OAUTH_PROVIDER]: secretId },
+  };
+  const base = listAvailablePiCatalog(auth.byProvider, auth.byModel).filter(
+    (entry) => entry.provider === CHATGPT_OAUTH_PROVIDER,
+  );
+  const available = applyCodexLiveCatalog(base, auth, new Map([[secretId, models]])).filter(
+    (entry) => entry.provider === CHATGPT_OAUTH_PROVIDER,
+  );
+  if (requested && available.some((entry) => entry.id === requested)) return requested;
+  return available.find((entry) => entry.recommended)?.id ?? available[0]?.id ?? requested;
 }
 
 /**
@@ -361,7 +408,8 @@ export async function codexLiveCatalogsForSpace(
     let credential: OAuthCredential | undefined;
     try {
       const parsed = parseModelSecret(await secretStore.load(secret.ciphertext, secret.id));
-      credential = parsed.kind === "oauth" ? parsed.credential : undefined;
+      credential =
+        parsed.kind === "oauth" && !parsed.reconnectRequired ? parsed.credential : undefined;
     } catch {
       // Unreadable secrets keep static behavior.
     }
@@ -405,11 +453,7 @@ export function applyCodexLiveCatalog(
   auth: CodexCatalogSpaceAuth,
   liveBySecretId: ReadonlyMap<string, readonly CodexCatalogModel[]>,
 ): PiCatalogEntry[] {
-  const knownSlugs = new Set(
-    listPiCatalog()
-      .filter((entry) => entry.provider === CHATGPT_OAUTH_PROVIDER)
-      .map((entry) => entry.id),
-  );
+  const knownSlugs = knownCodexSlugs();
   const trusted = new Map<string, Map<string, CodexCatalogModel>>();
   for (const [secretId, models] of liveBySecretId) {
     if (!models.some((model) => knownSlugs.has(model.slug))) continue;

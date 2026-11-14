@@ -42,22 +42,28 @@ const KUBERNETES_SANDBOX =
 /** Read by code but never passed to the api or worker containers, with the reason. */
 const NOT_PASSED: Record<string, string> = {
   VITEST: "set by the test runner",
+  LEGACY_BASELINE_DIR: "legacy import CLI input, never read by the API or worker entrypoint",
+  LEGACY_DATABASE_URL: "legacy import CLI source database, never given to app services",
+  LEGACY_SOURCE_DIGEST: "legacy import CLI verification input",
+  RAKAZO_DB_PACKAGE_DIR:
+    "native migration/import CLI package location; images use their bundled package",
+  RAKAZO_LOAD_ROOT_ENV:
+    "native bootstrap controls disk env loading; containers receive the explicit allowlist",
   OWNER_EMAIL: "bootstrap-owner CLI input, passed on its own command line",
   OWNER_PASSWORD: "bootstrap-owner CLI input, passed on its own command line",
   PM2_HOME: "restart-supervisor detection for PM2 hosts; Compose restarts containers",
   INVOCATION_ID: "restart-supervisor detection for systemd hosts; Compose restarts containers",
   RAKAZO_ALLOW_DEV_SECRETS: "development-only escape hatch for placeholder secrets",
   EMAIL_EMULATOR: "ignored when NODE_ENV=production",
+  AWS_KMS_PROFILE: "for maintainer laptops; servers use AWS_KMS_ACCESS_KEY_ID and its secret",
   GIT_SHA: "baked into the image at build time; a pass-through entry would unset it",
-  BUILT_AT: "baked into the image with a timestamp file fallback; not a runtime Compose setting",
   SHELL: "host shell for the desktop computer, which only the Electron app runs",
-  RAKAZO_HOST_COMMANDS_ELEVATED:
-    "the native desktop sets this for its child API and worker; Compose runs without elevated host commands",
   CLOUDFLARE_ACCOUNT_ID: "written into Pi's environment from stored gateway settings",
   CLOUDFLARE_GATEWAY_ID: "written into Pi's environment from stored gateway settings",
   COMPOSE_PROJECT_NAME: "read by the updater sidecar, which has its own environment",
   RAKAZO_COMPOSE_PROJECT_NAME: "read by the updater sidecar, which has its own environment",
   RAKAZO_IMAGE_TAG: "read by deployment tooling and the updater sidecar, not app processes",
+  RAKAZO_DEPLOYED_MIGRATIONS: "passed only to the migration CLI by the production deploy script",
   RAKAZO_IMAGE_TAG_PREVIOUS: "read by the updater sidecar, which has its own environment",
   KUBERNETES_SANDBOX_COMPUTER_IMAGE: KUBERNETES_SANDBOX,
   KUBERNETES_SANDBOX_HOME_CLAIM: KUBERNETES_SANDBOX,
@@ -87,8 +93,7 @@ const INDIRECT = {
   shared: [
     // core/secrets-guard.ts resolves these by name.
     "SANDBOX_SUPERVISOR_TOKEN",
-    // adapters/auto-review.ts and pi-local-provider.ts read these through small helpers.
-    "RAKAZO_AUTO_REVIEW",
+    // pi-local-provider.ts reads these through a small helper.
     "RAKAZO_LOCAL_CONTEXT_WINDOW",
     "RAKAZO_LOCAL_MAX_TOKENS",
     // The OTLP exporter reads its standard settings itself.
@@ -109,8 +114,6 @@ const INDIRECT = {
     "no_proxy",
   ],
   api: [
-    // Account server deployment policy is supplied through Compose.
-    "AUTH_SINGLE_OWNER",
     // core/secrets-guard.ts resolves these by name.
     "SCREEN_PROXY_SECRET",
   ],
@@ -279,17 +282,15 @@ describe("api and worker environment allowlists", () => {
   );
 });
 
-describe("sign-in defaults", () => {
-  // Email-code-only refuses to start without an email sender, so only the
-  // production stack (which configures one) turns it on by default.
-  it.each([
-    ["docker-compose.prod.yml", "true"],
-    ["docker-compose.yml", "false"],
-    ["docker-compose.images.yml", "false"],
-    ["docker-compose.topology.yml", "false"],
-  ])("%s defaults AUTH_EMAIL_CODE_ONLY to %s and the invite list to on", (file, codeOnly) => {
-    const env = (loadServices(file).api?.environment ?? {}) as Record<string, unknown>;
-    expect(env.AUTH_EMAIL_CODE_ONLY).toBe(`\${AUTH_EMAIL_CODE_ONLY:-${codeOnly}}`);
-    expect(env.AUTH_EMAIL_ALLOWLIST).toBe("${AUTH_EMAIL_ALLOWLIST:-on}");
-  });
+it("keeps remote control settings on the API, outside the worker environment", () => {
+  for (const files of STACKS)
+    for (const key of [
+      "RAKAZO_IDENTITY_EXCHANGE",
+      "RAKAZO_REMOTE_ACCESS",
+      "RAKAZO_REMOTE_CONNECTOR",
+      "RAKAZO_REMOTE_NAME_SUFFIX",
+    ]) {
+      expect(stackEnvironment(files, "api")).toHaveProperty(key);
+      expect(stackEnvironment(files, "worker")).not.toHaveProperty(key);
+    }
 });

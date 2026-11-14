@@ -4,6 +4,7 @@ import {
   dismissableAskMessageIds,
   groupVoiceChats,
   memberName,
+  otherAuthor,
   timeSeparatorIds,
   unreadDividerMessageId,
   voiceChatHoldsMessage,
@@ -11,8 +12,8 @@ import {
 import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import type { ListRenderItemInfo } from "react-native";
 import { StyleSheet, View } from "react-native";
-import type { MobileBot, MobileMessage, MobileSnapshot } from "../../lib/api";
 import { useI18n } from "../../lib/i18n";
+import type { MobileBot, MobileMessage, MobileSnapshot } from "../../lib/mobile-types";
 import { threadHeaderFloats } from "../../lib/thread-edges";
 import { previewMessageText } from "../../lib/thread-message-text";
 import type { useThreadTranscript } from "../../lib/thread-transcript";
@@ -43,15 +44,14 @@ export function useLatestRowActions(current: MessageRowActions): MessageRowActio
       speak: (message) => rowActionsRef.current.speak(message),
       react: (message, reaction) => rowActionsRef.current.react(message, reaction),
       markUnread: (message) => rowActionsRef.current.markUnread(message),
-      answer: (message, answer, fields, dismiss) =>
-        rowActionsRef.current.answer(message, answer, fields, dismiss),
+      answer: (message, answer, fields, dismiss, remember) =>
+        rowActionsRef.current.answer(message, answer, fields, dismiss, remember),
       openBot: (id, name) => rowActionsRef.current.openBot(id, name),
       openComputer: (id, name) => rowActionsRef.current.openComputer(id, name),
-      previewMarkdown: (target) => rowActionsRef.current.previewMarkdown(target),
+      previewFile: (artifactId) => rowActionsRef.current.previewFile(artifactId),
       previewImage: (target) => rowActionsRef.current.previewImage(target),
       jump: (id) => rowActionsRef.current.jump(id),
       dismissChoice: (id, question) => rowActionsRef.current.dismissChoice(id, question),
-      togglePeerReplies: (id) => rowActionsRef.current.togglePeerReplies(id),
       openPeerChat: (peer) => rowActionsRef.current.openPeerChat(peer),
       layout: (id, y, index) => rowActionsRef.current.layout(id, y, index),
     }),
@@ -101,14 +101,13 @@ export function useThreadRows({
   highlightedMessageId: string | null;
 }) {
   const { t, locale } = useI18n();
-  const { showBotSenderName, peerTranscript, reactionView, expandedPeerMarkers } = transcript;
-  const visibleMessages = reactionView.visibleMessages;
+  const { showBotSenderName, reactionView, exchanges, visibleMessages } = transcript;
   const answerableAskIds = useMemo(() => answerableAskMessageIds(snap), [snap]);
   const dismissableAskIds = useMemo(() => dismissableAskMessageIds(snap, userId), [snap, userId]);
   const separatorIds = useMemo(() => timeSeparatorIds(visibleMessages), [visibleMessages]);
   const unreadDividerId = useMemo(
-    () => unreadDividerMessageId(visibleMessages, readSeq, snap?.olderCursor ?? null),
-    [visibleMessages, readSeq, snap?.olderCursor],
+    () => unreadDividerMessageId(visibleMessages, readSeq, snap?.olderCursor ?? null, userId),
+    [visibleMessages, readSeq, snap?.olderCursor, userId],
   );
   // Group calls in reading order, then reverse for the inverted list.
   const liveItems = useMemo(() => groupVoiceChats(visibleMessages).reverse(), [visibleMessages]);
@@ -125,7 +124,7 @@ export function useThreadRows({
       const replyBotId = message.replyPreview?.botId ?? parent?.botId;
       const replyAuthor =
         (message.replyPreview?.role ?? parent?.role) === "user"
-          ? t("You")
+          ? (otherAuthor(message.replyPreview?.author ?? parent?.author, userId)?.name ?? t("You"))
           : (memberName(snap?.members, replyBotId) ??
             mentionBots.find((bot) => bot.id === replyBotId)?.name ??
             displayName ??
@@ -164,6 +163,9 @@ export function useThreadRows({
           headerAdjacent={threadHeaderFloats() && message.id === visibleMessages[0]?.id}
           unreadDivider={message.id === unreadDividerId}
           markedUnread={message.id === markedUnreadMessageId}
+          authorName={
+            message.role === "user" ? otherAuthor(message.author, userId)?.name : undefined
+          }
           replyAuthor={replyAuthor}
           replyFallbackText={parent ? previewMessageText(parent) : undefined}
           waitingForUser={[...(snap?.activeRuns ?? []), ...(snap?.run ? [snap.run] : [])].some(
@@ -173,13 +175,7 @@ export function useThreadRows({
           )}
           messageReactions={messageReactions}
           mentions={reactionView.mentions.get(message.id)}
-          peerReplies={
-            peerTranscript.folded.has(message.id)
-              ? expandedPeerMarkers.has(message.id)
-                ? "expanded"
-                : "collapsed"
-              : undefined
-          }
+          peerExchange={exchanges.lines.get(message.id)}
           activityBotId={activityBotId}
           activityColor={activityBot?.color}
           activityAvatarSet={activityBot?.avatarSet}
@@ -201,8 +197,7 @@ export function useThreadRows({
       mentionBots,
       displayName,
       reactionView,
-      peerTranscript,
-      expandedPeerMarkers,
+      exchanges,
       inGroup,
       botId,
       groupId,
@@ -220,6 +215,7 @@ export function useThreadRows({
       unreadDividerId,
       markedUnreadMessageId,
       columnWidth,
+      userId,
       t,
       locale,
     ],

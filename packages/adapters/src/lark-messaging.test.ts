@@ -1,6 +1,13 @@
 import { createCipheriv, createHash } from "node:crypto";
+import { Readable } from "node:stream";
 import type { HttpInstance } from "@larksuiteoapi/node-sdk";
-import type { AdapterContext, MessagingInboundEvent } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  MessagingInboundEvent,
+  MessagingInboundMessage,
+} from "@rakazo/adapter-kit";
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_MAX_COUNT } from "@rakazo/contracts";
+import { Message } from "chat";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatSdkMessagingSurface } from "./chat-sdk-surface.js";
 import { LazyLarkAdapter } from "./lark/lazy-adapter.js";
@@ -30,6 +37,13 @@ const context: AdapterContext = {
 };
 const token = "test-verification-token";
 const encryptKey = "test-encryption-key";
+// Image bytes the fake message-resource endpoint serves, by image key.
+const images = new Map<string, Buffer>();
+const png = Buffer.concat([
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  Buffer.from("png-body"),
+]);
+const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x01, 0x02, 0x03]);
 
 function createSurface(encrypted = false) {
   const platforms = messagingPlatformsFromEnv(
@@ -62,6 +76,21 @@ function message(chatType = "p2p", sender = "ou-test") {
         message_type: "text",
         content: JSON.stringify({ text: "hello" }),
         create_time: "1700000000000",
+      },
+    },
+  };
+}
+
+function messageWith(messageType: string, content: unknown) {
+  const base = message();
+  return {
+    ...base,
+    event: {
+      ...base.event,
+      message: {
+        ...base.event.message,
+        message_type: messageType,
+        content: JSON.stringify(content),
       },
     },
   };
@@ -103,8 +132,18 @@ function encryptedWebhook(payload: unknown, validSignature = true, pretty = fals
 }
 
 beforeEach(() => {
+  images.clear();
   request.mockReset();
   request.mockImplementation(async ({ url }: { url: string }) => {
+    const resource = /\/im\/v1\/messages\/om-test\/resources\/([^/?]+)$/.exec(url);
+    if (resource) {
+      const bytes = images.get(resource[1]!);
+      if (!bytes) throw new Error(`Image not found: ${resource[1]}`);
+      return {
+        data: Readable.from([bytes]),
+        headers: { "content-type": "application/octet-stream" },
+      };
+    }
     if (url.endsWith("/auth/v3/tenant_access_token/internal")) {
       return { code: 0, tenant_access_token: "test-access-token", expire: 7200 };
     }
@@ -375,6 +414,298 @@ describe("Lark messaging conformance", () => {
     ]);
   });
 
+  it.each([
+    [
+      "text and code",
+      {
+        content: [
+          [{ tag: "text", text: "Before" }],
+          [{ tag: "code_block", language: "GO", text: "func main() {\n    return\n}" }],
+          [{ tag: "text", text: "After" }],
+        ],
+      },
+      "Before\nfunc main() {\n    return\n}\nAfter",
+    ],
+    [
+      "link and code",
+      {
+        content: [
+          [{ tag: "a", text: "guide", href: "https://example.test/guide" }],
+          [{ tag: "code_block", text: "if (ok) {\n    run();\n}" }],
+        ],
+      },
+      "guide (https://example.test/guide)\nif (ok) {\n    run();\n}",
+    ],
+    [
+      "Markdown inside code",
+      { content: [[{ tag: "code_block", text: "[label](https://example.test)\n  literal" }]] },
+      "[label](https://example.test)\n  literal",
+    ],
+    [
+      "code only",
+      {
+        post: {
+          en_us: {
+            content: [
+              [{ tag: "code_block", language: "GO", text: "func main() {\n    return\n}" }],
+            ],
+          },
+        },
+      },
+      "func main() {\n    return\n}",
+    ],
+  ])("delivers post %s with code intact", async (_name, content, expected) => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify(content);
+    expect((await surface.handleWebhook("lark", webhook(payload)))?.status).toBe(200);
+    expect(events).toEqual([expect.objectContaining({ content: expected })]);
+  });
+
+  it("preserves other formatting when a post includes code", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [
+          { tag: "text", text: "See **bold** " },
+          { tag: "a", text: "guide", href: "https://example.test/guide" },
+        ],
+        [{ tag: "code_block", text: "  code" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({ content: "See bold guide (https://example.test/guide)\n  code" }),
+    ]);
+  });
+
+  it("retains links in list formatting alongside code", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [{ tag: "text", text: "- [guide](https://example.test/guide)" }],
+        [{ tag: "code_block", text: "  code" }],
+        [{ tag: "a", text: "reference", href: "https://example.test/reference" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({
+        content: expect.stringContaining("guide (https://example.test/guide)"),
+      }),
+    ]);
+  });
+
+  it("does not interpret indented ordinary code as a link", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [{ tag: "text", text: "    [literal](https://example.test/literal)" }],
+        [{ tag: "code_block", text: "code" }],
+        [{ tag: "a", text: "guide", href: "https://example.test/guide" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({
+        content: expect.stringContaining("[literal](https://example.test/literal)"),
+      }),
+    ]);
+  });
+
+  it("keeps title formatting when a post includes code and links", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      title: "Title",
+      content: [
+        [{ tag: "code_block", text: "code" }],
+        [{ tag: "a", text: "guide", href: "https://example.test/guide" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({ content: "Title\n\ncode\nguide (https://example.test/guide)" }),
+    ]);
+  });
+
+  it("does not add ordinary Markdown indentation to a link", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [{ tag: "text", text: "  [guide](https://example.test/guide)" }],
+        [{ tag: "code_block", text: "code" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({ content: "guide (https://example.test/guide)\ncode" }),
+    ]);
+  });
+
+  it("does not duplicate indentation parsed as ordinary Markdown code", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [{ tag: "text", text: "        code" }],
+        [{ tag: "code_block", text: "literal" }],
+        [{ tag: "a", text: "guide", href: "https://example.test/guide" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({ content: "    code\nliteral\nguide (https://example.test/guide)" }),
+    ]);
+  });
+
+  it("preserves heading separation with trailing title spaces", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      title: "Title  ",
+      content: [
+        [{ tag: "code_block", text: "code" }],
+        [{ tag: "a", text: "guide", href: "https://example.test/guide" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({ content: "Title\n\ncode\nguide (https://example.test/guide)" }),
+    ]);
+  });
+
+  it("keeps code literal beside Markdown syntax and a link", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [
+          { tag: "text", text: "`" },
+          { tag: "code_block", text: "  x()\ny()" },
+          { tag: "text", text: "`" },
+        ],
+        [{ tag: "a", text: "guide", href: "https://example.test/guide" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({ content: expect.stringContaining("  x()\ny()") }),
+    ]);
+    expect(events).toEqual([
+      expect.objectContaining({
+        content: expect.stringContaining("guide (https://example.test/guide)"),
+      }),
+    ]);
+  });
+
+  it("does not replace mention keys inside code blocks", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [[{ tag: "text", text: "@_user_1" }], [{ tag: "code_block", text: "@_user_1" }]],
+    });
+    Object.assign(payload.event.message, {
+      mentions: [{ key: "@_user_1", name: "Test", id: { open_id: "ou-test" } }],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([expect.objectContaining({ content: "@Test\n@_user_1" })]);
+  });
+
+  it("preserves multiple code blocks and their blank lines alongside links", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    const first = "\nfirst\n\n";
+    const second = "\n  second\n";
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [{ tag: "a", text: "guide", href: "https://example.test/guide" }],
+        [{ tag: "code_block", text: first }],
+        [{ tag: "code_block", text: second }],
+        [{ tag: "text", text: "After" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({
+        content: `guide (https://example.test/guide)\n${first}\n${second}\nAfter`,
+      }),
+    ]);
+  });
+
+  it("replaces mention keys split between ordinary items but preserves them in code", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [
+          { tag: "text", text: "@_user" },
+          { tag: "text", text: "_1" },
+        ],
+        [{ tag: "code_block", text: "@_user_1\n  @_user_1" }],
+      ],
+    });
+    Object.assign(payload.event.message, {
+      mentions: [{ key: "@_user_1", name: "Test", id: { open_id: "ou-test" } }],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([expect.objectContaining({ content: "@Test\n@_user_1\n  @_user_1" })]);
+  });
+
+  it("preserves protected code parts through Message JSON serialization", async () => {
+    const { surface, adapter } = createSurface();
+    await surface.handleWebhook(
+      "lark",
+      webhook({ type: "url_verification", token, challenge: "test" }),
+    );
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [[{ tag: "text", text: "Before" }], [{ tag: "code_block", text: "  code\n" }]],
+    });
+    const parsed = adapter.parseMessage(payload.event);
+    const restored = Message.fromJSON(JSON.parse(JSON.stringify(parsed)));
+    expect(restored.text).toBe("Before\n  code\n");
+    expect(restored.formatted.data).toMatchObject({
+      rakazoLarkParts: [
+        { text: "Before\n", literal: false },
+        { text: "  code\n", literal: true },
+      ],
+    });
+  });
+
+  it("preserves an empty-label link alongside code", async () => {
+    const { surface, events } = createSurface();
+    const payload = message();
+    payload.event.message.message_type = "post";
+    payload.event.message.content = JSON.stringify({
+      content: [
+        [{ tag: "a", text: "", href: "https://example.test/guide" }],
+        [{ tag: "code_block", text: "  code" }],
+      ],
+    });
+    await surface.handleWebhook("lark", webhook(payload));
+    expect(events).toEqual([
+      expect.objectContaining({ content: "https://example.test/guide\n  code" }),
+    ]);
+  });
+
   it.each<[string, unknown, string]>([
     [
       "direct with title first",
@@ -439,5 +770,111 @@ describe("Lark messaging conformance", () => {
       expect.objectContaining({ url: "https://open.larksuite.com/open-apis/im/v1/chats" }),
     );
     expect(adapter.isDM(encodeThreadId({ chatId: "oc-test" }))).toBe(true);
+  });
+});
+
+describe("Lark inbound images", () => {
+  async function deliver(payload: unknown) {
+    const { surface, events } = createSurface();
+    const response = await surface.handleWebhook("lark", webhook(payload));
+    expect(response?.status).toBe(200);
+    return events as MessagingInboundMessage[];
+  }
+
+  it("delivers an image message as an attachment", async () => {
+    images.set("img-1", png);
+    const [event] = await deliver(messageWith("image", { image_key: "img-1" }));
+    expect(event).toMatchObject({
+      content: "",
+      attachments: [{ name: "image-1.png", mimeType: "image/png", size: png.byteLength }],
+    });
+    expect(Buffer.from(await event!.attachments![0]!.fetch())).toEqual(png);
+  });
+
+  it.each([
+    ["gif", "image/gif", Buffer.from("GIF89aimage-body")],
+    ["webp", "image/webp", Buffer.from("RIFFxxxxWEBPimage-body")],
+  ])("recognizes %s images", async (extension, mimeType, bytes) => {
+    images.set("img-1", bytes);
+    const [event] = await deliver(messageWith("image", { image_key: "img-1" }));
+    expect(event?.attachments?.[0]).toMatchObject({ name: `image-1.${extension}`, mimeType });
+  });
+
+  it("preserves code blocks and mentions beside an image", async () => {
+    images.set("img-1", png);
+    const payload = messageWith("post", {
+      content: [
+        [
+          { tag: "text", text: "@_user_1 " },
+          { tag: "code_block", text: "const value = 1;" },
+          { tag: "img", image_key: "img-1" },
+        ],
+      ],
+    });
+    Object.assign(payload.event.message, {
+      mentions: [{ key: "@_user_1", name: "Test bot", id: { open_id: "bot-test" } }],
+    });
+    const [event] = await deliver(payload);
+    expect(event?.content).toContain("@Test bot");
+    expect(event?.content).toContain("const value = 1;");
+    expect(event?.attachments).toHaveLength(1);
+  });
+
+  it("keeps the text of a rich-text post and attaches its images in order", async () => {
+    images.set("img-1", png);
+    images.set("img-2", jpeg);
+    const [event] = await deliver(
+      messageWith("post", {
+        zh_cn: {
+          content: [
+            [{ tag: "text", text: "look" }],
+            [{ tag: "img", image_key: "img-1" }],
+            [{ tag: "img", image_key: "img-2" }],
+            [{ tag: "img", image_key: "img-1" }],
+          ],
+        },
+      }),
+    );
+    expect(event?.content).toBe("look");
+    expect(event?.attachments?.map(({ name, mimeType }) => ({ name, mimeType }))).toEqual([
+      { name: "image-1.png", mimeType: "image/png" },
+      { name: "image-2.jpg", mimeType: "image/jpeg" },
+    ]);
+  });
+
+  it("downloads no more images than a message may carry", async () => {
+    const keys = Array.from({ length: ATTACHMENT_MAX_COUNT + 1 }, (_, index) => `img-${index}`);
+    for (const key of keys) images.set(key, png);
+    const [event] = await deliver(
+      messageWith("post", {
+        content: keys.map((key) => [{ tag: "img", image_key: key }]),
+      }),
+    );
+    expect(event?.attachments).toHaveLength(ATTACHMENT_MAX_COUNT);
+  });
+
+  it.each([
+    ["an unsupported format", () => images.set("img-1", Buffer.from("not an image"))],
+    [
+      "an oversized image",
+      () => images.set("img-1", Buffer.concat([png, Buffer.alloc(ATTACHMENT_MAX_BYTES)])),
+    ],
+    ["a failed download", () => undefined],
+  ])("still delivers the message when %s cannot be read", async (_label, arrange) => {
+    arrange();
+    const [event] = await deliver(messageWith("image", { image_key: "img-1" }));
+    const [attachment] = event?.attachments ?? [];
+    expect(event).toMatchObject({ provider: "lark", handle: "om-test" });
+    // No MIME type and a failing fetch make the inbound handler mark it unavailable.
+    expect(attachment).toMatchObject({ name: "image-1", mimeType: "" });
+    await expect(attachment!.fetch()).rejects.toThrow();
+  });
+
+  it("never requests a resource for a key that is not a plain identifier", async () => {
+    const [event] = await deliver(messageWith("image", { image_key: "../secrets" }));
+    expect(event?.attachments).toBeUndefined();
+    expect(request).not.toHaveBeenCalledWith(
+      expect.objectContaining({ url: expect.stringContaining("/resources/") }),
+    );
   });
 });

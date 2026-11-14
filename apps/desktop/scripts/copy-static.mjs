@@ -9,8 +9,13 @@ const STATIC_FILES = [
   "setup-preload.cjs",
   "setup.html",
   "setup.css",
-  "setup-state.js",
   "setup.js",
+  "splash.html",
+  "splash.css",
+  "splash-renderer.js",
+  "vnbot-rounded-256.png",
+  "vnbot-wordmark-v4-light.svg",
+  "vnbot-wordmark-dark.svg",
 ];
 const TOKENS_FILE = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

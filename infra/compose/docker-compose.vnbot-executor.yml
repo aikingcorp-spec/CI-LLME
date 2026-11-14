@@ -1,0 +1,35 @@
+# Infrastructure for the single preview. The product stack runs on this inner daemon.
+services:
+  executor:
+    image: docker:29.6.1-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515
+    # Docker-in-Docker requires this. Never mount the outer Docker socket, host root,
+    # host namespaces or devices. Only trusted source runs in this test executor.
+    privileged: true
+    entrypoint: ["sh", "/source/infra/compose/vnbot-executor-entrypoint.sh"]
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    cpus: 2
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 1024
+    restart: "no"
+    working_dir: /source
+    volumes:
+      - type: bind
+        source: ${VNBOT_PREVIEW_SOURCE_DIR:?Set the dedicated tracked-source export directory}
+        target: /source
+        read_only: true
+      - engine:/var/lib/docker
+      - config:/preview
+    ports:
+      - "127.0.0.1:54173:54173"
+    healthcheck:
+      test: ["CMD", "docker", "--host=unix:///var/run/docker.sock", "info"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  engine:
+  config:

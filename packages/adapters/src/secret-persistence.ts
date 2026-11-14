@@ -29,6 +29,9 @@ async function deleteUnreferenced(
         (await prisma.secret.count({ where: { ciphertext: row.ciphertext } })) ||
         (await prisma.botSecret.count({ where: { ciphertext: row.ciphertext } })) ||
         (await prisma.vaultCredential.count({ where: { ciphertext: row.ciphertext } })) ||
+        (await prisma.userIntegrationProviderConfig.count({
+          where: { ciphertext: row.ciphertext },
+        })) ||
         (await prisma.integrationProviderConfig.count({
           where: { ciphertext: row.ciphertext },
         }))

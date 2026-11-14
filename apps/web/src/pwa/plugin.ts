@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { isBuildId } from "@rakazo/contracts/client-build";
 import { webDarkTokens } from "@rakazo/ui-tokens";
 import type { Plugin, Rolldown } from "vite";
+import { PRODUCT_DISPLAY_NAME } from "../brand/product-display.js";
 import { CACHE_PREFIX } from "./service-worker.js";
 
 const SERVICE_WORKER_FILE = "sw.js";
@@ -24,15 +25,14 @@ export function webManifest() {
   }));
   return {
     id: "/",
-    name: "VNBot",
-    short_name: "VNBot",
-    description: "VNBot giúp bạn làm việc cùng các bot trên máy của mình.",
+    name: PRODUCT_DISPLAY_NAME,
+    short_name: PRODUCT_DISPLAY_NAME,
+    description: "Your team of always-on agents.",
     start_url: "/",
     scope: "/",
     display: "standalone",
     background_color: webDarkTokens.background,
     theme_color: webDarkTokens.background,
-    // The icons are full-bleed, so the same art also works under a launcher mask.
     icons: [...icons, ...maskable],
   };
 }

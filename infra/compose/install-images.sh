@@ -2,7 +2,16 @@
 
 set -Eeuo pipefail
 
-DOWNLOAD_BASE="${RAKAZO_DOWNLOAD_BASE:-https://raw.githubusercontent.com/aikingcorp-spec/vnbot/main/infra/compose}"
+# A pinned release gets its own Compose files. Like Compose, prefer the shell's tag over .env.
+image_tag="${RAKAZO_IMAGE_TAG-}"
+if [[ -z "${RAKAZO_IMAGE_TAG+x}" && -f .env ]]; then
+  image_tag=$(sed -nE "s/^[[:space:]]*(export[[:space:]]+)?RAKAZO_IMAGE_TAG[[:space:]]*=[[:space:]]*[\"']?([^\"'#[:space:]]*).*/\2/p" .env | tail -n 1)
+fi
+download_ref=main
+if [[ "$image_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  download_ref="$image_tag"
+fi
+DOWNLOAD_BASE="${RAKAZO_DOWNLOAD_BASE:-https://raw.githubusercontent.com/elie222/rakazo/${download_ref}/infra/compose}"
 while [[ "$DOWNLOAD_BASE" == */ ]]; do
   DOWNLOAD_BASE="${DOWNLOAD_BASE%/}"
 done
@@ -329,7 +338,7 @@ warn_unpassed_settings() {
   done < <(sed -nE 's/^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/p' "$ENV_FILE" | sort -u)
   [[ -n "$unpassed" ]] || return 0
   echo "Warning: no container receives these .env settings:${unpassed}." >&2
-  echo "List them in an override file; see Settings with names you choose in docs/self-host.md." >&2
+  echo "List them in an override file; see Settings with names you choose in docs/self-host-configuration.md." >&2
 }
 
 # Why this host cannot take the restricted-egress firewall rules; empty when it can.
@@ -367,7 +376,22 @@ configure_computer_egress() {
   fi
   printf '\nSANDBOX_COMPUTER_EGRESS=open\n' >>"$ENV_FILE"
   echo "Warning: bot computers can reach this host, its LAN and cloud metadata ($reason)." >&2
-  echo "See Restricted computer egress in docs/self-host.md." >&2
+  echo "See Restricted computer egress in docs/self-host-docker-computers.md." >&2
+}
+
+remove_replaced_images() {
+  local ref repo id tag repos=" "
+  while IFS= read -r ref; do
+    repo="${ref%@*}"
+    [[ "${repo##*/}" != *:* ]] || repo="${repo%:*}"
+    repo="${repo#docker.io/}"
+    repos+="${repo#library/} "
+  done < <(docker compose --env-file "$ENV_FILE" "${compose_files[@]}" config --images 2>/dev/null)
+  [[ "$repos" != " " ]] || return 0
+  while read -r id repo tag; do
+    [[ "$tag" == "<none>" && "$repos" == *" ${repo} "* ]] || continue
+    docker image rm "$id" >/dev/null 2>&1 || true
+  done < <(docker image ls --no-trunc --format '{{.ID}} {{.Repository}} {{.Tag}}' 2>/dev/null)
 }
 
 for filename in "${required_files[@]}"; do
@@ -425,5 +449,6 @@ if grep -q -- '--wait-timeout' <<<"$compose_up_help"; then
 else
   docker compose --env-file "$ENV_FILE" "${compose_files[@]}" up -d ${up_pull_args[@]+"${up_pull_args[@]}"}
 fi
+remove_replaced_images
 
 echo "VNBot is starting at http://127.0.0.1:5173"

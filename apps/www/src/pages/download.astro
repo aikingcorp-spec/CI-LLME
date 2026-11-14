@@ -1,0 +1,42 @@
+---
+import Footer from "../components/Footer.astro";
+import Header from "../components/Header.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { APP_URL, PRODUCT_ADMIN_HELP_URL, PRODUCT_DESKTOP_URL } from "../site";
+const platforms = [
+  { name: "Desktop", action: "Open directory", href: PRODUCT_DESKTOP_URL, attr: "desktop" },
+  { name: "iPhone", action: "Open", href: APP_URL, attr: "ios" },
+  { name: "Android", action: "Open", href: APP_URL, attr: "android" },
+  { name: "Web", action: "Open", href: APP_URL, attr: "web" },
+];
+---
+
+<BaseLayout title="Download · VNBot" description="Open VNBot on the web, or open the desktop installer directory.">
+  <div class="container">
+    <Header starsLabel="" />
+    <main id="main" class="privacy-copy">
+      <h1>Download VNBot</h1>
+      <ul class="platform-list">
+        {
+          platforms.map((platform) => (
+            <li>
+              <span>{platform.name}</span>
+              <a
+                class="button button--secondary button--small"
+                href={platform.href}
+                aria-label={`${platform.action}: ${platform.name}`}
+                data-attr={`download-page-${platform.attr}`}
+              >
+                {platform.action}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <p>
+        Installing on a machine you keep? See the <a href={PRODUCT_ADMIN_HELP_URL}>admin guide</a>.
+      </p>
+    </main>
+    <Footer />
+  </div>
+</BaseLayout>

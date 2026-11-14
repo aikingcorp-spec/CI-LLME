@@ -4,15 +4,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { createApp } from "@rakazo/api/app";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
-import { PostgreSqlContainer } from "@testcontainers/postgresql";
+import type { runAsSystem as RunAsSystem } from "@rakazo/db";
 import { createModelConnectionFixtureFetch } from "../model-connection-fixture.js";
 import { PluginMarketplaceFixture } from "../plugin-marketplace-fixture.js";
-import {
-  DEFAULT_LOCAL_DB_PREFIX,
-  LocalDatabases,
-  localDatabaseName,
-  withDatabase,
-} from "./local-database.js";
+import { startPostgres } from "./postgres.js";
 import { runProcess } from "./process.js";
 
 loadRootEnv();
@@ -23,20 +18,18 @@ const sandboxArg = process.argv.find((arg) => arg.startsWith("--sandbox="));
 const specArg = process.argv.find((arg) => arg.startsWith("--spec="));
 const grepArg = process.argv.find((arg) => arg.startsWith("--grep="));
 const shardArg = process.argv.find((arg) => arg.startsWith("--shard="));
-const workersArg = process.argv.find((arg) => arg.startsWith("--workers="));
 const runtimeArg = process.argv.find((arg) => arg.startsWith("--runtime="));
 const sandboxProvider = sandboxArg?.slice("--sandbox=".length) ?? "fake";
 const e2eSpec = specArg?.slice("--spec=".length);
 const e2eGrep = grepArg?.slice("--grep=".length);
-const e2eShard = shardArg?.slice("--shard=".length);
-const e2eWorkers = workersArg?.slice("--workers=".length);
+const shard = shardArg?.slice("--shard=".length);
 const agentRuntime = runtimeArg?.slice("--runtime=".length) ?? "scripted";
 
 if (Number(integration) + Number(e2e) !== 1) {
   throw new Error("Pass exactly one of --integration or --e2e");
 }
-if (!["fake", "e2b", "novita", "daytona", "boat"].includes(sandboxProvider)) {
-  throw new Error('Sandbox must be "fake", "e2b", "novita", "daytona", or "boat"');
+if (!["fake", "e2b", "novita", "daytona", "boat", "boxd"].includes(sandboxProvider)) {
+  throw new Error('Sandbox must be "fake", "e2b", "novita", "daytona", "boat", or "boxd"');
 }
 if (integration && sandboxProvider !== "fake") {
   throw new Error("Integration tests only support the fake sandbox");
@@ -56,26 +49,20 @@ if (sandboxProvider === "daytona" && !process.env.DAYTONA_API_KEY) {
 if (sandboxProvider === "boat" && !process.env.BOAT_API_KEY) {
   throw new Error("BOAT_API_KEY is required when --sandbox=boat");
 }
+if (sandboxProvider === "boxd" && !process.env.BOXD_API_KEY) {
+  throw new Error("BOXD_API_KEY is required when --sandbox=boxd");
+}
 
 async function main() {
   const mode = integration ? "integration" : "e2e";
   const reportDir = path.resolve("test-report", mode);
   await mkdir(reportDir, { recursive: true });
-  const database = await startDatabase();
-  const stopOnSignal = (signal: NodeJS.Signals) => {
-    // Still drop what this run created when it is interrupted.
-    void database
-      .stop()
-      .catch(() => undefined)
-      .finally(() => process.exit(signal === "SIGINT" ? 130 : 143));
-  };
-  process.once("SIGINT", stopOnSignal);
-  process.once("SIGTERM", stopOnSignal);
+  const container = await startPostgres();
   try {
-    // Migrations run as the database owner and the e2e API connects as the
+    // Migrations run as the container superuser and the e2e API connects as the
     // runtime login, so row-level security is enforced as in a deployment.
     // Test code that seeds or inspects rows directly connects as the owner.
-    const migrationUrl = database.migrationUrl;
+    const migrationUrl = container.getConnectionUri();
     const runtimeUrl = new URL(migrationUrl);
     runtimeUrl.username = "rakazo_app";
     runtimeUrl.password = "rakazo-test-runtime";
@@ -95,8 +82,12 @@ async function main() {
     if (!integration) {
       process.env.TICKET_BOARD_ENABLED = "true";
       process.env.PHONE_CALLS_ENABLED = "true";
-      process.env.VNBOT_NAV_LINKS = JSON.stringify([
-        { id: "clients", label: "Khách hàng", path: "/ext/clients/" },
+      process.env.INBOUND_EMAIL_DOMAIN = "bots.rakazo.test";
+      process.env.INBOUND_EMAIL_SECRET = "test-inbound-email-secret-test-32chars";
+      // The offline wallet, so Settings shows Wallet and sign-in completes without a provider.
+      process.env.PAYMENT_WALLET_PROVIDER = "emulator";
+      process.env.RAKAZO_NAV_LINKS = JSON.stringify([
+        { id: "clients", label: "Clients", path: "/ext/clients/" },
       ]);
     }
     // Playwright/E2E force the offline cloud-agent emulator; clear Cursor keys so cards never hit a live VM.
@@ -143,33 +134,22 @@ async function main() {
         "packages/testkit/src/connections.test.ts",
         "packages/testkit/src/bot-secrets.test.ts",
       ];
-      // Run every suite, then fail with the full list, so one run shows every break.
-      const failed: string[] = [];
       // --spec=<part of a path> runs only the matching suites.
       const selected = e2eSpec ? suites.filter((suite) => suite.includes(e2eSpec)) : suites;
       if (!selected.length) throw new Error(`No integration suite matches ${e2eSpec}`);
-      for (const [index, suite] of selected.entries()) {
-        const clone = await database.clone(index);
-        const suiteMigrationUrl = withDatabase(migrationUrl, clone);
-        const suiteUrl = withDatabase(databaseUrl, clone);
-        try {
-          await runProcess("pnpm", ["exec", "vitest", "run", suite], {
-            ...process.env,
-            DATABASE_URL: suiteUrl,
-            DATABASE_MIGRATION_URL: suiteMigrationUrl,
-            REALTIME_DATABASE_URL: suiteUrl,
-            OPENROUTER_API_KEY: "",
-            MODEL_API_KEY: "",
-            // A developer .env may say development, which changes defaults such as encryption.
-            NODE_ENV: "test",
-          });
-        } catch {
-          failed.push(suite);
-        } finally {
-          await database.dropClone(clone);
-        }
-      }
-      if (failed.length) throw new Error(`Integration suites failed:\n${failed.join("\n")}`);
+      // Files run in parallel, each on its own copy of the migrated database (pin-test-env.ts).
+      await runProcess(
+        "pnpm",
+        ["exec", "vitest", "run", ...(shard ? ["--shard", shard] : []), ...selected],
+        {
+          ...process.env,
+          COPY_TEST_DATABASE: "1",
+          OPENROUTER_API_KEY: "",
+          MODEL_API_KEY: "",
+          // A developer .env may say development, which changes defaults such as encryption.
+          NODE_ENV: "test",
+        },
+      );
       await writeSummary(reportDir, {
         ok: true,
         mode,
@@ -191,7 +171,7 @@ async function main() {
         UserDeviceEmulator,
       },
       { createApp },
-      { drainUnscopedDatabaseAccess },
+      { drainUnscopedDatabaseAccess, runAsSystem },
     ] = await Promise.all([
       import("@rakazo/adapters"),
       import("@rakazo/api/app"),
@@ -270,8 +250,7 @@ async function main() {
             "test",
             ...(e2eSpec ? [e2eSpec] : []),
             ...(e2eGrep ? ["--grep", e2eGrep] : []),
-            ...(e2eShard ? ["--shard", e2eShard] : []),
-            ...(e2eWorkers ? ["--workers", e2eWorkers] : []),
+            ...(shard ? ["--shard", shard] : []),
           ],
           {
             ...process.env,
@@ -306,7 +285,7 @@ async function main() {
       });
     } finally {
       const cleanupErrors: unknown[] = [];
-      const computers = await managedComputers(handles).catch((error) => {
+      const computers = await managedComputers(handles, runAsSystem).catch((error) => {
         cleanupErrors.push(error);
         return [];
       });
@@ -322,7 +301,7 @@ async function main() {
               {
                 id: computer.providerRef!,
                 botId: computer.homeKey,
-                kind: computer.kind as "e2b" | "novita" | "daytona" | "boat",
+                kind: computer.kind as "e2b" | "novita" | "daytona" | "boat" | "boxd",
                 providerRef: computer.providerRef!,
               },
               {
@@ -347,89 +326,21 @@ async function main() {
       }
     }
   } finally {
-    await database.stop().catch(() => undefined);
+    await container.stop().catch(() => undefined);
   }
-}
-
-interface TestDatabase {
-  /** Owner URL of the migrated database. */
-  migrationUrl: string;
-  /** Clones the migrated database for one integration suite and returns the clone's name. */
-  clone(index: number): Promise<string>;
-  dropClone(name: string): Promise<void>;
-  /** Releases the database. A local run drops only what it created; safe to call twice. */
-  stop(): Promise<void>;
-}
-
-// E2E_LOCAL_PG_ADMIN_URL runs against an existing Postgres server without Docker.
-function startDatabase(): Promise<TestDatabase> {
-  const adminUrl = process.env.E2E_LOCAL_PG_ADMIN_URL;
-  return adminUrl ? startLocalDatabase(adminUrl) : startContainerDatabase();
-}
-
-async function startContainerDatabase(): Promise<TestDatabase> {
-  const container = await new PostgreSqlContainer("postgres:18-alpine").start();
-  // Each app reconciles all durable work in its database, including intentionally
-  // unfinished fixture runs. Clone the pristine migrated schema so one suite
-  // cannot execute another suite's backlog or wait for it during shutdown.
-  const template = container.getDatabase().replaceAll('"', '""');
-  const databaseCommand = async (statement: string) => {
-    const result = await container.exec([
-      "psql",
-      "-U",
-      container.getUsername(),
-      "-d",
-      "postgres",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-c",
-      statement,
-    ]);
-    if (result.exitCode !== 0) throw new Error("Isolated integration database operation failed");
-  };
-  return {
-    migrationUrl: container.getConnectionUri(),
-    clone: async (index) => {
-      const name = `integration_${index}`;
-      await databaseCommand(`CREATE DATABASE "${name}" TEMPLATE "${template}"`);
-      return name;
-    },
-    dropClone: (name) => databaseCommand(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`),
-    stop: () => container.stop().then(() => undefined),
-  };
-}
-
-async function startLocalDatabase(adminUrl: string): Promise<TestDatabase> {
-  const name = localDatabaseName(
-    process.env.E2E_LOCAL_DB_PREFIX || DEFAULT_LOCAL_DB_PREFIX,
-    new Date(),
-    process.pid,
-  );
-  const databases = new LocalDatabases((statement) =>
-    runProcess("psql", [adminUrl, "-v", "ON_ERROR_STOP=1", "-q", "-c", statement], process.env),
-  );
-  await databases.create(name);
-  console.log(`Local e2e database: ${name}`);
-  return {
-    migrationUrl: withDatabase(adminUrl, name),
-    clone: async (index) => {
-      const clone = `${name}_s${index}`;
-      await databases.create(clone, name);
-      return clone;
-    },
-    dropClone: (clone) => databases.drop(clone),
-    stop: () => databases.dropAll(),
-  };
 }
 
 type AppHandles = Awaited<ReturnType<typeof createApp>>;
 
-async function managedComputers(handles: AppHandles) {
-  if (!["e2b", "novita", "daytona", "boat"].includes(sandboxProvider)) return [];
-  return handles.prisma.computer.findMany({
-    where: { providerRef: { not: null } },
-    select: { homeKey: true, kind: true, providerRef: true, userId: true, spaceId: true },
-  });
+async function managedComputers(handles: AppHandles, runAsSystem: typeof RunAsSystem) {
+  if (!["e2b", "novita", "daytona", "boat", "boxd"].includes(sandboxProvider)) return [];
+  // Outside a tenant or system context the runtime login reads no rows, and nothing is destroyed.
+  return runAsSystem("e2e cleanup of real test sandboxes", () =>
+    handles.prisma.computer.findMany({
+      where: { providerRef: { not: null } },
+      select: { homeKey: true, kind: true, providerRef: true, userId: true, spaceId: true },
+    }),
+  );
 }
 
 async function writeSummary(reportDir: string, summary: Record<string, unknown>) {

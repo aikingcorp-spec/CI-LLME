@@ -1,36 +1,46 @@
 /** @jsxRuntime automatic */
 import type { TransactionalEmail } from "@rakazo/adapter-kit";
-import { displayName } from "@rakazo/core";
-import { lightTokens } from "@rakazo/ui-tokens";
-import { Hr, Link, Text } from "react-email";
-import { EMAIL_SIGNATURE, message } from "./email.js";
+import { DESKTOP_DOWNLOAD_URL } from "@rakazo/contracts";
+import { Link, Text } from "react-email";
+import { emailText, greeting, linkStyle, message } from "./email.js";
+
+const APPS: Readonly<Record<string, string>> = {
+  Mac: DESKTOP_DOWNLOAD_URL,
+  Windows: DESKTOP_DOWNLOAD_URL,
+  Linux: DESKTOP_DOWNLOAD_URL,
+};
 
 export function welcomeEmail(
   user: { email: string; name: string },
   unsubscribeUrl: string,
+  locale = "en",
 ): Promise<TransactionalEmail> {
+  const say = emailText(locale);
   return message(
     user.email,
-    "Chào mừng bạn đến với VNBot",
+    locale,
+    say("Welcome to VNBot"),
     <>
-      <Text>Chào {displayName(user.name, "bạn")},</Text>
-      <Text>Cảm ơn bạn đã đăng ký VNBot, đội nhân viên AI của riêng bạn.</Text>
+      <Text>{greeting(say, user.name)}</Text>
+      <Text>{say("Thanks for signing up for VNBot.")}</Text>
       <Text>
-        VNBot chạy trên máy hoặc máy chủ của bạn. Chat và dữ liệu nằm ở đó, không nằm trên máy chủ
-        của VNBot.
+        {say("VNBot also has apps for")}{" "}
+        {/* The language's own list ("A, B, and C", "A, B y C"), with each app a link. */}
+        {new Intl.ListFormat(locale, { type: "conjunction" })
+          .formatToParts(Object.keys(APPS))
+          .map((part, index) =>
+            part.type === "element" ? (
+              <Link key={part.value} href={APPS[part.value]} style={linkStyle}>
+                {part.value}
+              </Link>
+            ) : (
+              <span key={`${index}${part.value}`}>{part.value}</span>
+            ),
+          )}
+        .
       </Text>
-      <Text>Có câu hỏi hay góp ý? Bạn cứ trả lời email này.</Text>
-      <Text>{EMAIL_SIGNATURE}</Text>
-      <Hr style={{ borderColor: lightTokens.border, marginTop: "32px" }} />
-      <Text style={{ color: lightTokens.mutedForeground, fontSize: "12px" }}>
-        <Link href={unsubscribeUrl} style={{ color: lightTokens.mutedForeground }}>
-          Hủy nhận email
-        </Link>
-      </Text>
+      <Text>{say("Have any questions? Reply to this email.")}</Text>
     </>,
-    {
-      "List-Unsubscribe": `<${unsubscribeUrl}>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    },
+    unsubscribeUrl,
   );
 }

@@ -1,10 +1,5 @@
 import { Input as InputPrimitive } from "@base-ui/react/input";
 import { Button } from "@rakazo/ui-web/components/ui/button";
-import {
-  InputRevealLabelsProvider,
-  RevealLabelsContext,
-} from "@rakazo/ui-web/components/ui/input-reveal-labels";
-import { inputClass } from "@rakazo/ui-web/components/ui/input-variants";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import * as React from "react";
@@ -12,6 +7,27 @@ import * as React from "react";
 type InputProps = Omit<React.ComponentProps<"input">, "size"> & {
   size?: "default" | "xl";
 };
+
+const inputClass =
+  // off-scale: 16px below md stops iOS Safari zooming into a focused field.
+  "h-9 w-full min-w-0 rounded-lg border border-input bg-transparent dark:bg-input/30 px-3 py-1 text-[16px]/6 text-foreground transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-body file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-body dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-[size=xl]:h-12 data-[size=xl]:rounded-xl data-[size=xl]:px-4 data-[size=xl]:md:text-body-lg";
+
+/** The labels of the show/hide button on hidden fields; the kit itself is not translated. */
+const RevealLabelsContext = React.createContext({ show: "Show password", hide: "Hide password" });
+
+/** Supplies translated labels for the show/hide button of every hidden field below it. */
+function InputRevealLabelsProvider({
+  show,
+  hide,
+  children,
+}: {
+  show: string;
+  hide: string;
+  children: React.ReactNode;
+}) {
+  const labels = React.useMemo(() => ({ show, hide }), [show, hide]);
+  return <RevealLabelsContext.Provider value={labels}>{children}</RevealLabelsContext.Provider>;
+}
 
 function Input({ className, type, size = "default", ...props }: InputProps) {
   if (type === "password") return <HiddenInput className={className} size={size} {...props} />;

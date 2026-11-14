@@ -26,10 +26,12 @@ const rn = vi.hoisted(() => {
 
 vi.mock("expo-updates", () => updates);
 vi.mock("react-native", () => rn);
+vi.mock("./api-server", () => ({}));
+vi.mock("./api-auth", () => ({}));
+vi.mock("./api-live", () => ({}));
 vi.mock("./api", () => ({ configureClientBuild: vi.fn() }));
 vi.mock("./i18n", () => ({ t: (message: string) => message }));
 
-import { ANDROID_APK_URL, IOS_APP_STORE_URL } from "@rakazo/contracts";
 import {
   clientBuildHeaders,
   FOREGROUND_UPDATE_CHECK_MS,
@@ -81,12 +83,12 @@ describe("update required", () => {
     expect(rn.Linking.openURL).not.toHaveBeenCalled();
   });
 
-  it("opens the store when no over-the-air update can fix it, and asks again next time", async () => {
+  it("opens the web app when no over-the-air update can fix it, and asks again next time", async () => {
     noteClientUpdateRequired();
     pressUpdate();
     await flush();
     expect(updates.reloadAsync).not.toHaveBeenCalled();
-    expect(rn.Linking.openURL).toHaveBeenCalledWith(IOS_APP_STORE_URL ?? ANDROID_APK_URL);
+    expect(rn.Linking.openURL).toHaveBeenCalledWith("https://app.vnbot.run");
     noteClientUpdateRequired();
     expect(rn.Alert.alert).toHaveBeenCalledTimes(2);
   });

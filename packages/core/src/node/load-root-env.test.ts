@@ -20,6 +20,13 @@ afterEach(() => {
 });
 
 describe("root environment loading", () => {
+  it("keeps native production children isolated from root configuration", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RAKAZO_LOAD_ROOT_ENV", "false");
+    loadRootEnv({ allowInTests: true });
+    expect(process.env.RAKAZO_TEST_ENV_SENTINEL).toBeUndefined();
+    expect(process.env.DATA_DIR).toBeUndefined();
+  });
   it("does not import local configuration into test processes", () => {
     vi.stubEnv("NODE_ENV", "test");
     loadRootEnv();

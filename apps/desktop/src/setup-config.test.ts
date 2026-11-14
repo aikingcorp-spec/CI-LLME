@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { startDesktopLocale } from "./i18n.js";
 import {
   DEFAULT_LOCAL_WEB_URL,
   desktopStackImageTag,
@@ -7,18 +8,23 @@ import {
   maySendDesktopStackToken,
   normalizeServerUrl,
   PROBE_RESPONSE_LIMIT_BYTES,
+  PRODUCTION_PORTAL_ORIGIN,
   parseSetupInput,
   parseStoredSetup,
+  portalOrigin,
   probeFailureMessage,
   RAKAZO_CLOUD_URL,
   readProbeJson,
   resolveStartupTarget,
   safeExternalUrl,
   serializeSetup,
+  serverHeadersFor,
   servesBundledRenderer,
   sessionPartitionForServerUrl,
 } from "./setup-config.js";
-import { strings } from "./strings.js";
+
+// New installs default to Vietnamese; these assertions read the English source copy.
+startDesktopLocale("en", "en-US");
 
 describe("server address normalization", () => {
   it("assumes http locally and https for a bare public host", () => {
@@ -63,7 +69,7 @@ describe("server address normalization", () => {
   });
 
   it.each(["", "   ", "not a url", "ftp://example.com", "file:///etc/passwd", "http://"])(
-    "rejects an address that cannot reach a Rakazo server (%s)",
+    "rejects an address that cannot reach a VNBot server (%s)",
     (value) => {
       expect(normalizeServerUrl(value)).toBeNull();
     },
@@ -137,7 +143,7 @@ describe("saved setup", () => {
     });
   });
 
-  it("saves Rakazo Cloud as an existing server under the exact origin setup matches", () => {
+  it("saves VNBot Cloud as an existing server under the exact origin setup matches", () => {
     // The setup window recognizes a saved Cloud choice by comparing against this constant.
     expect(normalizeServerUrl(RAKAZO_CLOUD_URL)).toBe(RAKAZO_CLOUD_URL);
     expect(parseSetupInput({ mode: "existing", serverUrl: RAKAZO_CLOUD_URL })).toEqual({
@@ -147,13 +153,63 @@ describe("saved setup", () => {
     expect(parseSetupInput({ mode: "new", serverUrl: RAKAZO_CLOUD_URL })).toBeNull();
     expect(servesBundledRenderer(RAKAZO_CLOUD_URL, false)).toBe(false);
   });
+
+  it("keeps the production portal unless a build supplies another https origin", () => {
+    expect(portalOrigin(undefined)).toBe(PRODUCTION_PORTAL_ORIGIN);
+    expect(portalOrigin("")).toBe("https://app.vnbot.run");
+    expect(portalOrigin("https://stage.example.test")).toBe("https://stage.example.test");
+    expect(() => portalOrigin("http://stage.example.test")).toThrow(
+      "Invalid public portal origin.",
+    );
+    expect(() => portalOrigin("https://user:secret@stage.example.test")).toThrow(
+      "Invalid public portal origin.",
+    );
+    expect(() => portalOrigin("https://stage.example.test/start")).toThrow(
+      "Invalid public portal origin.",
+    );
+  });
+});
+
+describe("server request headers", () => {
+  const access = { "CF-Access-Client-Id": "id.access", "CF-Access-Client-Secret": "secret" };
+  const setup = {
+    mode: "existing",
+    serverUrl: "https://rakazo.example.com",
+    headers: access,
+  } as const;
+
+  it("saves headers for an existing server and drops an empty set", () => {
+    expect(parseStoredSetup(serializeSetup(setup))).toEqual(setup);
+    expect(
+      parseSetupInput({ mode: "existing", serverUrl: "https://rakazo.example.com", headers: {} }),
+    ).toEqual({ mode: "existing", serverUrl: "https://rakazo.example.com" });
+  });
+
+  it("refuses headers VNBot owns and headers for a new local instance", () => {
+    expect(parseSetupInput({ ...setup, headers: { Cookie: "a=b" } })).toBeNull();
+    expect(parseSetupInput({ ...setup, headers: "x: y" })).toBeNull();
+    expect(
+      parseSetupInput({ mode: "new", serverUrl: "http://127.0.0.1:5173", headers: access }),
+    ).toBeNull();
+  });
+
+  it("adds them only to the saved server, websockets included", () => {
+    expect(serverHeadersFor("https://rakazo.example.com/rpc/me", setup)).toEqual(access);
+    expect(serverHeadersFor("wss://rakazo.example.com/novnc/websockify", setup)).toEqual(access);
+    expect(serverHeadersFor("https://rakazo.example.com.evil/rpc", setup)).toEqual({});
+    expect(serverHeadersFor("http://rakazo.example.com/rpc", setup)).toEqual({});
+    expect(serverHeadersFor("https://accounts.example.com/", setup)).toEqual({});
+    expect(serverHeadersFor("not a url", setup)).toEqual({});
+    expect(serverHeadersFor("https://rakazo.example.com/", null)).toEqual({});
+  });
 });
 
 describe("startup target", () => {
   const saved = { mode: "existing", serverUrl: "https://rakazo.example.com" } as const;
 
-  it("runs setup on a first launch", () => {
+  it("stays in setup on a first launch", () => {
     expect(resolveStartupTarget({})).toEqual({ kind: "setup" });
+    expect(resolveStartupTarget({ saved: null })).toEqual({ kind: "setup" });
   });
 
   it("opens the saved instance on later launches", () => {
@@ -231,7 +287,7 @@ describe("remote-content isolation", () => {
   });
 });
 
-describe("Rakazo health response", () => {
+describe("VNBot health response", () => {
   it("requires the public RPC health contract", () => {
     expect(isRakazoHealth({ json: { ok: true, version: "0.1.0" } })).toBe(true);
     expect(isRakazoHealth({ json: { ok: true } })).toBe(false);
@@ -279,8 +335,8 @@ describe("managed stack response", () => {
 
 describe("probe failures", () => {
   it.each([
-    ["TimeoutError", strings().server.timeout],
-    ["AbortError", strings().server.timeout],
+    ["TimeoutError", "Timed out reaching that address."],
+    ["AbortError", "Timed out reaching that address."],
   ])("explains %s", (name, expected) => {
     const error = new Error("stopped");
     error.name = name;
@@ -288,10 +344,10 @@ describe("probe failures", () => {
   });
 
   it.each([
-    ["net::ERR_CONNECTION_REFUSED", strings().server.refused],
-    ["net::ERR_NAME_NOT_RESOLVED", strings().server.hostNotFound],
-    ["net::ERR_CERT_AUTHORITY_INVALID", strings().server.certificate],
-    ["something else entirely", strings().server.unreachable],
+    ["net::ERR_CONNECTION_REFUSED", "Nothing is listening at that address yet."],
+    ["net::ERR_NAME_NOT_RESOLVED", "That host could not be found."],
+    ["net::ERR_CERT_AUTHORITY_INVALID", "The server's HTTPS certificate was rejected."],
+    ["something else entirely", "Could not reach that address."],
   ])("explains %s", (message, expected) => {
     expect(probeFailureMessage(new Error(message))).toBe(expected);
   });

@@ -1,5 +1,7 @@
 import type { SandboxProviderOptions } from "./sandbox-factory.js";
 
+export { managedLoopbackHost } from "./host-computer-protocol.js";
+
 /** Empty or remote provider without a key becomes none so services can boot for signup. */
 export function resolveSandboxProvider(source: NodeJS.ProcessEnv = process.env): string {
   const configured = source.SANDBOX_PROVIDER;
@@ -11,6 +13,28 @@ export function resolveSandboxProvider(source: NodeJS.ProcessEnv = process.env):
   if (requested === "daytona" && !optional(source.DAYTONA_API_KEY)) return "none";
   if (requested === "createos" && !optional(source.CREATEOS_SANDBOX_API_KEY)) return "none";
   if (requested === "boat" && !boatApiKeyFromEnv(source)) return "none";
+  if (requested === "boxd" && !optional(source.BOXD_API_KEY)) return "none";
+  if (
+    requested === "wuying" &&
+    [
+      source.WUYING_ACCESS_KEY_ID,
+      source.WUYING_ACCESS_KEY_SECRET,
+      source.WUYING_DESKTOP_ID,
+      source.WUYING_END_USER_ID,
+      source.WUYING_MCP_URL,
+      source.WUYING_MCP_TOKEN,
+    ].some((value) => !optional(value))
+  )
+    return "none";
+  if (
+    requested === "incus" &&
+    [
+      source.INCUS_SANDBOX_URL,
+      source.INCUS_SANDBOX_CLIENT_CERT,
+      source.INCUS_SANDBOX_CLIENT_KEY,
+    ].some((value) => !optional(value))
+  )
+    return "none";
   if (
     requested === "railway" &&
     (!optional(source.RAILWAY_API_TOKEN) || !optional(source.RAILWAY_ENVIRONMENT_ID))
@@ -49,6 +73,8 @@ export function sandboxProviderOptionsFromEnv(
   | "railwaySandboxRegion"
   | "boatApiKey"
   | "boatApiUrl"
+  | "boxdApiKey"
+  | "boxdOrg"
   | "kubernetesNamespace"
   | "kubernetesRuntimeClassName"
   | "kubernetesComputerImage"
@@ -60,6 +86,22 @@ export function sandboxProviderOptionsFromEnv(
   | "kubernetesHomeClaim"
   | "kubernetesHomeColocateNamespace"
   | "kubernetesHomeColocateLabels"
+  | "incusUrl"
+  | "incusClientCert"
+  | "incusClientKey"
+  | "incusServerCert"
+  | "incusProject"
+  | "incusComputerImage"
+  | "incusCpuLimit"
+  | "incusMemoryLimit"
+  | "incusProcessLimit"
+  | "wuyingAccessKeyId"
+  | "wuyingAccessKeySecret"
+  | "wuyingRegionId"
+  | "wuyingDesktopId"
+  | "wuyingEndUserId"
+  | "wuyingMcpUrl"
+  | "wuyingMcpToken"
 > {
   return {
     hostComputerUrl: source.SANDBOX_HOST_URL,
@@ -80,6 +122,8 @@ export function sandboxProviderOptionsFromEnv(
     railwaySandboxRegion: optional(source.RAILWAY_SANDBOX_REGION),
     boatApiKey: boatApiKeyFromEnv(source),
     boatApiUrl: boatApiUrlFromEnv(source),
+    boxdApiKey: optional(source.BOXD_API_KEY),
+    boxdOrg: optional(source.BOXD_ORG),
     kubernetesNamespace: optional(source.KUBERNETES_SANDBOX_NAMESPACE),
     kubernetesRuntimeClassName: optional(source.KUBERNETES_SANDBOX_RUNTIME_CLASS_NAME),
     kubernetesComputerImage: optional(source.KUBERNETES_SANDBOX_COMPUTER_IMAGE),
@@ -105,6 +149,22 @@ export function sandboxProviderOptionsFromEnv(
       source.KUBERNETES_SANDBOX_HOME_COLOCATE_LABELS,
       "KUBERNETES_SANDBOX_HOME_COLOCATE_LABELS",
     ),
+    incusUrl: optional(source.INCUS_SANDBOX_URL),
+    incusClientCert: pem(source.INCUS_SANDBOX_CLIENT_CERT),
+    incusClientKey: pem(source.INCUS_SANDBOX_CLIENT_KEY),
+    incusServerCert: pem(source.INCUS_SANDBOX_SERVER_CERT),
+    incusProject: optional(source.INCUS_SANDBOX_PROJECT),
+    incusComputerImage: optional(source.INCUS_SANDBOX_COMPUTER_IMAGE),
+    incusCpuLimit: optional(source.INCUS_SANDBOX_CPU_LIMIT),
+    incusMemoryLimit: optional(source.INCUS_SANDBOX_MEMORY_LIMIT),
+    incusProcessLimit: optional(source.INCUS_SANDBOX_PROCESS_LIMIT),
+    wuyingAccessKeyId: optional(source.WUYING_ACCESS_KEY_ID),
+    wuyingAccessKeySecret: optional(source.WUYING_ACCESS_KEY_SECRET),
+    wuyingRegionId: optional(source.WUYING_REGION_ID),
+    wuyingDesktopId: optional(source.WUYING_DESKTOP_ID),
+    wuyingEndUserId: optional(source.WUYING_END_USER_ID),
+    wuyingMcpUrl: optional(source.WUYING_MCP_URL),
+    wuyingMcpToken: optional(source.WUYING_MCP_TOKEN),
   };
 }
 
@@ -136,6 +196,11 @@ function positiveInteger(value: string | undefined, name: string): number | unde
     throw new Error(`${name} must be a positive integer`);
   }
   return parsed;
+}
+
+/** PEM text, with `\n` escapes allowed so it fits on one line of an env file. */
+function pem(value: string | undefined): string | undefined {
+  return optional(value)?.replace(/\\n/g, "\n");
 }
 
 function optional(value: string | undefined): string | undefined {

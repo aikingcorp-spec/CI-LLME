@@ -3,6 +3,7 @@ import path from "node:path";
 import { config } from "dotenv";
 
 export function loadRootEnv(options: { allowInTests?: boolean } = {}) {
+  if (process.env.RAKAZO_LOAD_ROOT_ENV === "false") return;
   // Test runners and verification CLIs supply their own isolated environment.
   // Loading a developer's credentials here also changes otherwise offline tests.
   if (process.env.NODE_ENV === "test" && !options.allowInTests) return;

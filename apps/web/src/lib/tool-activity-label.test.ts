@@ -8,9 +8,13 @@ import { builtinToolNames } from "./builtin-tool-labels";
 import {
   askCardText,
   builtinToolOfStepLabel,
+  failedRecordedStep,
+  finishedRecordedStep,
   isToolActivityLine,
+  stoppedRecordedStep,
   toolActivityLine,
   toolStepLabel,
+  usingKnownTool,
 } from "./tool-activity-label";
 
 beforeAll(async () => {
@@ -90,6 +94,22 @@ describe("tool step labels", () => {
     expect(vi("Using {name}", { name: "x y" })).toBe("Đang dùng x y");
   });
 
+  it("names a known tool without keeping a command or a path", () => {
+    expect(usingKnownTool("shell")).toBe("Running a task");
+    expect(usingKnownTool("read_file")).toBe("Reading a file");
+    expect(finishedRecordedStep("Read file")).toBe("Finished Read file");
+    expect(failedRecordedStep("Read file")).toBe("Couldn't finish Read file");
+    expect(stoppedRecordedStep("Shell")).toBe("Stopped Task");
+    for (const phrase of [
+      usingKnownTool("shell"),
+      finishedRecordedStep("Read file"),
+      failedRecordedStep("Read file"),
+    ]) {
+      expect(phrase).not.toContain("/home/aiking");
+      expect(phrase).not.toContain("rm -rf");
+    }
+  });
+
   it("translates the approval card question and names the built-in tool", () => {
     expect(askCardText("Review before web_fetch → sjc.com.vn")).toBe(
       "Review before Web fetch → sjc.com.vn",
@@ -100,4 +120,12 @@ describe("tool step labels", () => {
     );
     expect(askCardText("Pick one")).toBe("Pick one");
   });
+});
+
+it("keeps arbitrary tool ids and recorded labels off the default status", () => {
+  const raw = "shell /home/aiking/private-file";
+  expect(usingKnownTool(raw)).toBe("Working…");
+  expect(finishedRecordedStep(raw)).toBe("Done");
+  expect(failedRecordedStep(raw)).toBe("Couldn't finish");
+  expect(stoppedRecordedStep(raw)).toBe("Stopped");
 });

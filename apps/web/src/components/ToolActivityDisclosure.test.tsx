@@ -178,6 +178,26 @@ describe("ToolSteps", () => {
     for (let i = 0; i < 9; i++) expect(all).toContain(`step-${i}<`);
   });
 
+  it("names a failed or stopped step without turning the tool name into a command", () => {
+    const failed = renderToStaticMarkup(
+      <ToolSteps
+        steps={[{ label: "Read file", count: 1, outcomes: { failed: 1 } }]}
+        currentIndex={0}
+      />,
+    );
+    const failedText = visibleText(failed).replaceAll("&#x27;", "'");
+    expect(failedText).toContain("Read file");
+    expect(failedText).toContain("Couldn't finish");
+    expect(failed).not.toContain("rm -rf");
+    expect(failed).toContain("text-destructive");
+    const stopped = renderToStaticMarkup(
+      <ToolSteps steps={[{ label: "Shell", count: 1, outcomes: { stopped: 1 } }]} />,
+    );
+    expect(visibleText(stopped)).toContain("Shell");
+    expect(visibleText(stopped)).toContain("Stopped");
+    expect(stopped).not.toContain("✓");
+  });
+
   it("shows what the bot wrote before a step above it", () => {
     const html = renderToStaticMarkup(
       <ToolSteps

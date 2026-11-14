@@ -5,20 +5,13 @@ import type { ApiRequestContext } from "./api";
 import { captureApiRequestContext, currentApiBase, rpc, selectedSpaceId } from "./api";
 import { artifactCacheSession } from "./artifact-cache-session";
 import { artifactCacheFileName, artifactShareFileName } from "./artifact-file";
+import { ARTIFACT_DOWNLOAD_TIMEOUT_MS } from "./artifacts";
 import { t } from "./i18n";
 import type { ImageSize } from "./inline-image";
 import { createKeyedPromiseCache } from "./inline-image";
 import { currentSessionGeneration, loadSessionToken } from "./session";
 
 export type MobileArtifactTarget = { botId: string } | { groupId: string };
-
-/**
- * An artifact travels as base64 inside the RPC body: up to the attachment limit (10 MiB) plus
- * a third of encoding overhead. The default RPC timeout is sized for small JSON replies and
- * gives up on a multi-megabyte photo over a relayed cellular link, so downloads get a budget
- * of their own.
- */
-export const ARTIFACT_DOWNLOAD_TIMEOUT_MS = 120_000;
 
 /** Writes an artifact's bytes to its cache file; no network call. */
 export function writeArtifactCacheFile(
@@ -28,7 +21,7 @@ export function writeArtifactCacheFile(
 ): File {
   const file = new File(Paths.cache, artifactCacheFileName(artifactId, mimeType));
   file.create({ overwrite: true });
-  file.write(contentBase64, { encoding: "base64" });
+  file.writeSync(contentBase64, { encoding: "base64" });
   return file;
 }
 
@@ -138,10 +131,19 @@ async function cacheMobileArtifact(
   // Invalidate first so an interrupted overwrite cannot leave valid metadata for wrong bytes.
   if (metadata.exists) metadata.delete();
   file.create({ overwrite: true });
-  file.write(artifact.contentBase64, { encoding: "base64" });
+  file.writeSync(artifact.contentBase64, { encoding: "base64" });
   metadata.create({ overwrite: true });
-  metadata.write(JSON.stringify({ key }));
+  metadata.writeSync(JSON.stringify({ key }));
   return file;
+}
+
+/** An artifact's text, read through the same authenticated, session-scoped cache. */
+export async function textMobileArtifact(
+  target: MobileArtifactTarget,
+  artifactId: string,
+  mimeType: string,
+): Promise<string> {
+  return (await cacheMobileArtifact(target, artifactId, mimeType)).text();
 }
 
 /** Local playback URI using the same authenticated, session-scoped artifact cache. */
@@ -151,15 +153,6 @@ export async function audioArtifactUri(
   mimeType: string,
 ): Promise<string> {
   return (await cacheMobileArtifact(target, artifactId, mimeType)).uri;
-}
-
-export async function readMobileArtifactText(
-  target: MobileArtifactTarget,
-  artifactId: string,
-  mimeType: string,
-): Promise<string> {
-  const file = await cacheMobileArtifact(target, artifactId, mimeType);
-  return file.text();
 }
 
 export async function openMobileArtifact(

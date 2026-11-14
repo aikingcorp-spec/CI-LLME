@@ -3,17 +3,15 @@ import {
   clearSpaceSelection,
   createSpaceRpc,
   leaveUnavailableSpace,
-  resetNotInvitedGuardForTests,
   rpc,
   rpcForSpace,
+  SPACE_SELECTED_EVENT,
   selectedSpaceId,
   selectSpace,
-  signOutIfNotInvited,
 } from "./rpc.js";
 
 const notify = vi.hoisted(() => vi.fn());
-const signOut = vi.hoisted(() => vi.fn(async () => ({ data: null, error: null })));
-vi.mock("./auth", () => ({ authClient: { $store: { notify }, signOut } }));
+vi.mock("./auth", () => ({ authClient: { $store: { notify } } }));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -56,15 +54,30 @@ describe("unavailable space", () => {
       expect(new Headers(init?.headers).has("x-rakazo-space-id")).toBe(false);
       return Response.json({
         json: {
-          current: {
-            id: "home",
-            name: "Home",
-            bots: [],
-            groups: [],
-            externalConversations: [],
-            botSections: [],
-          },
-          spaces: spaces.map((id) => ({ id })),
+          activeOrganizationId: "personal",
+          organizations: [
+            {
+              id: "personal",
+              name: "Personal",
+              defaultSpaceId: "home",
+              spaceIds: spaces,
+              canManage: true,
+            },
+            {
+              id: "work",
+              name: "Work",
+              defaultSpaceId: "work-home",
+              spaceIds: ["work-home"],
+              canManage: true,
+            },
+            {
+              id: "team",
+              name: "Team",
+              defaultSpaceId: "team-home",
+              spaceIds: ["team-home"],
+              canManage: false,
+            },
+          ],
         },
       });
     });
@@ -74,8 +87,10 @@ describe("unavailable space", () => {
 
   it("drops a space the user is no longer in and reloads", async () => {
     const { items, reload } = browser("space-gone", ["home"]);
+    items.set("rakazo:org-spaces", JSON.stringify({ work: "work-home" }));
     await leaveUnavailableSpace("space-gone");
     expect(items.has("rakazo:space-id")).toBe(false);
+    expect(items.get("rakazo:org-spaces")).toBe(JSON.stringify({ work: "work-home" }));
     expect(reload).toHaveBeenCalledOnce();
   });
 
@@ -101,6 +116,20 @@ describe("unavailable space", () => {
       expect(reload).not.toHaveBeenCalled();
     }
   });
+
+  it("keeps a space in an organization the user is only a member of", async () => {
+    const { items, reload } = browser("team-home", ["home"]);
+    await leaveUnavailableSpace("team-home");
+    expect(items.get("rakazo:space-id")).toBe("team-home");
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("keeps a space that belongs to another of the user's organizations", async () => {
+    const { items, reload } = browser("work-home", ["home"]);
+    await leaveUnavailableSpace("work-home");
+    expect(items.get("rakazo:space-id")).toBe("work-home");
+    expect(reload).not.toHaveBeenCalled();
+  });
 });
 
 describe("space selection storage", () => {
@@ -114,12 +143,30 @@ describe("space selection storage", () => {
         throw new Error("quota exceeded");
       },
     };
-    vi.stubGlobal("window", { localStorage });
+    vi.stubGlobal("window", { localStorage, dispatchEvent: () => true });
     vi.stubGlobal("localStorage", localStorage);
 
     expect(selectSpace("space-support")).toBe(false);
     expect(() => clearSpaceSelection()).not.toThrow();
     expect(selectedSpaceId()).toBeNull();
+  });
+
+  it("announces a new selection so per-organization state reloads", () => {
+    const items = new Map<string, string>();
+    const dispatchEvent = vi.fn(() => true);
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => items.get(key) ?? null,
+        setItem: (key: string, value: string) => items.set(key, value),
+        removeItem: (key: string) => items.delete(key),
+      },
+      dispatchEvent,
+    });
+
+    expect(selectSpace("space-support")).toBe(true);
+    expect(dispatchEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: SPACE_SELECTED_EVENT }),
+    );
   });
 
   it("treats an already-persisted selection as success when writes fail", () => {
@@ -130,7 +177,7 @@ describe("space selection storage", () => {
       },
       removeItem: vi.fn(),
     };
-    vi.stubGlobal("window", { localStorage });
+    vi.stubGlobal("window", { localStorage, dispatchEvent: () => true });
     vi.stubGlobal("localStorage", localStorage);
 
     expect(selectSpace("space-support")).toBe(true);
@@ -140,7 +187,7 @@ describe("space selection storage", () => {
   it("reports when a space selection was persisted", () => {
     const setItem = vi.fn();
     const localStorage = { getItem: () => null, setItem, removeItem: vi.fn() };
-    vi.stubGlobal("window", { localStorage });
+    vi.stubGlobal("window", { localStorage, dispatchEvent: () => true });
     vi.stubGlobal("localStorage", localStorage);
 
     expect(selectSpace("space-support")).toBe(true);
@@ -255,51 +302,5 @@ describe("space-bound clients", () => {
   it("reuses one client per space", () => {
     expect(rpcForSpace("space-a")).toBe(rpcForSpace("space-a"));
     expect(rpcForSpace("space-a")).not.toBe(rpcForSpace("space-b"));
-  });
-});
-
-describe("revoked invite (401 EMAIL_NOT_INVITED)", () => {
-  function browser() {
-    const assign = vi.fn();
-    const items = new Map([["rakazo:space-id", "s1"]]);
-    vi.stubGlobal("window", {
-      location: { assign, origin: "http://localhost" },
-      localStorage: {
-        getItem: (key: string) => items.get(key) ?? null,
-        setItem: (key: string, value: string) => items.set(key, value),
-        removeItem: (key: string) => items.delete(key),
-      },
-    });
-    return { assign, items };
-  }
-  afterEach(() => {
-    resetNotInvitedGuardForTests();
-    signOut.mockClear();
-  });
-
-  it("signs out and routes to the not-invited screen, for plain and oRPC bodies", async () => {
-    for (const body of [
-      { code: "EMAIL_NOT_INVITED", message: "This email is not invited yet" },
-      { json: { code: "EMAIL_NOT_INVITED", status: 401 } },
-    ]) {
-      resetNotInvitedGuardForTests();
-      const { assign, items } = browser();
-      expect(await signOutIfNotInvited(Response.json(body, { status: 401 }))).toBe(true);
-      expect(signOut).toHaveBeenCalled();
-      expect(items.has("rakazo:space-id")).toBe(false);
-      expect(assign).toHaveBeenCalledWith("/sign-in?error=EMAIL_NOT_INVITED");
-    }
-  });
-
-  it("ignores other 401s and the 403 send-code answer", async () => {
-    const { assign } = browser();
-    expect(
-      await signOutIfNotInvited(Response.json({ json: { code: "UNAUTHORIZED" } }, { status: 401 })),
-    ).toBe(false);
-    expect(
-      await signOutIfNotInvited(Response.json({ code: "EMAIL_NOT_INVITED" }, { status: 403 })),
-    ).toBe(false);
-    expect(signOut).not.toHaveBeenCalled();
-    expect(assign).not.toHaveBeenCalled();
   });
 });

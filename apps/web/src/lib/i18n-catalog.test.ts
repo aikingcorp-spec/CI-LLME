@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { i18n } from "@lingui/core";
+import { i18n, setupI18n } from "@lingui/core";
 import { formatter } from "@lingui/format-po";
 import { RUN_ERROR_LIMIT_MESSAGES } from "@rakazo/core";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -16,6 +16,7 @@ describe("lingui catalogs", () => {
       "ja",
       "ko",
       "nl",
+      "pl",
       "pt-BR",
       "ru",
       "tr",
@@ -36,10 +37,32 @@ describe("lingui catalogs", () => {
     }
   });
 
+  it("translates dictation and voice errors into Spanish", () => {
+    const catalog = readFileSync(
+      fileURLToPath(new URL("../locales/es/messages.po", import.meta.url)),
+      "utf8",
+    );
+    for (const message of [
+      "Allow VNBot to use Speech Recognition and the microphone in System Settings.",
+      "This browser can't detect when you stop talking. Use Chrome, the desktop app, or hold-to-talk in the composer.",
+      "Dictation failed: {code}",
+      "Transcription request timed out.",
+      "Add a voice provider key and pick a voice in Voice settings.",
+      "Voice request timed out.",
+    ]) {
+      const entry = catalog
+        .split("\n\n")
+        .find((block) => block.includes(`msgid ${JSON.stringify(message)}\n`));
+      const translated = entry?.split("msgstr ")[1];
+      expect(translated, message).toBeTruthy();
+      expect(translated, message).not.toBe('""');
+      if (message.includes("{code}")) expect(translated).toContain("{code}");
+    }
+  });
+
   it("localizes provider error guidance and retains its placeholders", () => {
     const messages = [
-      // Credit limits show the generic "connect your own key" copy; there is no credit message.
-      ...Object.values({ ...RUN_ERROR_LIMIT_MESSAGES, credit: {} }).flatMap(Object.values),
+      ...Object.values(RUN_ERROR_LIMIT_MESSAGES).flatMap(Object.values),
       "{summary} Your backup models also failed.",
       "{summary} No backup model was usable for this request.",
       "{summary} Backup models failed or were unavailable for this request.",
@@ -49,7 +72,7 @@ describe("lingui catalogs", () => {
       "Your model provider",
       "The model provider returned an error.",
       "Connect a model in Settings before running bots.",
-      "Connect your own API key in Models.",
+      "Connect your own API key in Models or choose Rakazo credits in Billing.",
       "{provider} is rate limiting requests. Try again shortly.",
       "{summary} Resets {date}.",
       "{provider} rejected the API key. Check your connection settings.",
@@ -69,6 +92,7 @@ describe("lingui catalogs", () => {
       "ja",
       "ko",
       "nl",
+      "pl",
       "pt-BR",
       "ru",
       "tr",
@@ -107,10 +131,8 @@ describe("lingui catalogs", () => {
         "Notifications",
         "When it finishes or needs input",
         "Model",
-        "Add a label",
         "Add open work",
         "Disable a tool",
-        "Edit label",
         "Edit name",
         "Enable {0}",
         "Model connections",
@@ -126,6 +148,20 @@ describe("lingui catalogs", () => {
           message.match(/\{\w+\}/g) ?? [],
         );
       }
+    }
+  });
+
+  it("names a fixed minute every few hours in every locale", () => {
+    // Vietnamese has no reviewed translation for this newer string.
+    for (const locale of UI_LOCALES.filter((item) => item !== "vi")) {
+      const catalog = readFileSync(
+        fileURLToPath(new URL(`../locales/${locale}/messages.po`, import.meta.url)),
+        "utf8",
+      );
+      const entry = catalog
+        .split("\n\n")
+        .find((block) => block.includes('msgid "Every {n} hours at :{minute}"\n'));
+      expect(entry, locale).toMatch(/msgstr ".*\{n\}.*\{minute\}.*"/);
     }
   });
 
@@ -153,6 +189,7 @@ describe("lingui catalogs", () => {
       "ja",
       "ko",
       "nl",
+      "pl",
       "pt-BR",
       "ru",
       "tr",
@@ -185,6 +222,7 @@ describe("lingui catalogs", () => {
       "ja",
       "ko",
       "nl",
+      "pl",
       "pt-BR",
       "ru",
       "tr",
@@ -233,92 +271,127 @@ describe("lingui catalogs", () => {
     );
   });
 
-  it("translates the peer marker toggle names and fills in the marker label", () => {
-    for (const locale of UI_LOCALES.filter((locale) => locale !== "en")) {
+  it("says how late a run started for one and for many in every locale", () => {
+    const ids = ["Started {count}m late", "Started {count}h late", "Started {count}d late"];
+    for (const locale of UI_LOCALES.filter((locale) => locale !== "en" && locale !== "vi")) {
       const catalog = readFileSync(
         fileURLToPath(new URL(`../locales/${locale}/messages.po`, import.meta.url)),
         "utf8",
       );
-      for (const message of ["Expand {label}", "Collapse {label}"]) {
-        const msgstr = catalog
+      const messages = Object.fromEntries(
+        ids.map((id) => {
+          const entry = catalog
+            .split("\n\n")
+            .find((block) => block.includes(`msgid ${JSON.stringify(id)}\n`));
+          return [id, JSON.parse(entry?.match(/msgstr (".+")/)?.[1] ?? '""') as string];
+        }),
+      );
+      i18n.load(locale, messages);
+      i18n.activate(locale);
+      for (const id of ids) {
+        expect(messages[id], `${locale}: ${id}`).toBeTruthy();
+        for (const count of [1, 3]) {
+          const label = i18n._({ id, values: { count } });
+          expect(label, `${locale}: ${id}`).not.toMatch(/[{}]/);
+          if (!(locale === "he" && count === 1 && id.includes("d late"))) {
+            expect(label, `${locale}: ${id}`).toContain(String(count));
+          }
+        }
+      }
+    }
+    i18n.activate("he");
+    expect(i18n._({ id: "Started {count}d late", values: { count: 1 } })).toBe(
+      "התחיל באיחור של יום",
+    );
+    expect(i18n._({ id: "Started {count}d late", values: { count: 3 } })).toBe(
+      "התחיל באיחור של 3 ימים",
+    );
+  });
+
+  it("translates counted peer exchanges and close controls in every locale", () => {
+    const message = "{count, plural, one {# message with {peer}} other {# messages with {peer}}}";
+    for (const locale of UI_LOCALES.filter((locale) => locale !== "en" && locale !== "vi")) {
+      const catalog = readFileSync(
+        fileURLToPath(new URL(`../locales/${locale}/messages.po`, import.meta.url)),
+        "utf8",
+      );
+      for (const id of [message, "Close"]) {
+        const entry = catalog
           .split("\n\n")
-          .find((block) => block.includes(`msgid ${JSON.stringify(message)}\n`))
-          ?.match(/msgstr "(.+)"/)?.[1];
-        expect(msgstr, `${locale}: ${message}`).toBeTruthy();
-        expect(msgstr, `${locale}: ${message}`).not.toBe(message);
-        i18n.load(locale, { [message]: msgstr ?? "" });
-        i18n.activate(locale);
-        const name = i18n._({ id: message, message, values: { label: "Writer" } });
-        expect(name, `${locale}: ${message}`).toContain("Writer");
-        expect(name, `${locale}: ${message}`).not.toContain("{label}");
+          .find((block) => block.includes(`msgid ${JSON.stringify(id)}\n`));
+        const translation = entry?.match(/msgstr "(.+)"/)?.[1];
+        expect(translation, `${locale}: ${id}`).toBeTruthy();
+        expect(translation).not.toBe(id);
+        i18n.load(locale, { [id]: translation ?? "" });
+      }
+      i18n.activate(locale);
+      for (const count of [2, 5, 21]) {
+        const label = i18n._({ id: message, values: { count, peer: "Writer" } });
+        expect(label).toContain("Writer");
+        expect(label).toContain(String(count));
+        expect(label).not.toContain("{peer}");
       }
     }
   });
 });
 
-it("keeps source placeholders and JSX markers in Traditional Chinese translations", async () => {
-  const readCatalog = async (locale: string) => {
-    const filename = fileURLToPath(new URL(`../locales/${locale}/messages.po`, import.meta.url));
-    return formatter().parse(readFileSync(filename, "utf8"), {
-      locale,
-      sourceLocale: "en",
-      filename,
-    });
-  };
-  const source = await readCatalog("en");
-  const translated = await readCatalog("zh-TW");
-  expect(Object.keys(translated).sort()).toEqual(Object.keys(source).sort());
-  const markers = (value: string) =>
-    [...new Set(value.match(/\{\w+(?=\s*[,}])|<\/?\d+\s*\/?>/g) ?? [])].sort();
-  for (const [id, entry] of Object.entries(source)) {
-    const message = entry.message ?? entry.translation ?? id;
-    // Untranslated entries fall back to English, as in every other catalog.
-    const translation = translated[id]?.translation;
-    if (!translation?.trim()) continue;
-    expect(markers(translation), message).toEqual(markers(message));
-  }
-});
-
-it("renders model connection errors in Vietnamese", async () => {
-  const filename = fileURLToPath(new URL("../locales/vi/messages.po", import.meta.url));
+it("renders Polish plural categories and interpolated values in every counted message", async () => {
+  const filename = fileURLToPath(new URL("../locales/pl/messages.po", import.meta.url));
   const catalog = await formatter().parse(readFileSync(filename, "utf8"), {
-    locale: "vi",
+    locale: "pl",
     sourceLocale: "en",
     filename,
   });
-  i18n.load(
-    "vi",
-    Object.fromEntries(
-      Object.entries(catalog).map(([id, entry]) => [
-        entry.message || id,
-        entry.translation || entry.message || id,
-      ]),
-    ),
+  const counted = Object.entries(catalog).filter(([, entry]) =>
+    entry.message?.includes(", plural,"),
   );
-  i18n.activate("vi");
-  try {
-    expect(
-      i18n._("Your model provider rejected the API key. Check your connection settings."),
-    ).toContain("từ chối khóa API");
-    expect(
-      i18n._({
-        id: "Model server returned {status}. You can still Connect with an explicit model id.",
-        values: { status: "401" },
-      }),
-    ).toContain("trả về mã 401");
-    expect(
-      i18n._({
-        id: "In use by {names}. Pick another model for them first.",
-        values: { names: i18n._("backup models") },
-      }),
-    ).toContain("các mô hình dự phòng");
-    expect(
-      i18n._({
-        id: "In use by {names}. Pick another model for them first.",
-        values: { names: i18n._("main model") },
-      }),
-    ).not.toContain("dự phòng");
-  } finally {
-    i18n.activate("en");
+  expect(counted.length).toBeGreaterThanOrEqual(19);
+  const local = setupI18n({ locale: "pl" });
+  const number = new Intl.NumberFormat("pl");
+  for (const [id, entry] of counted) {
+    const translation = entry.translation ?? "";
+    for (const category of new Intl.PluralRules("pl").resolvedOptions().pluralCategories) {
+      expect(translation, entry.message).toContain(`${category} {`);
+    }
+    local.load("pl", { [id]: translation });
+    for (const count of [0, 1, 2, 5, 12, 14, 21, 22, 25, 101, 102, 112, 1.5]) {
+      const values = Object.fromEntries(
+        [...(entry.message ?? "").matchAll(/\{(\w+)(?=\s*[,}])/g)].map((match) => [
+          match[1],
+          match[1] === "peer" || match[1] === "name" ? "Locale QA" : count,
+        ]),
+      );
+      const rendered = local._({ id, values });
+      expect(rendered, `${entry.message}: ${count}`).toContain(number.format(count));
+      expect(rendered).not.toMatch(/[{}]/);
+      if ("peer" in values || "name" in values) expect(rendered).toContain("Locale QA");
+    }
   }
 });
+
+it.each(["zh-CN", "zh-TW", "pl"])(
+  "keeps source placeholders and JSX markers in %s translations",
+  async (locale) => {
+    const readCatalog = async (locale: string) => {
+      const filename = fileURLToPath(new URL(`../locales/${locale}/messages.po`, import.meta.url));
+      return formatter().parse(readFileSync(filename, "utf8"), {
+        locale,
+        sourceLocale: "en",
+        filename,
+      });
+    };
+    const source = await readCatalog("en");
+    const translated = await readCatalog(locale);
+    expect(Object.keys(translated).sort()).toEqual(Object.keys(source).sort());
+    const markers = (value: string) =>
+      [...new Set(value.match(/\{\w+(?=\s*[,}])|<\/?\d+\s*\/?>/g) ?? [])].sort();
+    for (const [id, entry] of Object.entries(source)) {
+      const message = entry.message ?? entry.translation ?? id;
+      // Untranslated entries fall back to English, as in every other catalog.
+      const translation = translated[id]?.translation;
+      if (locale === "pl") expect(translation?.trim(), message).toBeTruthy();
+      if (!translation?.trim()) continue;
+      expect(markers(translation), message).toEqual(markers(message));
+    }
+  },
+);

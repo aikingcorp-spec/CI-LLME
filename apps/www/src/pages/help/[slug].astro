@@ -1,0 +1,71 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { getCollection, render } from "astro:content";
+import VnbotHelpNav from "../../components/VnbotHelpNav.astro";
+import VnbotHelpLayout from "../../layouts/VnbotHelpLayout.astro";
+import { VNBOT_HELP_PAGES, vnbotHelpMarkdownPath, vnbotHelpPath } from "../../vnbot-help";
+
+interface Props {
+  entry: CollectionEntry<"vnbotDocs">;
+}
+
+export async function getStaticPaths() {
+  const entries = await getCollection("vnbotDocs");
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const title = headings[0]?.text ?? entry.id;
+const pages = VNBOT_HELP_PAGES;
+const index = pages.findIndex((page) => page.slug === entry.id);
+const previous = pages[index - 1];
+const next = pages[index + 1];
+const currentPath = vnbotHelpPath(entry.id);
+const markdownPath = vnbotHelpMarkdownPath(entry.id);
+---
+
+<VnbotHelpLayout
+  title={title}
+  description={entry.data.description ?? title}
+  canonicalPath={currentPath}
+  markdownPath={markdownPath}
+>
+  <VnbotHelpNav currentPath={currentPath} class="docs-nav--desktop" />
+  <details class="docs-menu">
+    <summary>Mục lục</summary>
+    <VnbotHelpNav currentPath={currentPath} />
+  </details>
+  <main id="main" class="docs-main">
+    <article class="docs-prose">
+      <Content />
+    </article>
+    <footer class="docs-pager">
+      {
+        previous ? (
+          <a href={vnbotHelpPath(previous.slug)}>
+            <span>Trước</span>
+            {previous.title}
+          </a>
+        ) : (
+          <a href={vnbotHelpPath()}>
+            <span>Trước</span>
+            Mục lục
+          </a>
+        )
+      }
+      {
+        next && (
+          <a class="docs-pager__next" href={vnbotHelpPath(next.slug)}>
+            <span>Sau</span>
+            {next.title}
+          </a>
+        )
+      }
+    </footer>
+    <p><a href={markdownPath}>Xem Markdown</a></p>
+  </main>
+</VnbotHelpLayout>

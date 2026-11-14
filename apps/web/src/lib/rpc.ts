@@ -10,9 +10,9 @@ import { CLIENT_BUILD } from "./client-build";
 import { i18n } from "./i18n";
 import { identityLabels } from "./identity-display";
 import { reportClientError } from "./monitoring";
-import { EMAIL_NOT_INVITED } from "./user-error";
 
 const SPACE_STORAGE_KEY = "rakazo:space-id";
+export const ORGANIZATION_SPACES_STORAGE_KEY = "rakazo:org-spaces";
 
 type RpcClientContext = { spaceId?: string | null };
 
@@ -25,23 +25,30 @@ export function selectedSpaceId(): string | null {
   }
 }
 
+/** Fired after the selected Space changes, so per-organization state (billing) can reload. */
+export const SPACE_SELECTED_EVENT = "rakazo:space-selected";
+
 export function selectSpace(id: string): boolean {
+  let selected: boolean;
   try {
     window.localStorage.setItem(SPACE_STORAGE_KEY, id);
-    return true;
+    selected = true;
   } catch {
     try {
       // Write failed but the desired selection is already durable — treat as success.
-      return window.localStorage.getItem(SPACE_STORAGE_KEY) === id;
+      selected = window.localStorage.getItem(SPACE_STORAGE_KEY) === id;
     } catch {
-      return false;
+      selected = false;
     }
   }
+  if (selected) window.dispatchEvent(new Event(SPACE_SELECTED_EVENT));
+  return selected;
 }
 
 export function clearSpaceSelection(): void {
   try {
     window.localStorage.removeItem(SPACE_STORAGE_KEY);
+    window.localStorage.removeItem(ORGANIZATION_SPACES_STORAGE_KEY);
   } catch {
     // Ignore storage failures on sign-out / reset paths.
   }
@@ -77,7 +84,6 @@ const link = new RPCLink<RpcClientContext>({
       options.context.spaceId === undefined ? selectedSpaceId() : options.context.spaceId;
     const correlation = clientCorrelationHeaders();
     const headers = withSpaceHeaders(request.headers, spaceId);
-    if (i18n.locale) headers.set("x-vnbot-ui-locale", i18n.locale);
     if (CLIENT_BUILD) headers.set(CLIENT_BUILD_HEADER, formatClientBuild("web", CLIENT_BUILD));
     for (const [key, value] of Object.entries(correlation)) headers.set(key, value);
     let response: Response;
@@ -95,10 +101,6 @@ const link = new RPCLink<RpcClientContext>({
     }
     // Server exceptions are reported by the API; do not report every HTTP failure twice.
     recheckSessionOnUnauthorized(response.status);
-    if (response.status === 401) {
-      void signOutIfNotInvited(response.clone());
-      void redirectOnUnauthorized(response.clone());
-    }
     if (response.status === 401 && spaceId && spaceId === selectedSpaceId())
       void leaveUnavailableSpace(spaceId);
     for (const listener of responseListeners) listener(response);
@@ -115,67 +117,30 @@ export function recheckSessionOnUnauthorized(status: number): void {
   if (status === 401) authClient.$store.notify("$sessionSignal");
 }
 
-let leavingNotInvited = false;
-let redirectingUnauthorized = false;
-export async function redirectOnUnauthorized(response: Response): Promise<boolean> {
-  if (
-    response.status !== 401 ||
-    redirectingUnauthorized ||
-    (await errorBodyCode(response)) !== "UNAUTHORIZED"
-  )
-    return false;
-  redirectingUnauthorized = true;
-  const next =
-    typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "/";
-  if (typeof window !== "undefined" && window.location.pathname !== "/sign-in")
-    window.location.assign(`/sign-in?next=${encodeURIComponent(next)}`);
-  return true;
-}
-
-/** Reads `code` from a JSON error body, plain (`{ code }`) or oRPC-wrapped (`{ json: { code } }`). */
-export async function errorBodyCode(response: Response): Promise<string | null> {
-  try {
-    const body = (await response.json()) as { code?: unknown; json?: { code?: unknown } } | null;
-    const code = body?.code ?? body?.json?.code;
-    return typeof code === "string" ? code : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * HTTP 401 `{ code: "EMAIL_NOT_INVITED" }`: the email was removed from the allowlist and the
- * server already revoked the session (email-otp spec, SSO error contract). Clear what the client
- * still holds and land on the not-invited screen.
- */
-export async function signOutIfNotInvited(response: Response): Promise<boolean> {
-  if (response.status !== 401 || leavingNotInvited) return false;
-  if ((await errorBodyCode(response)) !== EMAIL_NOT_INVITED) return false;
-  leavingNotInvited = true;
-  clearSpaceSelection();
-  await authClient.signOut().catch(() => undefined);
-  if (typeof window !== "undefined") window.location.assign(`/sign-in?error=${EMAIL_NOT_INVITED}`);
-  return true;
-}
-
-/** Test hook. */
-export function resetNotInvitedGuardForTests(): void {
-  leavingNotInvited = false;
-}
-
 let leavingSpace: Promise<void> | null = null;
 
 /**
  * The server answers 401 when the selected space is no longer one of the user's, for instance
  * after they are removed from it, and every request would keep failing. Ask without a space which
- * spaces the user has; if the selected one is not among them, reload into their default space.
+ * spaces the user has in any organization; if the selected one is not among them, reload into
+ * their default space.
  */
 export function leaveUnavailableSpace(spaceId: string): Promise<void> {
   leavingSpace ??= (async () => {
     try {
-      const { spaces } = await rpc.spaces.list(undefined, { context: { spaceId: null } });
-      if (spaces.some((space) => space.id === spaceId) || selectedSpaceId() !== spaceId) return;
-      clearSpaceSelection();
+      const { organizations } = await rpc.organizations.list(undefined, {
+        context: { spaceId: null },
+      });
+      if (
+        organizations.some((organization) => organization.spaceIds.includes(spaceId)) ||
+        selectedSpaceId() !== spaceId
+      )
+        return;
+      try {
+        window.localStorage.removeItem(SPACE_STORAGE_KEY);
+      } catch {
+        // Without storage the reload keeps asking without a Space.
+      }
       window.location.reload();
     } catch {
       // Signed out or unreachable: leave the selection for the next request to try again.

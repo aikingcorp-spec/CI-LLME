@@ -6,6 +6,12 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 
+const reactQueryPath = vi.hoisted(() => {
+  const { createRequire } = require("node:module") as typeof import("node:module");
+  return createRequire(import.meta.url).resolve("@tanstack/react-query");
+});
+vi.mock("@tanstack/react-query", () => import(reactQueryPath));
+
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
     t: (strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -32,8 +38,13 @@ vi.mock("@rakazo/ui-web", () => ({
     "children"
   >) => <div {...props}>{children}</div>,
   DialogTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children?: ReactNode }) => <p>{children}</p>,
 }));
 
+vi.mock("../components/RemoteSettings", () => ({
+  RemoteSettings: () => null,
+  RemoteHostControls: () => null,
+}));
 vi.mock("./AccountSettingsOverlay", () => ({
   ComputerSettingsPanel: () => null,
   GeneralSettingsPanels: () => null,
@@ -47,13 +58,25 @@ const { memoryConfigs, memoryConfigChange, providerConfig, updaterStatus } = vi.
   updaterStatus: vi.fn(async (): Promise<unknown> => ({ installKind: "compose" })),
 }));
 vi.mock("../lib/rpc", () => ({
-  rpc: { updater: { status: updaterStatus } },
+  rpc: {
+    updater: { status: updaterStatus },
+    remoteHosts: {
+      list: async () => ({ kind: "unavailable" as const, devices: [] }),
+      set: async () => ({
+        kind: "disabled" as const,
+        changed: false,
+        portal: { kind: "unavailable" as const, devices: [] },
+      }),
+    },
+  },
   createSpaceRpc: () => ({ memory: { providerConfig: () => providerConfig("") } }),
   selectedSpaceId: () => null,
   rpcForSpace: (spaceId: string) => ({
     memory: { providerConfig: () => providerConfig(spaceId) },
   }),
 }));
+vi.mock("./BillingSettingsPanel", () => ({ BillingSettingsPanel: () => null }));
+vi.mock("./PaymentWalletSettingsPanel", () => ({ PaymentWalletSettingsPanel: () => null }));
 vi.mock("./MemorySettingsOverlay", () => ({
   MemorySettingsOverlay: ({
     config,
@@ -102,7 +125,12 @@ vi.mock("../components/ComputersUnavailableHint", () => ({
   computersAreUnavailable: () => false,
 }));
 
+vi.mock("./MessagingSettingsPanel", () => ({
+  MessagingSettingsPanel: () => <div data-testid="messaging-panel" />,
+}));
+
 import { SettingsOverlay } from "./SettingsOverlay";
+import { useSettingsNavItems } from "./settings-nav";
 
 const acme = { id: "space-a", name: "Acme" };
 const spaces = [acme, { id: "space-b", name: "Beta" }];
@@ -127,6 +155,7 @@ async function render(props: Partial<React.ComponentProps<typeof SettingsOverlay
             onClose={() => undefined}
             section="general"
             onSectionChange={() => undefined}
+            shellRpc={{} as never}
             {...next}
           />
         </QueryClientProvider>,
@@ -216,11 +245,17 @@ it("reports a section picked in the nav so the shell can keep it in the URL", as
   }
 });
 
-it("has no billing or wallet settings", async () => {
-  const { container, cleanup } = await render({ section: "general" });
+it("opens a linked billing section once billing turns out to be on", async () => {
+  const { container, rerender, cleanup } = await render({
+    section: "billing",
+    billingEnabled: false,
+  });
+  const shown = () =>
+    container.querySelector("[data-settings-section]")?.getAttribute("data-settings-section");
   try {
-    expect(container.querySelector('[data-testid="settings-nav-billing"]')).toBeNull();
-    expect(container.querySelector('[data-testid="settings-nav-wallet"]')).toBeNull();
+    expect(shown()).toBe("general");
+    await rerender({ section: "billing", billingEnabled: true });
+    expect(shown()).toBe("billing");
   } finally {
     await cleanup();
   }
@@ -276,11 +311,51 @@ it("edits the memory of the space the app is showing, even after another space's
 const updatesNav = (container: HTMLElement) =>
   container.querySelector('[data-testid="settings-nav-updates"]');
 
-it("hides server updates and never requests server authority", async () => {
-  const { container, cleanup } = await render({});
+function NavProbe({ updates }: { updates: boolean }) {
+  const items = useSettingsNavItems({
+    messaging: false,
+    wallet: false,
+    computer: false,
+    billing: false,
+    updates,
+  });
+  return <div>{items.map((item) => item.id).join(" ")}</div>;
+}
+
+it("keeps Updates in the menu when the caller has no desktop bridge", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
   try {
-    expect(updatesNav(container)).toBeNull();
+    await act(async () => {
+      root.render(<NavProbe updates={false} />);
+    });
+    expect(container.textContent).toContain("updates");
+    expect(container.textContent).toContain("messaging");
+    expect(container.textContent).not.toContain("billing");
+    expect(container.textContent).not.toContain("organization");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
+
+it("shows Updates without a desktop bridge and keeps the requested section", async () => {
+  const onSectionChange = vi.fn();
+  const { container, cleanup } = await render({ section: "updates", onSectionChange });
+  try {
+    expect(updatesNav(container)).not.toBeNull();
+    expect(
+      container.querySelector("[data-settings-section]")?.getAttribute("data-settings-section"),
+    ).toBe("updates");
+    expect(container.querySelector('[data-testid="settings-nav-billing"]')).toBeNull();
+    expect(container.querySelector('[data-testid="settings-nav-organization"]')).toBeNull();
     expect(updaterStatus).not.toHaveBeenCalled();
+    await act(async () => {
+      (updatesNav(container) as HTMLButtonElement).click();
+    });
+    expect(onSectionChange).toHaveBeenCalledWith("updates");
   } finally {
     await cleanup();
   }
@@ -288,10 +363,58 @@ it("hides server updates and never requests server authority", async () => {
 
 it("shows Updates in the desktop app", async () => {
   vi.stubGlobal("rakazoDesktop", { update: {} });
-  const { container, cleanup } = await render({});
+  const { container, cleanup } = await render({ section: "updates" });
   try {
     expect(updatesNav(container)).not.toBeNull();
+    expect(
+      container.querySelector("[data-settings-section]")?.getAttribute("data-settings-section"),
+    ).toBe("updates");
   } finally {
     await cleanup();
+  }
+});
+
+it("offers Wallet only when the deployment has a wallet provider", async () => {
+  const { container, rerender, cleanup } = await render({ section: "wallet" });
+  const shown = () =>
+    container.querySelector("[data-settings-section]")?.getAttribute("data-settings-section");
+  try {
+    expect(container.querySelector('[data-testid="settings-nav-wallet"]')).toBeNull();
+    expect(shown()).toBe("general");
+    await rerender({ section: "wallet", paymentWalletProvider: { id: "link", name: "Link" } });
+    expect(container.querySelector('[data-testid="settings-nav-wallet"]')).not.toBeNull();
+    expect(shown()).toBe("wallet");
+  } finally {
+    await cleanup();
+  }
+});
+
+it("opens Messaging when no chat provider is mounted", async () => {
+  const { container, cleanup } = await render({ section: "messaging", messagingEnabled: false });
+  try {
+    expect(container.querySelector('[data-testid="settings-nav-messaging"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="messaging-panel"]')).not.toBeNull();
+    expect(
+      container.querySelector("[data-settings-section]")?.getAttribute("data-settings-section"),
+    ).toBe("messaging");
+  } finally {
+    await cleanup();
+  }
+});
+
+it("says what a page is for only where its name does not", async () => {
+  const general = await render({ section: "general" });
+  try {
+    expect(general.container.querySelector("h2 + p")).toBeNull();
+  } finally {
+    await general.cleanup();
+  }
+  const voice = await render({ section: "voice" });
+  try {
+    expect(voice.container.querySelector("h2 + p")?.textContent).toBe(
+      "Calls, dictation, and replies read aloud.",
+    );
+  } finally {
+    await voice.cleanup();
   }
 });

@@ -5,34 +5,38 @@ import {
   STUCK_WORK_EXPIRE_AFTER_MS,
   STUCK_WORK_NOTIFY_AFTER_MS,
   stuckWorkAction,
+  stuckWorkDueAfterMs,
   stuckWorkReminder,
   stuckWorkStatusMessage,
   stuckWorkStatusMessages,
   stuckWorkStoppedNotification,
+  TAKEOVER_WAIT_EXPIRE_AFTER_MS,
 } from "./stuck-work.js";
 
 describe("stuck work age", () => {
-  it("keeps the reminder well before the cancellation", () => {
-    expect(STUCK_WORK_EXPIRE_AFTER_MS).toBeGreaterThan(STUCK_WORK_NOTIFY_AFTER_MS);
+  it("stays quiet until the reminder, then cancels at the longer limit", () => {
+    const action = (ageMs: number, alreadyNotified: boolean) =>
+      stuckWorkAction({ status: "waiting_input", ageMs, alreadyNotified });
+    expect(stuckWorkDueAfterMs("waiting_input")).toBe(STUCK_WORK_NOTIFY_AFTER_MS);
+    expect(action(TAKEOVER_WAIT_EXPIRE_AFTER_MS, false)).toBe("none");
+    expect(action(STUCK_WORK_NOTIFY_AFTER_MS - 1, false)).toBe("none");
+    expect(action(STUCK_WORK_NOTIFY_AFTER_MS, false)).toBe("notify");
+    expect(action(STUCK_WORK_NOTIFY_AFTER_MS, true)).toBe("none");
+    expect(action(STUCK_WORK_EXPIRE_AFTER_MS - 1, true)).toBe("none");
+    expect(action(STUCK_WORK_EXPIRE_AFTER_MS, true)).toBe("expire");
   });
 
-  it("stays quiet until the reminder, then cancels at the longer limit", () => {
-    expect(stuckWorkAction({ ageMs: STUCK_WORK_NOTIFY_AFTER_MS - 1, alreadyNotified: false })).toBe(
-      "none",
-    );
-    expect(stuckWorkAction({ ageMs: STUCK_WORK_NOTIFY_AFTER_MS, alreadyNotified: false })).toBe(
-      "notify",
-    );
-    expect(stuckWorkAction({ ageMs: STUCK_WORK_NOTIFY_AFTER_MS, alreadyNotified: true })).toBe(
-      "none",
-    );
-    expect(stuckWorkAction({ ageMs: STUCK_WORK_EXPIRE_AFTER_MS, alreadyNotified: true })).toBe(
-      "expire",
-    );
+  it("cancels a takeover nobody acted on after half an hour", () => {
+    const action = (ageMs: number) =>
+      stuckWorkAction({ status: "waiting_takeover", ageMs, alreadyNotified: false });
+    expect(stuckWorkDueAfterMs("waiting_takeover")).toBe(TAKEOVER_WAIT_EXPIRE_AFTER_MS);
+    expect(action(TAKEOVER_WAIT_EXPIRE_AFTER_MS - 1)).toBe("none");
+    expect(action(TAKEOVER_WAIT_EXPIRE_AFTER_MS)).toBe("expire");
   });
 
   it("treats only queued and human waits as stuck", () => {
     expect(isStuckWorkStatus("queued")).toBe(true);
+    expect(isStuckWorkStatus("waiting_input")).toBe(true);
     expect(isStuckWorkStatus("waiting_takeover")).toBe(true);
     expect(isStuckWorkStatus("running")).toBe(false);
     expect(isAgedStuckWork("queued", new Date(Date.now() - STUCK_WORK_NOTIFY_AFTER_MS))).toBe(true);
@@ -46,12 +50,12 @@ describe("stuck work age", () => {
     expect(stuckWorkStatusMessage("waiting_takeover")).toMatch(/screen/);
     expect(stuckWorkStoppedNotification("waiting_input", "  ")).toEqual({
       kind: "failure",
-      title: "Bot đã dừng",
-      body: "Đã dừng. Việc này vẫn đang chờ câu trả lời.",
+      title: "Bot stopped",
+      body: stuckWorkStatusMessage("waiting_input"),
     });
     expect(stuckWorkReminder("waiting_takeover", "Ada")).toMatchObject({
       kind: "takeover",
-      title: "Ada vẫn cần bạn",
+      title: "Ada still needs you",
     });
     expect(stuckWorkReminder("queued", "Ada").kind).toBe("help");
   });

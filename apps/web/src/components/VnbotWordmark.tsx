@@ -1,3 +1,4 @@
+import { brandAssetPath, PRODUCT_DISPLAY_NAME } from "../brand/product-display";
 import { useResolvedAppearance } from "../lib/use-resolved-appearance";
 
 /** Theme-specific wordmark. Served as an image so its internal ids never meet another SVG. */
@@ -9,11 +10,11 @@ export function VnbotWordmark({
   className?: string;
 }) {
   const appearance = useResolvedAppearance();
-  const file =
-    variant === "leaf"
-      ? `vnbot-leaf-${appearance}.svg`
-      : variant === "powered"
-        ? `vnbot-wordmark-powered-${appearance}.svg`
-        : `vnbot-wordmark-${appearance}.svg`;
-  return <img src={`/brand/${file}`} alt="VNBot" className={className} />;
+  return (
+    <img
+      src={brandAssetPath(variant, appearance)}
+      alt={PRODUCT_DISPLAY_NAME}
+      className={className}
+    />
+  );
 }

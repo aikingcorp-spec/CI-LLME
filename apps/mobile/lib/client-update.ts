@@ -1,13 +1,7 @@
-import {
-  ANDROID_APK_URL,
-  buildIdAt,
-  CLIENT_BUILD_HEADER,
-  formatClientBuild,
-  IOS_APP_STORE_URL,
-} from "@rakazo/contracts";
+import { buildIdAt, CLIENT_BUILD_HEADER, formatClientBuild } from "@rakazo/contracts";
 import * as Updates from "expo-updates";
 import type { AppStateStatus } from "react-native";
-import { Alert, AppState, Linking, Platform } from "react-native";
+import { Alert, AppState, Linking } from "react-native";
 import { configureClientBuild } from "./api";
 import { t } from "./i18n";
 
@@ -42,7 +36,10 @@ async function downloadUpdate(): Promise<boolean> {
   return true;
 }
 
-/** Apply an over-the-air update now if one exists; otherwise send the user to the store. */
+/** The web app. There is no VNBot App Store or APK feed. */
+const UPDATE_RECOVERY_URL = "https://app.vnbot.run";
+
+/** Apply an over-the-air update now if one exists; otherwise open the web app. */
 export async function applyRequiredUpdate(): Promise<void> {
   try {
     if (await downloadUpdate()) {
@@ -50,12 +47,9 @@ export async function applyRequiredUpdate(): Promise<void> {
       return;
     }
   } catch {
-    // An unreachable update server falls through to the store.
+    // An unreachable update server falls through to the web app.
   }
-  // No iOS listing yet: the download page says "iOS sắp có" and links the builds that exist.
-  await Linking.openURL((Platform.OS === "ios" && IOS_APP_STORE_URL) || ANDROID_APK_URL).catch(
-    () => undefined,
-  );
+  await Linking.openURL(UPDATE_RECOVERY_URL).catch(() => undefined);
 }
 
 let prompting = false;

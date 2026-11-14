@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 import path from "node:path";
-import { MAX_DESKTOP_DISPLAY, screenPorts } from "@rakazo/core/node/desktop-runtime";
+import {
+  COMPUTER_CACHE_ENV,
+  MAX_DESKTOP_DISPLAY,
+  screenPorts,
+} from "@rakazo/core/node/desktop-runtime";
 import type Docker from "dockerode";
+import type { ComputerLocale } from "./computer-locale.js";
+import { computerLocaleEnv } from "./computer-locale.js";
 
 /**
  * The computer image. RAKAZO_COMPUTER_IMAGE_TAG is appended the way Compose does, so a
@@ -26,20 +32,40 @@ export const COMPUTER_IMAGE = resolveComputerImage();
 /** The files from infra/sandboxes/computer the supervisor sends when it builds the image locally. */
 export const COMPUTER_IMAGE_CONTEXT_FILES = [
   "Dockerfile",
+  "apt-security.sh",
   "start.sh",
   "user-env.sh",
   "control.py",
   "xcapture.c",
   "rakazo-browser",
+  "rakazo-focus-or-launch",
   "rakazo-page-browser",
+  "page_secrets.py",
+  "install-agent-browser.sh",
   "rakazo-browser.desktop",
+  "browser-policy.json",
   "embed.html",
   "clipboard-bridge.js",
   "mobile-keyboard.js",
   "fluxbox.init",
   "fluxbox.apps",
   "fluxbox.menu",
+  "rakazo-local-bin.sh",
 ] as const;
+
+/**
+ * Docker's rule for a name that carries its registry: the first path component has a "." or
+ * ":", is "localhost", or has an uppercase letter. The supervisor pulls only such names, never an
+ * unqualified one that Docker would look up on Docker Hub, where anyone could register
+ * rakazo/computer.
+ */
+export function isRegistryQualifiedImage(image: string): boolean {
+  const slash = image.indexOf("/");
+  if (slash < 0) return false;
+  const host = image.slice(0, slash);
+  return /[.:A-Z]/.test(host) || host === "localhost";
+}
+
 export const COMPUTER_UID = 1000;
 export const COMPUTER_GID = 1000;
 export const COMPUTER_USER = `${COMPUTER_UID}:${COMPUTER_GID}`;
@@ -201,10 +227,10 @@ export function resolveComputerEgressMode(
 /**
  * DNS servers for computers, from SANDBOX_COMPUTER_DNS (comma-separated IP addresses).
  * Unset keeps Docker's default: a computer on its own network asks Docker's embedded
- * resolver, which forwards to the host's resolvers from inside the computer's network.
- * Restricted egress drops that forward when the host's resolver has a private address
- * (a cloud VPC resolver, a LAN router), so every name lookup times out; servers set here
- * replace the host's as the forward target, and public ones stay reachable.
+ * resolver, which forwards to the host's configured resolvers.
+ * Docker 28+ forwards host DNS from the host namespace. Older Docker and explicit
+ * container/daemon DNS forward from the computer network, where restricted egress
+ * drops private resolvers. Servers set here replace that target.
  */
 export function resolveComputerDns(value = process.env.SANDBOX_COMPUTER_DNS): string[] | undefined {
   const servers = (value ?? "")
@@ -222,6 +248,172 @@ export function computerDnsMatches(current: string[] | null | undefined, desired
   const have = current ?? [];
   const want = desired ?? [];
   return have.length === want.length && have.every((server, index) => server === want[index]);
+}
+
+/** A host directory mounted into every computer (SANDBOX_COMPUTER_MOUNTS). */
+export interface ComputerMount {
+  source: string;
+  target: string;
+  readOnly: boolean;
+  /** rslave: mounts made later under the source (a remounted network share) reach the computer. */
+  propagation?: "rslave";
+}
+
+/** Container paths a mount may sit under: outside the home and every system directory. */
+const MOUNT_TARGET_ROOTS = ["/mnt", "/media", "/srv"];
+const MOUNT_OPTIONS = new Set(["ro", "rw", "rslave"]);
+/**
+ * Host paths no computer may see, nor any directory holding one: the Docker socket and runtime
+ * state, kernel interfaces, host configuration and Docker's own storage.
+ */
+export const DENIED_MOUNT_SOURCES = [
+  "/var/run",
+  "/run",
+  "/proc",
+  "/sys",
+  "/dev",
+  "/etc",
+  "/boot",
+  "/root",
+  "/var/lib/docker",
+];
+
+// normalize keeps a trailing slash; Docker reports mounts without one.
+function cleanMountPath(value: string) {
+  return path.posix.normalize(value).replace(/(.)\/+$/, "$1");
+}
+
+function pathsOverlap(a: string, b: string) {
+  const within = (child: string, parent: string) =>
+    child === parent || parent === "/" || child.startsWith(`${parent}/`);
+  return within(a, b) || within(b, a);
+}
+
+/**
+ * Throws when a mount source is, holds, or sits inside a protected host path: the fixed
+ * denylist plus the caller's own, such as the bot homes' data directory and the Docker socket.
+ */
+export function assertComputerMountSources(
+  mounts: ComputerMount[],
+  protectedPaths: readonly (string | undefined)[] = [],
+) {
+  const denied = [
+    ...DENIED_MOUNT_SOURCES,
+    ...protectedPaths
+      .filter((entry): entry is string => Boolean(entry && path.posix.isAbsolute(entry)))
+      .map(cleanMountPath),
+  ];
+  for (const mount of mounts) {
+    const hit = denied.find((entry) => pathsOverlap(mount.source, entry));
+    if (hit !== undefined) {
+      throw new Error(
+        `Unsupported SANDBOX_COMPUTER_MOUNTS source "${mount.source}": overlaps protected host path ${hit}`,
+      );
+    }
+  }
+}
+
+/**
+ * Host directories mounted into every computer in every Space, from SANDBOX_COMPUTER_MOUNTS:
+ * comma-separated `source:target[:option...]` entries with options ro (default), rw and rslave.
+ * Both paths are absolute without `..`. A target sits below /mnt, /media or /srv: inside
+ * /home/aiking Docker would create the mount point root-owned in the bot's home, which then
+ * fails the home ownership check, and system directories are not the operator's to replace.
+ */
+export function resolveComputerMounts(
+  value = process.env.SANDBOX_COMPUTER_MOUNTS,
+  protectedPaths: readonly (string | undefined)[] = [],
+): ComputerMount[] {
+  const entries = (value ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const mounts: ComputerMount[] = [];
+  for (const entry of entries) {
+    const [rawSource, rawTarget, ...options] = entry.split(":").map((part) => part.trim());
+    const fail = (reason: string) =>
+      new Error(`Unsupported SANDBOX_COMPUTER_MOUNTS entry "${entry}": ${reason}`);
+    if (!rawSource || !rawTarget) throw fail("expected source:target[:ro|rw|rslave]");
+    if (!path.posix.isAbsolute(rawSource) || !path.posix.isAbsolute(rawTarget))
+      throw fail("source and target must be absolute paths");
+    if ([rawSource, rawTarget].some((raw) => raw.split("/").includes("..")))
+      throw fail("paths must not contain ..");
+    const source = cleanMountPath(rawSource);
+    const target = cleanMountPath(rawTarget);
+    if (!MOUNT_TARGET_ROOTS.some((root) => target.startsWith(`${root}/`)))
+      throw fail(`target must be below ${MOUNT_TARGET_ROOTS.join(", ")}`);
+    const unknown = options.find((option) => !MOUNT_OPTIONS.has(option));
+    if (unknown !== undefined) throw fail(`unknown option "${unknown}"`);
+    if (options.includes("ro") && options.includes("rw")) throw fail("both ro and rw");
+    // Mounts propagated in later keep their own flags, so read-only cannot be promised.
+    if (options.includes("rslave") && !options.includes("rw")) throw fail("rslave requires rw");
+    const overlap = mounts.find((other) => pathsOverlap(other.target, target));
+    if (overlap) throw fail(`target overlaps ${overlap.target}`);
+    mounts.push({
+      source,
+      target,
+      readOnly: !options.includes("rw"),
+      ...(options.includes("rslave") ? { propagation: "rslave" as const } : {}),
+    });
+  }
+  assertComputerMountSources(mounts, protectedPaths);
+  return mounts;
+}
+
+function computerMountSettings(mount: ComputerMount): Docker.MountSettings {
+  return {
+    Type: "bind",
+    Source: mount.source,
+    Target: mount.target,
+    ReadOnly: mount.readOnly,
+    ...(mount.propagation ? { BindOptions: { Propagation: mount.propagation } } : {}),
+  } as Docker.MountSettings;
+}
+
+/**
+ * Label holding each mount's configured source by target. Docker Desktop stores a bind source
+ * as its own VM path when the container also mounts a volume, as every Compose computer's home
+ * does, so the inspected Source cannot be compared with the setting.
+ */
+const MOUNT_SOURCES_LABEL = "rakazo.mountSources";
+
+function mountSourcesLabel(mounts: ComputerMount[]) {
+  return JSON.stringify(Object.fromEntries(mounts.map((mount) => [mount.target, mount.source])));
+}
+
+function labeledMountSources(labels: Record<string, string> | undefined): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(labels?.[MOUNT_SOURCES_LABEL] ?? "{}");
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Whether a container carries exactly the configured host mounts. Mounts are fixed when a
+ * container is created, so an added, changed or removed entry replaces the computer.
+ */
+export function computerMountsMatch(
+  info: Pick<Docker.ContainerInspectInfo, "Config" | "HostConfig">,
+  desired: ComputerMount[],
+) {
+  const binds = (info.HostConfig.Mounts ?? []).filter(
+    (mount) => mount.Type === "bind" && mount.Target !== "/home/aiking",
+  );
+  const sources = labeledMountSources(info.Config.Labels);
+  return (
+    binds.length === desired.length &&
+    desired.every((want) =>
+      binds.some(
+        (have) =>
+          sources[want.target] === want.source &&
+          have.Target === want.target &&
+          Boolean(have.ReadOnly) === want.readOnly &&
+          (have.BindOptions?.Propagation ?? undefined) === want.propagation,
+      ),
+    )
+  );
 }
 
 /**
@@ -249,15 +441,43 @@ export function computerNetworkOwnerFor(
   return createHash("sha256").update(root).digest("hex").slice(0, 32);
 }
 
+/**
+ * Whether a network-create failure means this daemon may be unable to create
+ * dual-stack networks: every capability error the daemon emits names IPv6 or
+ * ip6tables ("could not find an available, non-overlapping IPv6 address pool…",
+ * "Unable to enable IPv6 addresses on bridge…", "ip6tables is missing", "IPv6
+ * global forwarding is disabled"), and the exact wording changes between
+ * releases, so match broadly. A transient error that happens to name ip6tables
+ * falls back too, but the fallback is bounded: a stop gives the network back
+ * (reclaimComputerNetwork) and the next start creates it again, retrying IPv6.
+ * Every other error surfaces, so a transient failure fails loudly and retries.
+ */
+export function isIpv6NetworkUnavailable(error: unknown): boolean {
+  return /ipv6|ip6tables/i.test(String(error));
+}
+
+/**
+ * IPv6 for computer networks, open egress only: Docker 27+ allocates each network
+ * its own ULA /64 when no subnet is given and, with ip6tables on by default,
+ * masquerades outbound traffic through the host's IPv6 address. A ULA source keeps
+ * IPv4 preferred for dual-stack names (RFC 6724), so only IPv6-only destinations
+ * move to IPv6. Restricted egress stays IPv4-only: the host ruleset and the
+ * startup probe (egress-probe.ts) enforce and verify IPv4 only. Daemons that
+ * cannot create the dual-stack network (Docker 26, Docker-in-Docker without
+ * ip6_tables, IPv6 off in the kernel) get the same network without IPv6 from
+ * the caller's fallback, so a computer start never fails on this.
+ */
 export function computerNetworkCreateOptions(
   botId: string,
   owner: string,
   egress: ComputerEgressMode = "open",
+  ipv6 = true,
 ) {
   return {
     Name: computerNetworkNameFor(botId),
     Driver: "bridge",
     CheckDuplicate: true,
+    ...(ipv6 && egress === "open" ? { EnableIPv6: true } : {}),
     Labels: { "rakazo.computerOwner": owner, "rakazo.botId": botId },
     ...(egress === "restricted"
       ? { Options: { "com.docker.network.bridge.name": computerBridgeNameFor(botId) } }
@@ -341,7 +561,7 @@ export function homeVolumeMatches(
   return (
     mounts?.some(
       (mount) =>
-        mount.Target === "/home/rakazo" &&
+        mount.Target === "/home/aiking" &&
         mount.Type === "volume" &&
         mount.Source === volume.name &&
         mount.VolumeOptions?.Subpath === volume.subpath &&
@@ -362,6 +582,8 @@ export interface ComputerCreateInput {
   networkMode?: string;
   publishControlPort?: boolean;
   dns?: string[];
+  mounts?: ComputerMount[];
+  locale?: ComputerLocale;
 }
 
 interface PointerInput {
@@ -379,23 +601,27 @@ export type SandboxInput =
 
 export function containerCreateOptions(input: ComputerCreateInput) {
   const ports = computerPortBindings(input.publishControlPort);
+  const extraMounts = (input.mounts ?? []).map(computerMountSettings);
   return {
     Image: input.image,
     name: input.name,
     User: input.user ?? COMPUTER_USER,
     Tty: true,
     Env: [
+      ...Object.entries(COMPUTER_CACHE_ENV).map(([key, value]) => `${key}=${value}`),
       "DISPLAY=:1",
-      "HOME=/home/rakazo",
-      "PATH=/home/rakazo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-      "NPM_CONFIG_PREFIX=/home/rakazo/.local",
+      "HOME=/home/aiking",
+      "PATH=/home/aiking/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "NPM_CONFIG_PREFIX=/home/aiking/.local",
       "PIP_USER=1",
       ...(input.controlToken ? [`RAKAZO_COMPUTER_CONTROL_TOKEN=${input.controlToken}`] : []),
+      ...computerLocaleEnv(input.locale),
     ],
     Labels: {
       "rakazo.managed": "true",
       "rakazo.botId": input.botId,
       "rakazo.spaceId": input.spaceId,
+      ...(input.mounts?.length ? { [MOUNT_SOURCES_LABEL]: mountSourcesLabel(input.mounts) } : {}),
     },
     ExposedPorts: ports.ExposedPorts,
     HostConfig: {
@@ -406,16 +632,20 @@ export function containerCreateOptions(input: ComputerCreateInput) {
               {
                 Type: "volume" as const,
                 Source: input.homeVolume.name,
-                Target: "/home/rakazo",
+                Target: "/home/aiking",
                 // Docker makes Labels and DriverConfig optional; dockerode's types do not.
                 VolumeOptions: {
                   NoCopy: true,
                   Subpath: input.homeVolume.subpath,
                 } as Docker.MountSettings["VolumeOptions"],
               },
+              ...extraMounts,
             ],
           }
-        : { Binds: [`${input.homePath}:/home/rakazo`], Mounts: undefined }),
+        : {
+            Binds: [`${input.homePath}:/home/aiking`],
+            Mounts: extraMounts.length ? extraMounts : undefined,
+          }),
       PortBindings: ports.PortBindings,
       ShmSize: 256 * 1024 * 1024,
       CapDrop: ["ALL"],
@@ -426,7 +656,7 @@ export function containerCreateOptions(input: ComputerCreateInput) {
       NetworkMode: input.networkMode ?? "bridge",
       ...(input.dns ? { Dns: input.dns } : {}),
     },
-    WorkingDir: "/home/rakazo",
+    WorkingDir: "/home/aiking",
   };
 }
 

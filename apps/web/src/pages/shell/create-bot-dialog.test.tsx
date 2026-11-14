@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 
-import {
-  ORGANIC_AVATAR_LOOKS,
-  SHIPPED_BOT_AVATAR_SHAPE_KEYS,
-  seededVnbotBodyColor,
-} from "@rakazo/core";
+import { ORGANIC_AVATAR_LOOKS } from "@rakazo/core";
 import type { ReactNode } from "react";
 import { act } from "react";
 import type { Root } from "react-dom/client";
@@ -80,61 +76,37 @@ describe("CreateBotDialog", () => {
     expect(button("Create").disabled).toBe(false);
   });
 
-  it("defaults new bots to the vnbot set without an organic family override", async () => {
+  it("starts with VNBot mascots and sends the selected mascot set", async () => {
     const onCreate = vi.fn(async (_input: CreateBotDialogInput) => undefined);
     await render(onCreate);
-    expect(document.querySelector("[data-vnbot-avatar]")).not.toBeNull();
-    expect(document.querySelector("[data-vnbot-avatar]")?.getAttribute("data-vnbot-shape")).toBe(
-      "non",
-    );
+    expect(document.querySelector('[data-testid="vnbot-shape-non"]')).not.toBeNull();
+    await click(button("Sen"));
     await typeName("Scout");
     await click(button("Create"));
-    expect(onCreate.mock.lastCall?.[0]).toMatchObject({ name: "Scout", avatarSet: "vnbot" });
+    expect(onCreate.mock.lastCall?.[0]).toMatchObject({
+      name: "Scout",
+      avatarSet: "vnbot",
+      color: expect.stringContaining("::shape_4"),
+    });
+    expect(onCreate.mock.lastCall?.[0].id).toMatch(/^c[a-z0-9]{24}$/);
     expect(onCreate.mock.lastCall?.[0]).not.toHaveProperty("avatarFamily");
-    const input = onCreate.mock.lastCall![0];
-    expect(input.id).toMatch(/^c[a-z0-9]{24}$/);
-    expect(input.color).toBe(`${seededVnbotBodyColor(input.id!)}::shape_0`);
-  });
-
-  it("preserves an explicitly chosen colour through a failed create and retry", async () => {
-    const onCreate = vi
-      .fn(async (_input: CreateBotDialogInput) => undefined)
-      .mockRejectedValueOnce(new Error("Try again"));
-    await render(onCreate);
-    await click(button("Color #10B981"));
-    await typeName("Scout");
-    await click(button("Create"));
-    expect(onCreate.mock.lastCall?.[0]).toMatchObject({
-      avatarSet: "vnbot",
-      color: "#10B981::shape_0",
-    });
-    await click(button("Create"));
-    expect(onCreate.mock.lastCall?.[0]).toMatchObject({
-      avatarSet: "vnbot",
-      color: "#10B981::shape_0",
-    });
   });
 
   it("sends the organic family the preview draws", async () => {
     const onCreate = vi.fn(async (_input: CreateBotDialogInput) => undefined);
     await render(onCreate);
     await click(button("Classic"));
-    expect(document.querySelectorAll(".rakazo-organic-avatar")).toHaveLength(
-      ORGANIC_AVATAR_LOOKS.length + 1,
-    );
-    for (const key of SHIPPED_BOT_AVATAR_SHAPE_KEYS) expect(button(key)).toBeDefined();
-    expect(document.querySelector('[data-testid^="vnbot-shape-"]')).toBeNull();
     await click(button("Shape 2"));
-    await click(button("Color #10B981"));
+    await click(button("Color #00C972"));
     const preview = document.querySelector(".rakazo-organic-avatar");
     const family = Number(preview?.getAttribute("data-shape-family"));
     await typeName("Scout");
     await click(button("Create"));
     expect(onCreate).toHaveBeenCalledWith({
       name: "Scout",
-      color: "#10B981",
-      avatarFamily: family,
       avatarSet: "organic",
+      color: "#00C972",
+      avatarFamily: family,
     });
     expect(family).toBe(ORGANIC_AVATAR_LOOKS[1]);
   });
@@ -143,14 +115,14 @@ describe("CreateBotDialog", () => {
     const onCreate = vi.fn(async (_input: CreateBotDialogInput) => undefined);
     await render(onCreate);
     await click(button("Classic"));
-    await click(button("Color #F97316"));
+    await click(button("Color #FF781C"));
     await click(button("wedge"));
     await typeName("Scout");
     await click(button("Create"));
     expect(onCreate).toHaveBeenCalledWith({
       name: "Scout",
-      color: "#F97316::shape_1",
       avatarSet: "organic",
+      color: "#FF781C::shape_1",
     });
   });
 
@@ -167,47 +139,22 @@ describe("CreateBotDialog", () => {
   });
 });
 
-describe("importing instead", () => {
-  it("offers Import only when the parent handles it", async () => {
-    await render(async () => undefined);
-    expect(document.querySelector('[data-testid="create-bot-import"]')).toBeNull();
-
-    const onImport = vi.fn();
-    await act(async () => {
-      root.render(
-        <CreateBotDialog
-          onCancel={() => undefined}
-          onCreate={async () => undefined}
-          onImport={onImport}
-        />,
-      );
-    });
-    await act(async () => button("Import an agent").click());
-    expect(onImport).toHaveBeenCalledTimes(1);
-  });
-});
-
-it("retains the VNBot preview identity, selected shape and colour through a retry", async () => {
+it("retains the preview identity and colour through rerenders and a retry", async () => {
   const onCreate = vi
     .fn(async (_input: CreateBotDialogInput) => undefined)
     .mockRejectedValueOnce(new Error("Try again"));
   await render(onCreate);
-  expect([...document.querySelectorAll('[role="tab"]')].map((node) => node.textContent)).toEqual([
-    "VNBot",
-    "Classic",
-  ]);
-  const tiles = [...document.querySelectorAll<HTMLButtonElement>('[data-testid^="vnbot-shape-"]')];
-  expect(tiles).toHaveLength(5);
-  expect(tiles[0]!.dataset.testid).toBe("vnbot-shape-non");
-  await click(tiles[3]!);
-  await click(button("Color #10B981"));
+  const colour = document.querySelector("[data-vnbot-avatar]")!.outerHTML;
   await typeName("First name");
+  await render(onCreate);
+  expect(document.querySelector("[data-vnbot-avatar]")!.outerHTML).toBe(colour);
   await click(button("Create"));
   const first = onCreate.mock.lastCall![0];
-  expect(first).toMatchObject({ avatarSet: "vnbot", color: "#10B981::shape_3" });
-  expect(first.id).toMatch(/^c[a-z0-9]{24}$/);
-  expect(document.querySelector('[data-vnbot-shape="ran"]')).not.toBeNull();
   await typeName("Retry name");
   await click(button("Create"));
-  expect(onCreate.mock.lastCall![0]).toMatchObject({ id: first.id, color: first.color });
+  const second = onCreate.mock.lastCall![0];
+  expect(first.id).toMatch(/^c[a-z0-9]{24}$/);
+  expect(second.id).toBe(first.id);
+  expect(second.color).toBe(first.color);
+  expect(second.avatarSet).toBe("vnbot");
 });

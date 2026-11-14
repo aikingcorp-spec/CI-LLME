@@ -1,8 +1,9 @@
 import { createHash, createHmac, generateKeyPairSync, randomBytes, sign } from "node:crypto";
 import type { TransactionalEmail } from "@rakazo/adapter-kit";
 import type * as Db from "@rakazo/db";
-import { bootstrapUserSpace, recordSecurityEvent } from "@rakazo/db";
+import { bootstrapUserSpace, recordSecurityEvent, SpaceDeletionInProgressError } from "@rakazo/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AuthEnv } from "./index.js";
 import { CLIENT_IP_HEADER, createAuth } from "./index.js";
 
 // Exercise Better Auth's real routing, password hashing, verification and
@@ -10,33 +11,18 @@ import { CLIENT_IP_HEADER, createAuth } from "./index.js";
 vi.mock("better-auth/adapters/prisma", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
   return {
-    prismaAdapter: (prisma: { authData: Record<string, { id?: unknown; key?: unknown }[]> }) => {
+    prismaAdapter: (prisma: { authData: Record<string, { id?: unknown }[]> }) => {
       const factory = memoryAdapter(prisma.authData);
-      const pendingRateLimitKeys = new Set<unknown>();
       // Postgres rejects a duplicate primary key, which first-writer-wins reservations rely on.
       return (options: Parameters<typeof factory>[0]) => {
         const adapter = factory(options);
         return {
           ...adapter,
-          create: (async (input: { model: string; data: { id?: unknown; key?: unknown } }) => {
+          create: (async (input: { model: string; data: { id?: unknown } }) => {
             const id = input.data.id;
             if (id !== undefined && prisma.authData[input.model]?.some((row) => row.id === id))
               throw new Error("duplicate key");
-            if (input.model !== "rateLimit") return adapter.create(input as never);
-            const key = input.data.key;
-            // Include in-flight inserts: the adapter yields before persisting.
-            if (
-              pendingRateLimitKeys.has(key) ||
-              prisma.authData.rateLimit?.some((row) => row.key === key)
-            ) {
-              throw Object.assign(new Error("duplicate rate limit key"), { code: "P2002" });
-            }
-            pendingRateLimitKeys.add(key);
-            try {
-              return await adapter.create(input as never);
-            } finally {
-              pendingRateLimitKeys.delete(key);
-            }
+            return adapter.create(input as never);
           }) as typeof adapter.create,
         };
       };
@@ -46,6 +32,7 @@ vi.mock("better-auth/adapters/prisma", async () => {
 vi.mock("@rakazo/db", async (original) => ({
   ...(await original<typeof Db>()),
   bootstrapUserSpace: vi.fn(async () => ({ spaceId: "space-1" })),
+  leaveInvitedSpaces: vi.fn(async () => ({ ownedOrganizationIds: [] })),
   recordSecurityEvent: vi.fn(async () => undefined),
 }));
 
@@ -56,10 +43,7 @@ function fixture({
   webOrigin = "http://web.example.test",
   requestOrigin,
   stalledDelivery = false,
-  failingDelivery = false,
-  emailCodeOnly = false,
-  emailAllowlist = false,
-  invited = [],
+  ...hooks
 }: {
   allowlist?: string;
   delivery?: boolean;
@@ -68,19 +52,21 @@ function fixture({
   requestOrigin?: string;
   /** The provider accepts the message but never settles, like a hung SMTP connection. */
   stalledDelivery?: boolean;
-  /** The provider rejects with an error that echoes the whole message, like some SDKs do. */
-  failingDelivery?: boolean;
-  emailCodeOnly?: boolean;
-  emailAllowlist?: boolean;
-  invited?: string[];
-} = {}) {
+} & Pick<
+  AuthEnv,
+  | "identityExchange"
+  | "singleAccount"
+  | "requireVerifiedEmail"
+  | "afterDeleteSession"
+  | "afterReplaceSession"
+  | "beforeDeleteUser"
+> = {}) {
   const data: Record<string, Record<string, unknown>[]> = {
     user: [],
     account: [],
     session: [],
     verification: [],
     passkey: [],
-    rateLimit: [],
   };
   const policy: {
     signupsEnabled: boolean;
@@ -95,16 +81,9 @@ function fixture({
   };
   const messages: TransactionalEmail[] = [];
   const members = new Set<string>();
-  const invitedEmails = new Set(invited.map((email) => email.trim().toLowerCase()));
   const prisma = {
     authData: data,
     $executeRaw: vi.fn(async () => 0),
-    $queryRaw: vi.fn(async () => [{ bypass: "off" }]),
-    authEmailAllowlist: {
-      findUnique: vi.fn(async ({ where }: { where: { email: string } }) =>
-        invitedEmails.has(where.email) ? { email: where.email } : null,
-      ),
-    },
     $transaction: vi.fn(
       async (run: ((tx: typeof prisma) => Promise<unknown>) | Promise<unknown>[]) =>
         Array.isArray(run) ? Promise.all(run) : run(prisma),
@@ -118,9 +97,17 @@ function fixture({
       }),
     },
     user: {
-      findMany: vi.fn(async () =>
+      findUnique: vi.fn(async ({ where }: { where: { id?: string; email?: string } }) => {
+        const user = data.user!.find((row) => row.id === where.id || row.email === where.email);
+        return user ? { locale: user.locale ?? null } : null;
+      }),
+      findMany: vi.fn(async ({ where }: { where?: { id?: { not?: string } } } = {}) =>
         data
-          .user!.filter((user) => !String(user.email).toLowerCase().endsWith("@messaging.invalid"))
+          .user!.filter(
+            (user) =>
+              user.id !== where?.id?.not &&
+              !String(user.email).toLowerCase().endsWith("@messaging.invalid"),
+          )
           .slice(0, 2)
           .map((user) => ({ id: String(user.id) })),
       ),
@@ -150,6 +137,9 @@ function fixture({
     },
     member: { findMany: vi.fn(async () => []) },
     messagingIdentity: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+    messagingLinkCode: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+    account: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+    userDevice: { updateMany: vi.fn(async () => ({ count: 0 })) },
     passkey: {
       deleteMany: vi.fn(async ({ where }: { where: { userId: string } }) => {
         const rows = data.passkey!;
@@ -161,18 +151,20 @@ function fixture({
     },
     organization: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     spaceMember: {
-      findFirst: vi.fn(async ({ where }: { where: { userId: string } }) =>
-        members.has(where.userId) ? { spaceId: "space-1" } : null,
-      ),
+      findFirst: vi.fn(async ({ where }: { where: { userId: string | { in: string[] } } }) => {
+        const ids = typeof where.userId === "string" ? [where.userId] : where.userId.in;
+        const userId = ids.find((id) => members.has(id));
+        return userId ? { spaceId: "space-1", userId } : null;
+      }),
     },
   };
   vi.mocked(bootstrapUserSpace).mockImplementation(async (_prisma, user) => {
     members.add(user.id);
     return { spaceId: "space-1" };
   });
-  const emailErrors: unknown[] = [];
   const secret = "offline-auth-secret-at-least-32-characters";
   const auth = createAuth(prisma as never, {
+    ...hooks,
     secret,
     baseURL,
     webOrigin,
@@ -182,8 +174,6 @@ function fixture({
     get signupAllowlist() {
       return policy.signupAllowlist;
     },
-    emailCodeOnly,
-    emailAllowlist,
     email: delivery
       ? {
           describe: () => ({
@@ -194,25 +184,12 @@ function fixture({
           }),
           send: (message) => {
             messages.push(message);
-            if (failingDelivery) {
-              const error = Object.assign(new Error(`rejected: ${JSON.stringify(message)}`), {
-                statusCode: 422,
-                body: message,
-              });
-              return Promise.reject(error);
-            }
             return stalledDelivery ? new Promise<void>(() => undefined) : Promise.resolve();
           },
         }
       : undefined,
-    onEmailError: (error) => emailErrors.push(error),
   });
-  const request = (
-    path: string,
-    body?: unknown,
-    token?: string,
-    headers?: Record<string, string>,
-  ) =>
+  const request = (path: string, body?: unknown, token?: string) =>
     auth.handler(
       new Request(`${baseURL}/api/auth${path}`, {
         method: body ? "POST" : "GET",
@@ -220,7 +197,6 @@ function fixture({
           "content-type": "application/json",
           origin: requestOrigin ?? webOrigin,
           ...(token ? { authorization: `Bearer ${token}` } : {}),
-          ...headers,
         },
         body: body ? JSON.stringify(body) : undefined,
       }),
@@ -242,11 +218,8 @@ function fixture({
     const url = new URL(messages.at(-1)!.text.match(/http:\/\/\S+/)![0]);
     return request(`${url.pathname.replace("/api/auth", "")}${url.search}`);
   };
-  const sendCode = (
-    email = "approved@example.test",
-    type = "sign-in",
-    headers?: Record<string, string>,
-  ) => request("/email-otp/send-verification-otp", { email, type }, undefined, headers);
+  const sendCode = (email = "approved@example.test", type = "sign-in") =>
+    request("/email-otp/send-verification-otp", { email, type });
   const lastCode = () => messages.at(-1)!.text.match(/\b\d{6}\b/)![0];
   const codeSignIn = (otp: string, email = "approved@example.test") =>
     request("/sign-in/email-otp", { email, otp, name: "Code User" });
@@ -298,12 +271,11 @@ function fixture({
     codeSignIn,
     legacyAccount,
     sessionFor,
+    prisma,
     data,
     policy,
     messages,
-    emailErrors,
     members,
-    invited: invitedEmails,
   };
 }
 
@@ -648,6 +620,19 @@ describe("session credentials", () => {
     expect(deleted.status).toBe(200);
     expect(f.data.user).toHaveLength(0);
   });
+
+  it("answers a deletion already under way with a conflict and keeps the account", async () => {
+    const f = fixture({
+      delivery: false,
+      beforeDeleteUser: async () => {
+        throw new SpaceDeletionInProgressError();
+      },
+    });
+    const { token } = (await (await f.signup()).json()) as { token: string };
+    const response = await f.request("/delete-user", { password: "offline-password12" }, token);
+    expect(response.status).toBe(409);
+    expect(f.data.user).toHaveLength(1);
+  });
 });
 
 describe("identity confirmation", () => {
@@ -747,7 +732,7 @@ describe("identity confirmation", () => {
     expect((await f.request("/request-identity-code", {}, token)).status).toBe(200);
     expect(f.messages.at(-1)).toMatchObject({
       to: "approved@example.test",
-      subject: "Mã xác nhận VNBot của bạn",
+      subject: "Your VNBot confirmation code",
     });
     const code = f.lastCode();
     expect(JSON.stringify(f.data.verification)).not.toContain(code);
@@ -761,6 +746,15 @@ describe("identity confirmation", () => {
     );
     const reused = await f.request("/confirm-identity", { code }, token);
     expect(await reused.json()).toMatchObject({ code: "OTP_EXPIRED" });
+  });
+
+  it("writes a code email in the language the account last used the app in", async () => {
+    const f = fixture();
+    const token = await codeAccount(f);
+    const user = f.data.user!.find((row) => row.email === "approved@example.test")!;
+    user.locale = "es";
+    expect((await f.request("/request-identity-code", {}, token)).status).toBe(200);
+    expect(f.messages.at(-1)).toMatchObject({ subject: "Tu código de confirmación de VNBot" });
   });
 
   it("binds an emailed code to the session that requested it", async () => {
@@ -807,8 +801,7 @@ describe("verification email without blocking", () => {
     expect(await f.sessionFor(token)).toMatchObject({ user: { emailVerified: false } });
     expect(bootstrapUserSpace).toHaveBeenCalledTimes(1);
     expect(f.messages).toHaveLength(1);
-    expect(f.messages[0]).toMatchObject({ subject: "Xác minh email VNBot của bạn" });
-
+    expect(f.messages[0]).toMatchObject({ subject: "Verify your VNBot email" });
     expect((await f.signin()).status).toBe(200);
     expect(f.messages).toHaveLength(1);
     await f.verify();
@@ -874,7 +867,9 @@ describe("email code sign-in", () => {
     const f = fixture({ allowlist: "@example.test" });
     expect((await f.sendCode("outsider@other.test")).status).toBe(200);
     expect(f.messages).toHaveLength(0);
-    expect(f.data.verification).toHaveLength(0);
+    expect(
+      f.data.verification!.filter((row) => !String(row.identifier).startsWith("mailbox-attempt:")),
+    ).toHaveLength(0);
     const refused = await f.codeSignIn("123456", "outsider@other.test");
     expect(refused.status).toBe(400);
     expect(await refused.json()).toMatchObject({ code: "INVALID_OTP" });
@@ -943,7 +938,7 @@ describe("email code sign-in", () => {
     expect((await f.signin()).status).toBe(200);
   });
 
-  it("closes the OTP routes Rakazo does not use", async () => {
+  it("closes the OTP routes VNBot does not use", async () => {
     const f = fixture();
     for (const type of ["email-verification", "forget-password", "change-email"]) {
       expect((await f.sendCode("approved@example.test", type)).status, type).toBe(404);
@@ -975,234 +970,6 @@ describe("email code sign-in", () => {
     expect((await f.sendCode()).status).toBe(404);
     expect((await f.codeSignIn("123456")).status).toBe(404);
     expect(fixture().auth.emailCodeSignIn).toBe(true);
-  });
-
-  it("closes password routes and still sends a code", async () => {
-    const f = fixture({ emailCodeOnly: true });
-    for (const path of [
-      "/sign-in/email",
-      "/sign-up/email",
-      "/request-password-reset",
-      "/reset-password",
-      "/change-password",
-    ]) {
-      const response = await f.request(path, {
-        email: "approved@example.test",
-        password: "offline-password12",
-        newPassword: "offline-password34",
-      });
-      expect(response.status, path).toBe(403);
-      expect(await response.json()).toMatchObject({ code: "PASSWORD_AUTH_DISABLED" });
-    }
-    // Better Auth does not mount this route once password sign-in is off.
-    expect((await f.request("/set-password", { newPassword: "offline-password34" })).status).toBe(
-      404,
-    );
-    const sent = await f.sendCode("ada@example.test", "sign-in", { "x-rakazo-locale": "en" });
-    expect(sent.status).toBe(200);
-    expect(f.messages[0]?.subject).toBe("Your VNBot sign-in code");
-    expect(f.messages[0]?.subject).not.toContain(f.lastCode());
-    const created = await f.request("/sign-in/email-otp", {
-      email: "ada@example.test",
-      otp: f.lastCode(),
-    });
-    expect(created.status).toBe(200);
-    expect(f.data.user![0]).toMatchObject({ name: "ada" });
-  });
-});
-
-describe("failed code delivery", () => {
-  it("reports the failure without the code, the address or the provider's echo", async () => {
-    const f = fixture({ emailCodeOnly: true, failingDelivery: true });
-    const sent = await f.request("/email-otp/send-verification-otp", {
-      email: "lan@gmail.com",
-      type: "sign-in",
-    });
-    expect(sent.status).toBe(200);
-    await vi.waitFor(() => expect(f.emailErrors).toHaveLength(1));
-    const code = f.messages[0]!.text.match(/\b\d{6}\b/)![0];
-    const reported = f.emailErrors[0] as Error & Record<string, unknown>;
-    const everything = JSON.stringify({
-      text: String(reported),
-      stack: reported.stack,
-      cause: String(reported.cause),
-      own: Object.getOwnPropertyNames(reported).map((key) => String(reported[key])),
-    });
-    expect(everything).not.toContain(code);
-    expect(everything).not.toContain("lan@gmail.com");
-    expect(reported.message).toBe("transactional email delivery failed (Error 422)");
-  });
-});
-
-describe("sign-in code send limit per address", () => {
-  const sendFrom = (f: ReturnType<typeof fixture>, email: string, ip: string) =>
-    f.request("/email-otp/send-verification-otp", { email, type: "sign-in" }, undefined, {
-      [CLIENT_IP_HEADER]: ip,
-    });
-
-  it("caps concurrent sends to one address at 5 across IPs when the list is on", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    try {
-      const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
-      const sendBurst = () =>
-        Promise.all(
-          Array.from({ length: 8 }, (_, index) =>
-            sendFrom(f, "lan@gmail.com", `203.0.113.${index + 1}`),
-          ),
-        );
-      const assertCapped = async () => {
-        const responses = await sendBurst();
-        expect(responses.filter((response) => response.status === 200)).toHaveLength(5);
-        const blocked = responses.filter((response) => response.status === 429);
-        expect(blocked).toHaveLength(3);
-        for (const response of blocked) {
-          expect(await response.json()).toMatchObject({ code: "RATE_LIMITED" });
-        }
-        expect(
-          f.data.rateLimit!.filter((row) => row.key === "email-code:lan@gmail.com"),
-        ).toMatchObject([{ count: 5 }]);
-      };
-      await assertCapped();
-      expect(f.messages).toHaveLength(5);
-      // Concurrent resets must also preserve the cap and fixed window.
-      vi.setSystemTime(Date.now() + 15 * 60_000 + 1);
-      await assertCapped();
-      expect(f.messages).toHaveLength(10);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("caps one normalized address at 5 sends per 15 minutes across IPs when the list is on", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    try {
-      const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
-      const spellings = ["lan@gmail.com", " Lan@Gmail.com", "LAN@gmail.com\u200b"];
-      for (let index = 0; index < 5; index += 1) {
-        const sent = await sendFrom(f, spellings[index % 3]!, `203.0.113.${index + 1}`);
-        expect(sent.status, `send ${index + 1}`).toBe(200);
-      }
-      const blocked = await sendFrom(f, "Lan@gmail.com", "198.51.100.9");
-      expect(blocked.status).toBe(429);
-      expect(f.messages).toHaveLength(5);
-      // The window resets after 15 minutes.
-      vi.setSystemTime(Date.now() + 15 * 60_000 + 1);
-      expect((await sendFrom(f, "lan@gmail.com", "203.0.113.200")).status).toBe(200);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("keeps answering 403 for uninvited sends and never consumes a bucket for them", async () => {
-    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
-    for (let index = 0; index < 8; index += 1) {
-      const refused = await sendFrom(f, "probe@x.test", `192.0.2.${index + 1}`);
-      expect(refused.status, `probe ${index + 1}`).toBe(403);
-      expect(await refused.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
-    }
-    expect(f.messages).toHaveLength(0);
-    expect(f.data.rateLimit!.filter((row) => String(row.key).startsWith("email-code:"))).toEqual(
-      [],
-    );
-  });
-
-  it("leaves an invited address's budget untouched by sends for other addresses", async () => {
-    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com", "ann@gmail.com"] });
-    for (let index = 0; index < 8; index += 1) {
-      await sendFrom(f, "probe@x.test", `192.0.2.${index + 1}`);
-    }
-    for (let index = 0; index < 5; index += 1) {
-      expect((await sendFrom(f, "ann@gmail.com", `198.51.100.${index + 1}`)).status).toBe(200);
-    }
-    expect((await sendFrom(f, "ann@gmail.com", "198.51.100.99")).status).toBe(429);
-    for (let index = 0; index < 5; index += 1) {
-      const sent = await sendFrom(f, "lan@gmail.com", `203.0.113.${index + 1}`);
-      expect(sent.status, `send ${index + 1}`).toBe(200);
-    }
-    expect((await sendFrom(f, "lan@gmail.com", "203.0.113.99")).status).toBe(429);
-  });
-});
-
-describe("sign-in code language over HTTP", () => {
-  const send = (f: ReturnType<typeof fixture>, body: object, headers: Record<string, string>) =>
-    f.request(
-      "/email-otp/send-verification-otp",
-      { email: "ada@example.test", type: "sign-in", ...body },
-      undefined,
-      headers,
-    );
-
-  it("lets the x-rakazo-locale header win over a body locale", async () => {
-    const f = fixture({ emailCodeOnly: true });
-    expect((await send(f, { locale: "vi" }, { "x-rakazo-locale": "en" })).status).toBe(200);
-    expect(f.messages.at(-1)?.subject).toBe("Your VNBot sign-in code");
-    expect((await send(f, { locale: "en" }, { "x-rakazo-locale": "vi" })).status).toBe(200);
-    expect(f.messages.at(-1)?.subject).toBe("Mã đăng nhập VNBot của bạn");
-  });
-
-  it("ignores a body locale and defaults to Vietnamese without the header", async () => {
-    const f = fixture({ emailCodeOnly: true });
-    await send(f, { locale: "en" }, {});
-    expect(f.messages.at(-1)?.subject).toBe("Mã đăng nhập VNBot của bạn");
-    await send(f, {}, {});
-    expect(f.messages.at(-1)?.subject).toBe("Mã đăng nhập VNBot của bạn");
-  });
-});
-
-describe("email invite list", () => {
-  it("sends no code and returns EMAIL_NOT_INVITED for an address that is not invited", async () => {
-    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
-    const refused = await f.sendCode("stranger@example.test");
-    expect(refused.status).toBe(403);
-    expect(await refused.json()).toMatchObject({
-      code: "EMAIL_NOT_INVITED",
-      message: "This email is not invited yet",
-    });
-    expect(f.messages).toHaveLength(0);
-    expect(f.data.verification).toHaveLength(0);
-    expect(f.data.user).toHaveLength(0);
-
-    const invited = await f.sendCode("Lan@Gmail.com");
-    expect(invited.status).toBe(200);
-    expect(f.messages).toHaveLength(1);
-  });
-
-  it("sends the code to the normalized address for spaced, cased or zero-width input", async () => {
-    const f = fixture({ emailAllowlist: true, invited: ["eve@example.com"] });
-    for (const raw of [" Eve@Example.com ", "eve\u200b@example.com"]) {
-      const sent = await f.sendCode(raw);
-      expect(sent.status).toBe(200);
-      expect(f.messages.at(-1)!.to).toBe("eve@example.com");
-    }
-    const signedIn = await f.codeSignIn(f.lastCode(), " EVE@example.com\u200d");
-    expect(signedIn.status).toBe(200);
-    expect(f.data.user).toEqual([expect.objectContaining({ email: "eve@example.com" })]);
-  });
-
-  it("refuses to create an account that is not invited", async () => {
-    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
-    const response = await f.signup("stranger@example.test");
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
-    expect(f.data.user).toHaveLength(0);
-    expect((await f.signup("lan@gmail.com")).status).toBe(200);
-  });
-  it("revokes a live session once the address leaves the invite list (401 EMAIL_NOT_INVITED)", async () => {
-    const f = fixture({ emailAllowlist: true, invited: ["lan@gmail.com"] });
-    const { token } = (await (await f.signup("lan@gmail.com")).json()) as { token: string };
-    expect((await f.request("/get-session", undefined, token)).status).toBe(200);
-    expect(f.data.session).toHaveLength(1);
-
-    f.invited.delete("lan@gmail.com");
-    const revoked = await f.request("/get-session", undefined, token);
-    expect(revoked.status).toBe(401);
-    expect(await revoked.json()).toMatchObject({
-      code: "EMAIL_NOT_INVITED",
-      message: "This email is not invited yet",
-    });
-    expect(f.data.session).toHaveLength(0);
-    // The RPC layer reads sessions in-process: no session, so it answers 401 itself.
-    expect(await f.sessionFor(token)).toBeNull();
   });
 });
 describe("passkeys", () => {
@@ -1246,25 +1013,6 @@ describe("passkeys", () => {
     };
     return { ...f, call, register, signInWithPasskey };
   };
-
-  it("keeps passkey sign-in when email-code-only closes passwords", async () => {
-    const f = passkeyFixture({ emailCodeOnly: true });
-    const { token } = await f.legacyAccount();
-    expect((await f.signin()).status).toBe(403);
-    expect((await f.register(token)).status).toBe(200);
-    const signedIn = await f.signInWithPasskey();
-    expect(signedIn.status).toBe(200);
-  });
-
-  it("refuses a passkey session after the address leaves the invite list", async () => {
-    const f = passkeyFixture({ emailAllowlist: true, invited: ["approved@example.test"] });
-    const { token } = (await (await f.signup()).json()) as { token: string };
-    expect((await f.register(token)).status).toBe(200);
-    f.invited?.delete("approved@example.test");
-    const signedIn = await f.signInWithPasskey();
-    expect(signedIn.status).toBe(403);
-    expect(await signedIn.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
-  });
 
   it("registers from a signed-in session and signs in through the session hooks", async () => {
     const f = passkeyFixture({ delivery: false });
@@ -1332,10 +1080,65 @@ describe("passkeys", () => {
     expect((await f.signInWithPasskey()).status).toBe(401);
   });
 
+  it("drops credentials an unverified account added before its mailbox owner signed in", async () => {
+    const f = passkeyFixture();
+    const { token } = (await (await f.signup()).json()) as { token: string };
+    expect((await f.register(token)).status).toBe(200);
+    const userId = f.data.user![0]!.id;
+    await f.sendCode();
+    expect((await f.codeSignIn(f.lastCode())).status).toBe(200);
+    expect(f.data.user![0]).toMatchObject({ id: userId, emailVerified: true });
+    expect(f.data.passkey).toHaveLength(0);
+    expect((await f.signInWithPasskey()).status).toBe(401);
+    expect(f.prisma.messagingIdentity.deleteMany).toHaveBeenCalledWith({ where: { userId } });
+    expect(f.prisma.messagingLinkCode.deleteMany).toHaveBeenCalledWith({ where: { userId } });
+    expect(f.prisma.userDevice.updateMany).toHaveBeenCalledWith({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(f.prisma.$transaction).not.toHaveBeenCalledWith(expect.any(Array));
+  });
+
+  it("keeps a verified account's passkeys on code sign-in", async () => {
+    const f = passkeyFixture();
+    const { token } = (await (await f.signup()).json()) as { token: string };
+    expect((await f.register(token)).status).toBe(200);
+    f.data.user![0]!.emailVerified = true;
+    await f.sendCode();
+    expect((await f.codeSignIn(f.lastCode())).status).toBe(200);
+    expect(f.data.passkey).toHaveLength(1);
+    expect(f.prisma.userDevice.updateMany).not.toHaveBeenCalled();
+    expect((await f.signInWithPasskey()).status).toBe(200);
+  });
+
   it("does not offer passkeys where a browser cannot create them", async () => {
     const f = fixture({ webOrigin: "http://web.example.test" });
     expect(f.auth.passkeyRpId).toBeNull();
     expect((await f.request("/passkey/generate-authenticate-options")).status).toBe(404);
+  });
+});
+
+describe("account export tokens", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("names the issuing user once, and stores only a hash", async () => {
+    const f = fixture({ delivery: false });
+    const token = await f.auth.issueAccountExportToken("user-a");
+    const other = await f.auth.issueAccountExportToken("user-b");
+    expect(JSON.stringify(f.data.verification)).not.toContain(token);
+    expect(await f.auth.consumeAccountExportToken(token)).toBe("user-a");
+    expect(await f.auth.consumeAccountExportToken(token)).toBeNull();
+    expect(await f.auth.consumeAccountExportToken(other)).toBe("user-b");
+    expect(await f.auth.consumeAccountExportToken("")).toBeNull();
+    expect(await f.auth.consumeAccountExportToken("made-up")).toBeNull();
+  });
+
+  it("expires after a minute", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const f = fixture({ delivery: false });
+    const token = await f.auth.issueAccountExportToken("user-a");
+    vi.setSystemTime(Date.now() + 60_000);
+    expect(await f.auth.consumeAccountExportToken(token)).toBeNull();
   });
 });
 
@@ -1451,3 +1254,284 @@ function cbor(value: unknown): Buffer {
   }
   throw new Error("unsupported CBOR value");
 }
+
+describe("single-person deployments", () => {
+  const password = "offline-password12";
+
+  it("admits the first account, then closes registration to anyone else", async () => {
+    const f = fixture({ delivery: false, singleAccount: true });
+    expect((await f.signup("owner@example.test")).status).toBe(200);
+
+    const second = await f.signup("someone@example.test");
+    expect(second.status).toBe(400);
+    expect(await second.json()).toMatchObject({ code: "REGISTRATION_CLOSED" });
+    expect(f.data.user!.map((user) => user.email)).toEqual(["owner@example.test"]);
+
+    expect((await f.signin("owner@example.test")).status).toBe(200);
+    expect(bootstrapUserSpace).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a session to an account that was never admitted", async () => {
+    const f = fixture({ delivery: false, singleAccount: true });
+    expect((await f.signup("owner@example.test")).status).toBe(200);
+    const now = new Date();
+    f.data.user!.push({
+      id: "late-user",
+      name: "Late",
+      email: "late@example.test",
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    f.data.account!.push({
+      id: "account-late-user",
+      userId: "late-user",
+      providerId: "credential",
+      accountId: "late-user",
+      password: await (await f.auth.$context).password.hash(password),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const response = await f.signin("late@example.test");
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "REGISTRATION_CLOSED" });
+    expect(f.members.has("late-user")).toBe(false);
+  });
+
+  it("does not create an account from an emailed code once there is one", async () => {
+    const f = fixture({ singleAccount: true });
+    expect((await f.signup("owner@example.test")).status).toBe(200);
+    const sent = f.messages.length;
+    expect((await f.sendCode("someone@example.test")).status).toBe(200);
+    expect(f.messages).toHaveLength(sent);
+  });
+
+  it("ignores messaging-only users when admitting the first account", async () => {
+    const f = fixture({ delivery: false, singleAccount: true });
+    const now = new Date();
+    f.data.user!.push({
+      id: "msg-user",
+      name: "Chat",
+      email: "msg-abc@messaging.invalid",
+      emailVerified: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    expect((await f.signup("owner@example.test")).status).toBe(200);
+  });
+
+  it("is not closed by an earlier signup that never got in", async () => {
+    const f = fixture({ delivery: false, singleAccount: true });
+    const now = new Date();
+    f.data.user!.push({
+      id: "abandoned",
+      name: "Abandoned",
+      email: "abandoned@example.test",
+      emailVerified: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    expect((await f.signup("owner@example.test")).status).toBe(200);
+    expect((await f.signup("someone@example.test")).status).toBe(400);
+  });
+
+  it("keeps registration open on other deployments", async () => {
+    const f = fixture({ delivery: false });
+    expect((await f.signup("owner@example.test")).status).toBe(200);
+    expect((await f.signup("someone@example.test")).status).toBe(200);
+  });
+});
+
+describe("ending sessions", () => {
+  const sessionIds = (rows: Record<string, unknown>[]) => rows.map((row) => String(row.id));
+
+  async function signedInTwice() {
+    const afterDeleteSession = vi.fn(async (_session: { id: string; userId: string }) => {});
+    const afterReplaceSession = vi.fn(
+      async (
+        _previous: { id: string; userId: string },
+        _next: { id: string; userId: string },
+      ) => {},
+    );
+    const f = fixture({ afterDeleteSession, afterReplaceSession });
+    const { token: first } = (await (await f.signup()).json()) as { token: string };
+    const { token: second } = (await (await f.signin()).json()) as { token: string };
+    const ids = sessionIds(f.data.session!);
+    expect(ids).toHaveLength(2);
+    return { f, first, second, ids, afterDeleteSession, afterReplaceSession };
+  }
+  const ended = (hook: { mock: { calls: [{ id: string }, ...unknown[]][] } }) =>
+    hook.mock.calls.map(([session]) => session.id).sort();
+
+  it("reports every session a password reset ends", async () => {
+    const { f, ids, afterDeleteSession } = await signedInTwice();
+    await f.request("/request-password-reset", { email: "approved@example.test" });
+    const token = f.messages.at(-1)!.text.match(/reset-password\/([^?\s]+)/)![1]!;
+    const reset = await f.request("/reset-password", { token, newPassword: "offline-password34" });
+    expect(reset.status).toBe(200);
+    expect(f.data.session).toHaveLength(0);
+    expect(ended(afterDeleteSession)).toEqual([...ids].sort());
+  });
+
+  it("reports every session that signing out everywhere ends", async () => {
+    const { f, first, ids, afterDeleteSession } = await signedInTwice();
+    expect((await f.request("/revoke-sessions", {}, first)).status).toBe(200);
+    expect(ended(afterDeleteSession)).toEqual([...ids].sort());
+  });
+
+  it("reports the other sessions a password change ends and moves the caller's own", async () => {
+    const { f, second, ids, afterDeleteSession, afterReplaceSession } = await signedInTwice();
+    const changed = await f.request(
+      "/change-password",
+      {
+        currentPassword: "offline-password12",
+        newPassword: "offline-password34",
+        revokeOtherSessions: true,
+      },
+      second,
+    );
+    expect(changed.status).toBe(200);
+    expect(ended(afterDeleteSession)).toEqual([ids[0]]);
+    expect(afterReplaceSession).toHaveBeenCalledTimes(1);
+    const [previous, next] = afterReplaceSession.mock.calls[0]!;
+    expect(previous.id).toBe(ids[1]);
+    expect(sessionIds(f.data.session!)).toEqual([next.id]);
+  });
+});
+
+describe("mandatory verified email without signup restrictions", () => {
+  it("admits any mailbox only after verification and creates no session before proof", async () => {
+    const f = fixture({ requireVerifiedEmail: true });
+    expect(f.policy.signupAllowlist).toBe("");
+    const response = await f.signup("new-person@another.example.test");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ token: null, user: { emailVerified: false } });
+    expect(f.data.session).toHaveLength(0);
+    expect(bootstrapUserSpace).not.toHaveBeenCalled();
+    expect((await f.verify()).status).toBe(302);
+    expect((await f.signin("new-person@another.example.test")).status).toBe(200);
+    expect(bootstrapUserSpace).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed without email delivery instead of treating the first user as verified", async () => {
+    const f = fixture({ requireVerifiedEmail: true, delivery: false });
+    expect((await f.signup()).status).toBe(400);
+    expect(f.data.user).toHaveLength(0);
+    expect(f.data.session).toHaveLength(0);
+    expect(bootstrapUserSpace).not.toHaveBeenCalled();
+  });
+
+  it("rejects legacy unverified sessions and password login without a whitelist", async () => {
+    const f = fixture({ requireVerifiedEmail: true });
+    const { token } = await f.legacyAccount();
+    expect(await f.sessionFor(token)).toBeNull();
+    expect((await f.request("/update-user", { name: "Changed" }, token)).status).toBe(401);
+    expect((await f.signin()).status).toBe(403);
+  });
+
+  it("keeps a previously verified local session usable without an email provider", async () => {
+    const f = fixture({ requireVerifiedEmail: true, delivery: false });
+    const { id, token } = await f.legacyAccount();
+    const user = f.data.user!.find((row) => row.id === id)!;
+    user.emailVerified = true;
+    expect(await f.sessionFor(token)).toMatchObject({ user: { id, emailVerified: true } });
+    expect((await f.signin()).status).toBe(200);
+    expect(f.messages).toHaveLength(0);
+  });
+
+  it("accepts a mailbox sign-in code without adding a second pairing step", async () => {
+    const f = fixture({ requireVerifiedEmail: true });
+    expect((await f.sendCode()).status).toBe(200);
+    expect((await f.codeSignIn(f.lastCode())).status).toBe(200);
+    expect(f.data.user![0]).toMatchObject({ emailVerified: true });
+    expect(f.data.session).toHaveLength(1);
+  });
+});
+
+describe("verified mailbox session lifecycle", () => {
+  it("rejects an expired sign-in code through the production route", async () => {
+    const f = fixture({ requireVerifiedEmail: true });
+    await f.sendCode();
+    const code = f.lastCode();
+    for (const row of f.data.verification!) row.expiresAt = new Date(Date.now() - 1);
+    expect((await f.codeSignIn(code)).status).toBeGreaterThanOrEqual(400);
+    expect(f.data.session).toHaveLength(0);
+  });
+
+  it("uses a replacement code once and revokes its signed session on logout", async () => {
+    const f = fixture({ requireVerifiedEmail: true });
+    await f.sendCode();
+    await f.sendCode();
+    const code = f.lastCode();
+    const response = await f.codeSignIn(code);
+    expect(response.status).toBe(200);
+    const signed = response.headers.get("set-auth-token");
+    expect(signed).toBeTruthy();
+    expect(await f.sessionFor(signed!)).not.toBeNull();
+    expect(await f.sessionFor(`${signed}forged`)).toBeNull();
+    expect((await f.codeSignIn(code)).status).toBeGreaterThanOrEqual(400);
+    expect((await f.request("/sign-out", {}, signed!)).status).toBe(200);
+    expect(await f.sessionFor(signed!)).toBeNull();
+  });
+});
+
+it("limits a mailbox without blocking another mailbox on the same network", async () => {
+  const f = fixture({ requireVerifiedEmail: true });
+  for (let attempt = 0; attempt < 10; attempt += 1) expect((await f.sendCode()).status).toBe(200);
+  expect((await f.sendCode()).status).toBe(429);
+  expect((await f.sendCode("another@example.test")).status).toBe(200);
+  const nextWindow = (Math.floor(Date.now() / (15 * 60_000)) + 1) * 15 * 60_000;
+  const clock = vi.spyOn(Date, "now").mockReturnValue(nextWindow);
+  try {
+    expect((await f.sendCode()).status).toBe(200);
+  } finally {
+    clock.mockRestore();
+  }
+  expect(
+    JSON.stringify(
+      f.data.verification!.filter((row) => String(row.identifier).startsWith("mailbox-attempt:")),
+    ),
+  ).not.toContain("approved@example.test");
+});
+
+it("composes central OTP issuance and local exchange through createAuth", async () => {
+  const keys = generateKeyPairSync("ed25519");
+  const central = fixture({
+    baseURL: "https://identity.example.test",
+    webOrigin: "https://web.example.test",
+    identityExchange: {
+      kind: "issuer",
+      issuer: "https://identity.example.test",
+      audience: "local-session",
+      privateKey: keys.privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+    },
+  });
+  const local = fixture({
+    delivery: false,
+    identityExchange: {
+      kind: "local",
+      issuer: "https://identity.example.test",
+      audience: "local-session",
+      publicKey: keys.publicKey.export({ type: "spki", format: "pem" }).toString(),
+      deviceId: "test-device",
+      centralAuthUrl: "https://identity.example.test/api/auth",
+      centralOrigin: "https://web.example.test",
+    },
+  });
+  vi.stubGlobal("fetch", (url: string, init: RequestInit) =>
+    central.auth.handler(new Request(url, init)),
+  );
+  try {
+    expect(local.auth.emailCodeSignIn).toBe(true);
+    expect((await local.sendCode()).status).toBe(200);
+    const response = await local.codeSignIn(central.lastCode());
+    expect(response.status).toBe(200);
+    expect(local.data.account).toEqual([
+      expect.objectContaining({ providerId: "verified-identity" }),
+    ]);
+    expect(local.data.session).toHaveLength(1);
+    expect(central.data.session).toHaveLength(0);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

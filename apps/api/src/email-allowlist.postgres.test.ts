@@ -9,7 +9,7 @@ import { createDb, createPool, runAsSystem } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const databaseUrl = process.env.VERIFY_DATABASE === "1" ? process.env.DATABASE_URL : undefined;
-const describePostgres = databaseUrl ? describe.sequential : describe.skip;
+const describePostgres = databaseUrl ? describe : describe.skip;
 
 describePostgres("invite list on PostgreSQL (runtime login)", () => {
   const suffix = randomUUID().slice(0, 8);
@@ -116,16 +116,15 @@ describePostgres("invite list on PostgreSQL (runtime login)", () => {
       await db.prisma.user.delete({ where: { id: userId } });
     });
   });
-  it("caps code sends per normalized address across IPs over real HTTP requests", async () => {
+  it("refuses an uninvited code before mail and sends one to an invited address", async () => {
     const sent: unknown[] = [];
     const origin = "http://127.0.0.1:5180";
     const auth = createAuth(db.prisma, {
-      secret: "rate-limit-test-secret-with-over-32-characters",
+      secret: "invite-list-test-secret-with-over-32-characters",
       baseURL: origin,
       webOrigin: origin,
       signupsEnabled: "true",
       signupAllowlist: "",
-      emailCodeOnly: true,
       emailAllowlist: true,
       email: {
         describe: () => ({
@@ -139,33 +138,23 @@ describePostgres("invite list on PostgreSQL (runtime login)", () => {
         },
       },
     });
-    const send = async (email: string, ip: string) =>
-      (
-        await auth.handler(
-          new Request(`${origin}/api/auth/email-otp/send-verification-otp`, {
-            method: "POST",
-            headers: { "content-type": "application/json", origin, [CLIENT_IP_HEADER]: ip },
-            body: JSON.stringify({ email, type: "sign-in" }),
-          }),
-        )
-      ).status;
-    const spellings = [invited, ` ${invited.toUpperCase()}`, `${invited}\u200b`];
-    for (let n = 0; n < 5; n += 1) {
-      expect(await send(spellings[n % 3]!, `203.0.113.${n + 1}`), `send ${n + 1}`).toBe(200);
-    }
-    expect(await send(invited, "198.51.100.7")).toBe(429);
-    expect(sent).toHaveLength(5);
-    const row = await sql(true, 'SELECT "count" FROM "rateLimit" WHERE "key" = $1', [
-      `email-code:${invited}`,
-    ]);
-    expect(row.rows).toEqual([{ count: 5 }]);
-    // Concurrent first sends for a fresh address: exactly 5 pass, none error.
-    const burst = `burst-${suffix}@example.test`;
-    await sql(true, 'INSERT INTO "auth_email_allowlist" ("email") VALUES ($1)', [burst]);
-    const statuses = await Promise.all(
-      Array.from({ length: 9 }, (_, n) => send(burst, `192.0.2.${n + 1}`)),
-    );
-    expect(statuses.filter((status) => status === 200)).toHaveLength(5);
-    expect(statuses.filter((status) => status === 429)).toHaveLength(4);
+    const send = (email: string) =>
+      auth.handler(
+        new Request(`${origin}/api/auth/email-otp/send-verification-otp`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin,
+            [CLIENT_IP_HEADER]: "203.0.113.9",
+          },
+          body: JSON.stringify({ email, type: "sign-in" }),
+        }),
+      );
+    const refused = await send(`stranger-${suffix}@example.test`);
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
+    expect(sent).toHaveLength(0);
+    expect((await send(` ${invited.toUpperCase()}`)).status).toBe(200);
+    await expect.poll(() => sent.length).toBe(1);
   });
 });

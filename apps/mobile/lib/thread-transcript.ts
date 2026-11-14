@@ -1,13 +1,14 @@
 import {
   expandPeerReplies,
   foldPeerReplies,
+  peerExchangeLines,
   projectBotMentions,
   projectMessageReactions,
   shouldShowBotSenderName,
 } from "@rakazo/core";
 import { useMemo, useState } from "react";
-import type { MobileMessage } from "./api";
 import { applyLocalChoiceDismissals, hasVisibleMessagePresentation } from "./message-presentation";
+import type { MobileMessage } from "./mobile-types";
 
 /**
  * What the chat draws from its messages: peer replies folded under their marker until expanded,
@@ -65,21 +66,29 @@ export function useThreadTranscript(messages: MobileMessage[] | undefined, inGro
     });
   }
 
-  function togglePeerReplies(markerId: string) {
-    setExpandedPeerMarkers((expanded) => {
-      const next = new Set(expanded);
-      if (!next.delete(markerId)) next.add(markerId);
-      return next;
-    });
-  }
+  const exchanges = useMemo(
+    () =>
+      peerExchangeLines({
+        ...peerTranscript,
+        messages: reactionView.visibleMessages,
+      }),
+    [peerTranscript, reactionView],
+  );
+  const visibleMessages = useMemo(
+    () =>
+      reactionView.visibleMessages.filter(
+        (message) => !exchanges.lineOf.has(message.id) || exchanges.lines.has(message.id),
+      ),
+    [reactionView, exchanges],
+  );
 
   return {
     showBotSenderName,
     peerTranscript,
     reactionView,
-    expandedPeerMarkers,
     setExpandedPeerMarkers,
     dismissChoice,
-    togglePeerReplies,
+    exchanges,
+    visibleMessages,
   };
 }

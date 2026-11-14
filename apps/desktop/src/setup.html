@@ -1,82 +1,60 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'"
     />
-    <title>Thiết lập VNBot</title>
+    <title>Set up VNBot</title>
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="setup.css" />
   </head>
   <body>
     <header class="titlebar">
       <span class="titlebar-name">VNBot</span>
-      <button id="quit" class="titlebar-quit" type="button" title="Thoát VNBot" data-text="quit" data-title="quitTitle">Thoát</button>
+      <button id="quit" class="titlebar-quit" type="button" title="Quit VNBot">Quit</button>
     </header>
 
     <main class="shell">
-      <h1 class="heading" data-text="heading">Chào mừng đến với VNBot</h1>
-      <p id="subheading" class="subheading" data-text="subheadingEmail">Nhập email để nhận mã đăng nhập.</p>
-      <div id="legacy-profile-notice" class="status" role="status" hidden>
-        <p id="legacy-profile-message"></p>
-        <button id="dismiss-legacy-profile" class="button button-secondary" type="button" data-text="dismissLegacyProfile">Đã hiểu</button>
-      </div>
+      <img class="wordmark" src="vnbot-wordmark-dark.svg" alt="VNBot" />
+      <h1 class="heading">Welcome to VNBot</h1>
+      <p class="subheading">Choose which server this app should use.</p>
 
-      <form id="step-email" novalidate>
-        <label class="field-label" for="account-email" data-text="emailLabel">Email</label>
-        <input
-          id="account-email"
-          class="field"
-          type="email"
-          spellcheck="false"
-          autocomplete="email"
-        />
-        <div class="actions">
-          <button id="send-code" class="button button-primary" type="submit" data-text="sendCode">Gửi mã</button>
-        </div>
-      </form>
+      <form id="setup" novalidate>
+        <section id="panel-email" class="panel" hidden>
+          <label class="field-label" for="setup-email">Email</label>
+          <input
+            id="setup-email"
+            class="field"
+            type="email"
+            autocomplete="username"
+            spellcheck="false"
+          />
+          <label id="setup-code-label" class="field-label" for="setup-code" hidden>Code</label>
+          <input
+            id="setup-code"
+            class="field"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            spellcheck="false"
+            hidden
+          />
+          <button id="resend-code" class="link" type="button" hidden>Send a new code</button>
+        </section>
 
-      <form id="step-code" novalidate hidden>
-        <label class="field-label" for="account-code" data-text="codeLabel">Mã 6 chữ số</label>
-        <input
-          id="account-code"
-          class="field"
-          type="text"
-          inputmode="numeric"
-          maxlength="6"
-          spellcheck="false"
-          autocomplete="one-time-code"
-        />
-        <div class="actions">
-          <button id="change-email" class="button button-secondary" type="button" data-text="changeEmail">Đổi email</button>
-          <button id="resend-code" class="button button-secondary" type="button" data-text="resendCode">Gửi lại mã</button>
-          <button id="verify-code" class="button button-primary" type="submit" data-text="verifyCode">Xác nhận</button>
-        </div>
-      </form>
-
-      <p id="account-status" class="status" role="status" aria-live="polite"></p>
-      <button id="retry-code" class="button button-secondary" type="button" data-text="retry" hidden>Thử lại</button>
-
-      <form id="setup" novalidate hidden>
-        <fieldset class="choices">
-          <legend class="sr-only" data-text="legend">Máy</legend>
+        <fieldset id="instance-choices" class="choices">
+          <legend class="sr-only">Instance</legend>
 
           <label class="choice" for="mode-new">
             <input id="mode-new" type="radio" name="mode" value="new" checked />
-            <span class="choice-title" data-text="modeNew">Máy tính này</span>
+            <span class="choice-title">This computer</span>
           </label>
 
           <label class="choice" for="mode-existing">
             <input id="mode-existing" type="radio" name="mode" value="existing" />
-            <span class="choice-title" data-text="modeExisting">Máy của bạn (VPS, Mac mini, máy chủ riêng…)</span>
-          </label>
-
-          <label class="choice" for="mode-cloud">
-            <input id="mode-cloud" type="radio" name="mode" value="cloud" disabled />
-            <span class="choice-title" data-text="modeCloud">VNBot Cloud</span>
-            <span class="choice-badge" data-text="comingSoon">Sắp có</span>
+            <span class="choice-title">Existing instance</span>
           </label>
         </fieldset>
 
@@ -90,26 +68,19 @@
                 type="button"
                 aria-controls="stack-output"
                 aria-expanded="false"
-                aria-label="Chi tiết kỹ thuật"
-                title="Chi tiết kỹ thuật"
-                data-aria-label="technicalDetails"
-                data-title="technicalDetails"
+                aria-label="Technical details"
+                title="Technical details"
               >
                 <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
                   <path d="M3.5 4.5 7 8l-3.5 3.5M8.5 11.5H13" />
                 </svg>
               </button>
             </div>
-            <div id="stack-failure" class="stack-failure" hidden>
-              <p id="stack-failure-message"></p>
-              <small id="stack-failure-code"></small>
-            </div>
             <div
               id="stack-progress"
               class="progress"
               role="progressbar"
-              aria-label="Tiến trình thiết lập"
-              data-aria-label="progress"
+              aria-label="Setup progress"
               aria-valuemin="0"
               aria-valuemax="100"
               aria-valuenow="0"
@@ -128,20 +99,38 @@
         </section>
 
         <section id="panel-existing" class="panel" hidden>
-          <p id="pairing-state" class="status" role="status" data-text="pairingComingSoon">Kết nối qua ghép cặp — sắp có</p>
-          <input id="server-url" type="hidden" />
+          <label class="field-label" for="server-url">Server address</label>
+          <input
+            id="server-url"
+            class="field"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="https://vnbot.example.com"
+          />
+          <details id="server-headers-section" class="headers">
+            <summary>Headers</summary>
+            <textarea
+              id="server-headers"
+              class="field"
+              rows="2"
+              spellcheck="false"
+              autocomplete="off"
+              aria-label="Headers"
+              placeholder="Name: value"
+            ></textarea>
+          </details>
         </section>
 
         <p id="status" class="status" role="status" aria-live="polite"></p>
 
         <div class="actions">
-          <button id="check" class="button button-secondary" type="button" data-text="check">Kiểm tra kết nối</button>
-          <button id="continue" class="button button-primary" type="submit" data-text="continue">Tiếp tục</button>
+          <button id="check" class="button button-secondary" type="button">Check connection</button>
+          <button id="continue" class="button button-primary" type="submit">Continue</button>
         </div>
       </form>
     </main>
 
-    <script src="setup-state.js"></script>
     <script src="setup.js"></script>
   </body>
 </html>

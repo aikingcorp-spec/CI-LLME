@@ -144,6 +144,7 @@ describe("command variables stay out of HTTP and page fills", () => {
     await save(db, "cli-token", "fake-cli-token-1");
     expect(
       await resolveLoginFill({
+        runId: "run-1",
         prisma: db.prisma,
         secretStore,
         scope,
@@ -164,7 +165,7 @@ describe("list_secrets", () => {
       origin: "https://api.example.test",
       auth: { type: "bearer" },
     });
-    const listed = await listBotSecrets(db.prisma, scope);
+    const listed = await listBotSecrets(db.prisma, secretStore, scope);
     expect(listed).toEqual([
       expect.objectContaining({ name: "api", origin: "https://api.example.test" }),
       { name: "netbird-setup-key", auth: command, variable: "NETBIRD_SETUP_KEY" },
@@ -195,7 +196,7 @@ describe("list_secrets", () => {
         ciphertext: "unused",
       },
     });
-    const listed = await listBotSecrets(db.prisma, scope);
+    const listed = await listBotSecrets(db.prisma, secretStore, scope);
     expect(listed).toEqual([
       {
         name: longName,

@@ -1,17 +1,15 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("rakazoSetupText", ipcRenderer.sendSync("desktop.setup.strings"));
-
 contextBridge.exposeInMainWorld("rakazoSetup", {
   platform: process.platform,
+  // Read before the page runs, so its first paint is already in the app's language.
+  locale: ipcRenderer.sendSync("desktop.setup.locale") ?? { lang: "vi", dir: "ltr", messages: {} },
   state: () => ipcRenderer.invoke("desktop.setup.state"),
-  dismissLegacyProfileNotice: () => ipcRenderer.invoke("desktop.setup.dismissLegacyProfileNotice"),
-  test: (url) => ipcRenderer.invoke("desktop.setup.test", url),
+  test: (url, headers) => ipcRenderer.invoke("desktop.setup.test", url, headers),
   save: (setup) => ipcRenderer.invoke("desktop.setup.save", setup),
-  account: {
-    sendCode: (email) => ipcRenderer.invoke("desktop.setup.account.sendCode", email),
-    verifyCode: (email, code) =>
-      ipcRenderer.invoke("desktop.setup.account.verifyCode", email, code),
+  email: {
+    send: (email) => ipcRenderer.invoke("desktop.setup.email.send", email),
+    stage: (email, code) => ipcRenderer.invoke("desktop.setup.email.stage", email, code),
   },
   quit: () => ipcRenderer.invoke("desktop.setup.quit"),
   openLink: (link) => ipcRenderer.invoke("desktop.setup.openLink", link),

@@ -1,12 +1,17 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { BotAvatarSet } from "@rakazo/contracts";
-import { SHIPPED_BOT_AVATAR_SHAPE_KEYS } from "@rakazo/core";
+import { BOT_COLOR_LIST } from "@rakazo/contracts";
 import {
-  BOT_AVATAR_COLORS,
+  botLookState,
+  botLookWithColor,
+  botLookWithShape,
+  SHIPPED_BOT_AVATAR_SHAPE_KEYS,
+} from "@rakazo/core";
+import {
+  BOT_COLORS,
   BotAvatar,
   BotShapePreview,
-  DEFAULT_BOT_AVATAR_COLOR,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,7 +20,6 @@ import {
   DialogTitle,
   defaultBotAvatarValue,
   defaultVnbotAvatarValue,
-  parseBotAvatar,
   Tabs,
   TabsContent,
   TabsList,
@@ -29,13 +33,9 @@ import type { ClipboardEvent, DragEvent } from "react";
 import { useRef, useState } from "react";
 
 /**
- * Shape and colour choices for VNBot and Classic. Classic also offers organic bodies
- * before a bot has an id; otherwise Default restores the bot's own organic body.
- *
- * With `onAvatarSetChange` (a bot still being created) switching tabs commits the new
- * set with its default look. Without it, switching tabs only changes which grid is
- * shown; the saved look changes when a shape is picked, and `onChange` then receives
- * the set being viewed.
+ * The shape grid and color row for a bot's look. With `organicIdentities`, the grid also offers
+ * the organic body each identity draws (for a bot that has no id yet); without them, "Default"
+ * restores the bot's own organic body.
  */
 export function BotLookPicker({
   value,
@@ -52,10 +52,32 @@ export function BotLookPicker({
   onAvatarSetChange?: (set: BotAvatarSet, value: string) => void;
   onChange: (value: string, identity?: string, avatarSet?: BotAvatarSet) => void;
 }) {
-  const selectedSet = avatarSet === "vnbot" ? "vnbot" : "organic";
-  const [browsedSet, setBrowsedSet] = useState<BotAvatarSet>();
-  const viewSet = onAvatarSetChange ? selectedSet : (browsedSet ?? selectedSet);
-  const showingSaved = viewSet === selectedSet;
+  const {
+    photo,
+    shapeIndex,
+    color: resolvedColor,
+    defaultLook: isDefaultLook,
+  } = botLookState(value);
+  // 0.3.9 offers VNBot and Classic. A plain `rakazo` value is the old product-brand
+  // mascot, so it opens on VNBot. A stored studio shape stays on Classic with its preview.
+  // The stored set changes only when a shape is picked on the other tab.
+  const savedSet =
+    avatarSet === "vnbot" || (avatarSet === "rakazo" && shapeIndex == null) ? "vnbot" : "organic";
+  const [browsedSet, setBrowsedSet] = useState<"vnbot" | "organic">();
+  const viewSet = onAvatarSetChange ? savedSet : (browsedSet ?? savedSet);
+  const browsing = viewSet !== savedSet;
+  const currentColor = viewSet === "vnbot" ? defaultBotAvatarValue(value) : resolvedColor;
+  const colors =
+    viewSet === "vnbot"
+      ? BOT_COLOR_LIST.map((color) => color.previousHex ?? color.hex)
+      : BOT_COLORS;
+  const showTabs = Boolean(onAvatarSetChange) || !organicIdentities;
+  const pick = (next: string, nextIdentity?: string) => {
+    // A VNBot shape index is not a Classic shape. Picking one on a stored `rakazo`
+    // bot persists `vnbot`, or the next paint would read that index as Classic.
+    const persistSet = browsing || (viewSet === "vnbot" && avatarSet === "rakazo");
+    onChange(next, nextIdentity, persistSet ? viewSet : undefined);
+  };
   const shapeNames = {
     non: t`Nón`,
     chung: t`Bánh chưng`,
@@ -63,53 +85,35 @@ export function BotLookPicker({
     ran: t`Khăn rằn`,
     sen: t`Sen`,
   };
-  const classicShapeNames = [
-    t`hex`,
-    t`wedge`,
-    t`squircle`,
-    t`tablet`,
-    t`pebble`,
-    t`blob`,
-    t`teardrop`,
-    t`cloud`,
-  ];
-  const parsed = parseBotAvatar(value);
-  const currentColor = parsed.color || DEFAULT_BOT_AVATAR_COLOR;
-  const isDefaultLook = showingSaved && !parsed.isImage && parsed.shapeIndex === undefined;
-
-  function selectShape(next: string, nextIdentity?: string) {
-    onChange(next, nextIdentity, showingSaved ? undefined : viewSet);
-  }
-
-  function selectColor(color: string) {
-    onChange(parsed.shapeIndex === undefined ? color : `${color}::shape_${parsed.shapeIndex}`);
-  }
 
   return (
     <div className="space-y-4">
-      <Tabs
-        value={viewSet}
-        onValueChange={(next) => {
-          const set = next === "vnbot" ? "vnbot" : "organic";
-          if (!onAvatarSetChange) {
-            setBrowsedSet(set);
-            return;
-          }
-          onAvatarSetChange(
-            set,
-            set === "vnbot" ? defaultVnbotAvatarValue(value) : defaultBotAvatarValue(value),
-          );
-        }}
-      >
-        <TabsList className="w-full" aria-label={t`Icon set`}>
-          <TabsTrigger value="vnbot" className="flex-1">
-            <Trans>VNBot</Trans>
-          </TabsTrigger>
-          <TabsTrigger value="organic" className="flex-1">
-            <Trans>Classic</Trans>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Creation changes its set immediately; an existing bot can browse before picking. */}
+      {showTabs ? (
+        <Tabs
+          value={viewSet}
+          onValueChange={(next) => {
+            const set = next === "vnbot" ? "vnbot" : "organic";
+            if (!onAvatarSetChange) {
+              setBrowsedSet(set);
+              return;
+            }
+            onAvatarSetChange(
+              set,
+              set === "vnbot" ? defaultVnbotAvatarValue(value) : defaultBotAvatarValue(value),
+            );
+          }}
+        >
+          <TabsList className="w-full" aria-label={t`Icon set`}>
+            <TabsTrigger value="vnbot" className="flex-1">
+              <Trans>VNBot</Trans>
+            </TabsTrigger>
+            <TabsTrigger value="organic" className="flex-1">
+              <Trans>Classic</Trans>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      ) : null}
       {viewSet === "vnbot" ? (
         <div className="grid grid-cols-5 place-items-center gap-2">
           {VNBOT_SHAPES.map((shape, index) => (
@@ -118,19 +122,20 @@ export function BotLookPicker({
               type="button"
               aria-label={shapeNames[shape]}
               data-testid={`vnbot-shape-${shape}`}
-              aria-pressed={showingSaved && !parsed.isImage && parsed.shapeIndex === index}
-              onClick={() => selectShape(`${currentColor}::shape_${index}`)}
+              aria-pressed={!browsing && !photo && shapeIndex === index}
+              onClick={() => pick(botLookWithShape(currentColor, index))}
               className="flex size-11 items-center justify-center rounded-xl hover:bg-accent aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:ring-2 focus-visible:ring-ring"
             >
               <VnbotAvatar shape={shape} body={currentColor} size={40} />
             </button>
           ))}
         </div>
-      ) : (
+      ) : null}
+      {viewSet === "organic" ? (
         <div>
           {organicIdentities ? null : (
             <div className="mb-2 flex items-center justify-between">
-              <div className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+              <div className="text-caption font-medium tracking-wider text-muted-foreground uppercase">
                 <Trans>Shape</Trans>
               </div>
               <Button
@@ -138,12 +143,12 @@ export function BotLookPicker({
                 size="sm"
                 type="button"
                 data-testid="avatar-studio-default"
-                aria-pressed={isDefaultLook}
+                aria-pressed={!browsing && isDefaultLook}
                 onClick={() => {
                   const next = defaultBotAvatarValue(value);
-                  if (next !== value || !showingSaved) selectShape(next);
+                  if (next !== value || browsing) pick(next);
                 }}
-                className={`px-3 py-1 text-xs font-medium transition-colors ${
+                className={`px-3 py-1 text-label font-medium transition-colors ${
                   isDefaultLook
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -163,37 +168,36 @@ export function BotLookPicker({
                 label={t`Shape ${index + 1}`}
                 color={currentColor}
                 selected={isDefaultLook && identity === organicIdentity}
-                onClick={() => selectShape(currentColor, organicIdentity)}
+                onClick={() => pick(currentColor, organicIdentity)}
               />
             ))}
-            {SHIPPED_BOT_AVATAR_SHAPE_KEYS.map((key, shapeIndex) => (
+            {SHIPPED_BOT_AVATAR_SHAPE_KEYS.map((key, index) => (
               <BotShapePreview
                 key={key}
-                shapeIndex={shapeIndex}
-                label={classicShapeNames[shapeIndex]}
+                shapeIndex={index}
                 color={currentColor}
-                selected={showingSaved && !parsed.isImage && parsed.shapeIndex === shapeIndex}
-                onClick={() => selectShape(`${currentColor}::shape_${shapeIndex}`)}
+                selected={!browsing && shapeIndex === index}
+                onClick={() => pick(botLookWithShape(currentColor, index))}
               />
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="border-t border-border pt-2">
         {organicIdentities ? null : (
-          <div className="mb-2 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+          <div className="mb-2 text-caption font-medium tracking-wider text-muted-foreground uppercase">
             <Trans>Color</Trans>
           </div>
         )}
         <div className="grid grid-cols-5 place-items-center gap-1 md:grid-cols-6 md:gap-2">
-          {BOT_AVATAR_COLORS.map((color) => {
-            const selected = currentColor.toLowerCase() === color.toLowerCase() && !parsed.isImage;
+          {colors.map((color) => {
+            const selected = currentColor.toLowerCase() === color.toLowerCase() && !photo;
             return (
               <button
                 key={color}
                 type="button"
-                onClick={() => selectColor(color)}
+                onClick={() => onChange(botLookWithColor(value, color))}
                 aria-label={t`Color ${color}`}
                 aria-pressed={selected}
                 className={`size-6 max-md:size-11 rounded-full border transition-transform hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring ${
@@ -308,7 +312,7 @@ export function AvatarStudioPopover({
           identity={identity}
           size={size}
           status={status}
-          avatarSet={avatarSet === "rakazo" ? "organic" : avatarSet}
+          avatarSet={avatarSet}
         />
         <div className="absolute -right-1 -bottom-1 flex size-6 items-center justify-center rounded-full border-2 border-background bg-secondary text-foreground shadow-md transition-transform group-hover:scale-110">
           <Pencil size={12} strokeWidth={2.2} />
@@ -322,7 +326,7 @@ export function AvatarStudioPopover({
           data-testid="avatar-studio"
         >
           <DialogHeader className="flex-row items-center justify-between space-y-0">
-            <DialogTitle className="text-[14px] font-semibold tracking-tight">
+            <DialogTitle className="text-body font-semibold tracking-tight">
               <Trans>Avatar Studio</Trans>
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -346,7 +350,7 @@ export function AvatarStudioPopover({
               identity={identity}
               size={78}
               status={status}
-              avatarSet={avatarSet === "rakazo" ? "organic" : avatarSet}
+              avatarSet={avatarSet}
             />
           </div>
 
@@ -357,10 +361,10 @@ export function AvatarStudioPopover({
           >
             <div className="flex items-center justify-between border-b border-border pb-1">
               <TabsList className="rounded-full">
-                <TabsTrigger value="bot" className="rounded-full px-3 text-xs">
+                <TabsTrigger value="bot" className="rounded-full px-3 text-label">
                   <Trans>Bot</Trans>
                 </TabsTrigger>
-                <TabsTrigger value="upload" className="rounded-full px-3 text-xs">
+                <TabsTrigger value="upload" className="rounded-full px-3 text-label">
                   <Trans>Upload</Trans>
                 </TabsTrigger>
               </TabsList>
@@ -370,7 +374,7 @@ export function AvatarStudioPopover({
                 size="sm"
                 type="button"
                 onClick={restoreDefaultAvatar}
-                className="text-xs text-muted-foreground"
+                className="text-label text-muted-foreground"
               >
                 <Trans>Reset</Trans>
               </Button>
@@ -415,10 +419,15 @@ export function AvatarStudioPopover({
                 <div className="mb-2 grid size-10 place-items-center rounded-full bg-secondary text-muted-foreground">
                   <Upload size={18} strokeWidth={1.8} />
                 </div>
-                <p className="text-[12.5px] font-medium text-muted-foreground">
+                <p
+                  className={
+                    // off-scale: the upload hint is 12.5px, between the body sizes.
+                    "text-[12.5px] font-medium text-muted-foreground"
+                  }
+                >
                   <Trans>Drag, drop, or paste an image</Trans>
                 </p>
-                <span className="mt-3 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-foreground">
+                <span className="mt-3 rounded-lg bg-secondary px-3 py-1.5 text-label font-medium text-foreground">
                   <Trans>Choose file</Trans>
                 </span>
               </button>

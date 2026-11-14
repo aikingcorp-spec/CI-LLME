@@ -64,7 +64,7 @@ vi.mock("./pi-openai-compatible-provider.js", () => ({
 
 import { COMPUTER_SCREEN_UNAVAILABLE } from "./computer-screens.js";
 import { PiAgentRuntime } from "./pi-runtime.js";
-import { BOT_IDENTITY, withBotIdentity } from "./product-identity.js";
+import { withBotIdentity } from "./product-identity.js";
 
 const computerObserve: ConnectorTool = {
   name: "computer_observe",
@@ -113,10 +113,7 @@ describe("Pi computer tool dispatch", () => {
     expect(fakeAgentState.result).toMatchObject({
       content: [{ type: "text" }, { type: "image", mimeType: "image/png", data: "iVBORw0KGgo=" }],
     });
-    // Bot instructions follow the fixed VNBot identity; the bot never introduces itself as Rakazo.
     expect(fakeAgentState.systemPrompt).toBe(withBotIdentity("Follow the user's instructions."));
-    expect(fakeAgentState.systemPrompt.startsWith(BOT_IDENTITY)).toBe(true);
-    expect(fakeAgentState.systemPrompt).not.toMatch(/You are a Rakazo/);
   });
 
   it("keeps the run alive when a graphical tool returns an error object", async () => {

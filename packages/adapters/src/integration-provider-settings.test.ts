@@ -2,7 +2,10 @@ import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-k
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { InfisicalSecretStore } from "./infisical-secret-store.js";
-import { IntegrationProviderSettings } from "./integration-provider-settings.js";
+import {
+  IntegrationProviderSettings,
+  prepareManagedConnectorForTransaction,
+} from "./integration-provider-settings.js";
 import { infisicalFake } from "./secret-store-fake.js";
 import { EncryptedSecretStore } from "./secrets.js";
 
@@ -62,6 +65,16 @@ describe("integration provider settings", () => {
       apiKey: "fake-replacement-key",
     });
   });
+  it("lists connected plugin slugs for the user, or none before setup", async () => {
+    const f = fixture();
+    expect(await f.settings.listConnectedPluginSlugs("user-1")).toEqual([]);
+    await f.settings.save({ provider: "composio", apiKey: "fake-plugin-key" }, context);
+    vi.mocked(f.adapter.listConnectedExternalIds).mockResolvedValueOnce(["gmail"]);
+    expect(await f.settings.listConnectedPluginSlugs("user-1")).toEqual(["gmail"]);
+    expect(f.adapter.listConnectedExternalIds).toHaveBeenLastCalledWith(
+      expect.objectContaining({ userId: "user-1" }),
+    );
+  });
   it("preserves working settings and hides provider error details on failed verification", async () => {
     const f = fixture();
     await f.settings.save({ provider: "composio", apiKey: "fake-working-key" }, context);
@@ -72,6 +85,18 @@ describe("integration provider settings", () => {
     await expect(
       f.settings.save({ provider: "composio", apiKey: "fake-bad-key" }, context),
     ).rejects.toThrow("Could not verify these credentials");
+    expect(f.rows.get("composio")).toBe(before);
+  });
+  it("does not replace deployment credentials when the provider cannot be reached", async () => {
+    const f = fixture();
+    await f.settings.save({ provider: "composio", apiKey: "fake-working-key" }, context);
+    const before = f.rows.get("composio");
+    const timeout = new Error("The operation was aborted");
+    timeout.name = "AbortError";
+    vi.mocked(f.adapter.listConnectedExternalIds).mockRejectedValueOnce(timeout);
+    await expect(
+      f.settings.save({ provider: "composio", apiKey: "fake-unreached-key" }, context),
+    ).rejects.toThrow("Could not reach the integration provider");
     expect(f.rows.get("composio")).toBe(before);
   });
   it("declines routeless lookups for unconfigured providers but still requires setup for routed calls", async () => {
@@ -132,6 +157,29 @@ describe("integration provider settings", () => {
     await settings.save({ provider: "composio", apiKey: "fake-warm-key" }, context);
     settings.warmDirectories();
     await vi.waitFor(() => expect(warm).toHaveBeenCalledOnce());
+  });
+  it("exposes the prepared provider's account resolution bound to that provider", async () => {
+    const f = fixture();
+    class AccountAdapter {
+      private readonly accounts = new Map([["request-1", "account-1"]]);
+      async listConnectedExternalIds() {
+        return [];
+      }
+      async resolveConnectedAccountId(_userId: string, _slug: string, ref?: string | null) {
+        return ref ? this.accounts.get(ref) : undefined;
+      }
+    }
+    f.factory.mockReturnValue(new AccountAdapter() as unknown as ManagedConnectorProvider);
+    await f.settings.save({ provider: "composio", apiKey: "fake-key" }, context);
+    const wrapper = f.settings
+      .providers()
+      .find((provider) => provider.describe().id === "composio");
+
+    const { provider } = await prepareManagedConnectorForTransaction(wrapper!);
+    const resolve = provider?.resolveConnectedAccountId;
+
+    expect(provider?.cancelAuthorizationRequest).toBeUndefined();
+    await expect(resolve?.("user", "gmail", "request-1")).resolves.toBe("account-1");
   });
 });
 

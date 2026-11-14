@@ -1,0 +1,39 @@
+VNBOT - GOI THU DOCKER
+
+1. Cai va mo Docker Desktop (Linux containers / WSL 2).
+   https://docs.docker.com/desktop/setup/install/windows-install/
+   Chuan bi khoang 20 GB trong, cap cho Docker it nhat 6 GB RAM.
+
+2. Giai nen TOAN BO file ZIP vao mot thu muc rieng tren may Windows.
+   Bam CHAY-VNBOT.cmd. Khong can Git, Node.js hay pnpm tren may.
+
+3. Lan dau nhap may chu SMTP, cong, tai khoan, mat khau ung dung va email
+   gui. Gmail: smtp.gmail.com, cong 465, tai khoan Gmail va mat khau ung dung.
+   Dung mail cua anh de nhan ma dang nhap that. Muon doi SMTP: CAU-HINH-MAIL.cmd.
+   Mat khau chi luu trong file .env tren may anh, khong gui cho nguoi khac.
+
+4. Doi Docker tai va build xong, trinh duyet tu mo:
+   http://127.0.0.1:54173
+   Nhap email, nhap ma nhan trong hop thu, vao VNBot.
+
+5. Ket noi AI trong ung dung: Cai dat > Mo hinh, them ket noi va chon model
+   anh co quyen dung. Key/uy quyen nhap trong app, goi tai ve khong co AI key.
+   Tao bot, chon model vua ket noi, gui mot cau hoi de thu phan hoi that.
+   Tiep tuc giao bot tao mot file, doc lai file, mo trang web va thu giong noi.
+   Cho phep micro tren trinh duyet khi thu goi; goi voice can ket noi tuong ung.
+   Neu model chay tren may Windows, dung host.docker.internal de container
+   truy cap may host; khong dung localhost cua container.
+
+DUNG-VNBOT.cmd dung stack va giu du lieu. CHAY-VNBOT.cmd mo lai.
+KIEM-TRA.cmd hien trang thai. Neu loi build/start, giu cua so va gui dong loi.
+Khong xoa Docker volumes hoac file .env neu muon giu bot, chat va key.
+Stack nay dung project vnbot-ai-test, volume rieng va chi mo cong loopback 54173.
+May tinh bot chay trong container; supervisor dung Docker socket cua Docker Desktop.
+
+Day la goi source-build: lan dau Docker tu dung image tu ma nguon di kem,
+khong phai image da build san. Can Internet de tai base image/goi phu thuoc
+va de dung dich vu AI. Khong can tunnel de chat, dung cong cu va thu micro
+tren chinh may nay. Remote/nhan webhook tu Internet chua nam trong bai thu nay.
+
+Goi duoc kiem launcher va cau hinh Compose. Chua nghiem thu Docker Desktop
+tren Windows hay AI that tren may anh. Khong coi day la ban phat hanh 0.4.0.

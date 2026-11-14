@@ -53,22 +53,11 @@ type ModelPinRow = { spaceId: string | null; modelId: string | null; credentialI
 
 /** Refusal naming the bots and routines (plus "backup models") left on a dropped model. */
 function refuseModelPins(
-  pins: {
-    named: Array<ModelPinRow & { name: string }>;
-    backups: Array<ModelPinRow & { role: string; position: number }>;
-  },
+  pins: { named: Array<ModelPinRow & { name: string }>; backups: ModelPinRow[] },
   dangling: (row: ModelPinRow) => boolean,
 ) {
   const names = pins.named.filter(dangling).map((row) => row.name);
-  for (const row of pins.backups.filter(dangling)) {
-    names.push(
-      row.position === 0
-        ? row.role === "approval"
-          ? "approval model"
-          : "main model"
-        : "backup models",
-    );
-  }
+  if (pins.backups.some(dangling)) names.push("backup models");
   if (names.length === 0) return;
   throw new ORPCError("BAD_REQUEST", {
     message: `In use by ${[...new Set(names)].join(", ")}. Pick another model for them first.`,

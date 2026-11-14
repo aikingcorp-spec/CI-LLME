@@ -30,6 +30,15 @@ beforeEach(() => {
   );
 });
 describe("shared files", () => {
+  it("uses the configured share count before copying extra files", async () => {
+    const result = await readSharedFiles(files, 1, 1024, 6);
+    expect(result.attachments).toHaveLength(5);
+    expect(result.skipped).toEqual(
+      files.slice(5).map((file) => ({ name: file.name, reason: "max 6 attachments" })),
+    );
+    expect(state.read).toHaveBeenCalledTimes(5);
+  });
+
   it("keeps readable files and reports individual failures", async () => {
     state.read.mockRejectedValueOnce(new Error("unreadable"));
     const result = await readSharedFiles(files.slice(0, 3));
@@ -37,6 +46,7 @@ describe("shared files", () => {
     expect(result.failedFiles).toEqual([files[0]]);
     expect(result.skipped).toEqual([{ name: "0.png", reason: "could not read" }]);
     expect(result.attachments[0]?.previewUri).toBe("data:image/png;base64,YWJj");
+    expect(result.sources).toEqual([files[1]?.uri, files[2]?.uri]);
   });
   it("does not copy or read beyond the remaining attachment limit", async () => {
     const result = await readSharedFiles(files, 2);

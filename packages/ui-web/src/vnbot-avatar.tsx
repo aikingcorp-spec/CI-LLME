@@ -1,30 +1,11 @@
-/// <reference path="./svg-raw.d.ts" />
-import type { VnbotBodyTone } from "@rakazo/core";
-import { shippedHash, vnbotBodyTone } from "@rakazo/core";
+import type { VnbotBodyTone, VnbotShape } from "@rakazo/core";
+import { VNBOT_AVATAR_SVG, VNBOT_SHAPES, vnbotBodyTone, vnbotShape } from "@rakazo/core";
 import type { CSSProperties } from "react";
 import { useId } from "react";
 import { prefixSvgIds } from "./svg-ids.js";
-import aodaiSvg from "./vnbot-avatars/aodai.svg?raw";
-import chungSvg from "./vnbot-avatars/chung.svg?raw";
-import nonSvg from "./vnbot-avatars/non.svg?raw";
-import ranSvg from "./vnbot-avatars/ran.svg?raw";
-import senSvg from "./vnbot-avatars/sen.svg?raw";
 
-export const VNBOT_SHAPES = ["non", "chung", "aodai", "ran", "sen"] as const;
-export type VnbotShape = (typeof VNBOT_SHAPES)[number];
-
-const SHAPE_SVG: Record<VnbotShape, string> = {
-  non: nonSvg,
-  chung: chungSvg,
-  aodai: aodaiSvg,
-  ran: ranSvg,
-  sen: senSvg,
-};
-
-/** Hash of the bot id, so the same bot always wears the same mascot. */
-export function vnbotShape(identity: string): VnbotShape {
-  return VNBOT_SHAPES[shippedHash(`vnbot-avatar/shape/v1/${identity}`) % VNBOT_SHAPES.length]!;
-}
+export type { VnbotShape };
+export { VNBOT_SHAPES, vnbotShape };
 
 // Inline dimensions override Button's descendant SVG sizing, as the upstream avatars do.
 function sized(svg: string): string {
@@ -48,16 +29,23 @@ export function VnbotAvatar({
   className?: string;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const resolvedTone = tone ?? vnbotBodyTone(body);
-  const html = sized(prefixSvgIds(SHAPE_SVG[shape], uid));
+  const fill = /^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$/.test(body) ? body : undefined;
+  const resolvedTone = tone ?? vnbotBodyTone(fill ?? "");
+  const html = sized(prefixSvgIds(VNBOT_AVATAR_SVG[shape], uid));
   return (
     <div
       className={className}
       data-vnbot-avatar=""
       data-vnbot-shape={shape}
       data-body-tone={resolvedTone === "light" ? "light" : undefined}
-      style={{ "--body": body, width: size, height: size } as CSSProperties}
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: brand asset, not user content
+      style={
+        {
+          ...(fill ? { "--body": fill } : {}),
+          width: size,
+          height: size,
+        } as CSSProperties
+      }
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: approved mascot SVG, colour stays in CSS
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

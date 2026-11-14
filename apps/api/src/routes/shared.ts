@@ -1,12 +1,23 @@
+import { ORPCError } from "@orpc/server";
 import {
   deploymentModelRole,
+  findConnectedModelCredential,
   hasHostedModelCredits,
   hostCredentialSource,
   mcpStdioAvailable,
   resolveMemberMainModel,
+  selectConfiguredModel,
 } from "@rakazo/adapters";
 import type { Actor, Me } from "@rakazo/contracts";
-import { attachmentMaxBytes, canonicalPiProviderId } from "@rakazo/contracts";
+import {
+  attachmentMaxBytes,
+  attachmentMaxCount,
+  canonicalPiProviderId,
+  resolveBotAvatarSet,
+} from "@rakazo/contracts";
+import { isSpaceOrganizationOwner, machineOwnerUserId } from "@rakazo/db";
+import { isAdmin } from "../admins.js";
+import { effectiveSandboxProvider } from "../computer-provider-config.js";
 import type { RouterDeps } from "../router.js";
 
 export { createAdapterContext as computerContext } from "@rakazo/adapter-kit";
@@ -18,28 +29,40 @@ function hostCredentials(active: boolean, provider: string) {
 }
 
 export async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
-  const [user, setup] = await Promise.all([
+  const [user, setup, admin] = await Promise.all([
     deps.prisma.user.findUniqueOrThrow({
       where: { id: actor.userId },
       select: {
         email: true,
         name: true,
         timezone: true,
+        locale: true,
+        botAvatarSet: true,
         signupSurvey: { select: { userId: true } },
       },
     }),
     modelSetup(deps, actor),
+    isAdmin(deps, actor.userId),
   ]);
+  // Where the deployment runs computers once an admin's choice in Settings applies.
+  const sandboxProvider = effectiveSandboxProvider(setup.settings, deps.env.sandboxProvider);
+  const nativeHostBridge =
+    sandboxProvider === "none" &&
+    deps.env.nativeHostBridge === true &&
+    (await machineOwnerUserId(deps.prisma)) === actor.userId &&
+    (await isSpaceOrganizationOwner(deps.prisma, actor));
   return {
     ticketBoardEnabled: deps.env.ticketBoardEnabled === true,
     phoneCallsEnabled: deps.env.phoneCallsEnabled === true,
     navLinks: deps.env.navLinks ?? [],
     maxUploadSizeBytes: attachmentMaxBytes(deps.env),
+    maxAttachmentsPerMessage: attachmentMaxCount(deps.env),
     userId: actor.userId,
     email: user.email,
     name: user.name,
     spaceId: actor.spaceId,
     isDeploymentOwner: false,
+    isAdmin: admin,
     needsModel: setup.needsModel,
     defaultProvider: canonicalPiProviderId(setup.model?.provider ?? deps.env.defaultProvider),
     defaultModel: setup.model?.modelId ?? deps.env.defaultModel,
@@ -47,30 +70,67 @@ export async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     ...hostCredentials(
       !setup.main &&
         !setup.settings?.defaultModelProvider &&
-        Boolean(deps.env.deploymentModelHostCredentials),
+        Boolean(deps.env.deploymentModelHostCredentials) &&
+        (await isSpaceOrganizationOwner(deps.prisma, actor)),
       deps.env.defaultProvider,
     ),
-    computerHost: computerHostFor(setup.settings?.computerHost, deps.env.sandboxProvider),
-    canChooseHostComputer:
-      Boolean(deps.env.desktopHostChoiceEnabled) && deps.env.sandboxProvider === "docker",
-    sandboxProvider: deps.env.sandboxProvider,
-    mcpStdioEnabled: mcpStdioAvailable({
-      stdioEnabled: deps.env.mcpStdioEnabled,
-      allowedCommands: deps.env.mcpStdioAllowedCommands,
+    ...hostComputerAvailability({
+      sandboxProvider,
+      nativeHostBridge,
+      desktopHostChoiceEnabled: Boolean(deps.env.desktopHostChoiceEnabled),
+      storedHost: setup.settings?.computerHost,
     }),
+    computerSettingsEnabled: Boolean(deps.env.computerSettingsEnabled),
+    mcpStdioEnabled:
+      admin &&
+      mcpStdioAvailable({
+        stdioEnabled: deps.env.mcpStdioEnabled,
+        allowedCommands: deps.env.mcpStdioAllowedCommands,
+      }),
     avatarStyle: "organic",
+    botAvatarSet: resolveBotAvatarSet(user.botAvatarSet),
     timezone: user.timezone ?? null,
+    locale: user.locale ?? null,
     billingEnabled: Boolean(deps.billing),
     // Only billing deployments ask; self-hosted installs never see the survey.
     needsSignupSurvey: Boolean(deps.billing) && !user.signupSurvey,
+    paymentWalletProvider: deps.paymentWallet
+      ? { id: deps.paymentWallet.describe().id, name: deps.paymentWallet.displayName }
+      : null,
+  };
+}
+
+/** What me and bootstrap may say about this computer. The bridge token never leaves the process. */
+export function hostComputerAvailability(input: {
+  sandboxProvider: string;
+  nativeHostBridge: boolean;
+  desktopHostChoiceEnabled: boolean;
+  storedHost: string | null | undefined;
+}): {
+  computerHost: "docker" | "this-mac" | null;
+  canChooseHostComputer: boolean;
+  sandboxProvider: string;
+} {
+  const nativeLocal = input.nativeHostBridge && input.sandboxProvider === "none";
+  const canChooseHostComputer =
+    input.desktopHostChoiceEnabled && (input.sandboxProvider === "docker" || nativeLocal);
+  const computerHost = computerHostFor(input.storedHost, input.sandboxProvider, nativeLocal);
+  return {
+    computerHost,
+    canChooseHostComputer,
+    // Granted native access is the existing non-graphical desktop computer, so the shell
+    // stops saying computers are off without advertising a virtual Linux screen.
+    sandboxProvider: nativeLocal && computerHost === "this-mac" ? "desktop" : input.sandboxProvider,
   };
 }
 
 function computerHostFor(
   stored: string | null | undefined,
   sandboxProvider: string,
+  nativeLocal = false,
 ): "docker" | "this-mac" | null {
   if (sandboxProvider === "desktop") return "this-mac";
+  if (nativeLocal) return stored === "this-mac" || stored === "docker" ? stored : null;
   if (sandboxProvider !== "docker") return null;
   if (stored === "this-mac" || stored === "docker") return stored;
   return null;
@@ -90,9 +150,11 @@ export async function modelSetup(deps: RouterDeps, actor: Actor) {
       ? member
       : null;
   const funding = deps.billing ? await deps.billing.status(actor) : null;
+  // A balance keeps paying for the deployment model after switching to an own key.
+  const creditsAvailable = funding?.funding === "credits" || (funding?.balanceUsd ?? 0) > 0;
   const hasDeployment =
     Boolean(deps.env.deploymentModelConfigured) &&
-    (!funding?.creditPurchasesEnabled || funding.funding === "credits");
+    (!funding?.creditPurchasesEnabled || creditsAvailable);
   return {
     main,
     model:
@@ -103,9 +165,34 @@ export async function modelSetup(deps: RouterDeps, actor: Actor) {
       }).primary,
     settings,
     funding,
+    creditsAvailable,
     hasDeployment,
     needsModel: deps.env.agentRuntime !== "scripted" && !main && !hasDeployment,
   };
+}
+
+/** Whether every bot runs its own model on one of the member's connections, as a run selects it. */
+export async function botsRunOwnModels(deps: RouterDeps, actor: Actor, botIds: string[]) {
+  const bots = await deps.prisma.bot.findMany({
+    where: { id: { in: botIds }, spaceId: actor.spaceId },
+    select: { modelProvider: true, modelId: true, thinkingLevel: true },
+  });
+  const credentials = await Promise.all(
+    bots.map(async (bot) => {
+      const overrideCredential = bot.modelProvider
+        ? await findConnectedModelCredential(
+            deps.prisma,
+            deps.secrets,
+            actor,
+            bot.modelProvider,
+            bot.modelId,
+          )
+        : null;
+      return selectConfiguredModel({ override: bot, overrideCredential, main: null, defaults: {} })
+        .credential;
+    }),
+  );
+  return credentials.every(Boolean);
 }
 
 export const THREAD_MESSAGE_PAGE_SIZE = 100;
@@ -116,10 +203,64 @@ export const HEARTBEAT_MS = 20_000;
 /** A thread stream re-checks its session at least this often while it delivers. */
 export const SESSION_RECHECK_MS = 10_000;
 
-export function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
-}
+export const HEARTBEAT = Symbol("heartbeat");
 
-export function isRecordNotFound(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2025");
+const ENDED = Symbol("ended");
+
+/**
+ * Yields each event from `follow`, or HEARTBEAT after HEARTBEAT_MS of silence: a half-open stream
+ * looks identical to an idle one, and clients treat any frame as liveness. Auth ran once when the
+ * stream opened, so before yielding anything this re-checks the session if SESSION_RECHECK_MS has
+ * passed; a signed-out or revoked session ends the stream with UNAUTHORIZED.
+ */
+export async function* withHeartbeats<T>(
+  context: { signal?: AbortSignal; stillAuthorized?: () => Promise<boolean> },
+  follow: (signal: AbortSignal) => AsyncGenerator<T>,
+): AsyncGenerator<T | typeof HEARTBEAT> {
+  const controller = new AbortController();
+  const source = follow(
+    context.signal ? AbortSignal.any([context.signal, controller.signal]) : controller.signal,
+  );
+  let pending: Promise<IteratorResult<T>> | undefined;
+  let authorizedAt = Date.now();
+  try {
+    while (!context.signal?.aborted) {
+      // A heartbeat keeps `pending`, so the in-flight read stays the next event in order.
+      pending ??= source.next();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let onAbort: (() => void) | undefined;
+      const next = await Promise.race([
+        pending,
+        // Racing the abort ends a source that ignores it, so its session re-checks can't run after
+        // shutdown has closed the database pool. The waiter is per read so a settled race, and the
+        // event it carried, isn't retained until disconnect.
+        new Promise<typeof HEARTBEAT | typeof ENDED>((resolve) => {
+          timer = setTimeout(() => resolve(HEARTBEAT), HEARTBEAT_MS);
+          if (context.signal?.aborted) return resolve(ENDED);
+          onAbort = () => resolve(ENDED);
+          context.signal?.addEventListener("abort", onAbort, { once: true });
+        }),
+      ]).finally(() => {
+        clearTimeout(timer);
+        if (onAbort) context.signal?.removeEventListener("abort", onAbort);
+      });
+      if (next === ENDED || context.signal?.aborted) return;
+      if (context.stillAuthorized && Date.now() - authorizedAt >= SESSION_RECHECK_MS) {
+        if (!(await context.stillAuthorized())) throw new ORPCError("UNAUTHORIZED");
+        authorizedAt = Date.now();
+      }
+      if (next === HEARTBEAT) {
+        yield HEARTBEAT;
+        continue;
+      }
+      pending = undefined;
+      if (next.done) return;
+      yield next.value;
+    }
+  } finally {
+    controller.abort();
+    // Not awaited: closing queues behind an in-flight read until the abort lands on it, and the
+    // stream (including an UNAUTHORIZED end) must not wait for that.
+    void source.return(undefined).catch(() => {});
+  }
 }

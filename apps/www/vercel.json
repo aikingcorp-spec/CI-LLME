@@ -1,21 +1,123 @@
 {
+  "installCommand": "corepack pnpm install",
   "redirects": [
     {
       "source": "/",
-      "has": [{ "type": "host", "value": { "eq": "www.vnbot.run" } }],
-      "destination": "https://vnbot.run/",
+      "has": [
+        {
+          "type": "host",
+          "value": {
+            "eq": "www.rakazo.com"
+          }
+        }
+      ],
+      "destination": "https://rakazo.com/",
       "statusCode": 301
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": { "eq": "www.vnbot.run" } }],
-      "destination": "https://vnbot.run/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": {
+            "eq": "www.rakazo.com"
+          }
+        }
+      ],
+      "destination": "https://rakazo.com/:path*",
       "statusCode": 301
     },
     {
       "source": "/sitemap.xml",
       "destination": "/sitemap-index.xml",
       "statusCode": 301
+    },
+    {
+      "source": "/x",
+      "destination": "https://vnbot.run/",
+      "permanent": false
+    },
+    {
+      "source": "/twitter",
+      "destination": "https://vnbot.run/",
+      "permanent": false
+    },
+    {
+      "source": "/github",
+      "destination": "https://github.com/aikingcorp-spec/VNbot-News",
+      "permanent": false
+    },
+    {
+      "source": "/discord",
+      "destination": "https://discord.gg/RWwKa2Sn7h",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/:path*",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "</llms.txt>; rel=\"describedby\"; type=\"text/plain\", </.well-known/ai-catalog.json>; rel=\"ai-catalog\"; type=\"application/ai-catalog+json\""
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/ai-catalog.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/ai-catalog+json"
+        }
+      ]
+    },
+    {
+      "source": "/help.md",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Content-Language",
+          "value": "vi"
+        },
+        {
+          "key": "Link",
+          "value": "<https://vnbot.run/help.md>; rel=\"describedby\"; type=\"text/markdown\""
+        },
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/help/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Content-Language",
+          "value": "vi"
+        },
+        {
+          "key": "Link",
+          "value": "<https://vnbot.run/help.md>; rel=\"describedby\"; type=\"text/markdown\""
+        }
+      ]
+    },
+    {
+      "source": "/help/:slug.md",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        }
+      ]
     }
   ]
 }

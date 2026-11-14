@@ -1,3 +1,19 @@
+/** HTML help index. There is no chapter for this sign-in mismatch. */
+const VNBOT_HELP_INDEX = "https://vnbot.run/help/";
+
+/** Only reviewed, public documentation links belong here; never use URLs from an error body. */
+const ERROR_GUIDES: Readonly<Record<string, string>> = {
+  MCP_OAUTH_REDIRECT_MISMATCH: VNBOT_HELP_INDEX,
+};
+
+/** A stable error code opts into troubleshooting without depending on message wording. */
+export function errorHelpUrl(error: unknown): string | undefined {
+  const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+  return typeof code === "string" && Object.hasOwn(ERROR_GUIDES, code)
+    ? ERROR_GUIDES[code]
+    : undefined;
+}
+
 /** Copy each client supplies in its own language. */
 export type UserErrorCopy = { fallback: string; offline: string };
 
@@ -94,7 +110,11 @@ export function userErrorMessage(error: unknown, copy: UserErrorCopy): string {
   const message = (
     error instanceof Error ? error.message : typeof error === "string" ? error : ""
   ).trim();
-  return message && !isTechnicalErrorMessage(message) ? message : copy.fallback;
+  // The exact fault `userRunError` saves for a database failure. It is not a sentence to interpret.
+  if (!message || message === "Internal server error" || isTechnicalErrorMessage(message)) {
+    return copy.fallback;
+  }
+  return message;
 }
 
 export type CredentialField = "email" | "password";

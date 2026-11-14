@@ -1,13 +1,19 @@
-import { COMPUTER_RATE_LIMIT_ERROR } from "@rakazo/contracts";
+import {
+  COMPUTER_ALLOWANCE_USED_ERROR,
+  COMPUTER_PROVIDER_UNAVAILABLE_ERROR,
+  COMPUTER_RATE_LIMIT_ERROR,
+} from "@rakazo/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APPROVED_ACTION_NOT_RUN_ERROR,
+  displayedRunErrorDetails,
   HOSTED_MODEL_CREDITS_REQUIRED_ERROR,
   isImageInputConfirmation,
   isModelRequiredSendError,
   MISSING_MODEL_RUN_ERROR,
   MISSING_TOOL_FINAL_RESPONSE_ERROR,
   MODEL_CONTEXT_TOO_SMALL_ERROR,
+  MODEL_CREDITS_EXHAUSTED_ERROR,
   MODEL_IMAGE_INPUT_ERROR,
   MODEL_OUTPUT_CUT_ERROR,
   MODEL_OUTPUT_LIMIT_ERROR,
@@ -16,25 +22,49 @@ import {
   modelFallbackFailure,
   normalizeRunError,
   userRunError,
+  VERBATIM_TOOL_RESULT_TOO_LARGE_ERROR,
 } from "./run-error.js";
+
+/** The classification alone, without the provider's own status and message. */
+function classify(details: string) {
+  const {
+    status: _status,
+    providerMessage: _message,
+    ...classification
+  } = normalizeRunError(details);
+  return classification;
+}
+
+it("returns the provider's status and the message unwrapped from its envelope", () => {
+  expect(normalizeRunError('403: {"error":{"message":"Weekly key limit exceeded"}}')).toMatchObject(
+    { status: 403, providerMessage: "Weekly key limit exceeded" },
+  );
+  const plain = normalizeRunError("Request timed out.");
+  expect(plain.status).toBeUndefined();
+  expect(plain.providerMessage).toBe("Request timed out.");
+});
+
+it("keeps the provider's status and message on unusable-output errors", () => {
+  expect(
+    normalizeRunError('403: {"error":{"message":"Provider returned an empty response"}}'),
+  ).toMatchObject({
+    kind: "output",
+    status: 403,
+    providerMessage: "Provider returned an empty response",
+  });
+});
+
+it("reads a limit period and reset date from top-level envelope fields", () => {
+  const error = normalizeRunError(
+    '402: {"error":{"message":"Usage limit exceeded","limit":"weekly","reset_at":"2099-01-01"}}',
+  );
+  expect(error).toMatchObject({ period: "weekly", resetAt: Date.parse("2099-01-01") });
+});
 
 describe("normalizeRunError", () => {
   beforeEach(() => {
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-01T00:00:00Z"));
   });
-  it.each([
-    "Unmatched tool result in context",
-    "Orphaned tool result in context",
-    "Duplicate tool result in context",
-    "Missing tool result in context",
-  ])("classifies app transcript failures without provider recovery: %s", (details) => {
-    expect(normalizeRunError(details)).toEqual({
-      summary: "Chat context is inconsistent. Try again or start a new chat.",
-      details,
-      kind: "context",
-    });
-  });
-
   it("summarizes the weekly OpenRouter key limit without exposing diagnostics", () => {
     const details =
       '403: {"message":"Key limit exceeded (weekly limit). Manage it using https://openrouter.ai/workspaces/default/keys/<long hash> $20.05 of $20.00 used; resets 2026-10-12T00:00:00.000Z.","code":403,"metadata":{"limit_source":"openrouter_key_limit"}}';
@@ -78,32 +108,53 @@ describe("normalizeRunError", () => {
       "Your model provider can't run this model.",
     ],
     ['{"error":{"code":"model_not_found"}}', "Your model provider can't run this model."],
+    [
+      '400: {"message":"Model example is not a chat model; call /v1/example instead of /v1/chat/completions","type":"invalid_request_error"}',
+      "Your model provider can't run this model.",
+    ],
+    [
+      'openai-compatible API error (400): {"message":"example:27b is a decision model and only supports /v1/example (ref: <ref-id>)","type":"invalid_request_error","param":null,"code":null}',
+      "Your model provider can't run this model.",
+    ],
+    [
+      "Prompt tokens limit exceeded: 11298 > 992. To increase, visit https://openrouter.ai/settings/credits and upgrade to a paid account",
+      "Your OpenRouter reached its credit limit.",
+    ],
+    [
+      '400: {"type":"server_error","message":"Upstream request failed: This example model requires Global regions. Select Global in your workspace\'s Privacy settings to use it."}',
+      "Your model provider can't run this model.",
+    ],
     ["Request timed out", "Your model provider took too long to respond. Try again."],
     [
       '504: {"message":"Gateway error"}',
       "Your model provider took too long to respond. Try again.",
     ],
     [
+      '403: {"message":"This model requires you to upgrade to a paid plan"}',
+      "Your model provider denied access to this model.",
+    ],
+    [
       '403: {"message":"Policy blocked the request"}',
       "Your model provider denied access to this model.",
     ],
     ['404: {"message":"Route not found"}', "Your model provider can't run this model."],
-    [
-      "500: {malformed https://example.test/keys/fake-key-id",
-      "The model provider returned an error.",
-    ],
-    ["Something unexpected happened", "The model provider returned an error."],
+    ["500: {malformed https://example.test/keys/fake-key-id", "Something went wrong. Try again."],
+    ["Something unexpected happened", "Something went wrong. Try again."],
     [
       "Provider diagnostic: manage https://example.test/keys/fake-key-id; trace fake-trace",
-      "The model provider returned an error.",
+      "Something went wrong. Try again.",
     ],
     [
       "OpenRouter key limit exceeded (weekly). Manage https://example.test/keys/fake-key-id",
       "Your OpenRouter key hit its weekly limit.",
     ],
-    ["", "The model provider returned an error."],
+    ["", "Something went wrong. Try again."],
+    ["Internal server error", "Something went wrong. Try again."],
   ])("normalizes %s", (details, summary) => {
-    expect(normalizeRunError(details)).toMatchObject({ summary, details });
+    const shownDetails = details.includes("Incorrect API key: sk-fake-placeholder")
+      ? '401: {"message":"Incorrect API key=[redacted] https://api.openai.com"}'
+      : details;
+    expect(normalizeRunError(details)).toMatchObject({ summary, details: shownDetails });
   });
 
   it.each([
@@ -194,8 +245,16 @@ describe("normalizeRunError", () => {
         tooLong,
       ],
       ["prompt is too long: 210344 tokens > 200000 maximum", tooLong],
+      [
+        '400: {"code":400,"message":"request (19563 tokens) exceeds the available context size (2048 tokens), try increasing it","type":"exceed_context_size_error","n_prompt_tokens":19563,"n_ctx":2048}',
+        tooLong,
+      ],
       ['413: {"message":"Request entity too large"}', tooLong],
       ["Required context exceeds the model context budget", tooLong],
+      [
+        '400: {"message":"Too many images provided.  This model supports up to 3 images","type":"invalid_request_error"}',
+        tooLong,
+      ],
       ["terminated", tookTooLong],
       ["read ECONNRESET", tookTooLong],
       ["socket hang up", tookTooLong],
@@ -203,7 +262,7 @@ describe("normalizeRunError", () => {
       ["Model stream ended without a terminal event", tookTooLong],
       ["Request timed out.", tookTooLong],
     ])("summarizes %s without recovery advice", (details, summary) => {
-      expect(normalizeRunError(details)).toEqual({
+      expect(classify(details)).toEqual({
         summary,
         details,
         ...(summary === tooLong ? { kind: "context" } : {}),
@@ -221,7 +280,7 @@ describe("normalizeRunError", () => {
       "getaddrinfo EAI_AGAIN vllm",
       "Connection refused",
     ])("says an unreachable provider %s should be checked", (details) => {
-      expect(normalizeRunError(details)).toEqual({
+      expect(classify(details)).toEqual({
         summary: "Your model provider couldn't be reached. Check that it's running.",
         details,
       });
@@ -297,8 +356,11 @@ describe("normalizeRunError", () => {
       '401 {"status":401,"title":"Unauthorized","detail":"Invalid unsecured/JWS/JWE header: Invalid JSON object"}',
       'xai API error (400): 400 "Incorrect API key provided. You can obtain an API key from the console."',
       "Your authentication token has expired. Please try refreshing it.",
+      "Provided authentication token is expired.",
+      "Encountered invalidated oauth token for user, failing request",
       // A key pasted with code around it; the code's words are not provider signals.
       'Headers.append: "Bearer example-key\nclient = Client(timeout=30, credits=5, rate_limit=1)" is an invalid header value.',
+      'Headers.append: "[Redacted]" is an invalid header value.',
       "Cannot convert argument to a ByteString because the character at index 0 has a value of 48120 which is greater than 255.",
       google({
         code: 400,
@@ -308,6 +370,7 @@ describe("normalizeRunError", () => {
           { "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "API_KEY_INVALID" },
         ],
       }),
+      '400 {"type":"error","error":{"type":"invalid_request_error","message":"This API key is not scoped to a workspace."}}',
     ])("sends a rejected key to the connection: %s", (details) => {
       expect(normalizeRunError(details)).toMatchObject({
         summary: "Your model provider rejected the API key. Check your connection settings.",
@@ -342,6 +405,7 @@ describe("normalizeRunError", () => {
       '404: {"message":"example/model:batch cannot be used with the chat/completions endpoint.","code":404}',
       '400: {"message":"The requested model is not supported.","code":"model_not_supported","param":"model","type":"invalid_request_error"}',
       '400: {"message":"`tool calling` is not supported with this model","type":"invalid_request_error","param":"tool calling"}',
+      `400: {"message":"feature 'tool calls' is not currently supported"}`,
       `{"detail":"The 'example-model' model is not supported when using Codex with a ChatGPT account."}`,
       "Validation error: Invocation of model ID example.model-v1 with on-demand throughput isn’t supported. Retry your request with the ID or ARN of an inference profile that contains this model.",
       "Validation error: This model doesn't support the image field for user messages.",
@@ -350,17 +414,18 @@ describe("normalizeRunError", () => {
       expect(normalizeRunError(details)).toMatchObject({ kind: "model", recovery: "model" });
     });
 
-    it.each([MODEL_CONTEXT_TOO_SMALL_ERROR, MODEL_REQUEST_LIMIT_ERROR])(
-      "offers another model for an unusable request budget: %s",
-      (details) => {
-        expect(normalizeRunError(details)).toEqual({
-          summary: details,
-          details,
-          kind: "context",
-          recovery: "model",
-        });
-      },
-    );
+    it.each([
+      MODEL_CONTEXT_TOO_SMALL_ERROR,
+      MODEL_REQUEST_LIMIT_ERROR,
+      VERBATIM_TOOL_RESULT_TOO_LARGE_ERROR,
+    ])("offers another model for an unusable request budget: %s", (details) => {
+      expect(normalizeRunError(details)).toEqual({
+        summary: details,
+        details,
+        kind: "context",
+        recovery: "model",
+      });
+    });
 
     it("says a reply was cut off at the output limit, with the model's fix", () => {
       expect(normalizeRunError(MODEL_OUTPUT_CUT_ERROR)).toEqual({
@@ -387,16 +452,34 @@ describe("normalizeRunError", () => {
       "This request triggered restrictions on violative cyber content and was blocked under Anthropic's Usage Policy. To learn more, see the refusals guide.",
       "This request was blocked as it seems to violate Anthropic's Terms of Service restrictions on reverse engineering or duplicating model outputs.",
       "Provider returned an empty response",
+      'unexpected tokens remaining in message header: Some("to=functions.example")',
+      'HarmonyError: unexpected tokens remaining in message header: Some("analysis")',
+      '500: {"message":"unexpected tokens remaining in message header: Some(\\"analysis\\")"}',
+      'unexpected tokens remaining in message header: Some("credit limit, timeout, model not found")',
       "Failed to parse tool call arguments as JSON",
       '400: {"message":"Failed to parse tool call arguments as JSON","code":"tool_use_failed"}',
       "Tool call validation failed: attempted to call tool 'commentary' which was not in request.tools",
+      "tool call validation failed: attempted to call tool 'commentary' which was not in request.tools",
+      "Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.",
+      '400 {"type":"error","error":{"type":"api_error","message":"Upstream request failed: [api_error] Upstream response was not valid JSON"}}',
+      "Codex error: This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request.",
+      "Cyber safeguards flagged this message. If this is legitimate security work, you can apply for the Cyber Verification Program: https://support.claude.com/en/articles/<article-id>",
       MODEL_OUTPUT_LIMIT_ERROR,
+      "Upstream error from Example: HttpError: HTTP 400: Tool calls cutoff by max_tokens.",
     ])("calls unusable model output what it is: %s", (details) => {
-      expect(normalizeRunError(details)).toEqual({
+      expect(classify(details)).toEqual({
         summary: "The model returned an unusable response. Try again.",
         details,
         kind: "output",
         recovery: "model",
+      });
+    });
+
+    it("keeps the advice when VNBot credits run out", () => {
+      expect(normalizeRunError(MODEL_CREDITS_EXHAUSTED_ERROR)).toEqual({
+        summary: MODEL_CREDITS_EXHAUSTED_ERROR,
+        details: MODEL_CREDITS_EXHAUSTED_ERROR,
+        recovery: "connection",
       });
     });
 
@@ -416,7 +499,7 @@ describe("normalizeRunError", () => {
       '400: {"message":"failed to template request: Unexpected message role.","type":"invalid_request_error"}',
       '400: {"message":"Provider returned error","code":400,"metadata":{"raw":"The `uniqueItems` JSON Schema keyword is not supported."}}',
       "Approved tool requests were not fully replayed",
-      "Upstream error from Example: HttpError: HTTP 400: Tool calls cutoff by max_tokens.",
+      "Internal failure while handling unexpected tokens remaining in message header: unknown",
       '500: {"message":"Internal error"}',
       '503: {"message":"The model is unavailable right now."}',
       '503: {"message":"Unsupported model fixture-model"}',
@@ -508,8 +591,6 @@ it.each([
   ["403: OpenRouter weekly key limit exceeded", "key", "weekly"],
   ["402: Monthly spending limit exceeded", "spending", "monthly"],
   ["429: insufficient_quota", "credit", "none"],
-  ["402: Payment required", "usage", "none"],
-  ["Daily usage limit exceeded", "usage", "daily"],
   ["429: Too many requests", "rate", undefined],
   ["401: Invalid API key", "auth", undefined],
   ["404: Model unavailable", "model", undefined],
@@ -586,8 +667,10 @@ it.each([
       reason: "fake-diagnostic",
     })),
   );
+  // The listed details replace the primary's own message.
+  const { providerMessage: _message, ...primary } = normalizeRunError(primaryError);
   expect(normalizeRunError(details)).toEqual({
-    ...normalizeRunError(primaryError),
+    ...primary,
     details: [
       primaryError,
       ...statuses.map(() => "fake-provider fake-model: fake-diagnostic"),
@@ -606,10 +689,70 @@ it.each([
   });
 });
 
-it("shows the computer rate limit as written", () => {
-  expect(normalizeRunError(COMPUTER_RATE_LIMIT_ERROR)).toEqual({
-    summary: COMPUTER_RATE_LIMIT_ERROR,
-    details: COMPUTER_RATE_LIMIT_ERROR,
+it.each([COMPUTER_RATE_LIMIT_ERROR, COMPUTER_PROVIDER_UNAVAILABLE_ERROR])(
+  "shows the computer error %j as written",
+  (message) => {
+    expect(normalizeRunError(message)).toEqual({ summary: message, details: message });
+  },
+);
+
+it.each([
+  "Unmatched tool result in context",
+  "Orphaned tool result in context",
+  "Duplicate tool result in context",
+  "Missing tool result in context",
+])("names a broken chat transcript without calling it a model failure: %s", (details) => {
+  expect(normalizeRunError(details)).toEqual({
+    summary: "Chat context is inconsistent. Try again or start a new chat.",
+    details,
+    kind: "context",
+  });
+});
+
+it("leaves an ordinary sentence about context as an unknown failure", () => {
+  expect(normalizeRunError("Please keep the context of my last message").summary).toBe(
+    "Something went wrong. Try again.",
+  );
+});
+
+it("translates a computer outage separately from a model timeout", () => {
+  const translate = (message: string, values?: Record<string, string | number>) => {
+    const text =
+      message === COMPUTER_PROVIDER_UNAVAILABLE_ERROR ? "Máy tính chưa dùng được." : message;
+    return text.replace(/\{(\w+)\}/g, (match, key: string) => String(values?.[key] ?? match));
+  };
+  expect(normalizeRunError(COMPUTER_PROVIDER_UNAVAILABLE_ERROR, translate).summary).toBe(
+    "Máy tính chưa dùng được.",
+  );
+  expect(normalizeRunError("Request timed out.", translate)).toMatchObject({
+    summary: "Your model provider took too long to respond. Try again.",
+  });
+  expect(
+    normalizeRunError(COMPUTER_PROVIDER_UNAVAILABLE_ERROR, translate).recovery,
+  ).toBeUndefined();
+});
+
+it("hides a quoted key and a real sk- key before details are shown", () => {
+  const quoted =
+    'Headers.append: "Bearer example-key\nclient = Client(timeout=30)" is an invalid header value.';
+  expect(displayedRunErrorDetails(quoted)).toBe(
+    'Headers.append: "[redacted]" is an invalid header value.',
+  );
+  expect(displayedRunErrorDetails(quoted)).not.toContain("example-key");
+  const leaked = '401: {"message":"Incorrect API key: sk-proj-ab12cd34ef56gh78ij90"}';
+  expect(displayedRunErrorDetails(leaked)).not.toContain("sk-proj-ab12cd34ef56gh78ij90");
+  expect(displayedRunErrorDetails(leaked)).toContain("[redacted]");
+  expect(displayedRunErrorDetails("Scripted run failure")).toBe("Scripted run failure");
+  expect(displayedRunErrorDetails("Incorrect API key: sk-fake-placeholder")).not.toContain(
+    "sk-fake-placeholder",
+  );
+});
+
+it("sends spent computer hours to billing", () => {
+  expect(normalizeRunError(COMPUTER_ALLOWANCE_USED_ERROR)).toEqual({
+    summary: COMPUTER_ALLOWANCE_USED_ERROR,
+    details: COMPUTER_ALLOWANCE_USED_ERROR,
+    recovery: "plan",
   });
 });
 
@@ -622,7 +765,7 @@ it("does not expose malformed fallback metadata as user-facing copy", () => {
         backups: [{ status: "unknown" }],
       }),
     ).summary,
-  ).toBe("The model provider returned an error.");
+  ).toBe("Something went wrong. Try again.");
 });
 
 describe("userRunError", () => {
@@ -742,6 +885,29 @@ describe("the one action that fixes a failed run", () => {
     });
   });
 
+  it("waits out a 429 that resets hours from now instead of calling it a rate limit", () => {
+    const daily = (reset: number) =>
+      `429 ${JSON.stringify({
+        error: {
+          message: "Rate limit exceeded: free-models-per-day",
+          code: 429,
+          metadata: {
+            headers: { "X-RateLimit-Remaining": "0", "X-RateLimit-Reset": String(reset) },
+            limit_source: "openrouter_free_tier_daily",
+          },
+        },
+      })}`;
+    const tomorrow = Date.parse("2026-10-02T00:00:00Z");
+    expect(normalizeRunError(daily(tomorrow), undefined, "en", now)).toMatchObject({
+      summary: "Your OpenRouter reached its daily credit limit. Resets Oct 2.",
+      kind: "credit",
+      period: "daily",
+      recovery: "model",
+      resetAt: tomorrow,
+    });
+    expect(action(daily(now + 30_000))).toMatchObject({ kind: "rate" });
+  });
+
   it.each([
     '401: {"message":"Missing Authentication header","code":401}',
     '401: {"message":"User not found.","code":401}',
@@ -784,6 +950,12 @@ describe("the one action that fixes a failed run", () => {
     '400: {"code":"400","message":"Unsupported model fixture-model"}',
     '400: {"error":{"message":"Unknown model: fixture-model"}}',
     '400: {"message":"Unrecognized model fixture-model"}',
+    google({
+      code: 400,
+      message: "This model requires the use of the Computer Use tool.",
+      status: "INVALID_ARGUMENT",
+    }),
+    "Invalid inference request. Check the model's supported parameters and input limits.",
   ])("offers another model when the provider cannot run it: %s", (details) => {
     expect(action(details)).toMatchObject({
       summary: "Your model provider can't run this model.",
@@ -835,24 +1007,24 @@ describe("the one action that fixes a failed run", () => {
 });
 
 it.each([
-  "Connect your own API key in Models or choose Rakazo credits in Billing.",
-  "Connect your own API key in Models or choose VNBot credits in Billing.",
-  "Subscribe in Billing to keep running bots.",
-  HOSTED_MODEL_CREDITS_REQUIRED_ERROR,
-])("replaces funding advice with API key setup: %s", (details) => {
-  expect(normalizeRunError(details)).toMatchObject({
-    summary: "Connect your own API key in Models.",
-    recovery: "connection",
-  });
+  `sk-proj-${"a".repeat(32)}`,
+  JSON.stringify({ error: { message: "Connection failed", api_key: "encoded-private-value" } }),
+  "Authorization: Basic ZmFrZS1jcmVkZW50aWFs",
+])("redacts display fields through the common classifier: %s", (raw) => {
+  const result = normalizeRunError(raw);
+  for (const text of [result.summary, result.details, result.providerMessage ?? ""]) {
+    expect(text).not.toContain("a".repeat(32));
+    expect(text).not.toContain("encoded-private-value");
+    expect(text).not.toContain("ZmFrZS1jcmVkZW50aWFs");
+  }
+  expect(result.details).toMatch(/redacted/i);
 });
 
-it.each([
-  '{"type":"error","error":{"type":"FreeUsageLimitError","message":"Free usage limit reached. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go"}}',
-  "Free usage limit reached. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go",
-])("does not call a free-tier usage limit a spending limit: %s", (details) => {
-  const error = normalizeRunError(details);
-  expect(error.kind).toBe("usage");
-  expect(error.recovery).toBe("model");
-  expect(error.summary).toBe("Your model provider reached its usage limit.");
-  expect(error.summary).not.toMatch(/spending/);
+it("keeps a sandbox provisioning failure separate from model credentials", () => {
+  const failure =
+    'sandbox provision failed: 500 {"error":"SANDBOX_COMPUTER_EGRESS=restricted is not enforced on this Docker host"}';
+  const result = normalizeRunError(failure);
+  expect(result.summary).toBe("Could not prepare the bot's computer. Check computer settings.");
+  expect(result.recovery).toBeUndefined();
+  expect(result.kind).not.toBe("auth");
 });

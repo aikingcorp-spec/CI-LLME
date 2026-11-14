@@ -1,9 +1,10 @@
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
-import { NativeSelect, NativeSelectOption, Spinner } from "@rakazo/ui-web";
+import { Button, NativeSelect, NativeSelectOption, Spinner } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
+import { PageAccountMenu } from "../components/PageAccountMenu";
 import { rpc } from "../lib/rpc";
 
 export function IntegrationSetupPage() {
@@ -38,7 +39,11 @@ export function IntegrationSetupPage() {
   }, [navigate]);
   return (
     <div className="min-h-full bg-background px-6 py-12">
+      <PageAccountMenu destination="/sign-in?next=%2Fintegrations%2Fsetup" />
       <div className="mx-auto max-w-[560px]">
+        <Button variant="ghost" className="mb-6" render={<Link to="/app" />}>
+          <Trans>Back to chat</Trans>
+        </Button>
         {bots.length > 1 ? (
           <NativeSelect
             aria-label={t`Bot`}

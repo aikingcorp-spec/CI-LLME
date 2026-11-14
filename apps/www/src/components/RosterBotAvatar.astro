@@ -1,0 +1,37 @@
+---
+interface Props {
+  color: string;
+  name: string;
+}
+
+const { name } = Astro.props;
+
+const src = "/landing/img/vnbot-app-icon-128.png";
+
+if (!src) {
+  throw new Error(`Missing landing avatar asset for roster bot: ${name}`);
+}
+---
+
+<span class="roster-bot-avatar" role="img" aria-label={name}>
+  <img {src} alt="" width="384" height="384" decoding="async" aria-hidden="true" />
+</span>
+
+<style>
+  .roster-bot-avatar {
+    display: block;
+    width: 88px;
+    height: 88px;
+    flex: 0 0 auto;
+    overflow: hidden;
+    border-radius: 18px;
+    background: #fff;
+  }
+
+  .roster-bot-avatar img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+</style>

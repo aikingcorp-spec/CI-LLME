@@ -2,27 +2,35 @@ import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { SandboxDamagedError } from "@rakazo/adapter-kit";
 import type * as Adapters from "@rakazo/adapters";
-import { ComputerBusyError } from "@rakazo/adapters";
+import { ComputerBusyError, ComputerRecoveryRequiredError } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
+import { userErrorMessage } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { handleRpcError } from "./app.js";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
+import { handleRpcError } from "./rpc-errors.js";
 
 const lifecycle = vi.hoisted(() => ({
+  realAcquire: undefined as typeof Adapters.acquireComputerExecutionLease | undefined,
+  realProvision: undefined as typeof Adapters.provisionComputer | undefined,
   acquireComputerExecutionLease: vi.fn(),
   provisionComputer: vi.fn(),
   releaseComputerExecutionLease: vi.fn(),
 }));
 
-vi.mock("@rakazo/adapters", async (original) => ({
-  ...(await original<typeof Adapters>()),
-  acquireComputerExecutionLease: lifecycle.acquireComputerExecutionLease,
-  provisionComputer: lifecycle.provisionComputer,
-  releaseComputerExecutionLease: lifecycle.releaseComputerExecutionLease,
-}));
+vi.mock("@rakazo/adapters", async (original) => {
+  const adapters = await original<typeof Adapters>();
+  lifecycle.realAcquire = adapters.acquireComputerExecutionLease;
+  lifecycle.realProvision = adapters.provisionComputer;
+  return {
+    ...adapters,
+    acquireComputerExecutionLease: lifecycle.acquireComputerExecutionLease,
+    provisionComputer: lifecycle.provisionComputer,
+    releaseComputerExecutionLease: lifecycle.releaseComputerExecutionLease,
+  };
+});
 
 const actor = {
   spaceId: "workspace-1",
@@ -46,17 +54,23 @@ function routerDeps(prisma: PrismaClient) {
   } as unknown as RouterDeps;
 }
 
-async function boot(prisma: PrismaClient) {
-  const handler = new RPCHandler(createRouter(routerDeps(prisma)), {
-    clientInterceptors: [onError((error, { path }) => handleRpcError(error, path))],
-  });
+async function boot(
+  prisma: PrismaClient,
+  options?: { actor?: Actor; extra?: Record<string, unknown> },
+) {
+  const handler = new RPCHandler(
+    createRouter({ ...routerDeps(prisma), ...options?.extra } as unknown as RouterDeps),
+    {
+      clientInterceptors: [onError((error, { path }) => handleRpcError(error, path))],
+    },
+  );
   const { response } = await handler.handle(
     new Request("https://api.example.test/rpc/computer/boot", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ json: { botId: "bot-1" } }),
     }),
-    { prefix: "/rpc", context: { actor } },
+    { prefix: "/rpc", context: { actor: options?.actor ?? actor } },
   );
   return response;
 }
@@ -67,6 +81,36 @@ const stoppedBot = {
   computer: { id: "computer-1", state: "stopped", providerRef: null, scope: "team" },
 };
 
+const quarantineMessage =
+  "Computer requires recovery after an unconfirmed stop. Recover the computer to rebuild it.";
+
+function quarantinedBot() {
+  return {
+    ...stoppedBot,
+    name: "Shop bot",
+    spaceId: actor.spaceId,
+    computer: {
+      ...stoppedBot.computer,
+      spaceId: actor.spaceId,
+      state: "quarantined",
+      providerRef: "guest-1",
+      kind: "docker",
+      scope: "dedicated",
+      homeKey: "bot-1",
+      controlHolder: "none",
+      controlLeaseId: null,
+      homeRevision: "saved",
+    },
+  };
+}
+
+function spaceScopedBot(bot: ReturnType<typeof quarantinedBot>) {
+  return vi.fn(async (args: { where?: { spaceId?: string; id?: string } }) => {
+    if (args.where?.spaceId !== actor.spaceId || args.where?.id !== bot.id) return null;
+    return bot;
+  });
+}
+
 beforeEach(() => {
   lifecycle.acquireComputerExecutionLease.mockReset().mockResolvedValue(null);
   lifecycle.provisionComputer.mockReset();
@@ -74,12 +118,60 @@ beforeEach(() => {
 });
 
 describe("computer boot", () => {
+  it.each([false, true])("uses claimless lease acquisition when busy=%s", async (busy) => {
+    lifecycle.acquireComputerExecutionLease.mockImplementation(lifecycle.realAcquire!);
+    lifecycle.provisionComputer.mockRejectedValue(new Error("stop after the lease"));
+    const tx = {
+      computer: { findUniqueOrThrow: vi.fn().mockResolvedValue(stoppedBot.computer) },
+      computerExecutionLease: {
+        updateManyAndReturn: vi.fn().mockResolvedValue([]),
+        create: busy
+          ? vi.fn().mockRejectedValue(Object.assign(new Error("unique"), { code: "P2002" }))
+          : vi.fn().mockResolvedValue({ fence: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
+          runId: "run-1",
+          expiresAt: new Date(Date.now() + 60_000),
+        }),
+      },
+      run: { findUnique: vi.fn().mockResolvedValue({ status: "running" }) },
+    };
+    const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
+      ...tx,
+      bot: { findFirst: vi.fn().mockResolvedValue(stoppedBot) },
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as unknown as PrismaClient;
+
+    const response = await boot(prisma);
+
+    expect(tx.computerExecutionLease.updateManyAndReturn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          computerId: "computer-1",
+          botId: "bot-1",
+          OR: [{ expiresAt: { lt: expect.any(Date) } }],
+        },
+      }),
+    );
+    if (busy) {
+      expect(response?.status).toBe(409);
+      expect(lifecycle.provisionComputer).not.toHaveBeenCalled();
+    } else {
+      expect(lifecycle.provisionComputer).toHaveBeenCalledOnce();
+      expect(lifecycle.releaseComputerExecutionLease).toHaveBeenCalledWith(
+        prisma,
+        expect.objectContaining({ runId: expect.stringMatching(/^boot:/), fence: 1 }),
+      );
+    }
+  });
+
   it("waits for a finished run to let go of the computer", async () => {
     lifecycle.acquireComputerExecutionLease
       .mockRejectedValueOnce(new ComputerBusyError())
       .mockResolvedValueOnce(null);
     lifecycle.provisionComputer.mockRejectedValue(new Error("stop after the lease"));
     const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
       bot: { findFirst: vi.fn().mockResolvedValue(stoppedBot) },
       computerExecutionLease: {
         findUnique: vi.fn().mockResolvedValue({
@@ -104,6 +196,7 @@ describe("computer boot", () => {
   it("still refuses a boot while the run is going", async () => {
     lifecycle.acquireComputerExecutionLease.mockRejectedValue(new ComputerBusyError());
     const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
       bot: { findFirst: vi.fn().mockResolvedValue(stoppedBot) },
       computerExecutionLease: {
         findUnique: vi.fn().mockResolvedValue({
@@ -129,6 +222,7 @@ describe("computer boot", () => {
       }),
     );
     const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
       bot: {
         findFirst: vi.fn().mockResolvedValue({
           ...stoppedBot,
@@ -144,9 +238,80 @@ describe("computer boot", () => {
     expect(lifecycle.releaseComputerExecutionLease).toHaveBeenCalledOnce();
   });
 
+  it("returns recovery instructions for a quarantined computer without provisioning it", async () => {
+    lifecycle.provisionComputer.mockImplementation(
+      (...args: Parameters<typeof Adapters.provisionComputer>) => lifecycle.realProvision!(...args),
+    );
+    const bot = quarantinedBot();
+    const updateMany = vi.fn();
+    const sandbox = {
+      provision: vi.fn(),
+      prepare: vi.fn(),
+      stop: vi.fn(),
+      destroy: vi.fn(),
+    };
+    const home = { writeFile: vi.fn() };
+    const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
+      bot: { findFirst: spaceScopedBot(bot) },
+      computer: {
+        findUniqueOrThrow: vi.fn(async () => ({ ...bot.computer })),
+        updateMany,
+        update: vi.fn(),
+      },
+      computerExecutionLease: { findUnique: vi.fn(async () => null) },
+    } as unknown as PrismaClient;
+
+    const response = await boot(prisma, { extra: { sandbox, home } });
+    const body = await response?.text();
+
+    expect(response?.status).toBe(409);
+    expect(body).toContain(quarantineMessage);
+    expect(body).not.toContain("Internal server error");
+    expect(
+      userErrorMessage(new ComputerRecoveryRequiredError(), {
+        fallback: "Computer failed to boot",
+        offline: "Could not reach the server",
+      }),
+    ).toBe(quarantineMessage);
+    expect(sandbox.provision).not.toHaveBeenCalled();
+    expect(sandbox.prepare).not.toHaveBeenCalled();
+    expect(sandbox.stop).not.toHaveBeenCalled();
+    expect(sandbox.destroy).not.toHaveBeenCalled();
+    expect(home.writeFile).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(lifecycle.releaseComputerExecutionLease).toHaveBeenCalledOnce();
+  });
+
+  it("does not offer recovery for a quarantined computer in another Space", async () => {
+    lifecycle.provisionComputer.mockImplementation(
+      (...args: Parameters<typeof Adapters.provisionComputer>) => lifecycle.realProvision!(...args),
+    );
+    const bot = quarantinedBot();
+    const sandbox = { provision: vi.fn(), stop: vi.fn(), destroy: vi.fn() };
+    const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
+      bot: { findFirst: spaceScopedBot(bot) },
+      computer: { findUniqueOrThrow: vi.fn(), updateMany: vi.fn() },
+    } as unknown as PrismaClient;
+
+    const response = await boot(prisma, {
+      actor: { ...actor, spaceId: "other-space", userId: "other-user" },
+      extra: { sandbox },
+    });
+
+    expect(response?.status).toBe(404);
+    expect(await response?.text()).not.toContain(quarantineMessage);
+    expect(lifecycle.provisionComputer).not.toHaveBeenCalled();
+    expect(sandbox.provision).not.toHaveBeenCalled();
+    expect(sandbox.stop).not.toHaveBeenCalled();
+    expect(sandbox.destroy).not.toHaveBeenCalled();
+  });
+
   it("tells the user to recover a computer that stays damaged after its automatic recovery", async () => {
     lifecycle.provisionComputer.mockRejectedValue(new SandboxDamagedError());
     const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
       bot: { findFirst: vi.fn().mockResolvedValue(stoppedBot) },
     } as unknown as PrismaClient;
 
@@ -170,10 +335,14 @@ describe("computer stop", () => {
       controlLeaseId: null,
     };
     const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
       bot: { findFirst: vi.fn().mockResolvedValue({ ...stoppedBot, computer }) },
       computer: {
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         update: vi.fn().mockResolvedValue(computer),
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ state: "running", restorePending: false, screenGeneration: 0 }),
       },
       run: { findFirst: vi.fn().mockResolvedValue(null) },
       computerExecutionLease: {
@@ -240,5 +409,63 @@ describe("computer stop", () => {
       data: { state: "error" },
     });
     expect(prisma.computer.update).not.toHaveBeenCalled();
+  });
+
+  async function stopQuarantined(caller: Actor) {
+    const bot = quarantinedBot();
+    const updateMany = vi.fn();
+    const sandbox = {
+      provision: vi.fn(),
+      prepare: vi.fn(),
+      stop: vi.fn().mockResolvedValue(undefined),
+      destroy: vi.fn(),
+    };
+    const prisma = {
+      spaceMember: { count: vi.fn(async () => 1) },
+      bot: { findFirst: spaceScopedBot(bot) },
+      computer: { updateMany, update: vi.fn() },
+      computerExecutionLease: { findUnique: vi.fn(async () => null) },
+      run: { findFirst: vi.fn(async () => null) },
+    } as unknown as PrismaClient;
+    const handler = new RPCHandler(
+      createRouter({ ...routerDeps(prisma), sandbox } as unknown as RouterDeps),
+      { clientInterceptors: [onError((error, { path }) => handleRpcError(error, path))] },
+    );
+    const { response } = await handler.handle(
+      new Request("https://api.example.test/rpc/computer/stop", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ json: { botId: "bot-1" } }),
+      }),
+      { prefix: "/rpc", context: { actor: caller } },
+    );
+    return { response, sandbox, updateMany };
+  }
+
+  it("stops a quarantined computer without clearing the quarantine or recovering it", async () => {
+    const { response, sandbox, updateMany } = await stopQuarantined(actor);
+    const body = await response?.json();
+
+    expect(response?.status).toBe(200);
+    expect(body.json.state).toBe("error");
+    expect(sandbox.stop).toHaveBeenCalledOnce();
+    expect(sandbox.provision).not.toHaveBeenCalled();
+    expect(sandbox.prepare).not.toHaveBeenCalled();
+    expect(sandbox.destroy).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses to stop a quarantined computer from another Space", async () => {
+    const { response, sandbox, updateMany } = await stopQuarantined({
+      ...actor,
+      spaceId: "other-space",
+      userId: "other-user",
+    });
+
+    expect(response?.status).toBe(404);
+    expect(await response?.text()).not.toContain(quarantineMessage);
+    expect(sandbox.stop).not.toHaveBeenCalled();
+    expect(sandbox.destroy).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });

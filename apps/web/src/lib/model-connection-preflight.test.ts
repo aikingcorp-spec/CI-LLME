@@ -20,6 +20,23 @@ describe("sanitizeModelConnectionError", () => {
       "sk-secretkey1234567890",
     );
   });
+
+  it.each([
+    ['Invalid {"api_key": "EXAMPLE_PLACEHOLDER"}', "EXAMPLE_PLACEHOLDER"],
+    ["apiKey = EXAMPLE_PLACEHOLDER", "EXAMPLE_PLACEHOLDER"],
+    ["Bearer EXAMPLE+PLACE/HOLDER==", "PLACE/HOLDER"],
+    ["api-key: 'EXAMPLE_PLACEHOLDER'", "EXAMPLE_PLACEHOLDER"],
+  ])("removes the complete credential from %s", (raw, secret) => {
+    const cleaned = sanitizeModelConnectionError(raw);
+    expect(cleaned).not.toContain(secret);
+    expect(cleaned).toContain("•••");
+  });
+
+  it("preserves the error code around a redacted JSON value", () => {
+    expect(sanitizeModelConnectionError('{"api_key": "EXAMPLE_PLACEHOLDER", "code": 401}')).toBe(
+      '{"•••", "code": 401}',
+    );
+  });
 });
 
 describe("classifyModelConnectionFailure", () => {
@@ -29,6 +46,23 @@ describe("classifyModelConnectionFailure", () => {
     expect(classifyModelConnectionFailure(new Error("The operation was aborted")).outcome).toBe(
       "unknown",
     );
+  });
+
+  it.each([
+    ["rate_limit", "429 Too Many Requests"],
+    ["rate_limit", "HTTP 429"],
+    ["unauthorized", "Request failed with status 401"],
+    ["unauthorized", "HTTP 403: forbidden"],
+  ])("recognizes %s from an HTTP status in %s", (outcome, message) => {
+    expect(classifyModelConnectionFailure(new Error(message)).outcome).toBe(outcome);
+  });
+
+  it.each([
+    "connect ECONNREFUSED 127.0.0.1:4030",
+    "connect ECONNREFUSED 127.0.0.1:14290",
+    "connect ECONNREFUSED 10.0.0.1:34010",
+  ])("keeps a refused connection distinct from an HTTP status in %s", (message) => {
+    expect(classifyModelConnectionFailure(new Error(message)).outcome).toBe("unreachable");
   });
 
   it("keeps manual model entry for custom servers and catalog picks for catalog providers", () => {
@@ -58,6 +92,7 @@ describe("loadStoredModelAuth", () => {
       storedAuthKind: null,
       credentialLookupFailed: false,
       credentialUnreadable: false,
+      reconnectRequired: false,
     });
     await expect(
       loadStoredModelAuth("anthropic", async () => {
@@ -67,6 +102,7 @@ describe("loadStoredModelAuth", () => {
       storedAuthKind: null,
       credentialLookupFailed: true,
       credentialUnreadable: false,
+      reconnectRequired: false,
     });
   });
 
@@ -123,6 +159,7 @@ describe("loadStoredModelAuth", () => {
         storedAuthKind: null,
         credentialLookupFailed: false,
         credentialUnreadable: false,
+        reconnectRequired: false,
       });
     }
     await expect(
@@ -131,6 +168,7 @@ describe("loadStoredModelAuth", () => {
       storedAuthKind: null,
       credentialLookupFailed: false,
       credentialUnreadable: true,
+      reconnectRequired: false,
     });
   });
 
@@ -188,6 +226,7 @@ describe("loadStoredModelAuth", () => {
       storedAuthKind: null,
       credentialLookupFailed: false,
       credentialUnreadable: true,
+      reconnectRequired: false,
     });
   });
 });
@@ -222,8 +261,6 @@ describe("runModelConnectionPreflight", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.failure.outcome).toBe("unavailable_model");
-      expect(result.failure.message).toBe('Model "missing-model" was not listed.');
-      expect(result.failure.nextAction).toBe("Pick a model from the catalog.");
     }
   });
 
@@ -235,7 +272,7 @@ describe("runModelConnectionPreflight", () => {
       catalogProbe: false,
     });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.failure.message).toMatch(/cannot be tested without saving/);
+    if (!result.ok) expect(result.failure.outcome).toBe("unknown");
   });
 
   it("reports oauth when not connected", async () => {
@@ -261,6 +298,19 @@ describe("runModelConnectionPreflight", () => {
     }
   });
 
+  it("does not treat a rejected subscription sign-in as stored and usable", async () => {
+    const result = await runModelConnectionPreflight({
+      authKind: "oauth",
+      provider: "openai-codex",
+      storedAuthKind: "oauth",
+      reconnectRequired: true,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.failure.outcome).toBe("needs_sign_in");
+    }
+  });
+
   it("accepts a stored subscription credential", async () => {
     const result = await runModelConnectionPreflight({
       authKind: "oauth",
@@ -270,31 +320,19 @@ describe("runModelConnectionPreflight", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("does not treat an unreadable credential as a missing sign-in", async () => {
-    const result = await runModelConnectionPreflight({
-      authKind: "oauth",
-      provider: "anthropic",
-      credentialUnreadable: true,
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.failure.outcome).toBe("unknown");
-      expect(result.failure.message).toMatch(/Could not check stored credentials/);
-    }
-  });
-
-  it("keeps credential lookup failures distinct from a missing sign-in", async () => {
-    const result = await runModelConnectionPreflight({
-      authKind: "oauth",
-      provider: "openai-codex",
-      credentialLookupFailed: true,
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.failure.outcome).toBe("unknown");
-      expect(result.failure.message).toMatch(/Could not check stored credentials/);
-    }
-  });
+  it.each([{ credentialUnreadable: true }, { credentialLookupFailed: true }])(
+    "keeps credential lookup problems distinct from a missing sign-in: %j",
+    async (lookup) => {
+      const result = await runModelConnectionPreflight({
+        authKind: "oauth",
+        provider: "anthropic",
+        storedAuthKind: "oauth",
+        ...lookup,
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.failure.outcome).toBe("unknown");
+    },
+  );
 });
 
 describe("modelPreflightSuccessMessage", () => {

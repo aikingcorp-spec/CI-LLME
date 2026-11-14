@@ -43,7 +43,7 @@ type Props = {
   onLink?: (link: NavLink) => void;
   onArtifacts: () => void;
   onSettings: () => void;
-  onUsage: () => void;
+  onUsage?: () => void;
   onLogOut: () => void;
   signingOut: boolean;
   logOutError: string | null;
@@ -110,7 +110,7 @@ export function SidebarFooter({
         <PopoverTrigger
           data-testid="user-menu-trigger"
           aria-label={t`Account menu for ${name}`}
-          className="grid size-9 max-md:size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-sidebar-accent text-sm font-medium text-foreground outline-none hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-sidebar-accent text-body font-medium text-foreground outline-none hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring"
         >
           {image && failedImage !== image ? (
             <img
@@ -136,15 +136,15 @@ export function SidebarFooter({
               data-testid="account-menu-header"
               className="mb-1 min-w-0 border-b border-border px-2.5 py-2.5"
             >
-              <p className="truncate text-sm font-medium">{name}</p>
+              <p className="truncate text-body font-medium">{name}</p>
               {email && email !== name ? (
-                <p className="truncate text-xs text-muted-foreground">{email}</p>
+                <p className="truncate text-label text-muted-foreground">{email}</p>
               ) : null}
             </div>
             {mini ? (
               <Button
                 variant="ghost"
-                className="h-9 w-full justify-start gap-2.5 font-normal"
+                className="h-9 w-full justify-start gap-2.5 font-normal min-h-11"
                 onClick={onIntegrations}
               >
                 <Plug className="text-muted-foreground" strokeWidth={1.75} />
@@ -159,14 +159,16 @@ export function SidebarFooter({
               <ScrollText className="text-muted-foreground" strokeWidth={1.75} />
               <Trans>Skills</Trans>
             </Button>
-            <Button
-              variant="ghost"
-              className="h-9 w-full justify-start gap-2.5 font-normal"
-              onClick={onUsage}
-            >
-              <Gauge className="text-muted-foreground" strokeWidth={1.75} />
-              <Trans>Usage</Trans>
-            </Button>
+            {onUsage ? (
+              <Button
+                variant="ghost"
+                className="h-9 w-full justify-start gap-2.5 font-normal"
+                onClick={onUsage}
+              >
+                <Gauge className="text-muted-foreground" strokeWidth={1.75} />
+                <Trans>Usage</Trans>
+              </Button>
+            ) : null}
             <a
               className={`${buttonVariants({ variant: "ghost" })} h-9 w-full justify-start gap-2.5 font-normal`}
               href={VNBOT_DOWNLOAD_URL}
@@ -195,6 +197,14 @@ export function SidebarFooter({
                 <Trans>Board</Trans>
               </Button>
             ) : null}
+            <Button
+              variant="ghost"
+              className="h-9 w-full justify-start gap-2.5 font-normal"
+              onClick={onArtifacts}
+            >
+              <FolderOpen className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Artifacts</Trans>
+            </Button>
             {links.map((link) => (
               <Button
                 key={link.id}
@@ -206,14 +216,6 @@ export function SidebarFooter({
                 {link.label}
               </Button>
             ))}
-            <Button
-              variant="ghost"
-              className="h-9 w-full justify-start gap-2.5 font-normal"
-              onClick={onArtifacts}
-            >
-              <FolderOpen className="text-muted-foreground" strokeWidth={1.75} />
-              <Trans>Artifacts</Trans>
-            </Button>
             <Button
               variant="ghost"
               className="h-9 w-full justify-start gap-2.5 font-normal"
@@ -234,7 +236,7 @@ export function SidebarFooter({
               <Trans>Log out</Trans>
             </Button>
             {logOutError ? (
-              <p role="alert" className="px-2.5 pt-1 pb-2 text-[13px] text-destructive">
+              <p role="alert" className="px-2.5 pt-1 pb-2 text-body-sm text-destructive">
                 {logOutError}
               </p>
             ) : null}
@@ -253,20 +255,6 @@ export function SidebarFooter({
           </span>
           <AppMarkStack marks={logos.slice(0, markCount)} ringClassName="ring-sidebar-accent" />
         </Button>
-      ) : null}
-      {/* A waiting update takes this slot; Skills stays in the account menu meanwhile. */}
-      {!mini && !update.available ? (
-        <IconTooltip label={t`Skills`}>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label={t`Skills`}
-            onClick={onSkills}
-            className="size-9 shrink-0 bg-sidebar-accent hover:border-foreground/30 hover:bg-sidebar-accent dark:hover:bg-sidebar-accent"
-          >
-            <ScrollText aria-hidden="true" strokeWidth={1.75} />
-          </Button>
-        </IconTooltip>
       ) : null}
       {update.available ? (
         <IconTooltip label={t`Install update`}>

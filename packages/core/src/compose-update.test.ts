@@ -150,20 +150,17 @@ describe("strategy and mode selection", () => {
   });
 
   it("prefers the sidecar, falls back to a checkout, and reports when neither exists", () => {
-    expect(resolveExecutionMode({ disabled: false, hasUpdater: true, hasCheckout: true })).toEqual({
+    expect(resolveExecutionMode({ hasUpdater: true, hasCheckout: true })).toEqual({
       mode: "sidecar",
       reason: null,
     });
-    expect(
-      resolveExecutionMode({ disabled: false, hasUpdater: false, hasCheckout: true }).mode,
-    ).toBe("checkout");
-    const none = resolveExecutionMode({ disabled: false, hasUpdater: false, hasCheckout: false });
+    expect(resolveExecutionMode({ hasUpdater: false, hasCheckout: true }).mode).toBe("checkout");
+    const none = resolveExecutionMode({ hasUpdater: false, hasCheckout: false });
     expect(none.mode).toBe("unavailable");
     expect(none.reason).toMatch(/updater/);
   });
 
   it("reports unavailable when self-update is switched off, whatever else is present", () => {
-    expect(resolveExecutionMode({ hasUpdater: true, hasCheckout: true }).mode).toBe("unavailable");
     const off = resolveExecutionMode({ hasUpdater: true, disabled: true });
     expect(off.mode).toBe("unavailable");
     expect(off.reason).toMatch(/switched off/);
@@ -640,13 +637,10 @@ describe("managed env assignments", () => {
 describe("sidecar boundary validation", () => {
   it("normalizes a request the API already validated", () => {
     expect(
-      validateUpdateRequest({
-        repoUrl: "https://github.com/aikingcorp-spec/vnbot.git",
-        branch: " main ",
-      }),
+      validateUpdateRequest({ repoUrl: "https://github.com/elie222/rakazo.git", branch: " main " }),
     ).toEqual({
       request: {
-        repoUrl: "https://github.com/aikingcorp-spec/vnbot.git",
+        repoUrl: "https://github.com/elie222/rakazo.git",
         branch: "main",
         official: true,
       },

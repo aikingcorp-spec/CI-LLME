@@ -10,19 +10,22 @@ import type {
   DesktopSetupState,
   RakazoSetup,
 } from "@rakazo/contracts";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Locale } from "./strings.js";
-import { format, stringsFor } from "./strings.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { ES_MESSAGES } from "./locales/es.js";
+import { HE_MESSAGES } from "./locales/he.js";
+import { PL_MESSAGES } from "./locales/pl.js";
+
+type DesktopSetupResult = Awaited<ReturnType<RakazoSetup["save"]>>;
 
 const DEFAULT_LOCAL_URL = "http://127.0.0.1:6130";
 const CLOUD_URL = "https://cloud.rakazo.example";
+const ENGLISH: RakazoSetup["locale"] = { lang: "en", dir: "ltr", messages: {} };
 
 // The jsdom environment replaces the global URL, so resolve the sibling files via Node's.
 const srcDir = path.dirname(fileURLToPath(import.meta.url));
 const setupBody = readFileSync(path.join(srcDir, "setup.html"), "utf8").match(
   /<body>([\s\S]*)<\/body>/,
 )?.[1];
-const setupStateScript = readFileSync(path.join(srcDir, "setup-state.js"), "utf8");
 const setupScript = readFileSync(path.join(srcDir, "setup.js"), "utf8");
 
 interface Deferred<T> {
@@ -72,86 +75,72 @@ function submitForm(): void {
 interface Harness {
   /** The oldest pending `test` call's deferred, for settling one check by handle. */
   nextCheck: () => Deferred<DesktopReachability>;
-  testedUrls: string[];
   /** Resolves the oldest pending `test` call, in call order. */
   resolveCheck: (result: DesktopReachability) => void;
   /** The one `stack.start` call this mount can receive. */
   startResult: Deferred<DesktopLocalStackState>;
   /** Resolves the oldest pending `state` call, in call order. */
-  resolveAppState: (saved: DesktopSetup | null, defaultLocalUrl?: string) => void;
+  resolveAppState: (saved: DesktopSetup | null) => void;
   /** Resolves the oldest pending `stack.state` call, in call order. */
   resolveStackState: (state: DesktopLocalStackState) => void;
   /** Delivers a pushed stack state the way the `desktop.setup.stack.changed` push does. */
   pushStackState: (state: DesktopLocalStackState) => void;
   /** Payloads received by `save`. */
   saves: DesktopSetup[];
-  /** Addresses received by `account.sendCode`. */
-  codesSent: string[];
-  /** The oldest pending `account.sendCode` call. */
-  nextSend: () => Deferred<{ ok: boolean; error?: string }>;
-  /** The oldest pending `account.verifyCode` call. */
-  nextVerify: () => Deferred<{ ok: boolean; email?: string; error?: string; kind?: string }>;
-}
-
-interface MountOptions {
-  /** Who already passed the code; `null` starts on the email step. */
-  verifiedEmail?: string | null;
-  defaultLocalUrl?: string;
-  error?: string;
-  legacyProfilePath?: string;
+  /** Resolves the oldest pending `save` call, in call order. */
+  resolveSave: (result: DesktopSetupResult) => void;
+  sentEmails: string[];
+  stagedCodes: string[];
 }
 
 function mount(
   saved: DesktopSetup | null,
-  locale: Locale = "vi",
-  options: MountOptions = {},
+  locale = ENGLISH,
+  emailGate = false,
+  firstRun = false,
 ): Harness {
-  const verifiedEmail =
-    options.verifiedEmail === undefined ? "lan@vnbot.vn" : options.verifiedEmail;
   document.body.innerHTML = setupBody ?? "";
   const checkCalls: Array<Deferred<DesktopReachability>> = [];
-  const testedUrls: string[] = [];
   const startResult = deferred<DesktopLocalStackState>();
   const stateCalls: Array<Deferred<DesktopSetupState>> = [];
   const stackStateCalls: Array<Deferred<DesktopLocalStackState>> = [];
   const pushListeners: Array<(state: DesktopLocalStackState) => void> = [];
   const saves: DesktopSetup[] = [];
-  const codesSent: string[] = [];
-  const dismissLegacyProfileNotice = vi.fn(async () => {});
-  const sendCalls: Array<Deferred<{ ok: boolean; error?: string }>> = [];
-  const verifyCalls: Array<
-    Deferred<{ ok: boolean; email?: string; error?: string; kind?: string }>
-  > = [];
+  const saveCalls: Array<Deferred<DesktopSetupResult>> = [];
+  const sentEmails: string[] = [];
+  const stagedCodes: string[] = [];
 
   const bridge: RakazoSetup = {
     platform: "linux",
-    dismissLegacyProfileNotice,
+    locale,
     state: () => {
       const call = deferred<DesktopSetupState>();
       stateCalls.push(call);
       return call.promise;
     },
-    test: (url) => {
-      testedUrls.push(url);
+    test: () => {
       const call = deferred<DesktopReachability>();
       checkCalls.push(call);
       return call.promise;
     },
     save: (setup) => {
       saves.push(setup);
-      return Promise.resolve({ ok: true });
+      const call = deferred<DesktopSetupResult>();
+      saveCalls.push(call);
+      return call.promise;
     },
-    account: {
-      sendCode: (email) => {
-        codesSent.push(email);
-        const call = deferred<{ ok: boolean; error?: string }>();
-        sendCalls.push(call);
-        return call.promise;
+    email: {
+      send: async (email) => {
+        sentEmails.push(email);
+        return email.includes("@")
+          ? { ok: true }
+          : { ok: false, error: "Enter a valid email address." };
       },
-      verifyCode: () => {
-        const call = deferred<{ ok: boolean; email?: string; error?: string; kind?: string }>();
-        verifyCalls.push(call);
-        return call.promise;
+      stage: async (_email, code) => {
+        stagedCodes.push(code);
+        return /^\d{6}$/.test(code)
+          ? { ok: true }
+          : { ok: false, error: "Enter the 6-digit code." };
       },
     },
     quit: () => Promise.resolve(),
@@ -169,22 +158,16 @@ function mount(
     },
   };
   (window as { rakazoSetup?: RakazoSetup }).rakazoSetup = bridge;
-  (window as { rakazoSetupText?: unknown }).rakazoSetupText = {
-    lang: locale,
-    strings: stringsFor(locale).setup,
-  };
   // Run the plain script the same way setup.html's script tag does.
-  new Function(setupStateScript)();
   new Function(setupScript)();
 
   const initState = stateCalls.shift();
   initState?.resolve({
-    defaultLocalUrl: options.defaultLocalUrl ?? DEFAULT_LOCAL_URL,
+    defaultLocalUrl: DEFAULT_LOCAL_URL,
     cloudUrl: CLOUD_URL,
     saved,
-    verifiedEmail,
-    error: options.error,
-    legacyProfilePath: options.legacyProfilePath,
+    firstRun,
+    ...(emailGate ? { emailGate: true } : {}),
   });
   return {
     nextCheck: () => {
@@ -192,42 +175,30 @@ function mount(
       if (call === undefined) throw new Error("no connection check is pending");
       return call;
     },
-    testedUrls,
     resolveCheck: (result) => checkCalls.shift()?.resolve(result),
     startResult,
-    resolveAppState: (next, defaultLocalUrl = DEFAULT_LOCAL_URL) =>
-      stateCalls.shift()?.resolve({
-        defaultLocalUrl,
-        cloudUrl: CLOUD_URL,
-        saved: next,
-        verifiedEmail,
-      }),
+    resolveAppState: (next) =>
+      stateCalls
+        .shift()
+        ?.resolve({ defaultLocalUrl: DEFAULT_LOCAL_URL, cloudUrl: CLOUD_URL, saved: next }),
     resolveStackState: (state) => stackStateCalls.shift()?.resolve(state),
     pushStackState: (state) => {
       for (const listener of pushListeners) listener(state);
     },
     saves,
-    codesSent,
-    nextSend: () => {
-      const call = sendCalls.shift();
-      if (call === undefined) throw new Error("no send is pending");
-      return call;
-    },
-    nextVerify: () => {
-      const call = verifyCalls.shift();
-      if (call === undefined) throw new Error("no verify is pending");
-      return call;
-    },
+    resolveSave: (result) => saveCalls.shift()?.resolve(result),
+    sentEmails,
+    stagedCodes,
   };
 }
 
 /** Loads the page and lets init settle on an idle stack. */
 async function boot(
   saved: DesktopSetup | null,
-  locale: Locale = "vi",
-  options: MountOptions = {},
+  locale = ENGLISH,
+  emailGate = false,
 ): Promise<Harness> {
-  const ui = mount(saved, locale, options);
+  const ui = mount(saved, locale, emailGate);
   await flush(); // init reaches its stack.state call only after its state await resumes
   ui.resolveStackState(stackState("idle"));
   await flush();
@@ -235,20 +206,61 @@ async function boot(
   return ui;
 }
 
-const text = stringsFor("vi").setup;
-
 describe("setup", () => {
   afterEach(() => {
     document.body.innerHTML = "";
     delete (window as { rakazoSetup?: RakazoSetup }).rakazoSetup;
-    delete (window as { rakazoSetupText?: unknown }).rakazoSetupText;
+  });
+
+  it("prepares a fresh computer automatically without a server picker", async () => {
+    const ui = mount(null, ENGLISH, false, true);
+    await flush();
+    ui.resolveStackState(stackState("idle"));
+    await flush();
+    expect(element("instance-choices").hidden).toBe(true);
+    expect(document.querySelector<HTMLElement>(".subheading")?.hidden).toBe(true);
+    ui.startResult.resolve(stackState("ready"));
+    await flush();
+    ui.resolveStackState(stackState("ready"));
+    await flush();
+    ui.resolveAppState(null);
+    await flush();
+    expect(ui.saves).toEqual([{ mode: "new", serverUrl: DEFAULT_LOCAL_URL }]);
+  });
+
+  it("asks for an email code before this computer can start", async () => {
+    const ui = await boot(null, ENGLISH, true);
+    expect(element("instance-choices").hidden).toBe(true);
+    expect(element("panel-email").hidden).toBe(false);
+
+    element<HTMLInputElement>("setup-email").value = "ada@example.test";
+    submitForm();
+    await flush();
+    expect(ui.sentEmails).toEqual(["ada@example.test"]);
+    expect(element("setup-code").hidden).toBe(false);
+    expect(element("instance-choices").hidden).toBe(true);
+
+    element<HTMLInputElement>("setup-code").value = "123456";
+    submitForm();
+    await flush();
+    expect(ui.stagedCodes).toEqual(["123456"]);
+    expect(element("instance-choices").hidden).toBe(false);
+    expect(element<HTMLInputElement>("mode-new").checked).toBe(true);
+    expect(ui.saves).toEqual([]);
+  });
+
+  it("keeps the local option in connection settings without an unavailable Cloud choice", async () => {
+    const ui = await boot(null);
+    expect(element<HTMLInputElement>("mode-new").checked).toBe(true);
+    expect(document.querySelector("#mode-cloud")).toBeNull();
+    expect(ui.saves).toEqual([]);
   });
 
   it("keeps an address edited while the connection check is pending", async () => {
     const ui = await boot({ mode: "existing", serverUrl: "https://one.example" });
     element<HTMLButtonElement>("check").click();
     await flush();
-    expect(element("status").textContent).toBe(text.checking);
+    expect(element("status").textContent).toBe("Checking…");
 
     element<HTMLInputElement>("server-url").value = "https://two.example";
     element<HTMLInputElement>("server-url").dispatchEvent(new Event("input"));
@@ -281,22 +293,20 @@ describe("setup", () => {
     await flush();
     expect(element<HTMLButtonElement>("check").disabled).toBe(true);
     expect(element<HTMLButtonElement>("continue").disabled).toBe(true);
-    expect(element("status").textContent).toBe(text.checking);
+    expect(element("status").textContent).toBe("Checking…");
 
     // The retired check settles last; its stale success must not touch the newer check's state.
     staleCheck.resolve({ ok: true, url: "https://one.example" });
     await flush();
     expect(field.value).toBe("two.example");
-    expect(element("status").textContent).toBe(text.checking);
+    expect(element("status").textContent).toBe("Checking…");
     expect(element<HTMLButtonElement>("check").disabled).toBe(true);
     expect(element<HTMLButtonElement>("continue").disabled).toBe(true);
 
     currentCheck.resolve({ ok: true, url: "https://two.example" });
     await flush();
     expect(field.value).toBe("https://two.example");
-    expect(element("status").textContent).toBe(
-      format(text.answered, { url: "https://two.example" }),
-    );
+    expect(element("status").textContent).toBe("VNBot answered at https://two.example.");
     expect(element("status").getAttribute("data-tone")).toBe("ok");
     expect(element<HTMLButtonElement>("check").disabled).toBe(false);
     expect(element<HTMLButtonElement>("continue").disabled).toBe(false);
@@ -353,7 +363,49 @@ describe("setup", () => {
     await flush();
 
     expect(element("stack").hidden).toBe(false);
-    expect(element("stack-phase").textContent).toBe(text.phasePulling);
+    expect(element("stack-phase").textContent).toBe("Downloading VNBot…");
+  });
+
+  it("locks the address while it is being saved and unlocks it when the save fails", async () => {
+    const ui = await boot(null);
+    selectMode("existing");
+    await flush();
+    const field = element<HTMLInputElement>("server-url");
+    field.value = "https://one.example";
+    submitForm();
+    await flush();
+
+    expect(ui.saves).toEqual([{ mode: "existing", serverUrl: "https://one.example", headers: {} }]);
+    expect(field.disabled).toBe(true);
+    // Headers saved with this address must not change while the save is pending.
+    expect(element<HTMLTextAreaElement>("server-headers").disabled).toBe(true);
+
+    ui.resolveSave({ ok: false, error: "Server did not answer." });
+    await flush();
+    expect(field.disabled).toBe(false);
+    expect(element<HTMLTextAreaElement>("server-headers").disabled).toBe(false);
+    expect(element("status").textContent).toBe("Server did not answer.");
+  });
+
+  it("gives the address its focus back when a save started from it fails", async () => {
+    const ui = await boot(null);
+    selectMode("existing");
+    await flush();
+    const field = element<HTMLInputElement>("server-url");
+    field.value = "https://one.example";
+    field.focus();
+    submitForm();
+    await flush();
+    // Browsers drop focus from a control that becomes disabled; jsdom keeps it, so drop it here.
+    expect(field.disabled).toBe(true);
+    field.disabled = false;
+    field.blur();
+    field.disabled = true;
+    expect(document.activeElement).toBe(document.body);
+
+    ui.resolveSave({ ok: false, error: "Server did not answer." });
+    await flush();
+    expect(document.activeElement).toBe(field);
   });
 
   it("normalizes the address and reports success for the current check", async () => {
@@ -366,9 +418,7 @@ describe("setup", () => {
     await flush();
 
     expect(element<HTMLInputElement>("server-url").value).toBe("https://one.example");
-    expect(element("status").textContent).toBe(
-      format(text.answered, { url: "https://one.example" }),
-    );
+    expect(element("status").textContent).toBe("VNBot answered at https://one.example.");
     expect(element("status").getAttribute("data-tone")).toBe("ok");
     expect(element<HTMLButtonElement>("check").disabled).toBe(false);
   });
@@ -387,6 +437,31 @@ describe("setup", () => {
     expect(element<HTMLButtonElement>("check").disabled).toBe(false);
   });
 
+  it("shows saved headers and saves them with the existing server", async () => {
+    const headers = { "CF-Access-Client-Id": "id.access", "CF-Access-Client-Secret": "secret" };
+    const ui = await boot({ mode: "existing", serverUrl: "https://one.example", headers });
+    expect(element<HTMLDetailsElement>("server-headers-section").open).toBe(true);
+    expect(element<HTMLTextAreaElement>("server-headers").value).toBe(
+      "CF-Access-Client-Id: id.access\nCF-Access-Client-Secret: secret",
+    );
+
+    submitForm();
+    await flush();
+
+    expect(ui.saves).toEqual([{ mode: "existing", serverUrl: "https://one.example", headers }]);
+  });
+
+  it("refuses a header line without a name before saving", async () => {
+    const ui = await boot({ mode: "existing", serverUrl: "https://one.example" });
+    element<HTMLTextAreaElement>("server-headers").value = ": value";
+
+    submitForm();
+    await flush();
+
+    expect(ui.saves).toEqual([]);
+    expect(element("status").textContent).toBe("Invalid custom headers");
+  });
+
   it("renders a current start and follows it until it saves the ready stack", async () => {
     const ui = await boot(null);
     selectMode("new");
@@ -394,325 +469,92 @@ describe("setup", () => {
     ui.startResult.resolve(stackState("pulling"));
     await flush();
     expect(element("stack").hidden).toBe(false);
-    expect(element("stack-phase").textContent).toBe(text.phasePulling);
+    expect(element("stack-phase").textContent).toBe("Downloading VNBot…");
     expect(element<HTMLButtonElement>("continue").disabled).toBe(true);
 
     ui.resolveStackState(stackState("ready"));
     await flush();
-    expect(element("stack-phase").textContent).toBe(text.phaseWaiting);
     ui.resolveAppState(null);
     await flush();
-    ui.resolveCheck({ ok: true, url: DEFAULT_LOCAL_URL });
+    ui.resolveSave({ ok: true });
     await flush();
 
-    expect(element("stack-phase").textContent).toBe(text.phaseReady);
+    expect(element("stack-phase").textContent).toBe("VNBot is ready.");
     expect(element("stack-phase").getAttribute("data-tone")).toBe("ok");
     expect(ui.saves).toEqual([{ mode: "new", serverUrl: DEFAULT_LOCAL_URL }]);
-    expect(element<HTMLButtonElement>("continue").disabled).toBe(true);
+    expect(element<HTMLButtonElement>("continue").disabled).toBe(false);
   });
 
-  it("probes and saves the address chosen after native stack startup", async () => {
-    const startedUrl = "http://127.0.0.1:38581";
-    const ui = await boot(null, "vi", { defaultLocalUrl: "" });
-    selectMode("new");
-    submitForm();
-    ui.startResult.resolve(stackState("starting"));
-    await flush();
-
-    ui.resolveStackState(stackState("ready"));
-    await flush();
-    ui.resolveAppState(null, startedUrl);
-    await flush();
-    expect(ui.testedUrls).toEqual([startedUrl]);
-
-    ui.resolveCheck({ ok: true, url: startedUrl });
-    await flush();
-    expect(ui.saves).toEqual([{ mode: "new", serverUrl: startedUrl }]);
-    expect(element("stack-phase").textContent).toBe(text.phaseReady);
+  it("lays a right-to-left language out right to left", async () => {
+    await boot(null, { lang: "he", dir: "rtl", messages: HE_MESSAGES });
+    expect(document.documentElement.lang).toBe("he");
+    expect(document.documentElement.dir).toBe("rtl");
+    expect(element("continue").textContent).toBe(HE_MESSAGES.Continue);
   });
 
-  it("shows the Vietnamese refusal reason and code from a pushed IPC stack state", async () => {
-    const ui = await boot(null);
-    const failed = {
-      ...stackState("failed"),
-      message: stringsFor("vi").stack.startFailed,
-      failure: {
-        code: "version-mismatch",
-        messageVi: "Phiên bản dữ liệu PostgreSQL không tương thích. Dữ liệu được giữ nguyên.",
-      },
-    };
-    ui.pushStackState(structuredClone(failed));
-    await flush();
-    ui.resolveStackState(structuredClone(failed));
-    await flush();
-    expect(element("stack").hidden).toBe(false);
-    expect(element("stack-phase").textContent).toBe(failed.message);
-    expect(element("stack-failure").hidden).toBe(false);
-    expect(element("stack-failure").textContent).toContain(failed.failure.messageVi);
-    expect(element("stack-failure-code").textContent).toContain("version-mismatch");
-  });
-
-  it("shows a repeated failure reason once with at most one generic line", async () => {
-    const ui = await boot(null, "vi", { error: text.startFailed });
-    const failed = {
-      ...stackState("failed"),
-      message: text.startFailed,
-      failure: { code: "data-dir-incomplete", messageVi: "Thư mục dữ liệu bị thiếu hoặc hỏng." },
-    };
-    for (let i = 0; i < 3; i += 1) {
-      ui.pushStackState(structuredClone(failed));
-      await flush();
-      ui.resolveStackState(structuredClone(failed));
-      await flush();
-    }
-    const shown = document.body.textContent ?? "";
-    expect(shown.split(failed.failure.messageVi)).toHaveLength(2);
-    expect(shown.split(text.startFailed).length - 1).toBeLessThanOrEqual(1);
-  });
-
-  it("renders the page in Vietnamese by default", async () => {
-    await boot(null);
-    expect(document.documentElement.lang).toBe("vi");
-    expect(document.title).toBe(text.windowTitle);
-    expect(document.querySelector(".heading")?.textContent).toBe(text.heading);
-    expect(element("continue").textContent).toBe(text.continue);
-    expect(element("quit").getAttribute("title")).toBe(text.quitTitle);
-    expect(element("subheading").textContent).toBe(text.subheading);
-    expect(element("pairing-state").textContent).toBe(text.pairingComingSoon);
-  });
-
-  it("shows and dismisses the old-profile notice without opening that profile", async () => {
-    const oldPath = "/config/Rakazo";
-    await boot(null, "vi", { legacyProfilePath: oldPath });
-    expect(element("legacy-profile-notice").hidden).toBe(false);
-    expect(element("legacy-profile-message").textContent).toBe(
-      format(text.legacyProfileNotice, { path: oldPath }),
+  it("renders the page and its messages in the app's language", async () => {
+    const ui = await boot(null, { lang: "es", dir: "ltr", messages: ES_MESSAGES });
+    expect(document.documentElement.lang).toBe("es");
+    expect(document.documentElement.dir).toBe("ltr");
+    expect(document.querySelector("h1")?.textContent).toBe("Te damos la bienvenida a VNBot");
+    expect(document.querySelector('label[for="mode-new"]')?.textContent?.trim()).toBe(
+      "Esta computadora",
     );
-    const dismiss = vi.spyOn(window.rakazoSetup!, "dismissLegacyProfileNotice");
-    element<HTMLButtonElement>("dismiss-legacy-profile").click();
-    expect(element("legacy-profile-notice").hidden).toBe(true);
-    expect(dismiss).toHaveBeenCalledOnce();
-  });
-
-  it("renders the page in English when asked", async () => {
-    await boot(null, "en");
-    const english = stringsFor("en").setup;
-    expect(document.documentElement.lang).toBe("en");
-    expect(document.querySelector(".heading")?.textContent).toBe(english.heading);
-    expect(element("continue").textContent).toBe(english.continue);
-    expect(element("subheading").textContent).toBe(english.subheading);
-    expect(element("check").textContent).toBe(english.check);
-  });
-
-  function visibleStep(): string[] {
-    return ["step-email", "step-code", "setup"].filter((id) => !element(id).hidden);
-  }
-
-  function submitStep(id: string): void {
-    element<HTMLFormElement>(id).dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
-  }
-
-  /** Enters an address and answers the send request, landing on the code step. */
-  async function reachCodeStep(ui: Harness): Promise<void> {
-    element<HTMLInputElement>("account-email").value = " lan@vnbot.vn ";
-    submitStep("step-email");
-    ui.nextSend().resolve({ ok: true });
-    await flush();
-  }
-
-  it("goes from email to code to machine on a first run", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    expect(visibleStep()).toEqual(["step-email"]);
-    expect(element("subheading").textContent).toBe(text.subheadingEmail);
-    expect(element("send-code").textContent).toBe(text.sendCode);
-    expect(element("account-status").hidden).toBe(false);
-
-    await reachCodeStep(ui);
-    expect(ui.codesSent).toEqual(["lan@vnbot.vn"]);
-    expect(visibleStep()).toEqual(["step-code"]);
-    expect(element("subheading").textContent).toBe(
-      format(text.subheadingCode, { email: "lan@vnbot.vn" }),
-    );
-    expect(element("verify-code").textContent).toBe(text.verifyCode);
-    expect(element("resend-code").textContent).toBe(text.resendCode);
-    expect(element("change-email").textContent).toBe(text.changeEmail);
-
-    element<HTMLInputElement>("account-code").value = "123456";
-    submitStep("step-code");
-    await flush();
-    expect(element<HTMLButtonElement>("verify-code").disabled).toBe(true);
-    ui.nextVerify().resolve({ ok: true, email: "lan@vnbot.vn" });
-    await flush();
-
-    expect(visibleStep()).toEqual(["setup"]);
-    expect(element("subheading").textContent).toBe(text.subheading);
-    expect(element("account-status").hidden).toBe(true);
-    expect(element<HTMLInputElement>("mode-new").checked).toBe(true);
-  });
-
-  it("starts on the machine step once this computer has a verified email", async () => {
-    await boot({ mode: "existing", serverUrl: "https://one.example" });
-    expect(visibleStep()).toEqual(["setup"]);
-    expect(element<HTMLInputElement>("server-url").value).toBe("https://one.example");
-  });
-
-  it("shows a running start on the machine step even before sign-in", async () => {
-    const ui = mount(null, "vi", { verifiedEmail: null });
-    await flush();
-    ui.resolveStackState(stackState("pulling"));
-    await flush();
-    expect(visibleStep()).toEqual(["setup"]);
-    expect(element("stack-phase").textContent).toBe(text.phasePulling);
-  });
-
-  it("does not follow a pushed stack state before sign-in", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    ui.pushStackState(stackState("ready"));
-    await flush();
-    expect(visibleStep()).toEqual(["step-email"]);
-    expect(ui.saves).toEqual([]);
-  });
-
-  it("refuses a malformed email without calling the server", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    element<HTMLInputElement>("account-email").value = "lan";
-    submitStep("step-email");
-    await flush();
-    expect(ui.codesSent).toEqual([]);
-    expect(element("account-status").textContent).toBe(text.enterEmail);
-    expect(element("account-status").getAttribute("data-tone")).toBe("error");
-    expect(visibleStep()).toEqual(["step-email"]);
-  });
-
-  it("stays on the email step when the code cannot be sent", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    element<HTMLInputElement>("account-email").value = "lan@vnbot.vn";
-    submitStep("step-email");
-    ui.nextSend().resolve({ ok: false, error: text.otpNetwork });
-    await flush();
-    expect(visibleStep()).toEqual(["step-email"]);
-    expect(element("account-status").textContent).toBe(text.otpNetwork);
-    expect(element<HTMLButtonElement>("send-code").disabled).toBe(false);
-  });
-
-  it("shows service unavailability and retries by sending a new code", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    element<HTMLInputElement>("account-email").value = "lan@vnbot.vn";
-    submitStep("step-email");
-    ui.nextSend().resolve({ ok: false, kind: "unavailable", error: text.otpUnavailable });
-    await flush();
-    expect(element("account-status").textContent).toBe(text.otpUnavailable);
-    expect(element<HTMLButtonElement>("retry-code").hidden).toBe(false);
-    expect(element<HTMLButtonElement>("send-code").hidden).toBe(true);
-    element<HTMLButtonElement>("retry-code").click();
-    expect(ui.codesSent).toEqual(["lan@vnbot.vn", "lan@vnbot.vn"]);
-    ui.nextSend().resolve({ ok: true });
-    await flush();
-    expect(visibleStep()).toEqual(["step-code"]);
-    expect(element<HTMLButtonElement>("retry-code").hidden).toBe(true);
-    expect(element<HTMLButtonElement>("send-code").hidden).toBe(false);
-  });
-
-  it("keeps a wrong code on the code step, clearing it", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    await reachCodeStep(ui);
-    element<HTMLInputElement>("account-code").value = "123456";
-    submitStep("step-code");
-    ui.nextVerify().resolve({ ok: false, error: text.otpInvalid, kind: "invalid-code" });
-    await flush();
-    expect(visibleStep()).toEqual(["step-code"]);
-    expect(element<HTMLInputElement>("account-code").value).toBe("");
-    expect(element("account-status").textContent).toBe(text.otpInvalid);
-  });
-
-  it("returns a person who is not invited to the email step, with the reason", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    await reachCodeStep(ui);
-    element<HTMLInputElement>("account-code").value = "123456";
-    submitStep("step-code");
-    ui.nextVerify().resolve({ ok: false, error: text.otpNotInvited, kind: "not-invited" });
-    await flush();
-    expect(visibleStep()).toEqual(["step-email"]);
-    expect(element("account-status").textContent).toBe(text.otpNotInvited);
-  });
-
-  it("does not call the server for an unfinished code, and strips non-digits", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    await reachCodeStep(ui);
-    const code = element<HTMLInputElement>("account-code");
-    code.value = "12a3";
-    code.dispatchEvent(new Event("input"));
-    expect(code.value).toBe("123");
-    submitStep("step-code");
-    await flush();
-    expect(() => ui.nextVerify()).toThrow("no verify is pending");
-    expect(element("account-status").textContent).toBe(text.enterCode);
-  });
-
-  it("resends the code and can go back to change the email", async () => {
-    const ui = await boot(null, "vi", { verifiedEmail: null });
-    await reachCodeStep(ui);
-    element<HTMLButtonElement>("resend-code").click();
-    ui.nextSend().resolve({ ok: true });
-    await flush();
-    expect(ui.codesSent).toEqual(["lan@vnbot.vn", "lan@vnbot.vn"]);
-    expect(element("account-status").textContent).toBe(text.codeResent);
-    expect(visibleStep()).toEqual(["step-code"]);
-
-    element<HTMLButtonElement>("change-email").click();
-    expect(visibleStep()).toEqual(["step-email"]);
-    expect(element("account-status").textContent).toBe("");
-  });
-
-  it("offers VNBot Cloud disabled with a badge, and keeps it disabled after changing modes", async () => {
-    const ui = await boot(null);
-    const cloud = element<HTMLInputElement>("mode-cloud");
-    expect(cloud.disabled).toBe(true);
-    expect(cloud.checked).toBe(false);
-    expect(cloud.closest("label")?.textContent).toContain(text.comingSoon);
-    expect(
-      [...document.querySelectorAll<HTMLInputElement>('input[name="mode"]')].map((i) => i.value),
-    ).toEqual(["new", "existing", "cloud"]);
-    expect(element<HTMLInputElement>("mode-new").checked).toBe(true);
+    expect(document.querySelector("#mode-cloud")).toBeNull();
+    expect(element("quit").textContent).toBe("Salir");
+    expect(element("quit").title).toBe("Salir de VNBot");
+    expect(element("stack-details").getAttribute("aria-label")).toBe("Detalles técnicos");
+    expect(element<HTMLTextAreaElement>("server-headers").placeholder).toBe("Nombre: valor");
+    expect(element("continue").textContent).toBe("Continuar");
 
     selectMode("existing");
-    submitForm();
     await flush();
-    expect(ui.saves).toEqual([]);
-    expect(element<HTMLButtonElement>("continue").hidden).toBe(true);
-    expect(cloud.disabled).toBe(true);
-    expect(element<HTMLInputElement>("mode-new").disabled).toBe(false);
+    element<HTMLInputElement>("server-url").value = "one.example";
+    element<HTMLButtonElement>("check").click();
+    await flush();
+    expect(element("status").textContent).toBe("Comprobando…");
+    ui.resolveCheck({ ok: true, url: "https://one.example" });
+    await flush();
+    expect(element("status").textContent).toBe("VNBot respondió en https://one.example.");
+
+    selectMode("new");
+    submitForm();
+    ui.startResult.resolve({ ...stackState("pulling"), layerBytes: { layer: 2.5e6 } });
+    await flush();
+    expect(element("stack-phase").textContent).toBe("Descargando VNBot…");
+    expect(element("stack-detail").textContent).toBe("3 MB descargados");
   });
 
-  it("shows a saved hosted address as the person's own machine", async () => {
-    await boot({ mode: "existing", serverUrl: CLOUD_URL });
-    expect(element<HTMLInputElement>("mode-existing").checked).toBe(true);
-    expect(element<HTMLInputElement>("server-url").value).toBe(CLOUD_URL);
-    expect(element<HTMLInputElement>("mode-cloud").checked).toBe(false);
-  });
+  it("renders Polish setup controls and interpolates connection and download status", async () => {
+    const ui = await boot(null, { lang: "pl", dir: "ltr", messages: PL_MESSAGES });
+    expect(document.documentElement.lang).toBe("pl");
+    expect(document.documentElement.dir).toBe("ltr");
+    expect(document.querySelector("h1")?.textContent).toBe("Witaj w VNBot");
+    expect(element("continue").textContent).toBe(PL_MESSAGES.Continue);
+    expect(element("stack-details").getAttribute("aria-label")).toBe(
+      PL_MESSAGES["Technical details"],
+    );
+    expect(element<HTMLTextAreaElement>("server-headers").placeholder).toBe(
+      PL_MESSAGES["Name: value"],
+    );
 
-  it("has no password field in any step", () => {
-    document.body.innerHTML = setupBody ?? "";
-    expect(document.querySelector('input[type="password"]')).toBeNull();
-  });
+    selectMode("existing");
+    await flush();
+    element<HTMLInputElement>("server-url").value = "one.example";
+    element<HTMLButtonElement>("check").click();
+    await flush();
+    expect(element("status").textContent).toBe(PL_MESSAGES["Checking…"]);
+    ui.resolveCheck({ ok: true, url: "https://one.example" });
+    await flush();
+    expect(element("status").textContent).toBe(
+      "VNBot odpowiedziało pod adresem https://one.example.",
+    );
 
-  it("ships Vietnamese text in the page itself", () => {
-    document.body.innerHTML = setupBody ?? "";
-    for (const node of document.querySelectorAll<HTMLElement>("[data-text]")) {
-      const key = node.dataset.text as keyof typeof text;
-      expect(node.textContent, key).toBe(text[key]);
-    }
-    for (const [attribute, key] of [
-      ["title", "title"],
-      ["aria-label", "ariaLabel"],
-      ["placeholder", "placeholder"],
-    ] as const) {
-      for (const node of document.querySelectorAll<HTMLElement>(`[data-${attribute}]`)) {
-        const textKey = node.dataset[key] as keyof typeof text;
-        expect(node.getAttribute(attribute), textKey).toBe(text[textKey]);
-      }
-    }
+    selectMode("new");
+    submitForm();
+    ui.startResult.resolve({ ...stackState("pulling"), layerBytes: { layer: 2.5e6 } });
+    await flush();
+    expect(element("stack-phase").textContent).toBe(PL_MESSAGES["Downloading VNBot…"]);
+    expect(element("stack-detail").textContent).toBe("Pobrano 3 MB");
   });
 });

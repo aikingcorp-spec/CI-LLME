@@ -1,9 +1,10 @@
 import { appendNewerThreadPage, forwardProbeAfterPage, threadWindowMessages } from "@rakazo/core";
 import { useState } from "react";
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
-import type { MobileMessage, MobileSnapshot } from "./api";
-import { prependMobileMessagePage, rpc } from "./api";
+import { rpc } from "./api";
 import { useI18n } from "./i18n";
+import type { MobileMessage, MobileSnapshot } from "./mobile-types";
+import { prependMobileMessagePage } from "./mobile-types";
 import type { ThreadHistory } from "./thread-history";
 import type { ThreadListScroll } from "./thread-list-scroll";
 import { errorText } from "./user-error";
@@ -145,6 +146,7 @@ export function useThreadPaging({
       commitSnap(prependMobileMessagePage(snapRef.current, page));
     } catch (err) {
       loadingOlderContent.current = false;
+      if (epoch !== historyEpoch.current || pinnedAroundRef.current !== pinned) return;
       setError(errorText(err, t("Could not load earlier messages")));
     } finally {
       setLoadingOlder(false);

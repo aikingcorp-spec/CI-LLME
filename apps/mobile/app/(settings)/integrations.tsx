@@ -1,13 +1,13 @@
-import { MenuView } from "@expo/ui/community/menu";
 import type {
   CapabilityInstall,
   Connection,
   ConnectionCatalogItem,
   McpServer,
+  McpServerConnection,
+  McpSourcePreset,
   PluginMarketplaceEntry,
-  RpcOutput,
 } from "@rakazo/contracts";
-import { CONNECTION_LABEL_MAX_LENGTH } from "@rakazo/contracts";
+import { mcpServerConnection, mcpServerNeedsSignIn } from "@rakazo/contracts";
 import type { PluginCategory } from "@rakazo/core";
 import {
   buildFeaturedConnectorTiles,
@@ -17,28 +17,39 @@ import {
   connectCatalogItem,
   EMPTY_PLUGIN_CATALOG_MESSAGE,
   filterConnectionCatalogItems,
-  humanizeToolName,
+  integrationCatalogsReady,
   isCatalogItemConnected,
   matchesWordPrefixes,
+  newClientId,
   OTHER_PLUGINS,
 } from "@rakazo/core";
 import type { NativeStackNavigationOptions } from "expo-router";
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
+  AppState,
   Linking,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type {
+  AddCustomOption,
+  SourceAuth,
+  SourceKind,
+} from "../../components/add-custom-integration";
+import { AddCustomForm, AddCustomMenu } from "../../components/add-custom-integration";
+import { BotTemplateIcon } from "../../components/bot-template-icon";
 import { ConnectorIcon } from "../../components/connector-icon";
+import type { ConnectionTool } from "../../components/integration-detail";
+import { IntegrationDetail } from "../../components/integration-detail";
+import { PLUGIN_PAGE_SIZE, PluginSection } from "../../components/integration-plugins";
+import { createIntegrationsStyles, LOGO_SIZE } from "../../components/integrations-styles";
 import { MenuPicker } from "../../components/menu-picker";
 import { NativeActionButton } from "../../components/native-action-button";
 import { NativeSymbol } from "../../components/native-symbol";
@@ -56,7 +67,7 @@ import {
   writeIntegrationsCache,
 } from "../../lib/integrations-cache";
 import { loadLastBotId } from "../../lib/last-bot";
-import { native, useResolvedAppearance, useThemedStyles } from "../../lib/native";
+import { native, useThemedStyles } from "../../lib/native";
 import { iosAtLeast } from "../../lib/native-controls";
 import type { PluginParams } from "../../lib/plugin-marketplace";
 import {
@@ -65,20 +76,11 @@ import {
   gitImportParams,
   hasPluginConnector,
   managedPluginParams,
-  mcpServerReady,
   pluginCategories,
   pluginParams,
-  pluginSite,
 } from "../../lib/plugin-marketplace";
 import { useSideInsets } from "../../lib/side-insets";
 import { errorText } from "../../lib/user-error";
-
-type SourceKind = "treg" | "executor" | "mcp" | "api" | "graphql";
-type ConnectionTool = RpcOutput<"connections/tools">[number];
-
-const LOGO_SIZE = 32;
-const SECTION_SIZE = 4;
-const PLUGIN_PAGE_SIZE = 20;
 
 export default function Integrations() {
   const sideInsets = useSideInsets();
@@ -86,7 +88,6 @@ export default function Integrations() {
   // A merged brand's plugin page sends people back here to manage the app's accounts.
   const { app: appToOpen } = useLocalSearchParams<{ app?: string }>();
   const navigation = useNavigation();
-  const scheme = useResolvedAppearance();
   const styles = useThemedStyles(createIntegrationsStyles);
   const { t } = useI18n();
   const categoryLabels: Record<PluginCategory, string> = {
@@ -118,11 +119,15 @@ export default function Integrations() {
   const [pluginCount, setPluginCount] = useState(PLUGIN_PAGE_SIZE);
   const [gitUrl, setGitUrl] = useState("");
   const [sourceKind, setSourceKind] = useState<SourceKind | null>(null);
+  const [sourcePresets, setSourcePresets] = useState<McpSourcePreset[]>([]);
+  const [sourcePreset, setSourcePreset] = useState<McpSourcePreset | null>(null);
   const [adding, setAdding] = useState<"github" | "source" | null>(null);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [credential, setCredential] = useState("");
-  const [requiresAuth, setRequiresAuth] = useState(true);
+  const [sourceAuth, setSourceAuth] = useState<SourceAuth>("none");
+  const [authHeader, setAuthHeader] = useState("x-api-key");
+  const [oauthServerId, setOauthServerId] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
@@ -135,6 +140,7 @@ export default function Integrations() {
   const [toolsOpen, setToolsOpen] = useState(true);
   const [toolsTick, setToolsTick] = useState(0);
   const connectionAttempt = useRef<AbortController | null>(null);
+  const oauthBrowserOpen = useRef(false);
 
   const cacheScope = useRef<IntegrationsCacheScope | null>(null);
   const snapshot = useRef<IntegrationsSnapshot>({ catalog: [], connections: [] });
@@ -206,6 +212,12 @@ export default function Integrations() {
     });
   }
 
+  const catalogsReady = integrationCatalogsReady({
+    catalogLoaded: catalogReady,
+    catalogFailed: !!catalogError,
+    pluginsLoaded: pluginsState !== "loading",
+    pluginsUnavailable: pluginsState === "partial",
+  });
   const featuredTiles = useMemo(() => buildFeaturedConnectorTiles(catalog), [catalog]);
   const showFeatured = !query.trim();
   const catalogApps = useMemo(() => filterConnectionCatalogItems(catalog, query), [catalog, query]);
@@ -258,6 +270,8 @@ export default function Integrations() {
     setCatalogReady(false);
     setSources([]);
     setPluginInstalls([]);
+    setPluginEntries([]);
+    setPluginsState("loading");
     setMcpServers([]);
     setMcpError(null);
     setDetailKey(null);
@@ -285,16 +299,19 @@ export default function Integrations() {
       clearStaleScope();
       return refresh();
     }
+    setPluginsState("loading");
     const previous = cacheScope.current;
     if (previous && (previous.userId !== scope.userId || previous.spaceId !== scope.spaceId)) {
       applySnapshot({ catalog: [], connections: [] });
       setCatalogReady(false);
       setSources([]);
       setPluginInstalls([]);
+      setPluginEntries([]);
       setMcpServers([]);
       setMcpError(null);
       setDetailKey(null);
       setLabelDrafts({});
+      setSourcePresets([]);
     }
     cacheScope.current = scope;
     if (!previous || previous.userId !== scope.userId || previous.spaceId !== scope.spaceId) {
@@ -340,6 +357,18 @@ export default function Integrations() {
         }
       })
       .catch(() => undefined);
+    // A server without presets (or a failed request) offers none, never another server's.
+    const applyPresets = (presets: McpSourcePreset[]) => {
+      if (
+        mounted.current &&
+        isIntegrationsScopeCurrent(scope) &&
+        sourceGeneration === sourcesGeneration.current
+      )
+        setSourcePresets(presets);
+    };
+    void rpc("capabilities/sourcePresets")
+      .then(applyPresets)
+      .catch(() => applyPresets([]));
     void rpc("marketplace/catalog", { query: "" })
       .then((result) => {
         if (
@@ -422,6 +451,16 @@ export default function Integrations() {
   );
 
   useEffect(() => {
+    // The OAuth callback lands in the browser, so refresh once the user comes back.
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active" || !oauthBrowserOpen.current || !mounted.current) return;
+      oauthBrowserOpen.current = false;
+      void retryRefresh();
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
     if (!detailKey) {
       setTools([]);
       setToolsLoading(false);
@@ -465,51 +504,21 @@ export default function Integrations() {
       : { source: install.source, installedSource: install.source, name: install.name };
   }
 
-  function renderPluginRow(entry: PluginMarketplaceEntry) {
-    const installed = installedSources.has(entry.installedSource);
-    return (
-      <Pressable
-        key={entry.id}
-        accessibilityRole="button"
-        accessibilityLabel={entry.displayName}
-        onPress={() => openPlugin(pluginParams(entry))}
-        style={({ pressed }) => [
-          styles.row,
-          catalogColumns === 2 ? styles.catalogCell : null,
-          pressed && styles.pressed,
-        ]}
-      >
-        <PluginIcon
-          logo={entry.logo}
-          name={entry.displayName}
-          site={pluginSite(entry)}
-          size={LOGO_SIZE}
-        />
-        <View style={styles.grow}>
-          <Text numberOfLines={1} style={styles.title}>
-            {entry.displayName}
-          </Text>
-          {entry.description ? (
-            <Text numberOfLines={1} style={styles.secondary}>
-              {entry.description}
-            </Text>
-          ) : null}
-        </View>
-        {installed ? <Text style={styles.secondary}>{t("Added")}</Text> : <Chevron />}
-      </Pressable>
-    );
-  }
-
-  function serverStatus(server: McpServer) {
-    return !server.enabled
-      ? t("Disabled")
-      : server.oauthStatus === "reconnect"
-        ? t("OAuth expired")
-        : server.oauthStatus === "connected"
-          ? t("OAuth connected")
-          : server.hasSecret
-            ? t("Credential saved")
-            : t("No auth");
+  function serverStatus(state: McpServerConnection): string {
+    switch (state) {
+      case "disabled":
+        return t("Disabled");
+      case "needs_client":
+        return t("Needs an OAuth client ID");
+      case "needs_sign_in":
+        return t("Needs sign-in");
+      case "not_working":
+        return t("Not working");
+      case "connected":
+        return t("Connected");
+      case "not_connected":
+        return t("Not connected");
+    }
   }
 
   function renderInstalledPlugin(install: CapabilityInstall, summary: string, signIn: boolean) {
@@ -546,13 +555,55 @@ export default function Integrations() {
 
   /** What this account already has: apps it can reach, then skills it follows. */
   function renderSavedServer(server: McpServer) {
+    const state = mcpServerConnection(server);
+    const tokens = mobileTokens();
+    const warning = state === "needs_sign_in" || state === "needs_client";
+    const color =
+      state === "connected"
+        ? tokens.success
+        : warning
+          ? tokens.warning
+          : state === "not_working"
+            ? tokens.destructive
+            : native.secondaryLabel;
+    const symbol =
+      state === "connected"
+        ? { ios: "checkmark", android: "checkmark" as const }
+        : warning
+          ? { ios: "exclamationmark.triangle", android: "warning-outline" as const }
+          : state === "not_working"
+            ? { ios: "exclamationmark.circle", android: "alert-circle-outline" as const }
+            : null;
     return (
       <View key={server.id} testID="registered-mcp-server" style={styles.row}>
         <ConnectorIcon name={server.name} size={LOGO_SIZE} />
         <Text numberOfLines={1} style={[styles.title, styles.grow]}>
           {server.name}
         </Text>
-        <Text style={styles.secondary}>{serverStatus(server)}</Text>
+        <View style={styles.connectionStatus}>
+          {symbol ? (
+            <View
+              accessible={false}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <NativeSymbol {...symbol} size={14} color={color} />
+            </View>
+          ) : null}
+          <Text style={[styles.secondary, { color }]}>{serverStatus(state)}</Text>
+        </View>
+        {server.enabled &&
+        state !== "connected" &&
+        state !== "needs_client" &&
+        (server.oauthStatus === "reconnect" || server.id === oauthServerId) ? (
+          <NativeActionButton
+            label={server.oauthStatus === "reconnect" ? t("Reconnect") : t("Connect")}
+            fill={false}
+            busy={pending === `oauth:${server.id}`}
+            onPress={() => void authorizeMcp(server.id)}
+            prominence="secondary"
+          />
+        ) : null}
       </View>
     );
   }
@@ -582,7 +633,7 @@ export default function Integrations() {
                 servers.length === 1
                   ? t("1 connector")
                   : t("{count} connectors", { count: servers.length }),
-                !servers.every(mcpServerReady),
+                servers.some(mcpServerNeedsSignIn),
               );
             })}
             {standaloneServers.map(renderSavedServer)}
@@ -615,91 +666,6 @@ export default function Integrations() {
     );
   }
 
-  function renderPlugins() {
-    if (pluginsState === "loading") {
-      return catalogReady ? (
-        <ActivityIndicator color={native.secondaryLabel} accessibilityLabel={t("Loading…")} />
-      ) : null;
-    }
-    const failed =
-      pluginsState === "partial" ? (
-        <View style={styles.catalogStack}>
-          <Text style={styles.secondary}>{t("Some plugins could not be loaded.")}</Text>
-          <NativeActionButton
-            label={t("Retry")}
-            fill={false}
-            onPress={() => {
-              setPluginsState("loading");
-              void retryRefresh();
-            }}
-            prominence="secondary"
-          />
-        </View>
-      ) : null;
-    if (filtering) {
-      return (
-        <>
-          {failed}
-          {pluginMatches.length || brandMatches.length ? (
-            <View
-              testID="plugin-results"
-              style={catalogColumns === 2 ? styles.catalogGrid : styles.catalogStack}
-            >
-              {brandMatches.map(({ item }) => renderCatalogTile(item, item.name))}
-              {pluginMatches.slice(0, pluginCount).map(renderPluginRow)}
-            </View>
-          ) : null}
-          {pluginCount < pluginMatches.length ? (
-            <NativeActionButton
-              label={t("Show more")}
-              onPress={() => setPluginCount((count) => count + PLUGIN_PAGE_SIZE)}
-              prominence="secondary"
-            />
-          ) : null}
-        </>
-      );
-    }
-    const uncategorized = plugins.filter((entry) => !entry.category);
-    const sections: Array<[string, PluginMarketplaceEntry[]]> = [
-      ...categories.map((name): [string, PluginMarketplaceEntry[]] => [
-        name,
-        plugins.filter((entry) => entry.category === name),
-      ]),
-      ...(uncategorized.length
-        ? [[OTHER_PLUGINS, uncategorized] as [string, PluginMarketplaceEntry[]]]
-        : []),
-    ].filter(([, entries]) => entries.length);
-    return (
-      <>
-        {failed}
-        {sections.map(([name, entries]) => (
-          <View key={name} testID="plugin-section" style={styles.catalogStack}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>
-                {name === OTHER_PLUGINS ? t("More") : categoryLabel(name)}
-              </Text>
-              {entries.length > SECTION_SIZE ? (
-                <Pressable
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  onPress={() => {
-                    setCategory(name);
-                    setPluginCount(PLUGIN_PAGE_SIZE);
-                  }}
-                >
-                  <Text style={styles.link}>{t("View all")}</Text>
-                </Pressable>
-              ) : null}
-            </View>
-            <View style={catalogColumns === 2 ? styles.catalogGrid : styles.catalogStack}>
-              {entries.slice(0, SECTION_SIZE).map(renderPluginRow)}
-            </View>
-          </View>
-        ))}
-      </>
-    );
-  }
-
   function closeAdding() {
     setAdding(null);
     setSourceKind(null);
@@ -707,7 +673,6 @@ export default function Integrations() {
     setName("");
     setUrl("");
     setCredential("");
-    setRequiresAuth(true);
   }
 
   function openDetail(item: ConnectionCatalogItem) {
@@ -850,54 +815,89 @@ export default function Integrations() {
     }
   }
 
-  function beginSource(kind: SourceKind) {
+  function beginSource(kind: SourceKind, preset: McpSourcePreset | null = null) {
     setAdding("source");
     setSourceKind(kind);
+    setSourcePreset(preset);
     setSourceError(null);
-    setName(kind === "treg" ? "Treg" : kind === "executor" ? "Executor" : "");
-    setUrl(kind === "treg" ? "https://treg.to/mcp/" : "");
+    setName(preset?.name ?? "");
+    setUrl(preset?.url ?? "");
     setCredential("");
-    setRequiresAuth(kind === "treg" || kind === "executor");
+    setSourceAuth(preset ? "bearer" : "none");
+    setAuthHeader("x-api-key");
+  }
+
+  async function authorizeMcp(serverId: string) {
+    const isCurrent = captureConnectionScope();
+    if (!isCurrent()) return;
+    setPending(`oauth:${serverId}`);
+    setMcpError(null);
+    try {
+      // The API picks the registered web callback; native clients cannot supply one.
+      const result = await rpc("mcp/oauth/begin", { serverId });
+      if (!isCurrent()) return;
+      if (result.status === "authorization_required") {
+        oauthBrowserOpen.current = true;
+        await Linking.openURL(result.authorizationUrl);
+      } else {
+        await refresh();
+      }
+    } catch (reason) {
+      if (isCurrent()) setMcpError(errorText(reason, t("Could not start MCP OAuth")));
+    } finally {
+      if (isCurrent()) setPending(null);
+    }
   }
 
   async function addSource() {
     if (!sourceKind) return;
+    const isCurrent = captureConnectionScope();
+    if (!isCurrent()) return;
     setPending("source");
     setSourceError(null);
+    const displayName =
+      name.trim() ||
+      (sourcePreset?.name ?? (sourceKind === "graphql" ? "GraphQL" : t("Custom connector")));
+    const auth =
+      sourceAuth === "header"
+        ? { type: "header", name: authHeader.trim() }
+        : { type: sourceAuth === "bearer" ? "bearer" : "none" };
+    let created: McpServer | null = null;
     try {
-      await rpc("capabilities/install", {
-        kind: sourceKind === "treg" || sourceKind === "executor" ? "mcp" : sourceKind,
-        name:
-          name.trim() ||
-          (sourceKind === "treg"
-            ? "Treg"
-            : sourceKind === "executor"
-              ? "Executor"
-              : sourceKind === "graphql"
-                ? "GraphQL"
-                : t("Custom connector")),
-        source: url.trim(),
-        credential: credential.trim() || undefined,
-        config:
-          sourceKind === "treg"
-            ? { preset: "treg", auth: { type: "bearer" } }
+      if (sourceAuth === "oauth") {
+        created = await rpc("mcp/servers/create", {
+          slug: `integration-${newClientId().slice(0, 8)}`,
+          name: displayName,
+          transport: "streamable_http",
+          endpoint: url.trim(),
+        });
+        if (!isCurrent()) return;
+        setOauthServerId(created.id);
+      } else {
+        await rpc("capabilities/install", {
+          kind: sourceKind,
+          name: displayName,
+          source: url.trim(),
+          credential: (sourceAuth !== "none" && credential.trim()) || undefined,
+          config: sourcePreset
+            ? { preset: sourcePreset.id }
             : sourceKind === "api"
-              ? { openApi: true, auth: { type: requiresAuth ? "bearer" : "none" } }
+              ? { openApi: true, auth }
               : sourceKind === "graphql"
-                ? { auth: { type: requiresAuth ? "bearer" : "none" } }
-                : {
-                    preset: "custom",
-                    auth: { type: sourceKind === "executor" || requiresAuth ? "bearer" : "none" },
-                  },
-      });
+                ? { auth }
+                : { preset: "custom", auth },
+        });
+        if (!isCurrent()) return;
+      }
       setCredential("");
       setSourceKind(null);
       setAdding(null);
       await refresh();
+      if (created) await authorizeMcp(created.id);
     } catch (reason) {
-      setSourceError(errorText(reason, t("Could not add source")));
+      if (isCurrent()) setSourceError(errorText(reason, t("Could not add source")));
     } finally {
-      setPending(null);
+      if (isCurrent()) setPending(null);
     }
   }
 
@@ -978,128 +978,27 @@ export default function Integrations() {
     );
   }
 
-  function renderDetail(item: ConnectionCatalogItem) {
-    const accounts = accountsFor(item);
-    const key = catalogItemKey(item);
-    const connecting = pending === key;
-    const uninstalling = pending === `uninstall:${key}`;
-    const toolCount = tools.length;
-
-    return (
-      <View style={styles.detail}>
-        <View style={styles.detailHeader}>
-          <View style={styles.detailTitleRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("Back")}
-              onPress={closeDetail}
-              style={styles.backButton}
-            >
-              <Text style={styles.link}>{t("Back")}</Text>
-            </Pressable>
-            <ConnectorIcon logo={item.logo} name={item.name} size={LOGO_SIZE} />
-            <Text numberOfLines={1} style={styles.detailTitle}>
-              {item.name}
-            </Text>
-          </View>
-          <NativeActionButton
-            accessibilityLabel={t("Uninstall")}
-            disabled={uninstalling || connecting}
-            fill={false}
-            label={uninstalling ? t("Working…") : t("Uninstall")}
-            onPress={() => void uninstall(item)}
-            prominence="destructive"
-          />
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.section}>{t("Accounts")}</Text>
-          {accounts.map((row) => (
-            <View key={row.id} style={styles.accountRow}>
-              <TextInput
-                value={labelDrafts[row.id] ?? row.displayName}
-                maxLength={CONNECTION_LABEL_MAX_LENGTH}
-                onChangeText={(value) =>
-                  setLabelDrafts((current) => ({ ...current, [row.id]: value }))
-                }
-                onEndEditing={() => void renameAccount(row)}
-                accessibilityLabel={t("Account label")}
-                style={styles.accountLabel}
-              />
-              <NativeActionButton
-                accessibilityLabel={t("Remove {name}", { name: row.displayName })}
-                disabled={pending === row.id || uninstalling}
-                fill={false}
-                label={pending === row.id ? t("Working…") : t("Remove")}
-                onPress={() => void revokeAccount(row)}
-                prominence="destructive"
-              />
-            </View>
-          ))}
-          <NativeActionButton
-            accessibilityLabel={t("Add another {name}", { name: item.name })}
-            disabled={connecting || uninstalling}
-            label={connecting ? t("Working…") : t("Add another")}
-            onPress={() => void connect(item)}
-            prominence="secondary"
-          />
-        </View>
-
-        <View style={styles.card}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: toolsOpen }}
-            onPress={() => setToolsOpen((open) => !open)}
-            style={styles.toolsToggle}
-          >
-            <Text style={styles.title}>
-              {toolsLoading
-                ? t("Tools")
-                : toolCount === 1
-                  ? t("1 tool")
-                  : t("{count} tools", { count: toolCount })}
-            </Text>
-            <Chevron expanded={toolsOpen} />
-          </Pressable>
-          {toolsOpen ? (
-            <View style={styles.toolsBody}>
-              {toolsLoading ? (
-                <ActivityIndicator
-                  color={native.secondaryLabel}
-                  accessibilityLabel={t("Loading tools…")}
-                />
-              ) : tools.length === 0 ? (
-                <Text style={styles.secondary}>{t("No tools available.")}</Text>
-              ) : (
-                tools.map((tool) => (
-                  <Text key={tool.name} style={styles.toolName}>
-                    {humanizeToolName(tool.name)}
-                  </Text>
-                ))
-              )}
-            </View>
-          ) : null}
-        </View>
-      </View>
-    );
-  }
-
-  const addOptions: Array<{ id: "github" | SourceKind; label: string }> = [
-    { id: "github", label: t("From GitHub") },
-    { id: "mcp", label: t("MCP server") },
-    { id: "api", label: "OpenAPI" },
-    { id: "graphql", label: "GraphQL" },
-    { id: "executor", label: "Executor" },
-    { id: "treg", label: "Treg" },
+  const addOptions: AddCustomOption[] = [
+    { id: "github", label: t("From GitHub"), kind: "github" },
+    { id: "mcp", label: t("MCP server"), kind: "mcp" },
+    { id: "api", label: "OpenAPI", kind: "api" },
+    { id: "graphql", label: "GraphQL", kind: "graphql" },
+    ...sourcePresets.map((preset) => ({
+      id: `preset:${preset.id}`,
+      label: preset.name,
+      kind: "mcp" as const,
+      preset,
+    })),
   ];
 
-  function startAdding(id: "github" | SourceKind) {
+  function startAdding(option: AddCustomOption | undefined) {
+    if (!option) return;
     closeDetail();
     setSourceError(null);
-    if (id === "github") {
+    if (option.kind === "github") {
       setSourceKind(null);
       setAdding("github");
-    } else beginSource(id);
+    } else beginSource(option.kind, option.preset);
   }
 
   useLayoutEffect(() => {
@@ -1115,153 +1014,13 @@ export default function Integrations() {
             items: addOptions.map((option) => ({
               type: "action" as const,
               label: option.label,
-              onPress: () => startAdding(option.id),
+              onPress: () => startAdding(option),
             })),
           },
         },
       ],
     } satisfies NativeStackNavigationOptions);
-  }, [navigation, t]);
-
-  function renderAddMenuFallback() {
-    if (iosAtLeast(26)) return null;
-    return (
-      <MenuView
-        colorScheme={scheme}
-        title={t("Add custom")}
-        actions={addOptions.map((option) => ({ id: option.id, title: option.label }))}
-        onPressAction={({ nativeEvent }) => startAdding(nativeEvent.event as "github" | SourceKind)}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("Add custom")}
-          hitSlop={8}
-          style={styles.addCustom}
-        >
-          <NativeSymbol ios="plus" android="add" size={20} />
-        </Pressable>
-      </MenuView>
-    );
-  }
-
-  function renderAdding() {
-    return (
-      <View style={styles.catalogStack}>
-        <NativeActionButton
-          fill={false}
-          label={t("Back")}
-          onPress={closeAdding}
-          prominence="secondary"
-        />
-        {adding === "github" ? (
-          <View testID="plugin-git-import" style={styles.card}>
-            <TextInput
-              value={gitUrl}
-              onChangeText={setGitUrl}
-              accessibilityLabel={t("Plugin GitHub URL")}
-              placeholder="https://github.com/owner/plugin"
-              placeholderTextColor={native.tertiaryLabel}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              maxLength={2048}
-              style={styles.input}
-            />
-            <NativeActionButton
-              disabled={!gitUrl.trim()}
-              label={t("Preview")}
-              onPress={() => openPlugin(gitImportParams(gitUrl))}
-              prominence="secondary"
-            />
-          </View>
-        ) : null}
-        {sourceError ? <Text style={styles.error}>{sourceError}</Text> : null}
-        {adding === "source" && sourceKind ? (
-          <View style={styles.card}>
-            <Text style={styles.title}>
-              {sourceKind === "treg"
-                ? t("Connect Treg")
-                : sourceKind === "executor"
-                  ? t("Connect Executor")
-                  : sourceKind === "mcp"
-                    ? t("Remote MCP server")
-                    : sourceKind === "graphql"
-                      ? t("GraphQL endpoint")
-                      : t("OpenAPI JSON")}
-            </Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder={t("Display name")}
-              placeholderTextColor={native.tertiaryLabel}
-              style={styles.input}
-            />
-            {sourceKind !== "treg" ? (
-              <TextInput
-                value={url}
-                onChangeText={setUrl}
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder={
-                  sourceKind === "mcp"
-                    ? t("https://example.com/mcp")
-                    : sourceKind === "executor"
-                      ? t("https://executor.example/mcp")
-                      : sourceKind === "graphql"
-                        ? t("https://example.com/graphql")
-                        : t("https://example.com/openapi.json")
-                }
-                placeholderTextColor={native.tertiaryLabel}
-                style={styles.input}
-              />
-            ) : null}
-            {sourceKind !== "treg" && sourceKind !== "executor" ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setRequiresAuth((value) => !value)}
-                style={styles.authToggle}
-              >
-                <Text style={styles.secondary}>
-                  {requiresAuth ? t("Bearer authentication") : t("No authentication")}
-                </Text>
-              </Pressable>
-            ) : null}
-            {sourceKind === "treg" || sourceKind === "executor" || requiresAuth ? (
-              <TextInput
-                value={credential}
-                onChangeText={setCredential}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder={
-                  sourceKind === "treg"
-                    ? t("Treg token")
-                    : sourceKind === "executor"
-                      ? t("Executor token")
-                      : t("Bearer token")
-                }
-                placeholderTextColor={native.tertiaryLabel}
-                style={styles.input}
-              />
-            ) : null}
-            <View style={styles.accountActions}>
-              <NativeActionButton
-                busy={pending === "source"}
-                label={t("Verify and add")}
-                onPress={() => void addSource()}
-                prominence="secondary"
-              />
-              <NativeActionButton
-                label={t("Cancel")}
-                onPress={closeAdding}
-                prominence="secondary"
-              />
-            </View>
-          </View>
-        ) : null}
-      </View>
-    );
-  }
+  }, [navigation, sourcePresets, t]);
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.screen}>
@@ -1272,10 +1031,31 @@ export default function Integrations() {
         keyboardShouldPersistTaps="handled"
       >
         {adding ? (
-          renderAdding()
+          <AddCustomForm
+            adding={adding}
+            gitUrl={gitUrl}
+            setGitUrl={setGitUrl}
+            onPreviewGit={() => openPlugin(gitImportParams(gitUrl))}
+            sourceError={sourceError}
+            sourceKind={sourceKind}
+            sourcePreset={sourcePreset}
+            name={name}
+            setName={setName}
+            url={url}
+            setUrl={setUrl}
+            sourceAuth={sourceAuth}
+            setSourceAuth={setSourceAuth}
+            authHeader={authHeader}
+            setAuthHeader={setAuthHeader}
+            credential={credential}
+            setCredential={setCredential}
+            busy={pending === "source"}
+            onAdd={() => void addSource()}
+            onClose={closeAdding}
+          />
         ) : (
           <>
-            {!detailItem ? renderAddMenuFallback() : null}
+            {!detailItem ? <AddCustomMenu options={addOptions} onSelect={startAdding} /> : null}
             {!detailItem ? (
               <TextInput
                 value={query}
@@ -1314,6 +1094,18 @@ export default function Integrations() {
             ) : null}
 
             {!detailItem && !filtering ? renderConnected() : null}
+            {!detailItem && !filtering ? (
+              <Pressable
+                testID="open-bot-templates"
+                accessibilityRole="button"
+                onPress={() => router.push("/bot-templates")}
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+              >
+                <BotTemplateIcon size={LOGO_SIZE} />
+                <Text style={[styles.title, styles.grow]}>{t("Templates")}</Text>
+                <Chevron />
+              </Pressable>
+            ) : null}
             {!detailItem && savedServerMatches.length ? (
               <View testID="connected-apps" style={styles.catalogStack}>
                 {savedServerMatches.map(renderSavedServer)}
@@ -1333,7 +1125,22 @@ export default function Integrations() {
             ) : null}
 
             {detailItem ? (
-              renderDetail(detailItem)
+              <IntegrationDetail
+                item={detailItem}
+                accounts={accountsFor(detailItem)}
+                pending={pending}
+                labelDrafts={labelDrafts}
+                setLabelDrafts={setLabelDrafts}
+                tools={tools}
+                toolsLoading={toolsLoading}
+                toolsOpen={toolsOpen}
+                setToolsOpen={setToolsOpen}
+                onBack={closeDetail}
+                onUninstall={() => void uninstall(detailItem)}
+                onRename={(row) => void renameAccount(row)}
+                onRevoke={(row) => void revokeAccount(row)}
+                onConnect={() => void connect(detailItem)}
+              />
             ) : (
               <>
                 {!catalogReady && !catalogError ? (
@@ -1358,7 +1165,7 @@ export default function Integrations() {
                   </View>
                 ) : null}
 
-                {catalogReady && catalog.length === 0 ? (
+                {catalogsReady && catalog.length === 0 && plugins.length === 0 && !filtering ? (
                   <Text style={styles.secondary}>{t(EMPTY_PLUGIN_CATALOG_MESSAGE)}</Text>
                 ) : null}
 
@@ -1400,12 +1207,11 @@ export default function Integrations() {
                   </View>
                 ) : null}
 
-                {catalogReady &&
+                {catalogsReady &&
                 catalogApps.length === 0 &&
                 pluginMatches.length === 0 &&
                 brandMatches.length === 0 &&
                 savedServerMatches.length === 0 &&
-                pluginsState !== "loading" &&
                 filtering ? (
                   <Text style={styles.secondary}>{t("No apps match your search.")}</Text>
                 ) : null}
@@ -1418,7 +1224,30 @@ export default function Integrations() {
                   />
                 ) : null}
 
-                {renderPlugins()}
+                <PluginSection
+                  pluginsState={pluginsState}
+                  catalogReady={catalogReady}
+                  onRetry={() => {
+                    setPluginsState("loading");
+                    void retryRefresh();
+                  }}
+                  filtering={filtering}
+                  pluginMatches={pluginMatches}
+                  brandMatches={brandMatches}
+                  pluginCount={pluginCount}
+                  onShowMore={() => setPluginCount((count) => count + PLUGIN_PAGE_SIZE)}
+                  plugins={plugins}
+                  categories={categories}
+                  categoryLabel={categoryLabel}
+                  onViewCategory={(name) => {
+                    setCategory(name);
+                    setPluginCount(PLUGIN_PAGE_SIZE);
+                  }}
+                  installedSources={installedSources}
+                  columns={catalogColumns}
+                  onOpenPlugin={openPlugin}
+                  renderAppTile={(item) => renderCatalogTile(item, item.name)}
+                />
               </>
             )}
           </>
@@ -1426,109 +1255,4 @@ export default function Integrations() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function createIntegrationsStyles() {
-  const destructive = mobileTokens().destructive;
-  return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: native.page },
-    content: { padding: 20, gap: 14 },
-    explanation: { color: native.secondaryLabel, fontSize: 14, lineHeight: 20 },
-    section: { color: native.secondaryLabel, fontSize: 14, fontWeight: "600", marginTop: 2 },
-    card: { padding: 16, borderRadius: 16, backgroundColor: native.fill, gap: 12 },
-    input: {
-      minHeight: 48,
-      borderRadius: 12,
-      backgroundColor: native.fillPressed,
-      color: native.label,
-      paddingHorizontal: 14,
-      fontSize: 15,
-    },
-    authToggle: { minHeight: 42, justifyContent: "center" },
-    catalogGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    catalogStack: { gap: 8 },
-    catalogCell: { flexGrow: 1, flexBasis: "47%", maxWidth: "49%" },
-    row: {
-      minHeight: 56,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      borderRadius: 14,
-      backgroundColor: native.fill,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-    },
-    logoPlaceholder: {
-      width: LOGO_SIZE,
-      height: LOGO_SIZE,
-      borderRadius: 10,
-      backgroundColor: native.fillPressed,
-    },
-    titlePlaceholder: {
-      width: "65%",
-      height: 14,
-      borderRadius: 4,
-      backgroundColor: native.fillPressed,
-    },
-    pillPlaceholder: {
-      width: 52,
-      height: 30,
-      borderRadius: 15,
-      backgroundColor: native.fillPressed,
-    },
-    grow: { flex: 1, gap: 3, minWidth: 0 },
-    title: { color: native.label, fontSize: 15, fontWeight: "600" },
-    secondary: { color: native.secondaryLabel, fontSize: 13 },
-    pressed: { backgroundColor: native.fillPressed },
-    categoryPicker: { alignSelf: "flex-start" },
-    sectionHeader: {
-      marginTop: 10,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    sectionTitle: { color: native.label, fontSize: 16, fontWeight: "600" },
-    accountActions: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-      gap: 8,
-    },
-    accountRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 8,
-    },
-    accountLabel: {
-      flex: 1,
-      minHeight: 36,
-      borderRadius: 10,
-      backgroundColor: native.fillPressed,
-      color: native.label,
-      paddingHorizontal: 10,
-      fontSize: 13,
-    },
-    link: { color: native.label, fontSize: 14, fontWeight: "600" },
-    error: { color: destructive, fontSize: 14 },
-    detail: { gap: 14 },
-    detailHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 12,
-    },
-    detailTitleRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10, minWidth: 0 },
-    backButton: { paddingVertical: 4 },
-    detailTitle: { flex: 1, color: native.label, fontSize: 17, fontWeight: "600" },
-    toolsToggle: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 8,
-    },
-    toolsBody: { gap: 8, paddingTop: 4 },
-    toolName: { color: native.label, fontSize: 14 },
-    addCustom: { alignSelf: "flex-end", padding: 4 },
-  });
 }

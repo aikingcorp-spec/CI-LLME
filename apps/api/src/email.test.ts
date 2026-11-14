@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { configuredEmailProvider } from "./email.js";
+import { configuredEmailProvider, verifiedEmailRequired } from "./email.js";
 
 const smtp = { smtpUrl: "smtps://smtp.example.test", emailFrom: "hello@example.test" };
 
@@ -30,5 +30,10 @@ describe("configuredEmailProvider", () => {
     expect(() =>
       configuredEmailProvider({ smtpUrl: undefined, emailFrom: undefined, emailProvider: "smtp" }),
     ).toThrow("SMTP_URL");
+  });
+
+  it("requires a verified mailbox only when mail can be delivered", () => {
+    expect(verifiedEmailRequired(undefined)).toBe(false);
+    expect(verifiedEmailRequired(configuredEmailProvider(smtp))).toBe(true);
   });
 });

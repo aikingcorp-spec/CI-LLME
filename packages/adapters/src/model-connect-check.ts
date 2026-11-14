@@ -1,7 +1,7 @@
 import type { Context } from "@earendil-works/pi-ai";
-import { Type } from "@earendil-works/pi-ai";
 import type { AgentRunModel } from "@rakazo/adapter-kit";
 import { MODEL_REQUEST_LIMIT_ERROR, normalizeRunError } from "@rakazo/core";
+import { Type } from "typebox";
 import { withChatCompletionsCompatibility } from "./chat-completions-compat.js";
 import { withCloudflareAuth } from "./cloudflare-ai-gateway.js";
 import { resolveRuntimeModel } from "./pi-runtime-models.js";
@@ -26,7 +26,7 @@ const CHECK_CONTEXT: Context = {
  * Failures that every run on this key and model would hit too. Rate limits, outages, and
  * timeouts are left to the run, so a slow or busy provider never blocks a connection.
  */
-const BLOCKING_KINDS = new Set(["auth", "access", "model", "key", "credit", "spending", "usage"]);
+const BLOCKING_KINDS = new Set(["auth", "access", "model", "key", "credit", "spending"]);
 
 /**
  * Send one minimal agent request and stop as soon as the provider accepts it, so a key without

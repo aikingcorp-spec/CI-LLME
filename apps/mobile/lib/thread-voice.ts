@@ -3,14 +3,22 @@ import { useNavigation, useRouter } from "expo-router";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { Alert, AppState } from "react-native";
-import type { MobileBot, MobileMessage, MobileSnapshot } from "./api";
-import { blockText, rpc } from "./api";
+import type { ApiRequestContext } from "./api";
+import { captureApiRequestContext, rpc } from "./api";
 import { nextAutoSpeakAction } from "./auto-speak";
 import { findSwitchTarget, ringOnArrival, takeRingOnArrival } from "./bot-switch";
-import { setCallProviderTranscribe, startCall } from "./call-session";
+import {
+  getSnapshot as getCallSnapshot,
+  setCallProviderTranscribe,
+  startCall,
+} from "./call-session";
+import { loadCallGreetingEnabled } from "./call-sounds";
 import { loadDeviceVoiceEnabled } from "./device-voice";
 import { available as dictationAvailable } from "./dictation";
 import { useI18n } from "./i18n";
+import type { MobileBot, MobileMessage, MobileSnapshot } from "./mobile-types";
+import { blockText } from "./mobile-types";
+import { currentSessionGeneration } from "./session";
 import { speakerColorFor } from "./thread-message-text";
 import { errorText } from "./user-error";
 import { speakQueue, speakText } from "./voice";
@@ -19,6 +27,7 @@ import {
   probeProviderTranscribe,
   resolveVoiceCallPlan,
 } from "./voice-call-entry";
+import { onShortcutVoiceChat, takeShortcutVoiceChat } from "./voice-chat-intent";
 
 const ATTACHMENT_PLACEHOLDER_LINE = /^\[(?:image|file|chart): .*\]$/;
 
@@ -56,6 +65,8 @@ export function useAutoSpeakReply({
     const decision = nextAutoSpeakAction({
       botId: currentBot.id,
       autoSpeak: currentBot.autoSpeak,
+      // An active call owns the speaker; the gate only seeds while it lasts.
+      callActive: getCallSnapshot() !== null,
       focused: AppState.currentState === "active" && navigation.isFocused(),
       snapshotReady: snap?.botId === currentBot.id && !showingSaved,
       lastSpokenBotId: autoSpokenBotId.current,
@@ -75,7 +86,7 @@ export function useAutoSpeakReply({
       botId: currentBot.id,
       speaker: {
         name: currentBot.name,
-        color: resolvePersonaColorDef(currentBot.id, currentBot.color).light,
+        color: resolvePersonaColorDef(currentBot.id, currentBot.color).hex,
       },
     }).catch(() => undefined);
   }, [
@@ -121,6 +132,8 @@ export function useSpeakMessages({
   const router = useRouter();
   return useCallback(
     (message: MobileMessage) => {
+      // An active call owns the speaker; a manual read must not cut into it.
+      if (getCallSnapshot()) return;
       const startIndex = visibleMessages.findIndex((candidate) => candidate.id === message.id);
       const fromHere = startIndex === -1 ? [message] : visibleMessages.slice(startIndex);
       const items = fromHere.flatMap((candidate) => {
@@ -191,21 +204,26 @@ export function useThreadVoiceCall({
       : t("Hello, {bot} here.", { bot: botName });
   }
 
-  /** `switchedHere`: the caller asked another bot to put them through, so this bot answers. */
-  async function startVoiceCall(switchedHere = false) {
+  /**
+   * `switchedHere`: the caller asked another bot to put them through, so this bot answers.
+   * `setupSession`: the session the call belongs to. The checks below wait on the server; a
+   * sign-in to another account meanwhile must not start this account's call with the new session.
+   */
+  async function startVoiceCall(switchedHere = false, setupSession = currentSessionGeneration()) {
     if (readOnly) return;
     const targetBotId = botId;
     if (!targetBotId || voiceCallStarting.current) return;
     voiceCallStarting.current = true;
     const loadVoiceStatus = () => rpc("voice/status");
     try {
-      const [plan, callerName] = await Promise.all([
+      const [plan, callerName, greet] = await Promise.all([
         resolveVoiceCallPlan({
           loadDeviceVoiceEnabled,
           dictationAvailable,
           loadVoiceStatus,
         }),
         loadCallCallerName(() => rpc("me")),
+        loadCallGreetingEnabled().catch(() => true),
       ]);
       if (activeBotId.current !== targetBotId) return;
       if (plan.kind === "settings") {
@@ -224,19 +242,25 @@ export function useThreadVoiceCall({
         return;
       }
       const botName = displayName ?? t("Bot");
+      // The call keeps the Space it starts in: an organization or Space switch mid-call must
+      // not move its turns, speech or hang-up to another Space.
+      const requestContext: ApiRequestContext = await captureApiRequestContext();
       const startedCallId = startCall({
         botId: targetBotId,
         botName,
         botColor: mentionBots.find((bot) => bot.id === targetBotId)?.color,
         botAvatarSet: mentionBots.find((bot) => bot.id === targetBotId)?.avatarSet,
         transcribe: plan.transcribe,
-        greeting: callGreeting(botName, callerName, switchedHere),
+        greeting: greet ? callGreeting(botName, callerName, switchedHere) : undefined,
+        session: setupSession,
+        requestContext,
         switchBot: (text) => {
           const target = findSwitchTarget(text, mentionBotsRef.current);
           if (!target || target.id === targetBotId) return undefined;
           return { name: target.name, ring: () => openBotChat(target, true) };
         },
       });
+      if (!startedCallId) return;
       if (plan.kind === "device") {
         void probeProviderTranscribe(loadVoiceStatus)
           .then((enabled) => {
@@ -253,13 +277,30 @@ export function useThreadVoiceCall({
 
   /** Opens another bot's chat in place of this one, ringing it when the switch came from a call. */
   function openBotChat(target: MobileBot, ring: boolean): void {
-    if (ring) ringOnArrival(target.id);
+    if (ring) ringOnArrival(target.id, currentSessionGeneration());
     router.replace({ pathname: "/thread", params: { botId: target.id, name: target.name } });
   }
 
+  // The shortcut can arrive long after this chat opened, e.g. once an archived chat is restored.
+  const startVoiceCallRef = useRef(startVoiceCall);
+  useLayoutEffect(() => {
+    startVoiceCallRef.current = startVoiceCall;
+  });
+
+  // A read-only chat leaves the request waiting until it is restored.
   useEffect(() => {
-    if (botId && takeRingOnArrival(botId)) void startVoiceCall(true);
-  }, [botId]);
+    if (!botId || readOnly) return;
+    const unsubscribe = onShortcutVoiceChat(() => {
+      if (takeShortcutVoiceChat(botId)) void startVoiceCallRef.current();
+    });
+    const session = currentSessionGeneration();
+    if (takeRingOnArrival(botId, session)) {
+      void startVoiceCall(true, session);
+    } else if (takeShortcutVoiceChat(botId)) {
+      void startVoiceCall(false, session);
+    }
+    return unsubscribe;
+  }, [botId, readOnly]);
 
   return { startVoiceCall, openBotChat };
 }

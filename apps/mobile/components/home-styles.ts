@@ -1,10 +1,12 @@
-import { fontWeight, typeScale } from "@rakazo/ui-tokens";
+import { typeScale } from "@rakazo/ui-tokens";
 import { StyleSheet } from "react-native";
 import { mobileTokens } from "../lib/appearance";
 import { native } from "../lib/native";
 
 export const INBOX_ROW = { padding: 16, gap: 12, avatarSize: 62 };
 export const COMPACT_INBOX_ROW = { padding: 12, gap: 10 };
+// Drops the Android create menu below the header pill; the trigger's negative margin keeps the layout.
+export const CREATE_MENU_GAP = 6;
 
 export function createHomeStyles() {
   const tokens = mobileTokens();
@@ -34,15 +36,16 @@ export function createHomeStyles() {
       flexDirection: "row",
       alignItems: "center",
       padding: 2,
-      borderRadius: 22,
-      backgroundColor: native.fillPressed,
     },
-    circleButton: {
+    headerCircle: {
       width: 44,
       height: 44,
-      borderRadius: 22,
       alignItems: "center",
       justifyContent: "center",
+    },
+    // Where Liquid Glass is unavailable.
+    headerFill: {
+      borderRadius: 22,
       backgroundColor: native.fillPressed,
     },
     headerButton: {
@@ -52,6 +55,10 @@ export function createHomeStyles() {
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
+    },
+    createMenuAnchor: {
+      height: 40 + CREATE_MENU_GAP,
+      paddingBottom: CREATE_MENU_GAP,
     },
     headerButtonActive: {
       backgroundColor: native.fill,
@@ -146,10 +153,6 @@ export function createHomeStyles() {
       alignItems: "center",
       gap: 6,
     },
-    // At the largest text sizes a tag that doesn't fit beside the name moves under it.
-    titleRowWrapped: {
-      flexWrap: "wrap",
-    },
     rowMeta: {
       flexDirection: "row",
       alignItems: "center",
@@ -160,21 +163,6 @@ export function createHomeStyles() {
       maxWidth: "100%",
       color: native.label,
       ...typeScale.cardTitle,
-      writingDirection: "auto",
-    },
-    tag: {
-      flexShrink: 1,
-      minWidth: 0,
-      overflow: "hidden",
-      borderRadius: 999,
-      backgroundColor: native.quietFill,
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-    },
-    tagLabel: {
-      color: native.secondaryLabel,
-      fontSize: typeScale.caption.fontSize,
-      fontWeight: fontWeight.medium,
       writingDirection: "auto",
     },
     time: {
@@ -255,8 +243,6 @@ export function createHomeStyles() {
       paddingBottom: 4,
     },
     activitySection: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: native.fillPressed,
       marginBottom: 4,
       paddingBottom: 4,
     },

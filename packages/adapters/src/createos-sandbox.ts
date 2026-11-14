@@ -15,7 +15,7 @@ import type {
   ScreenRequest,
   ScreenSession,
 } from "@rakazo/adapter-kit";
-import { boundedSandboxCommandTimeoutMs } from "@rakazo/core";
+import { boundedSandboxCommandTimeoutMs, cancelResponseBody } from "@rakazo/core";
 import {
   browserProfilePathForScreen,
   DEFAULT_DESKTOP_ENV,
@@ -29,15 +29,16 @@ import {
   computerObservation,
   normalizeWorkspacePath,
   shellQuote,
+  workspaceCwd,
   workspacePath,
 } from "./computer-support.js";
-import {
-  PORTABLE_TRANSFER_BATCH_BYTES,
-  shouldSkipPortableWorkspaceFile,
-} from "./computer-workspace.js";
+import { PORTABLE_TRANSFER_BATCH_BYTES } from "./computer-workspace.js";
 import { sandboxCommandArgv } from "./sandbox-command-environment.js";
+import { abortedCommandEvents, timedOutCommandEvents } from "./sandbox-command-events.js";
+import { sandboxNotFoundError } from "./sandbox-errors.js";
 import { shellExportScript } from "./sandbox-shell-environment.js";
 import { readBodyCapped } from "./web-ssrf.js";
+import { shouldSkipPortableWorkspaceFile } from "./workspace-save-policy.js";
 
 const CREATEOS_WORKSPACE = "/home/desktop/rakazo-home";
 const CREATEOS_BROWSER_PROFILES = `${CREATEOS_WORKSPACE}/.browser-profiles`;
@@ -456,6 +457,16 @@ export class CreateOSSandboxProvider implements SandboxProvider {
     return this.ref(created.id, request.botId, true);
   }
 
+  async isRunning(computer: ComputerRef, context: AdapterContext): Promise<boolean> {
+    if (computer.kind !== "createos") return false;
+    try {
+      return (await this.getSandbox(computer.providerRef, context)).status === "running";
+    } catch (error) {
+      if (isCreateOSSandboxGone(error)) return false;
+      throw error;
+    }
+  }
+
   async prepare(computer: ComputerRef, context: AdapterContext): Promise<void> {
     const profile = createosChromiumProfile(screenSessionKey(context));
     await this.executeChecked(
@@ -489,13 +500,11 @@ export class CreateOSSandboxProvider implements SandboxProvider {
       result = await this.runCommand(computer, request, context, timeoutMs);
     } catch (error) {
       if (context.signal.aborted) {
-        yield { type: "stderr", data: "command aborted\n" };
-        yield { type: "exit", code: 130 };
+        yield* abortedCommandEvents();
         return;
       }
       if (!isTimeoutAbort(error)) throw error;
-      yield { type: "stderr", data: `command timed out after ${timeoutMs} ms\n` };
-      yield { type: "exit", code: 124 };
+      yield* timedOutCommandEvents(timeoutMs);
       return;
     }
     if (result.result?.stdout) yield { type: "stdout", data: result.result.stdout };
@@ -687,6 +696,7 @@ print(json.dumps(out))
   ): Promise<void> {
     let batchBytes = 0;
     for await (const file of files) {
+      if (shouldSkipPortableWorkspaceFile(file.path)) continue;
       if (batchBytes > PORTABLE_TRANSFER_BATCH_BYTES) batchBytes = 0;
       await this.putFile(computer, file, context);
       batchBytes += file.content.byteLength;
@@ -1364,7 +1374,7 @@ raise SystemExit(1)
   ): AsyncIterable<PortableFile> {
     const entries = await this.listFiles(computer, directory, context);
     for (const entry of entries) {
-      if (shouldSkipCreateOSWorkspaceFile(entry.path)) continue;
+      if (shouldSkipCreateOSWorkspaceFile(entry.path, entry.kind === "dir")) continue;
       if (entry.kind === "dir") {
         yield* this.walkWorkspace(computer, entry.path, context);
       } else {
@@ -1384,7 +1394,7 @@ raise SystemExit(1)
   ): Promise<boolean> {
     const entries = await this.listFiles(computer, directory, context);
     for (const entry of entries) {
-      if (shouldSkipCreateOSWorkspaceFile(entry.path)) continue;
+      if (shouldSkipCreateOSWorkspaceFile(entry.path, entry.kind === "dir")) continue;
       if (entry.kind === "file") return true;
       if (await this.hasExportableWorkspaceFiles(computer, entry.path, context)) return true;
     }
@@ -1409,7 +1419,7 @@ raise SystemExit(1)
     context: AdapterContext,
     timeoutMs: number,
   ): Promise<CreateOSExecResponse> {
-    const cwd = createosCwd(request.cwd);
+    const cwd = workspaceCwd(CREATEOS_WORKSPACE, request.cwd, ["/home/desktop"]);
     // Exec's env field only takes names declared when the sandbox was created, and command text
     // shows in `ps`, so the env travels on stdin. Loading it leaves `argv` with an empty stdin.
     const environment = shellExportScript(request.env ?? {});
@@ -1652,9 +1662,7 @@ export class CreateOSHttpError extends Error {
 
 /** Named so the shared isSandboxGoneError lets the lifecycle replace the sandbox. */
 function createosSandboxGone(id: string, reason: string, cause?: unknown): Error {
-  return Object.assign(new Error(`CreateOS sandbox ${id} is gone (${reason})`, { cause }), {
-    name: "SandboxNotFoundError",
-  });
+  return sandboxNotFoundError(`CreateOS sandbox ${id} is gone (${reason})`, { cause });
 }
 
 function isCreateOSSandboxGone(error: unknown): boolean {
@@ -1721,7 +1729,7 @@ async function readCreateOSBody(
 ): Promise<Uint8Array> {
   const declared = Number(response.headers.get("content-length") ?? 0);
   if (Number.isFinite(declared) && declared > maxBytes) {
-    cancelCreateOSResponseBody(response);
+    cancelResponseBody(response);
     throw new Error(`CreateOS response exceeds ${maxBytes} bytes`);
   }
   const readSignal = AbortSignal.any([
@@ -1741,7 +1749,7 @@ async function readCreateOSBody(
 async function readCreateOSErrorBody(response: Response, signal: AbortSignal): Promise<string> {
   const declared = Number(response.headers.get("content-length") ?? 0);
   if (Number.isFinite(declared) && declared > MAX_CREATEOS_ERROR_RESPONSE_BYTES) {
-    cancelCreateOSResponseBody(response);
+    cancelResponseBody(response);
     return "";
   }
   try {
@@ -1753,14 +1761,6 @@ async function readCreateOSErrorBody(response: Response, signal: AbortSignal): P
     return new TextDecoder().decode(bytes).slice(0, MAX_ERROR_BODY_CHARS);
   } catch {
     return "";
-  }
-}
-
-function cancelCreateOSResponseBody(response: Response): void {
-  try {
-    void Promise.resolve(response.body?.cancel()).catch(() => undefined);
-  } catch {
-    // Error diagnostics are best-effort and must not delay the operation failure.
   }
 }
 
@@ -1781,9 +1781,9 @@ function isTransientCreateOSHttpStatus(status: number): boolean {
   return status === 408 || status === 429 || status === 502 || status === 503 || status === 504;
 }
 
-function shouldSkipCreateOSWorkspaceFile(relative: string): boolean {
+function shouldSkipCreateOSWorkspaceFile(relative: string, isDirectory = false): boolean {
   if (relative === ".rakazo" || relative.startsWith(".rakazo/")) return true;
-  return shouldSkipPortableWorkspaceFile(relative);
+  return shouldSkipPortableWorkspaceFile(relative, isDirectory);
 }
 
 export function isAllowedCreateOSScreenUrl(resolved: URL, baseUrl: string): boolean {
@@ -1816,14 +1816,6 @@ function isAllowedCreateOSScreenHost(hostname: string, baseHost: string): boolea
     return host === CREATEOS_INGRESS_ZONE || host.endsWith(`.${CREATEOS_INGRESS_ZONE}`);
   }
   return false;
-}
-
-function createosCwd(cwd: string | undefined): string {
-  if (!cwd || cwd === "." || cwd === "/" || cwd === "/home/rakazo" || cwd === "/home/desktop") {
-    return CREATEOS_WORKSPACE;
-  }
-  if (cwd === CREATEOS_WORKSPACE || cwd.startsWith(`${CREATEOS_WORKSPACE}/`)) return cwd;
-  return workspacePath(CREATEOS_WORKSPACE, cwd);
 }
 
 function emptyScreenSession(): ScreenSession {

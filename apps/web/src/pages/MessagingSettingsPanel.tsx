@@ -8,8 +8,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Input,
   NativeSelect,
   NativeSelectOption,
+  SectionHeading,
 } from "@rakazo/ui-web";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDownIcon, PlusIcon } from "lucide-react";
@@ -17,7 +19,12 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { SettingsGroup, SettingsRow } from "../components/SettingsRows";
-import { providerLabel } from "../lib/messaging";
+import {
+  chatAppRead,
+  chatAppSetup,
+  messagingConnectionControl,
+  providerLabel,
+} from "../lib/messaging";
 import { useSpaceQueries } from "../lib/query";
 import { rpc } from "../lib/rpc";
 import { ExternalConversationSettings } from "./ExternalConversationSettings";
@@ -27,7 +34,7 @@ const NO_INSTALLATIONS: MessagingInstallationsStatus = { available: false, insta
 
 function Row({ children, actions }: { children: ReactNode; actions: ReactNode }) {
   return (
-    <li className="flex items-center justify-between gap-3 text-[14px] text-foreground/75">
+    <li className="flex items-center justify-between gap-3 text-body text-foreground/75">
       <span className="min-w-0 truncate">{children}</span>
       <span className="flex shrink-0 gap-2">{actions}</span>
     </li>
@@ -35,7 +42,14 @@ function Row({ children, actions }: { children: ReactNode; actions: ReactNode })
 }
 
 function Meta({ children }: { children: ReactNode }) {
-  return <span className="ml-2 text-[12px] text-muted-foreground/70">{children}</span>;
+  return <span className="ml-2 text-label text-muted-foreground/70">{children}</span>;
+}
+
+function ConnectionStatus({ state }: { state: "unconfigured" | "starting" | "ready" | "error" }) {
+  if (state === "ready") return <Trans>Connected</Trans>;
+  if (state === "starting") return <Trans>Starting</Trans>;
+  if (state === "error") return <Trans>Could not connect</Trans>;
+  return <Trans>Not connected</Trans>;
 }
 
 export function MessagingSettingsPanel() {
@@ -45,10 +59,13 @@ export function MessagingSettingsPanel() {
   const [linkRequest, setLinkRequest] = useState<{
     code: string;
     expiresAt: string;
+    shared?: boolean;
     botId: string;
     provider: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [credentialDraft, setCredentialDraft] = useState<Record<string, string>>({});
+  const [replacingConnection, setReplacingConnection] = useState<string | null>(null);
 
   const queries = useSpaceQueries();
   const queryClient = useQueryClient();
@@ -58,12 +75,14 @@ export function MessagingSettingsPanel() {
   const botsOptions = queries.bots.list.queryOptions();
   const spacesOptions = queries.spaces.list.queryOptions();
   const installationsOptions = queries.messaging.installations.list.queryOptions();
+  const configurationOptions = queries.messaging.configuration.list.queryOptions();
   const statusQuery = useQuery(statusOptions);
   const channelsQuery = useQuery(channelsOptions);
   const connectionsQuery = useQuery(connectionsOptions);
   const botsQuery = useQuery(botsOptions);
   const spacesQuery = useQuery(spacesOptions);
   const installationsQuery = useQuery(installationsOptions);
+  const configurationQuery = useQuery(configurationOptions);
   const status = statusQuery.data ?? null;
   const channels = channelsQuery.data ?? [];
   const connections = connectionsQuery.data ?? [];
@@ -90,6 +109,7 @@ export function MessagingSettingsPanel() {
       fetchFresh(queryClient, botsOptions),
       fetchFresh(queryClient, spacesOptions),
       fetchFresh(queryClient, installationsOptions),
+      fetchFresh(queryClient, configurationOptions).catch(() => undefined),
     ]);
   }
 
@@ -187,6 +207,21 @@ export function MessagingSettingsPanel() {
   const slackInstallations = installationStatus.installations.filter(
     (installation) => installation.provider === "slack",
   );
+  const setup = chatAppSetup(
+    chatAppRead({
+      statusReady: statusQuery.isSuccess,
+      providers: status?.providers ?? [],
+      identityProviders: status?.identities.map((identity) => identity.provider) ?? [],
+      installationsReady: installationsQuery.isSuccess,
+      slackInstallAvailable: installationStatus.available,
+      slackInstallationCount: slackInstallations.length,
+    }),
+  );
+  const configuration = configurationQuery.data;
+  const managedIds = new Set(configuration?.connections.map((connection) => connection.id) ?? []);
+  const absentChatApps = (["telegram", "slack"] as const).filter(
+    (provider) => setup[provider] === "absent" && !managedIds.has(provider),
+  );
   // A teammate's workspace: DMs link to a bot of the member's own choosing.
   const memberLink =
     Boolean(installationStatus.personalLinkAvailable) &&
@@ -275,13 +310,13 @@ export function MessagingSettingsPanel() {
 
   return (
     <div data-testid="messaging-settings" className="space-y-8">
-      {shownError ? <p className="text-[13px] text-destructive">{shownError}</p> : null}
+      {shownError ? <p className="text-body-sm text-destructive">{shownError}</p> : null}
 
       {hasRequests ? (
         <section>
-          <h3 className="text-[13px] font-medium text-muted-foreground">
+          <SectionHeading variant="label">
             <Trans>Requests</Trans>
-          </h3>
+          </SectionHeading>
           <ul className="mt-3 space-y-3">
             {invitedChannels.map((channel) => (
               <Row
@@ -310,6 +345,124 @@ export function MessagingSettingsPanel() {
         </section>
       ) : null}
 
+      {configuration?.canManage ? (
+        <SettingsGroup data-testid="messaging-connections">
+          {configuration.connections.map((connection) => {
+            const control = messagingConnectionControl(connection);
+            const showField = control.showCredentialField || replacingConnection === connection.id;
+            return (
+              <div key={connection.id} data-testid={`messaging-connection-${connection.id}`}>
+                <SettingsRow
+                  label={
+                    <>
+                      <p>{connection.label}</p>
+                      <p className="mt-0.5 text-body-sm text-muted-foreground">
+                        <ConnectionStatus state={connection.state} />
+                      </p>
+                    </>
+                  }
+                  control={
+                    <>
+                      {control.showReplace ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setReplacingConnection(connection.id);
+                            setCredentialDraft((drafts) => ({ ...drafts, [connection.id]: "" }));
+                          }}
+                        >
+                          <Trans>Edit</Trans>
+                        </Button>
+                      ) : null}
+                      {control.showRemove ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            void act(async () => {
+                              const saved = await rpc.messaging.configuration.remove({
+                                connectionId: connection.id,
+                              });
+                              setReplacingConnection(null);
+                              setCredentialDraft((drafts) => ({ ...drafts, [connection.id]: "" }));
+                              await writeSaved(
+                                queryClient,
+                                configurationOptions.queryKey,
+                                () => saved,
+                              );
+                            })
+                          }
+                        >
+                          <Trans>Remove</Trans>
+                        </Button>
+                      ) : null}
+                    </>
+                  }
+                >
+                  {showField ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Input
+                        type="password"
+                        autoComplete="off"
+                        aria-label={t`Bot token`}
+                        placeholder={t`Bot token`}
+                        value={credentialDraft[connection.id] ?? ""}
+                        onChange={(event) =>
+                          setCredentialDraft((drafts) => ({
+                            ...drafts,
+                            [connection.id]: event.target.value,
+                          }))
+                        }
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          void act(async () => {
+                            const saved = await rpc.messaging.configuration.set({
+                              connectionId: connection.id,
+                              credential: credentialDraft[connection.id] ?? "",
+                            });
+                            setReplacingConnection(null);
+                            setCredentialDraft((drafts) => ({ ...drafts, [connection.id]: "" }));
+                            await writeSaved(
+                              queryClient,
+                              configurationOptions.queryKey,
+                              () => saved,
+                            );
+                          })
+                        }
+                      >
+                        <Trans>Save</Trans>
+                      </Button>
+                    </div>
+                  ) : null}
+                </SettingsRow>
+              </div>
+            );
+          })}
+        </SettingsGroup>
+      ) : null}
+
+      {absentChatApps.length > 0 ? (
+        <SettingsGroup data-testid="messaging-absent">
+          {absentChatApps.map((provider) => (
+            <div key={provider} data-testid={`messaging-absent-${provider}`}>
+              <SettingsRow
+                label={
+                  <>
+                    <p>{providerLabel(provider)}</p>
+                    <p className="mt-0.5 text-body-sm text-muted-foreground">
+                      <Trans>Not connected</Trans>
+                    </p>
+                  </>
+                }
+              />
+            </div>
+          ))}
+        </SettingsGroup>
+      ) : null}
+
       {/* Saved workspaces stay listed even when a refresh fails. */}
       {slackInstall || slackInstallations.length ? (
         <SettingsGroup data-testid="messaging-slack">
@@ -318,7 +471,7 @@ export function MessagingSettingsPanel() {
               label={
                 <>
                   <p>{providerLabel("slack")}</p>
-                  <p className="mt-0.5 text-[13px] text-muted-foreground">
+                  <p className="mt-0.5 text-body-sm text-muted-foreground">
                     <Trans>Chat with your bot from Slack.</Trans>
                   </p>
                 </>
@@ -339,7 +492,7 @@ export function MessagingSettingsPanel() {
                 label={
                   <>
                     <p>{providerLabel("slack")}</p>
-                    <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    <p className="mt-0.5 text-body-sm text-muted-foreground">
                       {[
                         installation.workspaceName,
                         installation.botName ?? botName(installation.botId),
@@ -381,7 +534,7 @@ export function MessagingSettingsPanel() {
             <button
               type="button"
               onClick={installSlack}
-              className="flex w-full items-center gap-2 rounded-b-xl px-4 py-3 text-start text-[14px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="flex w-full items-center gap-2 rounded-b-xl px-4 py-3 text-start text-body text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <PlusIcon className="size-4" aria-hidden />
               <Trans>Add workspace</Trans>
@@ -435,7 +588,7 @@ export function MessagingSettingsPanel() {
           </div>
         ) : null}
         {linkCode ? (
-          <p className="mt-3 text-[14px] text-foreground/75" data-testid="messaging-link-code">
+          <p className="mt-3 text-body text-foreground/75" data-testid="messaging-link-code">
             {linkAddress ? (
               <Trans>
                 Send <span className="font-mono text-foreground">{linkCode}</span> to{" "}
@@ -450,13 +603,18 @@ export function MessagingSettingsPanel() {
             )}
           </p>
         ) : null}
+        {linkCode && linkRequest?.shared ? (
+          <p className="mt-1 text-body-sm text-muted-foreground">
+            <Trans>Everyone in this bot's space can read the chats it gets from {linkApp}.</Trans>
+          </p>
+        ) : null}
       </section>
 
       {hasConversations ? (
         <section>
-          <h3 className="text-[13px] font-medium text-muted-foreground">
+          <SectionHeading variant="label">
             <Trans>Conversations</Trans>
-          </h3>
+          </SectionHeading>
           <ul className="mt-3 space-y-3">
             {joinedChannels.map((channel) => (
               <Row
@@ -509,7 +667,7 @@ export function MessagingSettingsPanel() {
               const bot = bots.find((candidate) => candidate.id === conversation.botId);
               const open = settingsConversationId === conversation.id;
               return (
-                <li key={conversation.id} className="text-[14px] text-foreground/75">
+                <li key={conversation.id} className="text-body text-foreground/75">
                   <div className="flex items-center justify-between gap-3">
                     <span className="min-w-0 truncate">
                       {conversation.displayName || t`External conversation`}

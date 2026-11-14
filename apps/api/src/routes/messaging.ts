@@ -1,16 +1,18 @@
 import { ORPCError } from "@orpc/server";
 import { messagingDeliverJob } from "@rakazo/adapter-kit";
+import { MessagingConfigurationDenied, MessagingConfigurationRejected } from "@rakazo/adapters";
 import { displayName } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
   crossSpaceCommunicationAllowed,
   formatMessagingLinkCode,
   issueMessagingLinkCode,
+  isUniqueViolation,
   runAsSystem,
+  spaceIsShared,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { RouterContext } from "./context.js";
-import { isUniqueViolation } from "./shared.js";
 
 export function messagingRoutes(ctx: RouterContext) {
   const { deps, authed } = ctx;
@@ -30,10 +32,39 @@ export function messagingRoutes(ctx: RouterContext) {
           if (!deps.messagingInstallations) throw new ORPCError("BAD_REQUEST");
           return { url: await deps.messagingInstallations.start(context.actor, input.botId) };
         }),
+        complete: authed.messaging.installations.complete.handler(async ({ context, input }) => {
+          if (!deps.messagingInstallations) throw new ORPCError("BAD_REQUEST");
+          try {
+            await deps.messagingInstallations.complete(context.actor, input.state, input.code);
+          } catch {
+            throw new ORPCError("BAD_REQUEST");
+          }
+          return { ok: true as const };
+        }),
         remove: authed.messaging.installations.remove.handler(async ({ context, input }) => {
           if (!deps.messagingInstallations) throw new ORPCError("BAD_REQUEST");
           await deps.messagingInstallations.remove(context.actor, input.id);
           return { ok: true as const };
+        }),
+      },
+      configuration: {
+        list: authed.messaging.configuration.list.handler(async ({ context }) => {
+          if (!deps.messagingConfiguration) throw new ORPCError("BAD_REQUEST");
+          return deps.messagingConfiguration
+            .list(context.actor.userId)
+            .catch(messagingConfigurationError);
+        }),
+        set: authed.messaging.configuration.set.handler(async ({ context, input }) => {
+          if (!deps.messagingConfiguration) throw new ORPCError("BAD_REQUEST");
+          return deps.messagingConfiguration
+            .set(context.actor.userId, input.connectionId, input.credential)
+            .catch(messagingConfigurationError);
+        }),
+        remove: authed.messaging.configuration.remove.handler(async ({ context, input }) => {
+          if (!deps.messagingConfiguration) throw new ORPCError("BAD_REQUEST");
+          return deps.messagingConfiguration
+            .remove(context.actor.userId, input.connectionId)
+            .catch(messagingConfigurationError);
         }),
       },
       status: authed.messaging.status.handler(async ({ context }) => {
@@ -87,9 +118,11 @@ export function messagingRoutes(ctx: RouterContext) {
             spaceId: bot.spaceId,
             botId: bot.id,
           });
+          const shared = await spaceIsShared(deps.prisma, bot.spaceId);
           return {
             code: formatMessagingLinkCode(issued.code),
             expiresAt: issued.expiresAt.toISOString(),
+            ...(shared ? { shared } : {}),
           };
         }),
       },
@@ -455,4 +488,14 @@ async function messagingConnectionDto(
     status: connection.status as "pending" | "approved" | "declined" | "revoked",
     incoming,
   };
+}
+
+function messagingConfigurationError(error: unknown): never {
+  if (error instanceof MessagingConfigurationDenied) throw new ORPCError("FORBIDDEN");
+  if (error instanceof MessagingConfigurationRejected) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "That messaging connection cannot be changed",
+    });
+  }
+  throw error;
 }

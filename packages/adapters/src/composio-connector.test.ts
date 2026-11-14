@@ -6,28 +6,36 @@ import { composioToolkitDirectory } from "./composio-catalog-cache.js";
 import {
   asConnectorTools,
   ComposioConnector,
-  ConnectorRegistry,
   collectLogIds,
-  collectPages,
   composioResultError,
   executeSessionKey,
   expandComposioMultiExecute,
-  filterCatalog,
   isComposioEnabled,
   isNoAuthToolkitError,
+  isNoManagedAuthError,
   mergeConnectedPlugins,
   needsLivePluginSync,
   pickReusableConnection,
   planLiveConnectionSync,
-  sanitizeComposioError,
+  sanitizeIntegrationError,
 } from "./composio-connector.js";
+import { collectPages, filterCatalog } from "./connector-catalog.js";
+import { ConnectorRegistry } from "./connector-registry.js";
 import { DestinationEmulator } from "./destination-emulator.js";
 
 const composioSdkState = vi.hoisted(() => ({
   created: [] as Array<{ userId: string; config: Record<string, unknown> }>,
   directoryFails: false,
-  executions: [] as Array<{ tool: string; args: Record<string, unknown> }>,
-  executeResult: null as null | { data: Record<string, unknown>; error: string | null },
+  executions: [] as Array<{
+    tool: string;
+    args: Record<string, unknown>;
+    options?: { account?: string };
+  }>,
+  executeResult: null as null | {
+    data: Record<string, unknown>;
+    error: string | null;
+    resultType?: "completed" | "failed" | "blocked";
+  },
   failTools: null as null | string[],
   logIds: null as null | string[],
   connectedAccounts: {
@@ -48,6 +56,7 @@ const composioSdkState = vi.hoisted(() => ({
       execute?: (
         tool: string,
         args: Record<string, unknown>,
+        options?: { account?: string },
       ) => Promise<{
         data: Record<string, unknown>;
         error: string | null;
@@ -118,13 +127,19 @@ vi.mock("@composio/core", () => ({
                 },
               ]
             : [],
-        execute: async (tool: string, args: Record<string, unknown>) => {
-          composioSdkState.executions.push({ tool, args });
+        execute: async (
+          tool: string,
+          args: Record<string, unknown>,
+          options?: { account?: string },
+        ) => {
+          composioSdkState.executions.push(options ? { tool, args, options } : { tool, args });
           const failed = composioSdkState.failTools?.includes(tool) ?? false;
+          const result = failed
+            ? { data: { ok: false }, error: "listing failed" }
+            : (composioSdkState.executeResult ?? { data: { ok: true }, error: null });
           return {
-            ...(failed
-              ? { data: { ok: false }, error: "listing failed" }
-              : (composioSdkState.executeResult ?? { data: { ok: true }, error: null })),
+            resultType: result.error ? "failed" : "completed",
+            ...result,
             logId: composioSdkState.logIds?.shift() ?? "log-github",
           };
         },
@@ -157,6 +172,32 @@ describe("composio tool mapping", () => {
       "HACKERNEWS_GET_USER",
     ]);
     expect(tools[1]?.inputSchema).toMatchObject({ properties: { username: { type: "string" } } });
+  });
+
+  it("labels session tools without the vendor name", () => {
+    const tools = asConnectorTools([
+      { slug: "COMPOSIO_SEARCH_TOOLS" },
+      { slug: "COMPOSIO_WAIT_FOR_CONNECTIONS" },
+      { slug: "HACKERNEWS_GET_USER" },
+    ]);
+    expect(tools.map((tool) => tool.label)).toEqual([
+      "Searching your apps",
+      "Wait for connections",
+      undefined,
+    ]);
+  });
+
+  it("marks the multi-execute tool as a batch of the actions it names", () => {
+    const tools = asConnectorTools([
+      { slug: "COMPOSIO_MULTI_EXECUTE_TOOL" },
+      { type: "function", function: { name: "COMPOSIO_MULTI_EXECUTE_TOOL" } },
+      { slug: "COMPOSIO_SEARCH_TOOLS" },
+    ]);
+    expect(tools.map((tool) => tool.batch)).toEqual([
+      { items: "tools", action: "tool_slug", arguments: "arguments" },
+      { items: "tools", action: "tool_slug", arguments: "arguments" },
+      undefined,
+    ]);
   });
 
   it("retains provider route metadata independently of the tool name", async () => {
@@ -221,25 +262,27 @@ describe("composio tool mapping", () => {
   });
 
   it("redacts project keys from errors", () => {
-    expect(sanitizeComposioError("denied ak_secretvaluehere")).toContain("[redacted]");
-    expect(sanitizeComposioError("denied ak_secretvaluehere")).not.toContain("ak_secret");
-    expect(sanitizeComposioError("COMPOSIO_API_KEY=ak_shouldnotleak")).not.toContain(
+    expect(sanitizeIntegrationError("denied ak_secretvaluehere")).toContain("[redacted]");
+    expect(sanitizeIntegrationError("denied ak_secretvaluehere")).not.toContain("ak_secret");
+    expect(sanitizeIntegrationError("COMPOSIO_API_KEY=ak_shouldnotleak")).not.toContain(
       "ak_shouldnotleak",
     );
-    expect(sanitizeComposioError('COMPOSIO_API_KEY="alpha beta"')).toBe(
+    expect(sanitizeIntegrationError('COMPOSIO_API_KEY="alpha beta"')).toBe(
       'COMPOSIO_API_KEY="[redacted]"',
     );
-    expect(sanitizeComposioError("COMPOSIO_API_KEY plain-secret-value")).toBe(
+    expect(sanitizeIntegrationError("COMPOSIO_API_KEY plain-secret-value")).toBe(
       "COMPOSIO_API_KEY=[redacted]",
     );
-    expect(sanitizeComposioError('COMPOSIO_API_KEY "alpha beta"')).toBe(
+    expect(sanitizeIntegrationError('COMPOSIO_API_KEY "alpha beta"')).toBe(
       "COMPOSIO_API_KEY=[redacted]",
     );
-    expect(sanitizeComposioError("denied password=p@ss;word")).toBe('denied password="[redacted]"');
-    expect(sanitizeComposioError("denied password=bad;status=failed")).toBe(
+    expect(sanitizeIntegrationError("denied password=p@ss;word")).toBe(
+      'denied password="[redacted]"',
+    );
+    expect(sanitizeIntegrationError("denied password=bad;status=failed")).toBe(
       'denied password="[redacted]";status=failed',
     );
-    expect(sanitizeComposioError('denied password="p\\"secret"')).toBe(
+    expect(sanitizeIntegrationError('denied password="p\\"secret"')).toBe(
       'denied password="[redacted]"',
     );
   });
@@ -314,6 +357,15 @@ describe("composio tool mapping", () => {
       ),
     ).toBe(true);
     expect(isNoAuthToolkitError(new Error("redirect required"))).toBe(false);
+  });
+
+  it("recognizes toolkits Composio has no managed auth for", () => {
+    const noManagedAuth = new Error(
+      '400 {"error":{"message":"Composio does not manage auth for toolkit twitter and no auth config without required fields is available.","code":4308,"slug":"ToolRouterV2_NoManagedAuth","status":400}}',
+    );
+    expect(isNoManagedAuthError(noManagedAuth)).toBe(true);
+    expect(isNoAuthToolkitError(noManagedAuth)).toBe(false);
+    expect(isNoManagedAuthError(new Error("redirect required"))).toBe(false);
   });
 
   it("collects nested Composio log ids", () => {
@@ -663,6 +715,70 @@ describe("composio tool mapping", () => {
     },
   );
 
+  it.each([
+    { label: "an unpinned account", account: "ca-other", executed: [] },
+    {
+      label: "a pinned account",
+      account: "ca-work",
+      executed: [
+        {
+          tool: "DROPBOX_LIST_FILES_IN_FOLDER",
+          args: { path: "/Invoices" },
+          options: { account: "ca-work" },
+        },
+      ],
+    },
+  ])("runs a nested Dropbox listing only on $label", async ({ account, executed }) => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const restore = stubActiveAccounts(["ca-work"]);
+
+    const events: ConnectorEvent[] = [];
+    try {
+      const connector = new ComposioConnector();
+      for await (const event of connector.execute(
+        {
+          tool: "COMPOSIO_MULTI_EXECUTE_TOOL",
+          args: {
+            tools: [
+              {
+                tool_slug: "DROPBOX_LIST_FILES_IN_FOLDER",
+                arguments: { path: "/Invoices" },
+                account,
+              },
+            ],
+          },
+          executionId: "composio-dropbox-account",
+        },
+        {
+          operationId: "composio-dropbox-account",
+          traceId: "composio-dropbox-account",
+          spaceId: "workspace",
+          userId: "user-1",
+          signal: new AbortController().signal,
+          connectedConnections: [
+            {
+              id: "connection-dropbox",
+              connectorId: "composio",
+              externalId: "dropbox",
+              displayName: "Dropbox",
+              providerRef: "ca-work",
+            },
+          ],
+        },
+      )) {
+        events.push(event);
+      }
+    } finally {
+      restore();
+    }
+
+    expect(composioSdkState.executions).toEqual(executed);
+    expect(events.at(-1)?.type).toBe(executed.length > 0 ? "result" : "error");
+  });
+
   it("keeps mixed multi-execute calls in their original order", () => {
     const createFolder = { tool_slug: "DROPBOX_CREATE_FOLDER", arguments: { path: "/Invoices" } };
     const listFolder = {
@@ -866,6 +982,43 @@ describe("composio tool mapping", () => {
     ]);
   });
 
+  it("reports a call the provider marked failed even when its error text is empty", async () => {
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    composioSdkState.executeResult = { data: {}, error: null, resultType: "failed" };
+
+    const connector = new ComposioConnector();
+    const context: AdapterContext = {
+      operationId: "composio-failed-without-error",
+      traceId: "composio-failed-without-error",
+      spaceId: "workspace",
+      userId: "user-1",
+      signal: new AbortController().signal,
+      connectedConnections: [
+        {
+          id: "connection-github",
+          connectorId: "composio",
+          externalId: "github",
+          displayName: "GitHub",
+        },
+      ],
+    };
+
+    const events: ConnectorEvent[] = [];
+    try {
+      for await (const event of connector.execute(
+        { tool: "GITHUB_GET_REPOS", args: {}, executionId: "composio-failed-without-error" },
+        context,
+      )) {
+        events.push(event);
+      }
+    } finally {
+      composioSdkState.executeResult = null;
+    }
+    expect(events).toEqual([{ type: "error", message: "GITHUB_GET_REPOS failed" }]);
+  });
+
   it("redacts credential values in successful tool results without dropping the payload", async () => {
     composioSdkState.created.length = 0;
     composioSdkState.executions.length = 0;
@@ -1032,7 +1185,12 @@ describe("composio tool mapping", () => {
   it("resolves authorization-request ids before deleting on revoke", async () => {
     const deleted: string[] = [];
     const waited: string[] = [];
-    composioSdkState.connectedAccounts.list = async () => ({ items: [] });
+    composioSdkState.connectedAccounts.list = async (query) => ({
+      items:
+        Array.isArray(query?.toolkitSlugs) && query.toolkitSlugs.includes("req-oauth-1")
+          ? []
+          : [{ id: "ca-from-req-oauth-1" }],
+    });
     composioSdkState.connectedAccounts.waitForConnection = async (id: string) => {
       waited.push(id);
       return { id: `ca-from-${id}` };
@@ -1116,7 +1274,7 @@ describe("composio tool mapping", () => {
     ).toEqual({ connectIds: ["row-gh"], revokeIds: [] });
   });
 
-  it("only fetches live Composio slugs when a Rakazo row is still pending or errored", () => {
+  it("only fetches live Composio slugs when a VNBot row is still pending or errored", () => {
     expect(needsLivePluginSync([{ status: "connected" }, { status: "revoked" }])).toBe(false);
     expect(needsLivePluginSync([{ status: "pending" }])).toBe(true);
     expect(needsLivePluginSync([{ status: "error" }])).toBe(true);
@@ -1131,7 +1289,7 @@ describe("composio tool mapping", () => {
     ).toEqual([{ provider: "github", displayName: "GitHub" }]);
   });
 
-  it("plans DB sync when Composio is connected but Rakazo is still pending", () => {
+  it("plans DB sync when Composio is connected but VNBot is still pending", () => {
     expect(
       planLiveConnectionSync(
         [

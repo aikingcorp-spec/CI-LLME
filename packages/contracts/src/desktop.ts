@@ -43,6 +43,39 @@ export interface RakazoDesktopDevice {
   allowed: boolean;
 }
 
+/**
+ * What the system recognizer reports for one listening session, shaped after Web Speech:
+ * `result` carries the session's whole text so far, `error` a Web Speech error code,
+ * and `end` always comes last.
+ */
+export type RakazoDesktopSpeechEvent =
+  | { session: number; type: "result"; text: string }
+  | { session: number; type: "error"; error: string }
+  | { session: number; type: "end" };
+
+/** App menu items the page carries out; each matches a shortcut the page also handles itself. */
+export const DESKTOP_MENU_COMMANDS = [
+  "new",
+  "command-menu",
+  "search",
+  "toggle-sidebar",
+  "back",
+  "forward",
+  "next-bot",
+  "previous-bot",
+  "new-group",
+  "integrations",
+  "chat-panel",
+  "shortcuts",
+  "find",
+] as const;
+
+export type DesktopMenuCommand = (typeof DESKTOP_MENU_COMMANDS)[number];
+
+export function isDesktopMenuCommand(value: unknown): value is DesktopMenuCommand {
+  return (DESKTOP_MENU_COMMANDS as readonly unknown[]).includes(value);
+}
+
 export interface RakazoDesktop {
   /** Optional for compatibility with older desktop releases. */
   badge?: {
@@ -62,12 +95,49 @@ export interface RakazoDesktop {
     /** Turning it on asks with a native prompt the page cannot answer. */
     setAllowed: (allowed: boolean) => Promise<RakazoDesktopDevice | null>;
   };
+  /** Absent on older desktop releases, whose menus carry no app commands. */
+  menu?: {
+    onCommand: (listener: (command: DesktopMenuCommand) => void) => () => void;
+  };
+  /** False for local builds, whose errors must not reach production reporting. Absent on older releases. */
+  monitoring?: {
+    enabled: () => Promise<boolean>;
+  };
+  /** Optional for compatibility with older desktop releases. */
+  locale?: {
+    /** The language the page shows, so the app's own menus, dialogs and setup window follow it. */
+    set: (locale: string) => Promise<void>;
+  };
   /** Optional for compatibility with older desktop releases. */
   passkeys?: {
     /** Relying parties this build is associated with for system passkeys (macOS); others fail. */
     rpIds: () => Promise<string[]>;
   };
+  /** Absent on older desktop releases. */
+  server?: {
+    /** Opens the desktop setup window to pick another Rakazo server. */
+    change: () => Promise<void>;
+  };
+  /** Absent on older desktop releases, which have no Settings… menu item. */
+  settings?: {
+    /** The app menu's Settings… item; the OS claims Cmd+, before any page keydown can. */
+    onOpen: (listener: () => void) => () => void;
+  };
+  /**
+   * The operating system's own speech recognition, so dictation needs no provider key.
+   * Absent on platforms without one and on older desktop releases.
+   */
+  speech?: {
+    /** Listens in `language` until stopped. False when refused; no events follow then. */
+    start: (language: string, session: number) => Promise<boolean>;
+    /** Ends the utterance: its final text and `end` still arrive. */
+    stop: (session: number) => Promise<void>;
+    abort: (session: number) => Promise<void>;
+    onEvent: (listener: (event: RakazoDesktopSpeechEvent) => void) => () => void;
+  };
   platform: string;
+  /** Absent on older frameless releases, which still need in-app controls. */
+  nativeWindowFrame?: boolean;
   window: {
     close: () => Promise<void>;
     minimize: () => Promise<void>;
@@ -99,19 +169,21 @@ export type DesktopInstanceMode = "new" | "existing";
 export interface DesktopSetup {
   mode: DesktopInstanceMode;
   serverUrl: string;
+  /** Sent with every request to an existing server, such as an access proxy's credentials. */
+  headers?: Record<string, string>;
 }
 
 export interface DesktopSetupState {
   defaultLocalUrl: string;
+  /** A clean installation prepares its local instance without asking for a server choice. */
+  firstRun?: boolean;
   /** Hosted Rakazo origin, saved as an `existing` server when chosen. */
   cloudUrl: string;
   saved: DesktopSetup | null;
-  /** Who already passed the sign-in code on this computer; null shows the email step first. */
-  verifiedEmail: string | null;
-  /** Existing pre-rename profile, shown only until its notice is dismissed. */
-  legacyProfilePath?: string | null;
   /** Present when a saved or newly selected server could not be reopened. */
   error?: string;
+  /** The first-run window asks for an email code before the computer choice. */
+  emailGate?: boolean;
 }
 
 export interface DesktopReachability {
@@ -149,8 +221,6 @@ export interface DesktopLocalStackState {
   phase: DesktopLocalStackPhase;
   /** One actionable sentence; null while the stack is progressing normally. */
   message: string | null;
-  /** Safe, serializable reason for a native start failure, when available. */
-  failure?: { code: string; messageVi: string };
   /** Bounded tail of docker output for the current attempt. */
   output: string[];
   /** Bytes pulled per image layer in the current attempt; the sum is the only progress Docker reports. */
@@ -168,19 +238,20 @@ export type DesktopSetupLink = "docker-desktop" | "orbstack" | "docker-engine";
 export interface RakazoSetup {
   /** Used only to reserve space for native window controls in the local setup UI. */
   platform: string;
+  /** The page's language and its translations, keyed by the English text; empty for English. */
+  locale: { lang: string; dir: "ltr" | "rtl"; messages: Readonly<Record<string, string>> };
   state: () => Promise<DesktopSetupState>;
-  dismissLegacyProfileNotice: () => Promise<void>;
-  test: (url: string) => Promise<DesktopReachability>;
+  test: (url: string, headers?: Record<string, string>) => Promise<DesktopReachability>;
   save: (setup: DesktopSetup) => Promise<{ ok: boolean; error?: string }>;
-  quit: () => Promise<void>;
-  /** Email-code sign-in. The main process calls the account server; the error text is localized. */
-  account: {
-    sendCode: (email: string) => Promise<{ ok: boolean; error?: string }>;
-    verifyCode: (
-      email: string,
-      code: string,
-    ) => Promise<{ ok: boolean; email?: string; error?: string; kind?: string }>;
+  /**
+   * First-run mailbox proof. The window sends the address and the code; it never
+   * learns the issuer URL or receives a session token.
+   */
+  email: {
+    send: (email: string) => Promise<{ ok: boolean; error?: string }>;
+    stage: (email: string, code: string) => Promise<{ ok: boolean; error?: string }>;
   };
+  quit: () => Promise<void>;
   /** Opens one of the Docker install pages in the system browser. */
   openLink: (link: DesktopSetupLink) => Promise<void>;
   /** The Docker Compose stack this app installs and runs for mode `new`. */

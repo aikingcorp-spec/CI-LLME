@@ -1,57 +1,31 @@
-import { matchUiLocale } from "@rakazo/core";
+import { AppLocaleSchema } from "@rakazo/contracts";
+import { APP_LOCALE_LABELS, matchUiLocale } from "@rakazo/core";
+import { readableLocalStorage } from "./stored-preference";
 
-export const UI_LOCALES = [
-  "vi",
-  "en",
-  "de",
-  "ko",
-  "tr",
-  "hi",
-  "pt-BR",
-  "zh-CN",
-  "zh-TW",
-  "es",
-  "ru",
-  "fr",
-  "he",
-  "nl",
-  "ja",
-] as const;
-
-export const PICKER_LOCALES = ["vi", "en"] as const;
+export const UI_LOCALES = AppLocaleSchema.options;
 
 export type UiLocale = (typeof UI_LOCALES)[number];
 
-export const UI_LOCALE_STORAGE_KEY = "rakazo.uiLocale";
+/** Languages a person can choose. Catalogs for other tags stay so a saved choice still resolves. */
+const OFFERED_UI_LOCALES = ["vi", "en"] as const satisfies readonly UiLocale[];
 
-export const UI_LOCALE_LABELS: Record<UiLocale, string> = {
-  vi: "Tiếng Việt",
-  en: "English",
-  de: "Deutsch",
-  ko: "한국어",
-  tr: "Türkçe",
-  hi: "हिन्दी",
-  "pt-BR": "Português (Brasil)",
-  "zh-CN": "简体中文",
-  "zh-TW": "繁體中文",
-  es: "Español",
-  ru: "Русский",
-  fr: "Français",
-  he: "עברית",
-  nl: "Nederlands",
-  ja: "日本語",
-};
+/** The designed picker. Other catalogs stay so a saved tag still has a name. */
+export const PICKER_LOCALES = OFFERED_UI_LOCALES;
+
+export const UI_LOCALE_LABELS = APP_LOCALE_LABELS;
+
+export function offeredUiLocales(current: UiLocale | null | undefined): UiLocale[] {
+  if (current && !OFFERED_UI_LOCALES.includes(current as (typeof OFFERED_UI_LOCALES)[number])) {
+    return [current, ...OFFERED_UI_LOCALES];
+  }
+  return [...OFFERED_UI_LOCALES];
+}
+
+export const UI_LOCALE_STORAGE_KEY = "rakazo.uiLocale";
 
 /** Normalize BCP-47 tags (`de-DE`, `ko-KR`, `pt-BR`, `zh-CN`, `es-ES`) to a supported UI locale, else `en`. */
 export function normalizeUiLocale(raw: string | null | undefined): UiLocale {
   return matchUiLocale(raw, UI_LOCALES);
-}
-
-/** Saved catalogs the web UI no longer offers; they move to Vietnamese. */
-const RETIRED_UI_LOCALES: readonly UiLocale[] = ["ja", "ko", "zh-CN", "zh-TW"];
-
-function migrateRetiredLocale(locale: UiLocale): UiLocale {
-  return RETIRED_UI_LOCALES.includes(locale) ? "vi" : locale;
 }
 
 function readStoredLocale(storage: Pick<Storage, "getItem"> | null | undefined): string | null {
@@ -71,22 +45,22 @@ function readEnvDefault(env: { VITE_DEFAULT_UI_LOCALE?: string } | undefined): s
 export type ResolveUiLocaleOptions = {
   stored?: string | null;
   envDefault?: string | null;
+  navigatorLanguage?: string | null;
   storage?: Pick<Storage, "getItem"> | null;
   env?: { VITE_DEFAULT_UI_LOCALE?: string };
+  navigator?: Pick<Navigator, "language" | "languages"> | null;
 };
 
 /**
- * Order: saved choice (`localStorage`) → valid `VITE_DEFAULT_UI_LOCALE` → Vietnamese.
- * Browser language never overrides the default.
+ * Order: saved choice → `VITE_DEFAULT_UI_LOCALE` → Vietnamese.
+ * A new install does not follow the browser language.
  */
 export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale {
   const stored =
     options.stored !== undefined
       ? options.stored
-      : readStoredLocale(
-          options.storage ?? (typeof localStorage !== "undefined" ? localStorage : null),
-        );
-  if (stored) return migrateRetiredLocale(normalizeUiLocale(stored));
+      : readStoredLocale(options.storage ?? readableLocalStorage());
+  if (stored) return normalizeUiLocale(stored);
 
   const envDefault =
     options.envDefault !== undefined
@@ -99,21 +73,14 @@ export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale 
                 }
               : undefined),
         );
-  if (envDefault) {
-    const locale = normalizeUiLocale(envDefault);
-    // The shared normalizer also returns English for unsupported values.
-    const language = envDefault.trim().toLowerCase().split(/[-_]/)[0];
-    if (locale !== "en" || language === "en") return locale;
-  }
+  if (envDefault) return normalizeUiLocale(envDefault);
 
   return "vi";
 }
 
 export function persistUiLocale(
   locale: UiLocale,
-  storage: Pick<Storage, "setItem"> | null = typeof localStorage !== "undefined"
-    ? localStorage
-    : null,
+  storage: Pick<Storage, "setItem"> | null = readableLocalStorage(),
 ): void {
   if (!storage) return;
   try {
@@ -121,16 +88,4 @@ export function persistUiLocale(
   } catch {
     // Ignore quota / private-mode failures; in-memory locale still applies.
   }
-}
-
-/** Rewrite a saved retired locale (`ja`, `ko`, `zh-CN`, `zh-TW`, or a raw tag like `ja-JP`) to `vi`. */
-export function migrateStoredUiLocale(
-  storage: Pick<Storage, "getItem" | "setItem"> | null = typeof localStorage !== "undefined"
-    ? localStorage
-    : null,
-): void {
-  const stored = readStoredLocale(storage);
-  if (!stored) return;
-  const normalized = normalizeUiLocale(stored);
-  if (migrateRetiredLocale(normalized) !== normalized) persistUiLocale("vi", storage);
 }

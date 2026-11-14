@@ -22,6 +22,9 @@ export const authCapabilitiesSchema = z.object({
 });
 export type AuthCapabilities = z.infer<typeof authCapabilitiesSchema>;
 
+/** Admission denied by the backend's email invite list. */
+export const EMAIL_NOT_INVITED = "EMAIL_NOT_INVITED";
+
 export const accountSecuritySchema = z.object({
   hasPassword: z.boolean(),
   // Older servers omit this field; clients treat omission as enabled.
@@ -48,28 +51,6 @@ export const legacyAccountSecurity: AccountSecurity = {
   emailDeletion: false,
   sso: null,
 };
-
-/**
- * HTTP 403 from the auth server when the invite list is on and the address is
- * not in it. The body is `{ "code": "EMAIL_NOT_INVITED", "message": "..." }`.
- * Clients map the code; the English message is not the UI string.
- */
-export const EMAIL_NOT_INVITED = "EMAIL_NOT_INVITED";
-
-/**
- * The SSO callback ends at `<web origin>/sign-in?error=ACCOUNT_NOT_LINKED` when
- * the provider email already belongs to another account. SSO never links by
- * itself; the person signs in with an email code and links SSO in Settings.
- */
-export const ACCOUNT_NOT_LINKED = "ACCOUNT_NOT_LINKED";
-
-/** Client copy for auth error codes that have no server message. */
-export const AUTH_ERROR_MESSAGES = {
-  ACCOUNT_NOT_LINKED: {
-    vi: "Email này đã có tài khoản. Hãy đăng nhập bằng mã email rồi liên kết SSO trong Cài đặt.",
-    en: "This email already has an account. Sign in with an email code, then link SSO in Settings.",
-  },
-} as const;
 
 /**
  * The RPC error code for a sensitive action the session must confirm its
@@ -102,6 +83,3 @@ export async function runWithIdentityConfirmation<T>(
   }
   return action();
 }
-
-/** What the desktop app sends to open a session on this computer's node. */
-export const localNodeSessionBody = z.object({ email: z.string().max(254) });

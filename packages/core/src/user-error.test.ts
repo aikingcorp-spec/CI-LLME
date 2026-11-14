@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   authErrorMessage,
   credentialIssue,
+  errorHelpUrl,
   isAbandonedRequest,
   isConnectionFailure,
   isNetworkFailure,
@@ -110,6 +111,8 @@ describe("userErrorMessage", () => {
 
   it("passes human messages through and replaces technical ones", () => {
     expect(userErrorMessage(new Error("Bot not found"), copy)).toBe("Bot not found");
+    expect(userErrorMessage(new Error("Internal server error"), copy)).toBe(copy.fallback);
+    expect(userErrorMessage("Internal server error", copy)).toBe(copy.fallback);
     expect(userErrorMessage(new Error("rpc bots/list failed"), copy)).toBe(copy.fallback);
     expect(userErrorMessage(new Error("Input validation failed"), copy)).toBe(copy.fallback);
     expect(userErrorMessage(new Error("  "), copy)).toBe(copy.fallback);
@@ -198,5 +201,23 @@ describe("isConnectionFailure", () => {
     );
     expect(isAbandonedRequest(new Error("boom"))).toBe(false);
     expect(isAbandonedRequest(null)).toBe(false);
+  });
+});
+
+describe("errorHelpUrl", () => {
+  it("opens the VNBot help index for a sign-in mismatch with no chapter of its own", () => {
+    expect(errorHelpUrl({ code: "MCP_OAUTH_REDIRECT_MISMATCH", message: "Localized copy" })).toBe(
+      "https://vnbot.run/help/",
+    );
+  });
+
+  it.each([
+    null,
+    "MCP_OAUTH_REDIRECT_MISMATCH",
+    { code: "BAD_REQUEST" },
+    { code: "toString" },
+    { code: "UNKNOWN", helpUrl: "https://untrusted.example.test" },
+  ])("does not invent a guide or accept an external link: %j", (error) => {
+    expect(errorHelpUrl(error)).toBeUndefined();
   });
 });

@@ -1,16 +1,27 @@
 import { unlink, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { getHeapStatistics } from "node:v8";
 import { getLogger, logSinkHealth } from "@rakazo/logging";
 
-export const WORKER_HEALTH_FILE = "/tmp/rakazo-worker-health.json";
+const DEFAULT_WORKER_HEALTH_FILE = "/tmp/rakazo-worker-health.json";
+
+/** Absolute override keeps a native profile heartbeat off the shared temporary directory. */
+export function resolveWorkerHealthFile(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = env.WORKER_HEALTH_FILE;
+  return configured && path.isAbsolute(configured) ? configured : DEFAULT_WORKER_HEALTH_FILE;
+}
+
+export const WORKER_HEALTH_FILE = DEFAULT_WORKER_HEALTH_FILE;
 
 /** A separate Docker process can detect a dead or blocked worker even when it cannot log. */
 export function startWorkerHealth(lastReconciled: () => number) {
   let stopped = false;
   let writing: Promise<void> | undefined;
+  const healthFile = resolveWorkerHealthFile();
   const publish = () => {
     if (writing || stopped) return;
     writing = writeFile(
-      WORKER_HEALTH_FILE,
+      healthFile,
       JSON.stringify({
         heartbeat: Date.now(),
         reconciled: lastReconciled(),
@@ -32,8 +43,36 @@ export function startWorkerHealth(lastReconciled: () => number) {
     stopped = true;
     clearInterval(timer);
     await writing;
-    await unlink(WORKER_HEALTH_FILE).catch(() => undefined);
+    await unlink(healthFile).catch(() => undefined);
   };
+}
+
+const STALL_CHECK_MS = 1_000;
+const STALL_REPORT_MS = 5_000;
+
+/**
+ * A blocked event loop fires every pending checkout and transaction timeout at once when it
+ * resumes. Heap figures tell garbage collection near the heap limit apart from synchronous work.
+ */
+export function watchEventLoopStalls(now: () => number = Date.now): () => void {
+  let last = now();
+  const timer = setInterval(() => {
+    const at = now();
+    const stallMs = at - last - STALL_CHECK_MS;
+    last = at;
+    if (stallMs < STALL_REPORT_MS) return;
+    const heap = getHeapStatistics();
+    const memory = process.memoryUsage();
+    getLogger().warn("worker.event_loop_stalled", {
+      "event_loop.stall_ms": stallMs,
+      "memory.heap_used_bytes": heap.used_heap_size,
+      "memory.heap_limit_bytes": heap.heap_size_limit,
+      "memory.external_bytes": memory.external,
+      "memory.rss_bytes": memory.rss,
+    });
+  }, STALL_CHECK_MS);
+  timer.unref();
+  return () => clearInterval(timer);
 }
 
 export function workerHealthIsFresh(value: unknown, now = Date.now()): boolean {

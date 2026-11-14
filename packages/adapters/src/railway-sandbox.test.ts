@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { ComputerRef, ProcessEvent } from "@rakazo/adapter-kit";
+import { screenDisplayArgv, shellQuote } from "@rakazo/core/node/desktop-runtime";
 import type { RailwayGraphQLErrorItem, SandboxInfo } from "railway";
 import {
   RailwayGraphQLError,
@@ -746,7 +747,7 @@ describe("Railway computers", () => {
 
   it("satisfies the shared workspace contract through the Railway SDK", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "rakazo-railway-contract-"));
-    const localPath = (filePath: string) => filePath.replace("/home/rakazo", directory);
+    const localPath = (filePath: string) => filePath.replace("/home/aiking", directory);
     sandbox.files.write.mockImplementation(
       async (filePath: string, content: Uint8Array, options?: { mode: number }) => {
         await mkdir(path.dirname(localPath(filePath)), { recursive: true });
@@ -766,13 +767,18 @@ describe("Railway computers", () => {
     );
     sandbox.exec.mockImplementation(async (command: string) => {
       if (
-        command.includes("find . -type f -print0") ||
+        command.includes("find . -regextype") ||
         command.startsWith("'echo'") ||
         command.startsWith("chmod ")
       ) {
         const result = await promisify(execFile)("bash", [
           "-c",
-          command.replaceAll("/home/rakazo", directory),
+          command
+            .replaceAll("/home/aiking", directory)
+            .replaceAll(
+              "find . -regextype posix-extended",
+              process.platform === "darwin" ? "find -E ." : "find . -regextype posix-extended",
+            ),
         ]);
         return { ...result, exitCode: 0 };
       }
@@ -845,10 +851,26 @@ describe("Railway computers", () => {
     expect(sandbox.exec).toHaveBeenCalledWith(
       "'echo' 'a; touch /tmp/unwanted'",
       expect.objectContaining({
-        cwd: "/home/rakazo/notes",
-        env: { FAKE_TOKEN: "fake-secret" },
+        cwd: "/home/aiking/notes",
+        env: expect.objectContaining({
+          FAKE_TOKEN: "fake-secret",
+          UV_CACHE_DIR: "/tmp/vnbot-cache/uv",
+        }),
         timeoutSec: 5,
       }),
+    );
+  });
+
+  it("runs a bot's commands on that bot's own screen", async () => {
+    sandbox.exec.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0, timedOut: false });
+    for await (const _event of provider.execute(
+      computer,
+      { argv: ["ffmpeg", "out.mp4"] },
+      { ...ctx, botId: "becky" },
+    ));
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      screenDisplayArgv(["ffmpeg", "out.mp4"], "becky", 1).map(shellQuote).join(" "),
+      expect.anything(),
     );
   });
 
@@ -918,7 +940,7 @@ describe("Railway computers", () => {
   it("keeps binary data and executable permissions on writes", async () => {
     const content = Uint8Array.from([0, 255, 128]);
     await provider.writeFile(computer, { path: "bin/tool", content, executable: true }, ctx);
-    expect(sandbox.files.write).toHaveBeenCalledWith("/home/rakazo/bin/tool", content, {
+    expect(sandbox.files.write).toHaveBeenCalledWith("/home/aiking/bin/tool", content, {
       mode: 0o700,
     });
   });
@@ -936,18 +958,34 @@ describe("Railway computers", () => {
       const content = Uint8Array.from([0, 255, 128]);
       await writeFile(path.join(directory, "bin/tool"), content, { mode: 0o700 });
       await writeFile(path.join(directory, "note"), "saved", { mode: 0o600 });
+      for (const name of [
+        "project/node_modules/pkg/data",
+        ".cache/uv/data",
+        ".yarn/cache/pkg",
+        "core.123",
+        "run.log",
+      ]) {
+        await mkdir(path.dirname(path.join(directory, name)), { recursive: true });
+        await writeFile(path.join(directory, name), "excluded");
+      }
+
       await symlink("bin", path.join(directory, "linked-bin"));
       await promisify(execFile)("mkfifo", [path.join(directory, "pipe")]);
       sandbox.exec.mockImplementation(async (command: string) => {
         const result = await promisify(execFile)("bash", [
           "-c",
-          command.replaceAll("/home/rakazo", directory),
+          command
+            .replaceAll("/home/aiking", directory)
+            .replaceAll(
+              "find . -regextype posix-extended",
+              process.platform === "darwin" ? "find -E ." : "find . -regextype posix-extended",
+            ),
         ]);
         return { ...result, exitCode: 0, timedOut: false };
       });
       sandbox.files.read.mockImplementation(
         async (filePath: string) =>
-          new Uint8Array(await readFile(filePath.replace("/home/rakazo", directory))),
+          new Uint8Array(await readFile(filePath.replace("/home/aiking", directory))),
       );
       const exported = [];
       for await (const file of provider.exportWorkspace(computer, ctx)) exported.push(file);
@@ -977,7 +1015,7 @@ describe("Railway computers", () => {
       expect(Sandbox.connect).toHaveBeenCalledTimes(1);
       expect(sandbox.exec).toHaveBeenNthCalledWith(
         1,
-        "chmod 700 -- '/home/rakazo'",
+        "chmod 700 -- '/home/aiking'",
         expect.objectContaining({ signal: ctx.signal }),
       );
       const protectOrder = sandbox.exec.mock.invocationCallOrder[0];
@@ -985,14 +1023,14 @@ describe("Railway computers", () => {
       if (protectOrder === undefined || writeOrder === undefined)
         throw new Error("Missing restore operations");
       expect(protectOrder).toBeLessThan(writeOrder);
-      expect(sandbox.files.write).toHaveBeenCalledWith("/home/rakazo/bin/tool", content);
-      expect(sandbox.files.write).toHaveBeenCalledWith("/home/rakazo/note", content);
+      expect(sandbox.files.write).toHaveBeenCalledWith("/home/aiking/bin/tool", content);
+      expect(sandbox.files.write).toHaveBeenCalledWith("/home/aiking/note", content);
       expect(sandbox.exec).toHaveBeenCalledWith(
-        "chmod 700 -- '/home/rakazo/bin/tool'",
+        "chmod 700 -- '/home/aiking/bin/tool'",
         expect.objectContaining({ signal: ctx.signal }),
       );
       expect(sandbox.exec).toHaveBeenCalledWith(
-        "chmod 600 -- '/home/rakazo/note'",
+        "chmod 600 -- '/home/aiking/note'",
         expect.objectContaining({ signal: ctx.signal }),
       );
     } finally {
@@ -1046,7 +1084,7 @@ describe("Railway computers", () => {
       await expect(bounded.exportWorkspace(computer, ctx).next()).rejects.toThrow(
         "exceeds 4 bytes",
       );
-      expect(sandbox.files.read).toHaveBeenCalledWith("/home/rakazo/growing", {
+      expect(sandbox.files.read).toHaveBeenCalledWith("/home/aiking/growing", {
         format: "bytes",
         length: 5,
       });

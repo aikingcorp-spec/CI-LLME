@@ -1,9 +1,9 @@
 import type { SearchHit, SpaceBot, SpaceGroup } from "@rakazo/contracts";
 import { dedupeSearchHits, searchHitListKey } from "@rakazo/core";
-import type { MobileBot, MobileGroup } from "./api";
 import { t } from "./i18n";
 import { filterBots } from "./inbox";
 import type { InboxSpace } from "./inbox-spaces";
+import type { MobileBot, MobileGroup } from "./mobile-types";
 import { previewSnippet } from "./preview";
 import { mobileSearchDestination } from "./search-destination";
 import { searchHitRowPreview } from "./search-list";
@@ -51,7 +51,7 @@ export function searchSheetRows(
       (bot): SearchSheetRow => ({
         key: `bot-${bot.id}`,
         title: bot.name,
-        preview: previewSnippet(bot.preview, 40) || bot.title || t("No messages yet"),
+        preview: previewSnippet(bot.preview, 40) || t("No messages yet"),
         label: t("Bot"),
         bot,
         kind: "conversation",

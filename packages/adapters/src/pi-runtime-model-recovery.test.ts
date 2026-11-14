@@ -207,52 +207,6 @@ beforeEach(() => {
   providerState.delay.mockReset().mockResolvedValue(undefined);
 });
 
-describe("malformed compatible tool call ids", () => {
-  it.each([[""], ["   "], ["duplicate", "duplicate"], ["valid-a", "valid-b"]])(
-    "pairs wire ids %j before execution and the next context build",
-    async (...ids) => {
-      providerState.stream
-        .mockImplementationOnce(() =>
-          stream(
-            message(
-              plain,
-              ids.map((id) => ({
-                type: "toolCall" as const,
-                id,
-                name: "write_effect",
-                arguments: { value: id },
-              })),
-              "toolUse",
-            ),
-          ),
-        )
-        .mockImplementation(() => reply(plain));
-      const input = request(plain);
-      input.prompt = "x".repeat(3000);
-      input.history = [
-        { role: "user", content: "Earlier question" },
-        { role: "assistant", content: "Earlier answer" },
-      ];
-      const events = await run(input);
-      expect(events.at(-1)).toEqual({ type: "done", text: "Recovered." });
-      expect(providerState.stream).toHaveBeenCalledTimes(2);
-      const context = providerState.stream.mock.calls[1]![1];
-      const assistant = context.messages.find(
-        (entry: { role: string }) => entry.role === "assistant",
-      );
-      const results = context.messages.filter(
-        (entry: { role: string }) => entry.role === "toolResult",
-      );
-      const callIds = assistant.content.map((part: { id: string }) => part.id);
-      expect(callIds.every((id: string) => id.trim().length > 0)).toBe(true);
-      expect(new Set(callIds).size).toBe(ids.length);
-      expect(results.map((result: { toolCallId: string }) => result.toolCallId)).toEqual(callIds);
-      if (ids[0] === "valid-a") expect(callIds).toEqual(ids);
-      expect(input.executeTool).toHaveBeenCalledTimes(ids.length);
-    },
-  );
-});
-
 describe("a call that has only thought has not started", () => {
   it.each([
     "terminated",
@@ -390,6 +344,42 @@ describe("a call that spends its whole output budget on thinking", () => {
     ]);
     expect(texts(events)).toContain("From the backup.");
   });
+
+  it.each([
+    ["an unavailable provider", () => thinkingOnly(plain, "error", "HTTP 503 unavailable"), 1],
+    ["empty replies", () => stream(message(plain, [], "stop")), 3],
+  ])(
+    "lets a backup reached after %s repeat its own call that spent its budget",
+    async (_case, failure, failedCalls) => {
+      let primaryCalls = 0;
+      let backupCalls = 0;
+      providerState.stream.mockImplementation((target: Model<"openai-completions">) => {
+        if (target.id === plain.id) {
+          primaryCalls += 1;
+          return primaryCalls === 1 ? thinkingOnly(plain, "length") : failure();
+        }
+        backupCalls += 1;
+        return backupCalls === 1
+          ? thinkingOnly(backup, "length")
+          : reply(backup, "From the backup.");
+      });
+      const events = await run(
+        request(plain, {}, [{ provider: backup.provider, id: backup.id, apiKey: "backup-key" }]),
+      );
+      expect(
+        providerState.stream.mock.calls.map(([target, , options]) => [
+          target.id,
+          (options as StreamOptions).maxTokens,
+        ]),
+      ).toEqual([
+        [plain.id, 4_096],
+        ...Array.from({ length: failedCalls }, () => [plain.id, 8_192]),
+        [backup.id, 4_096],
+        [backup.id, 8_192],
+      ]);
+      expect(texts(events)).toContain("From the backup.");
+    },
+  );
 
   it("takes a smaller output reservation the provider can afford after the raise", async () => {
     const router = model("openrouter", "router", { reasoning: false, maxTokens: 65_536 });

@@ -1,7 +1,6 @@
-import { vnbotBodyColors } from "@rakazo/ui-tokens";
+import { BOT_COLORS } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { contrastRatio } from "./bot-avatar-colors.js";
-import { seededLogoAvatarColor, seededVnbotBodyColor } from "./logo-avatar-traits.js";
+import { seededLogoAvatarColor } from "./logo-avatar-traits.js";
 
 describe("seeded logo colours", () => {
   it("reproduces a valid colour from a persisted identity across calls and reload data", () => {
@@ -14,17 +13,20 @@ describe("seeded logo colours", () => {
     }
   });
 
-  it("provides fresh hues across a fleet with contrast headroom for the shaded face", () => {
-    const colors = Array.from({ length: 1000 }, (_, index) =>
-      seededLogoAvatarColor(`bot-${index}`),
+  it("only picks colours from the shared palette, and all of them across a fleet", () => {
+    const colors = new Set(
+      Array.from({ length: 1000 }, (_, index) => seededLogoAvatarColor(`bot-${index}`)),
     );
-    expect(new Set(colors).size).toBeGreaterThan(990);
-    for (const color of colors) expect(contrastRatio(color, "#141414")).toBeGreaterThanOrEqual(7);
+    expect(colors).toEqual(new Set(BOT_COLORS));
   });
 
   it("preserves a saved colour and leaves seeded motion parameters unchanged", () => {
-    const { color, ...seeded } = logoAvatarTraits("persistent-bot-1");
-    const { color: explicit, ...chosen } = logoAvatarTraits("persistent-bot-1", "#123456");
+    const { color, originalOrange: _orange, ...seeded } = logoAvatarTraits("persistent-bot-1");
+    const {
+      color: explicit,
+      originalOrange: _explicitOrange,
+      ...chosen
+    } = logoAvatarTraits("persistent-bot-1", "#123456");
     expect(color).toBe(seededLogoAvatarColor("persistent-bot-1"));
     expect(explicit).toBe("#123456");
     expect(chosen).toEqual(seeded);
@@ -32,16 +34,6 @@ describe("seeded logo colours", () => {
 });
 
 import { LOGO_AVATAR_LOOP_MS, logoAvatarTraits } from "./logo-avatar-traits.js";
-
-describe("vnbot body colours", () => {
-  it("picks a stable hex from vnbotBodyColors", () => {
-    const hexes = vnbotBodyColors.map((color) => color.hex);
-    const first = seededVnbotBodyColor("persistent-bot-1");
-    expect(hexes).toContain(first);
-    expect(seededVnbotBodyColor("persistent-bot-1")).toBe(first);
-    expect(new Set(hexes).size).toBe(vnbotBodyColors.length);
-  });
-});
 
 describe("stable logo avatar traits", () => {
   it("reproduces colour, phase and timing from the same identity", () => {
@@ -70,10 +62,18 @@ describe("stable logo avatar traits", () => {
   });
 
   it("keeps movement identity when the saved colour changes", () => {
-    const { color: _firstColor, ...first } = logoAvatarTraits("bot-1", "orange");
-    const { color: _secondColor, ...second } = logoAvatarTraits("bot-1", "blue");
+    const {
+      color: _firstColor,
+      originalOrange: _firstOrange,
+      ...first
+    } = logoAvatarTraits("bot-1", "orange");
+    const {
+      color: _secondColor,
+      originalOrange: _secondOrange,
+      ...second
+    } = logoAvatarTraits("bot-1", "blue");
     expect(first).toEqual(second);
-    expect(logoAvatarTraits("bot-1", "blue").color).toBe("#3B82F6");
+    expect(logoAvatarTraits("bot-1", "blue").color).toBe("#2A92FE");
     expect(logoAvatarTraits("bot-1", "#abc").color).toBe("#abc");
   });
 });

@@ -1,0 +1,42 @@
+---
+import VnbotHelpNav from "../../components/VnbotHelpNav.astro";
+import VnbotHelpLayout from "../../layouts/VnbotHelpLayout.astro";
+import { VNBOT_HELP_SECTIONS, vnbotHelpMarkdownPath, vnbotHelpPath } from "../../vnbot-help";
+
+const description =
+  "Mục lục hướng dẫn VNBot. Website chính thức là vnbot.run. Cổng web chính thức là app.vnbot.run.";
+---
+
+<VnbotHelpLayout
+  title="Hướng dẫn"
+  description={description}
+  canonicalPath={vnbotHelpPath()}
+  markdownPath={vnbotHelpMarkdownPath()}
+>
+  <VnbotHelpNav currentPath={vnbotHelpPath()} class="docs-nav--desktop" />
+  <details class="docs-menu">
+    <summary>Mục lục</summary>
+    <VnbotHelpNav currentPath={vnbotHelpPath()} />
+  </details>
+  <main id="main" class="docs-main">
+    <article class="docs-prose">
+      <h1>Hướng dẫn VNBot</h1>
+      <p>Chọn chủ đề bạn cần để bắt đầu hoặc tìm cách xử lý một vấn đề.</p>
+      {
+        VNBOT_HELP_SECTIONS.map((section) => (
+          <section>
+            <h2>{section.title}</h2>
+            <ul>
+              {section.pages.map((page) => (
+                <li>
+                  <a href={vnbotHelpPath(page.slug)}>{page.title}</a>. {page.summary}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      }
+    </article>
+    <p><a href={vnbotHelpMarkdownPath()}>Xem Markdown</a></p>
+  </main>
+</VnbotHelpLayout>

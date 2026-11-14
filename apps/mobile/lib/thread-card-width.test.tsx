@@ -2,12 +2,13 @@
 
 import type { MessageBlock } from "@rakazo/contracts";
 import type { ComponentProps, ReactNode, Ref } from "react";
-import { act } from "react";
+import { act, createContext } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { Linking } from "react-native";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { MobileMessage } from "./api";
+import type * as Api from "./api";
+import type { MobileMessage } from "./mobile-types";
 
 vi.mock("react-native", async () => {
   const { createElement, useImperativeHandle } = await import("react");
@@ -92,6 +93,7 @@ vi.mock("./native", () => ({
 }));
 
 vi.mock("@rakazo/chat-ui/native", () => ({
+  MarkdownLongPressContext: createContext(undefined),
   ChatMarkdown: ({ children }: { children: string }) => <p>{children}</p>,
   withBlockMentions: <T,>(blocks: T) => blocks,
 }));
@@ -104,19 +106,39 @@ vi.mock("../components/native-symbol", () => ({
   NativeSymbol: ({ ios }: { ios: string }) => <i data-symbol={ios} />,
 }));
 vi.mock("../components/native-action-button", () => ({
-  NativeActionButton: ({ label }: { label: string }) => <button type="button">{label}</button>,
+  NativeActionButton: ({ label, onPress }: { label: string; onPress?: () => void }) => (
+    <button type="button" onClick={onPress}>
+      {label}
+    </button>
+  ),
 }));
 // Cards this file doesn't exercise; each has its own tests.
 vi.mock("../components/thread/ask-block", () => ({ AskBlock: () => null }));
 vi.mock("../components/AppConnectCard", () => ({ AppConnectCard: () => null }));
 vi.mock("../components/audio-attachment", () => ({ AudioAttachment: () => null }));
 vi.mock("../components/ChoiceCard", () => ({ ChoiceCard: () => null }));
+vi.mock("../components/ImportSetupCard", () => ({ ImportSetupCard: () => null }));
 vi.mock("../components/ComputerCard", () => ({ ComputerCard: () => null }));
-vi.mock("../components/inline-image-attachment", () => ({ InlineImageAttachment: () => null }));
-vi.mock("../components/instruction-undo", () => ({ InstructionUndo: () => null }));
+vi.mock("../components/pages/page-card", () => ({ PageCard: () => null }));
+vi.mock("../components/thread/mcp-app-card", () => ({ McpAppCard: () => null }));
+vi.mock("../components/inline-image-attachment", () => ({
+  InlineImageAttachment: ({ name, onOpen }: { name: string; onOpen: () => void }) => (
+    <button type="button" aria-label={name} onClick={onOpen} />
+  ),
+}));
+vi.mock("../components/change-undo", () => ({
+  ChangeUndo: () => null,
+  isUndoableChange: () => false,
+}));
+
+vi.mock("./api", async (original) => ({
+  ...(await original<typeof Api>()),
+  rpc: vi.fn(async () => ({ ok: true })),
+}));
 
 import { McpApprovalCard } from "../components/McpApprovalCard";
 import { MessageBubble } from "../components/thread/message-bubble";
+import { rpc } from "./api";
 
 type BubbleProps = ComponentProps<typeof MessageBubble>;
 
@@ -131,9 +153,8 @@ function Bubble(props: Partial<BubbleProps> & Pick<BubbleProps, "message">) {
       onAnswer={async () => undefined}
       onOpenBot={() => undefined}
       onOpenComputer={() => undefined}
-      onPreviewMarkdown={() => undefined}
+      onPreviewFile={() => undefined}
       onPreviewImage={() => undefined}
-      onTogglePeerReplies={() => undefined}
       onOpenPeerChat={() => undefined}
       actionProps={{}}
       {...props}
@@ -188,13 +209,13 @@ describe("thread cards", () => {
   };
   const text = (value: string): MessageBlock => ({ kind: "text", text: value });
 
-  function renderBlocks(blocks: MessageBlock[], overrides = {}) {
+  function renderBlocks(blocks: MessageBlock[], overrides = {}, role: "bot" | "user" = "bot") {
     act(() =>
       root.render(
         <Bubble
           botId="bot-1"
           bots={[]}
-          message={{ id: "message-1", role: "bot", blocks }}
+          message={{ id: "message-1", role, blocks }}
           canAnswer={false}
           actionProps={{}}
           {...overrides}
@@ -202,6 +223,58 @@ describe("thread cards", () => {
       ),
     );
   }
+
+  it.each(["user", "bot"] as const)(
+    "keeps %s image attachments outside the caption and file bubbles",
+    (role) => {
+      const onPreviewImage = vi.fn();
+      renderBlocks(
+        [
+          text("Pictures"),
+          { kind: "image", artifactId: "image-1", name: "photo.png", mimeType: "image/png" },
+          { kind: "image", artifactId: "image-2", name: "screenshot.png", mimeType: "image/png" },
+          {
+            kind: "file",
+            artifactId: "file-1",
+            name: "notes.txt",
+            mimeType: "text/plain",
+            size: 10,
+          },
+        ],
+        { onPreviewImage },
+        role,
+      );
+      const outer = container.firstElementChild!;
+      for (const name of ["photo.png", "screenshot.png"]) {
+        const image = container.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!;
+        for (const frame of [image.parentElement, outer]) {
+          const style = styleOf(frame);
+          expect(style).not.toHaveProperty("backgroundColor");
+          expect(style).not.toHaveProperty("borderWidth");
+          expect(style).not.toHaveProperty("paddingHorizontal");
+          expect(style).not.toHaveProperty("paddingVertical");
+        }
+      }
+      expect(styleOf(outer.firstElementChild)).toMatchObject({
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+      });
+      expect(styleOf(outer.lastElementChild)).toMatchObject({
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+      });
+      act(() =>
+        container.querySelector<HTMLButtonElement>('button[aria-label="screenshot.png"]')!.click(),
+      );
+      expect(onPreviewImage).toHaveBeenCalledWith({
+        artifactId: "image-2",
+        name: "screenshot.png",
+        mimeType: "image/png",
+      });
+    },
+  );
 
   it.each([
     [
@@ -498,6 +571,32 @@ describe("thread cards", () => {
     } as MobileMessage;
     act(() => root.render(<Bubble botId="bot-1" bots={[]} message={message} actionProps={{}} />));
     expect(container.textContent).toContain("Running");
+  });
+
+  it("stops a background helper from its saved card, and shows it as stopped", () => {
+    const helper = (id: string, status: "running" | "failed", result?: string) =>
+      ({
+        id,
+        role: "bot",
+        botId: "bot-1",
+        blocks: [{ kind: "subagent", agentId: id, name: "scout", task: "venues", status, result }],
+      }) as MobileMessage;
+    const stopButton = () =>
+      [...container.querySelectorAll("button")].find((node) => node.textContent === "Stop");
+    const show = (message: MobileMessage) =>
+      act(() => root.render(<Bubble botId="bot-1" bots={[]} message={message} actionProps={{}} />));
+    show(helper("subagent:live", "running"));
+    expect(stopButton()).toBeUndefined();
+    show(helper("card-1", "running"));
+    act(() => stopButton()?.click());
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("threads/stopHelper", {
+      botId: "bot-1",
+      messageId: "card-1",
+    });
+    show(helper("card-1", "failed", "stopped"));
+    expect(container.textContent).toContain("Stopped");
+    expect(container.textContent).not.toContain("Failed");
+    expect(stopButton()).toBeUndefined();
   });
 
   it("folds a helper card to one line of the task until it is pressed, across its saved message", () => {

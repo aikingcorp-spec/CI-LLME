@@ -1,0 +1,62 @@
+# Source-build overlay; use only through vnbot-preview.sh. Compose >= 2.24.4.
+# Keep the upstream stack intact while replacing host binds and published ports.
+services:
+  supervisor:
+    environment:
+      RAKAZO_COMPUTER_IMAGE: vnbot/computer:040-preview
+      SANDBOX_COMPUTER_EGRESS: restricted
+      SANDBOX_COMPUTER_MOUNTS: ""
+    volumes: !override
+      - /var/run/docker.sock:/var/run/docker.sock
+      - preview-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:7091/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  computer:
+    image: vnbot/computer:040-preview
+
+  data-init:
+    volumes: !override
+      - preview-data:/data
+
+  api:
+    environment:
+      API_PORT: "3100"
+      API_URL: http://127.0.0.1:54173
+      BETTER_AUTH_URL: http://127.0.0.1:54173
+      WEB_ORIGIN: http://127.0.0.1:54173
+    ports: !override []
+    volumes: !override
+      - preview-data:/data
+
+  worker:
+    environment:
+      API_URL: http://127.0.0.1:54173
+    volumes: !override
+      - preview-data:/data
+
+  web:
+    environment:
+      RAKAZO_HOST: localhost
+      RAKAZO_ALLOWED_HOSTS: ""
+    ports: !override
+      - "127.0.0.1:54173:5173"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5173').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  preview-data:

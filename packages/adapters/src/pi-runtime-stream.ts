@@ -12,9 +12,10 @@ import type {
 import { AssistantMessageEventStream } from "@earendil-works/pi-ai/utils/event-stream";
 import { codexComputeResidency } from "./pi-oauth.js";
 import {
-  MODEL_STREAM_IDLE_TIMEOUT_MS,
-  MODEL_STREAM_TIMEOUT_MS,
+  modelStreamIdleTimeoutMs,
   modelStreamMaxRetries,
+  modelStreamTimeoutMs,
+  operatorMaxTokens,
   resolveCompletionMaxTokens,
 } from "./pi-runtime-limits.js";
 import { fetchPairedWithDispatcher } from "./undici-fetch.js";
@@ -53,7 +54,7 @@ export interface StreamIdleWatchdog {
  */
 export function modelStreamIdleWatchdog(
   upstream: AbortSignal | undefined,
-  idleTimeoutMs: number = MODEL_STREAM_IDLE_TIMEOUT_MS,
+  idleTimeoutMs: number = modelStreamIdleTimeoutMs(),
 ): StreamIdleWatchdog {
   const controller = new AbortController();
   let timedOut = false;
@@ -65,7 +66,7 @@ export function modelStreamIdleWatchdog(
   else upstream?.addEventListener("abort", onUpstreamAbort, { once: true });
 
   const arm = () => {
-    if (disposed || controller.signal.aborted) return;
+    if (disposed || controller.signal.aborted || idleTimeoutMs === 0) return;
     timer = setTimeout(() => {
       timer = undefined;
       if (controller.signal.aborted) return;
@@ -138,7 +139,7 @@ export function modelStreamIdleWatchdog(
  * is retried like any other transport failure.
  */
 function boundRetryableErrorBody(response: Response, idleTimeoutMs: number): Response {
-  if (response.ok || response.body == null) return response;
+  if (idleTimeoutMs === 0 || response.ok || response.body == null) return response;
   const reader = response.body.getReader();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const clear = () => {
@@ -204,52 +205,6 @@ function modelRequestFetch(
 // These Pi adapters reject fetch overrides other than globalThis.fetch.
 const APIS_WITHOUT_CUSTOM_FETCH = new Set<Api>(["google-generative-ai", "google-vertex"]);
 
-/**
- * Compatible endpoints may omit IDs or reuse one within a parallel batch. Give each call
- * a unique local identity before the agent executes it or records its assistant message.
- * Valid wire IDs (including reuse in later turns) stay intact. Never repair results later:
- * execution, approvals, checkpoints and context must all see the same identity.
- */
-function withToolCallIds(inner: AssistantMessageEventStream): AssistantMessageEventStream {
-  const normalized = new WeakMap<AssistantMessage, AssistantMessage>();
-  const identify = (message: AssistantMessage): AssistantMessage => {
-    const previous = normalized.get(message);
-    if (previous) return previous;
-    const reserved = new Set(
-      message.content.flatMap((part) => (part.type === "toolCall" ? [part.id] : [])),
-    );
-    const seen = new Set<string>();
-    const content = message.content.map((part) => {
-      if (part.type !== "toolCall") return part;
-      let id = part.id;
-      if (typeof id !== "string" || !id.trim() || seen.has(id)) {
-        do {
-          id = `call_${randomUUID().replaceAll("-", "")}`;
-        } while (reserved.has(id));
-        reserved.add(id);
-      }
-      seen.add(id);
-      return id === part.id ? part : { ...part, id };
-    });
-    const result = content.every((part, index) => part === message.content[index])
-      ? message
-      : { ...message, content };
-    normalized.set(message, result);
-    return result;
-  };
-  class Identified extends AssistantMessageEventStream {
-    override async *[Symbol.asyncIterator](): AsyncGenerator<AssistantMessageEvent> {
-      for await (const event of inner) {
-        yield event.type === "done" ? { ...event, message: identify(event.message) } : event;
-      }
-    }
-    override result(): Promise<AssistantMessage> {
-      return inner.result().then(identify);
-    }
-  }
-  return new Identified();
-}
-
 export function reliableModelStream(
   models: Models,
   model: Model<Api>,
@@ -269,7 +224,7 @@ export function reliableModelStream(
         signal: watchdog.signal,
         fetch: APIS_WITHOUT_CUSTOM_FETCH.has(model.api)
           ? options?.fetch
-          : modelRequestFetch(options?.fetch, MODEL_STREAM_IDLE_TIMEOUT_MS),
+          : modelRequestFetch(options?.fetch, modelStreamIdleTimeoutMs()),
         // Only a 2xx arms the shared watchdog. Error bodies are bounded by
         // the fetch wrapper where supported; caller hooks still see every status.
         onResponse: (response, requestModel) => {
@@ -284,7 +239,7 @@ export function reliableModelStream(
     const stream = runStream
       ? runStream(preparedOptions)
       : models.streamSimple(model, context, preparedOptions);
-    return withToolCallIds(watchdog.wrap(stream));
+    return watchdog.wrap(stream);
   } catch (error) {
     watchdog.dispose();
     throw error;
@@ -309,7 +264,7 @@ export function reliableStreamOptions(
   let next: ModelsSimpleStreamOptions = {
     ...options,
     ...(cacheRetention ? { cacheRetention } : {}),
-    timeoutMs: options?.timeoutMs ?? MODEL_STREAM_TIMEOUT_MS,
+    timeoutMs: options?.timeoutMs ?? modelStreamTimeoutMs(),
     maxRetries: options?.maxRetries ?? modelStreamMaxRetries(),
     maxTokens: resolveCompletionMaxTokens(
       model.maxTokens,
@@ -317,6 +272,7 @@ export function reliableStreamOptions(
       options?.maxTokens,
       model.reasoning,
       model.contextWindow,
+      operatorMaxTokens(model),
     ),
   };
 

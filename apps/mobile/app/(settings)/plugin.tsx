@@ -6,7 +6,7 @@ import type {
   PluginPart,
   PluginPreview,
 } from "@rakazo/contracts";
-import { PluginPreviewSchema } from "@rakazo/contracts";
+import { mcpServerConnection, mcpServerNeedsSignIn, PluginPreviewSchema } from "@rakazo/contracts";
 import {
   catalogItemKey,
   connectCatalogItem,
@@ -14,7 +14,13 @@ import {
   isCatalogItemConnected,
 } from "@rakazo/core";
 import type { NativeStackNavigationOptions } from "expo-router";
-import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import {
+  Redirect,
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -44,13 +50,19 @@ import { loadLastBotId } from "../../lib/last-bot";
 import { native, useThemedStyles } from "../../lib/native";
 import { iosAtLeast } from "../../lib/native-controls";
 import type { PluginParams } from "../../lib/plugin-marketplace";
-import { mcpServerReady, sourceHref } from "../../lib/plugin-marketplace";
+import { sourceHref } from "../../lib/plugin-marketplace";
 import { useSideInsets } from "../../lib/side-insets";
 import { errorText } from "../../lib/user-error";
 
 const SKILLS_SHOWN = 5;
 
-export default function PluginScreen() {
+/** A link without a plugin (an old link, a restored route) lands on Integrations instead. */
+export default function PluginRoute() {
+  const { source, installedSource, name } = useLocalSearchParams<PluginParams>();
+  return source && installedSource && name ? <PluginScreen /> : <Redirect href="/integrations" />;
+}
+
+function PluginScreen() {
   const params = useLocalSearchParams<PluginParams>();
   const navigation = useNavigation();
   const router = useRouter();
@@ -258,8 +270,16 @@ export default function PluginScreen() {
   const busy = Boolean(pending);
   const parsed = install ? PluginPreviewSchema.safeParse(install.config) : null;
   const detail = parsed?.success ? parsed.data : preview;
-  // An ignored manifest field loses nothing, so it isn't reported.
-  const notAdded = (detail?.skipped ?? []).filter((entry) => entry.kind !== "unsupported_field");
+  // An ignored manifest field loses nothing, so it isn't reported. A skill left out for repeating
+  // a built-in one says why, since the user still has that skill.
+  const notAdded = [
+    ...(detail?.skipped ?? [])
+      .filter((entry) => entry.kind !== "unsupported_field")
+      .map((entry) => entry.name),
+    ...(detail?.builtinNames ?? []).map((name) =>
+      t("{name} (same name as a built-in skill)", { name }),
+    ),
+  ];
   const connectorCount = detail?.mcpServers.length ?? 0;
   // Without a connector there is nothing to connect, so the page adds the skills instead.
   const skillsOnly = params.skillsOnly === "1";
@@ -451,10 +471,12 @@ export default function PluginScreen() {
                           {server.endpoint}
                         </Text>
                       </View>
-                      {mcpServerReady(server) ? <ConnectedMark label={t("Connected")} /> : null}
+                      {mcpServerConnection(server) === "connected" ? (
+                        <ConnectedMark label={t("Connected")} />
+                      ) : null}
                     </View>
                     <View style={styles.itemActions}>
-                      {mcpServerReady(server) || noAuth.has(server.id) ? null : (
+                      {!mcpServerNeedsSignIn(server) || noAuth.has(server.id) ? null : (
                         <NativeActionButton
                           busy={pending === server.id}
                           disabled={busy}
@@ -565,7 +587,7 @@ export default function PluginScreen() {
 
         {notAdded.length ? (
           <Text style={styles.secondary}>
-            {t("Not added: {list}", { list: notAdded.map((entry) => entry.name).join(", ") })}
+            {t("Not added: {list}", { list: notAdded.join(", ") })}
           </Text>
         ) : null}
       </ScrollView>

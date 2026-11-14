@@ -6,8 +6,10 @@ import { VnbotWordmark } from "../components/VnbotWordmark";
 import { WindowChrome } from "./WindowChrome";
 
 const welcomePrimaryClass =
+  // off-scale: Welcome keeps the 0.3.9 hero sizes.
   "app-no-drag rounded-full bg-primary px-[34px] py-[15px] text-[19px] font-medium text-primary-foreground outline-none transition hover:scale-[1.04] hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50";
 const welcomeLinkClass =
+  // off-scale: Welcome keeps the 0.3.9 hero sizes.
   "app-no-drag rounded-full px-[34px] py-[15px] text-[19px] font-medium text-link underline underline-offset-4 decoration-1 transition hover:decoration-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
 export function WelcomePage() {
@@ -22,6 +24,7 @@ export function WelcomePage() {
         <h1>
           <VnbotWordmark variant="powered" className="h-16 w-auto sm:h-[104px]" />
         </h1>
+        {/* off-scale: Welcome keeps the 0.3.9 hero sizes. */}
         <p className="max-w-[600px] text-center text-[27px] leading-[1.4] text-foreground/75">
           <Trans>
             Your team of always-on bots

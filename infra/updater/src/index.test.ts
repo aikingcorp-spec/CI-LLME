@@ -15,7 +15,6 @@ import { resolveUpdaterConfig } from "./updater-logic.js";
 const token = "fake-review-updater-token-000000000000";
 const app = createUpdaterApp(
   resolveUpdaterConfig({
-    RAKAZO_DISABLE_AUTO_UPDATE: "0",
     RAKAZO_DEPLOY_DIR: "/rakazo-updater-tests-no-such-directory",
     RAKAZO_UPDATER_TOKEN: token,
   }),
@@ -37,11 +36,7 @@ async function deployment(env = "RAKAZO_IMAGE_TAG=v1.0.0\nRAKAZO_IMAGE_TAG_PREVI
   await writeFile(path.join(deployDir, ".env"), env);
   return {
     deployDir,
-    config: resolveUpdaterConfig({
-      RAKAZO_DISABLE_AUTO_UPDATE: "0",
-      RAKAZO_DEPLOY_DIR: deployDir,
-      RAKAZO_UPDATER_TOKEN: token,
-    }),
+    config: resolveUpdaterConfig({ RAKAZO_DEPLOY_DIR: deployDir, RAKAZO_UPDATER_TOKEN: token }),
   };
 }
 
@@ -113,10 +108,7 @@ describe("updater HTTP surface", () => {
     const response = await app.request("/apply", {
       method: "POST",
       headers: authorized,
-      body: JSON.stringify({
-        repoUrl: "https://github.com/aikingcorp-spec/vnbot",
-        branch: "--exec=id",
-      }),
+      body: JSON.stringify({ repoUrl: "https://github.com/elie222/rakazo", branch: "--exec=id" }),
     });
     expect(response.status).toBe(400);
   });
@@ -163,6 +155,32 @@ describe("updater HTTP surface", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ error: expect.stringMatching(/\.env/) });
   });
+
+  it("refuses a failed plan without leaving a rejection that could stop the process", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const subject = createUpdaterApp(
+        resolveUpdaterConfig({
+          RAKAZO_DEPLOY_DIR: "/rakazo-updater-tests-no-such-directory",
+          RAKAZO_UPDATER_TOKEN: token,
+        }),
+      );
+      const input = { repoUrl: "https://github.com/elie222/rakazo", branch: "main" };
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const response = await request(subject, "/plan", input);
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+          error: expect.stringMatching(/\.env/),
+        });
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+    expect(unhandled).toEqual([]);
+  });
 });
 
 describe("updater orchestration", () => {
@@ -184,7 +202,7 @@ describe("updater orchestration", () => {
       return ok();
     };
     const subject = createUpdaterApp(fixture.config, { run });
-    const input = { repoUrl: "https://github.com/aikingcorp-spec/vnbot", branch: "main" };
+    const input = { repoUrl: "https://github.com/elie222/rakazo", branch: "main" };
     const first = request(subject, "/apply", input);
     await atRemote;
     const second = await request(subject, "/apply", input);
@@ -237,7 +255,7 @@ describe("updater orchestration", () => {
     };
     const subject = createUpdaterApp(fixture.config, { run });
     const response = await request(subject, "/apply", {
-      repoUrl: "https://github.com/aikingcorp-spec/vnbot",
+      repoUrl: "https://github.com/elie222/rakazo",
       branch: "main",
     });
     const record = (await response.json()) as ServerUpdateRun;
@@ -360,7 +378,7 @@ describe("updater orchestration", () => {
     const run: UpdaterCommandRunner = async (command) =>
       command === "git" ? ok(`${targetCommit}\trefs/tags/v1.1.0\n`) : ok();
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/aikingcorp-spec/vnbot",
+      repoUrl: "https://github.com/elie222/rakazo",
       branch: "main",
     });
     expect(response.status).toBe(200);
@@ -384,7 +402,7 @@ describe("updater orchestration", () => {
       return ok();
     };
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/aikingcorp-spec/vnbot",
+      repoUrl: "https://github.com/elie222/rakazo",
       branch: "main",
     });
     await expect(response.json()).resolves.toMatchObject({ ok: true });
@@ -402,7 +420,7 @@ describe("updater orchestration", () => {
     const run: UpdaterCommandRunner = async (command) =>
       command === "git" ? ok(`${targetCommit}\trefs/tags/v1.1.0\n`) : ok();
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/aikingcorp-spec/vnbot",
+      repoUrl: "https://github.com/elie222/rakazo",
       branch: "main",
     });
     expect(response.status).toBe(200);
@@ -439,7 +457,7 @@ describe("child process environment", () => {
   it("declares the deployment directory safe so git works on a non-root checkout", () => {
     // The child environment is rebuilt from an allowlist, so GIT_CONFIG_* set on the Compose
     // service never reaches git. Without these three, every git call exits 128 with "detected
-    // dubious ownership" on the layout docs/self-host.md recommends.
+    // dubious ownership" on the layout docs/self-host-production.md recommends.
     const env = commandEnvironment({ RAKAZO_DEPLOY_DIR: "/srv/rakazo" });
     expect(env.GIT_CONFIG_COUNT).toBe("1");
     expect(env.GIT_CONFIG_KEY_0).toBe("safe.directory");

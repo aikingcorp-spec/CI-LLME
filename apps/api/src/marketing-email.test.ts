@@ -15,7 +15,10 @@ describe("marketing email unsubscribe", () => {
     const { app, updateMany } = routes();
     const response = await app.request(unsubscribeUrl(origin, secret, "user-1"));
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain('<form method="post">');
+    const html = await response.text();
+    expect(html).toContain('<form method="post">');
+    expect(html).toContain("Unsubscribe from VNBot emails");
+    expect(html).not.toContain("Rakazo");
     expect(updateMany).not.toHaveBeenCalled();
   });
 
@@ -68,8 +71,7 @@ describe("sendWelcomeEmail", () => {
     const url = unsubscribeUrl(origin, secret, "user-1");
     expect(email.sent[0]).toMatchObject({
       to: "new@example.test",
-      subject: "Chào mừng bạn đến với VNBot",
-
+      subject: "Welcome to VNBot",
       headers: {
         "List-Unsubscribe": `<${url}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -77,6 +79,15 @@ describe("sendWelcomeEmail", () => {
     });
     expect(email.sent[0]!.text).toContain(url);
     expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("writes the welcome in the language of the browser that signed up", async () => {
+    const { email, deps: welcome } = deps(true);
+    await sendWelcomeEmail(welcome, "user-1", new Headers({ "accept-language": "es-CL,es" }));
+    await vi.waitFor(() => expect(email.sent).toHaveLength(1));
+    expect(email.sent[0]!.subject).toBe("Te damos la bienvenida a VNBot");
+    expect(email.sent[0]!.text).toContain("https://dl.vnbot.run/desktop");
+    expect(email.sent[0]!.text).not.toContain("rakazo.com");
   });
 
   it("sends nothing when another sign-in already claimed the welcome", async () => {

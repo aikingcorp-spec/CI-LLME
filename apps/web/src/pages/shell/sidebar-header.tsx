@@ -2,7 +2,6 @@ import { useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@rakazo/ui-web";
 import { Bell, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { IconTooltip } from "../../components/IconTooltip";
 import { VnbotWordmark } from "../../components/VnbotWordmark";
@@ -10,31 +9,12 @@ import { desktopBridge } from "../../lib/desktop";
 import type { Panel } from "../../lib/right-panel-state";
 import { WindowChrome } from "../WindowChrome";
 import { BotCreatePicker } from "./bot-picker";
-import { isCreateMenuHotkey } from "./command-palette-hotkey";
-
-/**
- * Whether the create menu is open, opened by Cmd/Ctrl-N. The shell holds it from its first render,
- * so the shortcut is not lost while the sidebar is still waiting for its first data.
- */
-export function useCreateMenu() {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (!isCreateMenuHotkey(event)) return;
-      event.preventDefault();
-      setOpen(true);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-  return [open, setOpen] as const;
-}
 
 function SidebarBrand({ mini }: { mini: boolean }) {
   return (
     <Link
       to="/app"
-      className="app-no-drag flex max-md:min-h-11 items-center gap-2 rounded-md text-body1 font-semibold text-sidebar-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="app-no-drag flex max-md:min-h-11 items-center gap-2 rounded-md text-body font-semibold text-sidebar-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <VnbotWordmark
         variant={mini ? "leaf" : "wordmark"}
@@ -83,7 +63,7 @@ export function SidebarHeader({
       className={`app-drag flex items-center ${mini ? `flex-col gap-2 px-0 pb-2 ${hasWindowChrome ? "pt-4" : "pt-2"}` : "justify-between px-[18px] pb-3 pt-4"}`}
     >
       {hasWindowChrome ? <WindowChrome /> : <SidebarBrand mini={mini} />}
-      <div className={`relative flex items-center ${mini ? "flex-col gap-0.5" : "gap-2.5"}`}>
+      <div className={`relative flex items-center ${mini ? "flex-col gap-0.5" : "gap-1"}`}>
         {onSearch ? (
           <IconTooltip label={t`Search`}>
             <Button
@@ -93,7 +73,7 @@ export function SidebarHeader({
               aria-pressed={searchOpen}
               data-testid="sidebar-search-trigger"
               onClick={onSearch}
-              className="app-no-drag flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75"
+              className="app-no-drag text-muted-foreground"
             >
               <Search size={15} strokeWidth={1.8} aria-hidden="true" />
             </Button>
@@ -107,12 +87,9 @@ export function SidebarHeader({
             aria-pressed={activityMode}
             data-activity-mode={activityMode ? "on" : "off"}
             onClick={toggleActivityMode}
-            className={`app-no-drag flex h-7 w-7 items-center justify-center rounded-full ${
-              activityMode
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground/70 hover:text-foreground/75"
-            }`}
+            className={`app-no-drag ${activityMode ? "bg-accent text-foreground" : "text-muted-foreground"}`}
           >
+            {/* A filled bell marks Activity on, so on and hovered never look alike. */}
             <Bell
               size={15}
               strokeWidth={1.8}
@@ -125,7 +102,7 @@ export function SidebarHeader({
           <Button
             variant="ghost"
             size="icon-sm"
-            className="app-no-drag hidden h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
+            className="app-no-drag hidden text-muted-foreground md:inline-flex"
             aria-label={toggleLabel}
             data-testid={mini ? "restore-bots-sidebar" : "minimize-bots-sidebar"}
             onClick={() => setBotsSidebarCollapsedPref(!mini)}
@@ -140,7 +117,13 @@ export function SidebarHeader({
         <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
           <IconTooltip label={t`Create`}>
             <PopoverTrigger
-              className="app-no-drag flex size-7 max-md:size-11 items-center justify-center rounded-full text-muted-foreground/70 outline-none hover:text-foreground/75 focus-visible:ring-2 focus-visible:ring-ring"
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="app-no-drag text-muted-foreground"
+                />
+              }
               aria-label={t`Create`}
               data-testid="create-menu-trigger"
             >

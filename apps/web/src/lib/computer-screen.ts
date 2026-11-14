@@ -1,5 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { isLocalhostOrLoopbackIp } from "@rakazo/contracts";
+import { COMPUTER_SCREEN_PATH } from "@rakazo/contracts/content-security-policy";
 import { errorText } from "./user-error";
 
 export interface ComputerScreenResult {
@@ -34,6 +35,11 @@ export function embeddableScreenUrl(url: string | null): string | null {
   try {
     const parsed = new URL(url, window.location.href);
     const page = new URL(window.location.href);
+    // An embedded desktop is drawn by its Web SDK in a page this server serves. Its one-time login
+    // code rides in the fragment so it never reaches a server log.
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return `${page.origin}${COMPUTER_SCREEN_PATH}#${parsed.searchParams.toString()}`;
+    }
     // The server that served this page proxies /novnc/. Keep the frame on this origin even when the
     // API's WEB_ORIGIN names another host for it (localhost vs 127.0.0.1), as the CSP frames 'self'.
     if (parsed.pathname.startsWith("/novnc/")) {
@@ -50,10 +56,31 @@ export function embeddableScreenUrl(url: string | null): string | null {
   }
 }
 
+/**
+ * An embedded screen URL carries a one-time login code, so every read of it differs. Reloading the
+ * frame for a new code would open a second session that signs the first one out; the screen keeps
+ * the URL it connected with until the desktop or the view changes.
+ */
+export function sameEmbeddedComputerScreen(current: string | null, next: string | null): boolean {
+  if (!current || !next) return false;
+  try {
+    const a = new URL(current);
+    const b = new URL(next);
+    if (a.protocol === "http:" || a.protocol === "https:" || a.protocol !== b.protocol)
+      return false;
+    return ["desktop_id", "region_id", "view_only"].every(
+      (name) => a.searchParams.get(name) === b.searchParams.get(name),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function screenIframeSandbox(url: string | null) {
   if (!url) return undefined;
   try {
-    return new URL(url, window.location.href).pathname.startsWith("/novnc/")
+    const pathname = new URL(url, window.location.href).pathname;
+    return pathname.startsWith("/novnc/") || pathname === COMPUTER_SCREEN_PATH
       ? "allow-scripts allow-pointer-lock"
       : undefined;
   } catch {
@@ -75,6 +102,27 @@ export async function bootComputerOnce<T>(
   } finally {
     if (inFlight.get(botId) === token) inFlight.delete(botId);
   }
+}
+
+/** A proxied screen's policy and expiry, which its capability path carries in the clear. */
+export function proxiedScreenCapability(
+  url: string | null,
+): { policy: "view" | "control"; expiresAt: number } | null {
+  const match = url ? /\/novnc\/session\/(view|control)\/(\d+)\./.exec(url) : null;
+  return match ? { policy: match[1] as "view" | "control", expiresAt: Number(match[2]) } : null;
+}
+
+/**
+ * The frames a screen draws. A held predecessor comes first, so React keeps its element in place
+ * (a moved iframe reloads), then the live frame.
+ */
+export function screenFrames(
+  key: string | undefined,
+  url: string,
+  held: { url: string; key: string } | null | undefined,
+): Array<{ key: string; url: string; held: boolean }> {
+  const live = { key: key ?? "screen", url, held: false };
+  return held ? [{ ...held, held: true }, live] : [live];
 }
 
 /** Only pages the web proxy serves carry the shim that reports their state to the app. */
@@ -121,6 +169,31 @@ export function screenFrameError(message: ScreenFrameMessage, fallback: string):
 }
 
 /**
+ * Cookies a screen probe may attach. The capability in the URL authorizes the screen, so a host
+ * that is not this page never receives the session cookie. A same-origin http(s) probe includes
+ * it: an identity-aware proxy in front of this app answers a cookie-less request with a redirect,
+ * and `redirect: "manual"` hides that as an opaque redirect the probe would treat as a failed
+ * screen. Other schemes, such as an embedded screen ticket, stay cookie-less.
+ */
+function screenProbeCredentials(url: string): RequestCredentials {
+  const pageHref = pageLocationHref();
+  if (!pageHref) return "omit";
+  try {
+    const target = new URL(url, pageHref);
+    if (target.protocol !== "http:" && target.protocol !== "https:") return "omit";
+    return target.origin === new URL(pageHref).origin ? "same-origin" : "omit";
+  } catch {
+    return "omit";
+  }
+}
+
+function pageLocationHref(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const href = window.location?.href;
+  return typeof href === "string" ? href : undefined;
+}
+
+/**
  * Ask the proxy for the page before framing it. A frame cannot say why it failed to load, so a
  * refused or unreachable screen would otherwise stay blank.
  */
@@ -131,7 +204,7 @@ export async function probeScreen(
 ): Promise<string | null> {
   try {
     const response = await fetchImpl(url, {
-      credentials: "omit",
+      credentials: screenProbeCredentials(url),
       cache: "no-store",
       redirect: "manual",
     });
@@ -160,7 +233,7 @@ export async function probeScreenStatus(
 ): Promise<number | null> {
   try {
     const response = await fetchImpl(url, {
-      credentials: "omit",
+      credentials: screenProbeCredentials(url),
       cache: "no-store",
       redirect: "manual",
       signal,

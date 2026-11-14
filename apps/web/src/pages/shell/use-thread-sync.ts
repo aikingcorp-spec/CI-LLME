@@ -4,12 +4,20 @@ import type {
   ComputerStatus,
   Group,
   ProductEvent,
+  RoutineHistory,
   ThreadSnapshot,
 } from "@rakazo/contracts";
 import {
+  activeThreadRuns,
   anySignal,
   createRefreshCoalescer,
   isRunTerminalEvent,
+  isRunWorking,
+  isThreadSnapshotEvent,
+  messageUnreadFor,
+  reconcileRefreshedThread,
+  reduceThreadSnapshot,
+  rememberTerminalRun,
   runThreadSubscription,
 } from "@rakazo/core";
 import { fetchFresh } from "@rakazo/core/query";
@@ -20,19 +28,21 @@ import {
   openLogoAvatarActivityFeed,
   webLogoAvatarActivity,
 } from "../../lib/logo-avatar-activity.js";
+import { relistPagesForBlocks } from "../../lib/page-actions";
 import { markOnce } from "../../lib/performance";
 import type { SpaceQueries } from "../../lib/query";
 import { queryClient } from "../../lib/query";
 import type { createSpaceRpc } from "../../lib/rpc";
 import {
   isComputerStatusEvent,
-  isThreadSnapshotEvent,
   prependThreadMessagePage,
-  reconcileRefreshedThread,
   reduceComputerStatus,
-  reduceThreadSnapshot,
 } from "../../lib/thread-events";
-import { transcriptCanSnapAfterFrame, transcriptIsNearEnd } from "../../lib/transcript-scroll";
+import {
+  firstVisibleTranscriptRow,
+  transcriptCanSnapAfterFrame,
+  transcriptIsNearEnd,
+} from "../../lib/transcript-scroll";
 import type { useBrowserNotifications } from "./use-browser-notifications";
 import type { ComputerState } from "./use-computer";
 import type { ThreadState } from "./use-thread-state";
@@ -79,6 +89,7 @@ export function useThreadSync({
   notifyBrowserForEvent,
   markBotReadIfVisible,
   markGroupReadOnReply,
+  meId,
 }: {
   rpc: ReturnType<typeof createSpaceRpc>;
   queries: SpaceQueries;
@@ -97,6 +108,8 @@ export function useThreadSync({
   notifyBrowserForEvent: ReturnType<typeof useBrowserNotifications>["notifyBrowserForEvent"];
   markBotReadIfVisible: (botId: string) => void;
   markGroupReadOnReply: (groupId: string) => void;
+  /** The signed-in person: another member's message is new to them, their own is not. */
+  meId: string | undefined;
 }) {
   const {
     snapshot,
@@ -243,6 +256,18 @@ export function useThreadSync({
     return snap;
   }
 
+  /** An open run history that already lists the finished run shows its outcome without its poll. */
+  function refreshRoutineHistory(runId: string | null | undefined) {
+    if (!runId) return;
+    void queryClient.invalidateQueries({
+      queryKey: queries.routines.history.key(),
+      predicate: (query) =>
+        (query.state.data as { pages?: RoutineHistory[] } | undefined)?.pages?.some((page) =>
+          page.runs.some((run) => run.id === runId),
+        ) ?? false,
+    });
+  }
+
   async function loadOlderMessages() {
     const targetBotId = inGroup ? undefined : active?.id;
     const targetGroupId = inGroup ? groupId : undefined;
@@ -258,6 +283,10 @@ export function useThreadSync({
       return;
     pinnedAroundRef.current = null;
     const scrollElement = messageScroll.current;
+    // Hold the first visible row steady: a plain height delta would also count
+    // content appended at the bottom while the older page was loading.
+    const anchorRow = firstVisibleTranscriptRow(scrollElement);
+    const anchorTop = anchorRow?.offsetTop ?? null;
     const previousHeight = scrollElement?.scrollHeight ?? 0;
     const epoch = historyEpoch.current;
     const before = snapshot.olderCursor;
@@ -277,7 +306,11 @@ export function useThreadSync({
       updateSnapshot((prev) => prependThreadMessagePage(prev, page));
       window.requestAnimationFrame(() => {
         const element = messageScroll.current;
-        if (element) element.scrollTop += element.scrollHeight - previousHeight;
+        if (!element) return;
+        element.scrollTop +=
+          anchorRow?.isConnected && anchorTop !== null
+            ? anchorRow.offsetTop - anchorTop
+            : element.scrollHeight - previousHeight;
       });
     } finally {
       setLoadingOlder(false);
@@ -298,7 +331,14 @@ export function useThreadSync({
       ? undefined
       : (queryClient.getQueryData(threadKey) ??
         (seed?.thread?.botId === active.id ? seed.thread : undefined));
-    if (cachedThread && snapshotRef.current?.botId !== active.id) commitSnapshot(cachedThread);
+    if (
+      cachedThread &&
+      snapshotRef.current?.botId !== active.id &&
+      (active.threadStatus === undefined ||
+        activeThreadRuns(cachedThread).some((run) => isRunWorking(run.status)) ===
+          isRunWorking(active.threadStatus))
+    )
+      commitSnapshot(cachedThread);
     const sidebarRefresh = createRefreshCoalescer(() => refreshBots());
     const snapshotRefresh = createRefreshCoalescer(() => refreshThread(active.id));
     const abort = new AbortController();
@@ -325,13 +365,7 @@ export function useThreadSync({
         ),
       beforeEvent: (event) => {
         webLogoAvatarActivity.apply(avatarSource, event);
-        if (isRunTerminalEvent(event) && event.runId) {
-          terminalRunReceipts.current.add(event.runId);
-          if (terminalRunReceipts.current.size > 100) {
-            const oldest = terminalRunReceipts.current.values().next().value;
-            if (oldest !== undefined) terminalRunReceipts.current.delete(oldest);
-          }
-        }
+        rememberTerminalRun(terminalRunReceipts.current, event);
       },
       applyEvent: (event) =>
         applyThreadEvent(event, commitSnapshot, commitComputer, snapshotRef, computerRef),
@@ -344,7 +378,7 @@ export function useThreadSync({
           true,
           currentBot?.name ?? active.name,
           currentBot?.notifyOnFinish ?? false,
-          false,
+          undefined,
         );
         if (event.type === "thread.cleared") resetHistory();
         if (event.type === "bot.archived") {
@@ -362,10 +396,11 @@ export function useThreadSync({
         }
         if (event.type === "thread.message.created") {
           const blocks = (event.payload.blocks as Array<{ kind?: string }>) ?? [];
+          relistPagesForBlocks(queries, queryClient, blocks);
           if (blocks.some((block) => block.kind === "child_bot")) {
             void sidebarRefresh.invalidate().catch(() => undefined);
           }
-          if (event.payload.role === "bot") markBotReadIfVisible(active.id);
+          if (messageUnreadFor(event.payload, meId)) markBotReadIfVisible(active.id);
         }
         if (
           isRunTerminalEvent(event) ||
@@ -375,8 +410,13 @@ export function useThreadSync({
           // waiting_input: reconcile ask cards if a stale post-send refresh raced SSE.
           void snapshotRefresh.invalidate().catch(() => undefined);
         } else if (isComputerStatusEvent(event)) {
+          // In a shared Space the event does not say who took control; the snapshot does.
+          if (event.type === "computer.takeover.granted" && computerRef.current?.shared) {
+            void snapshotRefresh.invalidate().catch(() => undefined);
+          }
           void refreshComputerScreen(active.id).catch(() => undefined);
         }
+        if (isRunTerminalEvent(event)) refreshRoutineHistory(event.runId);
       },
     });
     return () => {
@@ -387,7 +427,7 @@ export function useThreadSync({
       const left = snapshotRef.current;
       if (left?.botId === active.id && !left.groupId) queryClient.setQueryData(threadKey, left);
     };
-  }, [active?.id, markBotReadIfVisible, notifyBrowserForEvent]);
+  }, [active?.id, markBotReadIfVisible, notifyBrowserForEvent, meId]);
 
   useEffect(() => {
     if (!groupId || !activeGroup) return;
@@ -438,10 +478,17 @@ export function useThreadSync({
           true,
           eventBot?.name ?? activeGroup.name,
           true,
-          true,
+          groupId,
         );
-        if (event.type === "thread.message.created" && event.payload.role === "bot") {
+        if (event.type === "thread.message.created" && messageUnreadFor(event.payload, meId)) {
           markGroupReadOnReply(groupId);
+        }
+        if (event.type === "thread.message.created") {
+          relistPagesForBlocks(
+            queries,
+            queryClient,
+            (event.payload.blocks as Array<{ kind?: string }>) ?? [],
+          );
         }
         if (
           event.type === "run.started" ||
@@ -455,6 +502,7 @@ export function useThreadSync({
           // waiting_input: reconcile ask cards if a stale post-send refresh raced SSE.
           void snapshotRefresh.invalidate().catch(() => undefined);
         }
+        if (isRunTerminalEvent(event)) refreshRoutineHistory(event.runId);
       },
     });
     return () => {
@@ -465,7 +513,7 @@ export function useThreadSync({
       const left = snapshotRef.current;
       if (left?.groupId === groupId) queryClient.setQueryData(threadKey, left);
     };
-  }, [activeGroup?.id, groupId, notifyBrowserForEvent, markGroupReadOnReply]);
+  }, [activeGroup?.id, groupId, notifyBrowserForEvent, markGroupReadOnReply, meId]);
 
   // Memoized children take these, so they stay referentially stable across renders.
   const refreshThreadRef = useRef(refreshThread);

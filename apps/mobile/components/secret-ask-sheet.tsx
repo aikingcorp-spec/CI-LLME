@@ -1,7 +1,7 @@
 import type { LoginFieldInput } from "@rakazo/contracts";
 import { LoginSecretValue, loginCardFields } from "@rakazo/contracts";
 import { useEffect, useRef, useState } from "react";
-import type { TextInput } from "react-native";
+import type { TextInputInstance } from "react-native";
 import { Modal, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { mobileTokens } from "../lib/appearance";
@@ -11,6 +11,7 @@ import { useSecretSheetClose } from "../lib/secret-sheet-close";
 import type { LoginFieldRow } from "./login-fields-editor";
 import { LoginFieldsEditor } from "./login-fields-editor";
 import { NativeActionButton } from "./native-action-button";
+import { NativeSwitch } from "./native-switch";
 
 /**
  * A website sign-in, typed or filled from saved passwords. The values live only in this sheet's
@@ -19,6 +20,7 @@ import { NativeActionButton } from "./native-action-button";
 export function SecretAskSheet({
   title,
   destination,
+  replacedSite,
   loginFields,
   pending,
   onClose,
@@ -26,21 +28,25 @@ export function SecretAskSheet({
 }: {
   title: string;
   destination: string;
+  /** The site of the saved login this answer replaces. */
+  replacedSite?: string;
   /** The labels the card asks for; absent means the default username and password. */
   loginFields: readonly string[] | undefined;
   /** False once the card is answered or can no longer be answered; the sheet then closes. */
   pending: boolean;
   onClose: () => void;
-  onSave: (fields: LoginFieldInput[]) => Promise<void>;
+  /** `remember` is false when "Save to Vault" was turned off: the login is for this run only. */
+  onSave: (fields: LoginFieldInput[], remember: boolean) => Promise<void>;
 }) {
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
-  const inputs = useRef<(TextInput | null)[]>([]);
+  const inputs = useRef<(TextInputInstance | null)[]>([]);
   const [fields, setFields] = useState<LoginFieldRow[]>(() =>
     loginCardFields(loginFields).map((field, id) => ({ ...field, id })),
   );
   const labels = loginFields ?? [t("Username"), t("Password")];
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const incomplete = !LoginSecretValue.safeParse({ fields }).success;
@@ -62,7 +68,7 @@ export function SecretAskSheet({
     setSubmitting(true);
     setError(null);
     try {
-      await onSave(answer);
+      await onSave(answer, remember);
     } catch {
       setError(t("Could not send answer"));
     } finally {
@@ -97,7 +103,7 @@ export function SecretAskSheet({
             disabled={incomplete}
             busy={submitting}
             fill={false}
-            label={t("Save")}
+            label={remember ? t("Save") : t("Continue")}
             onPress={() => void save()}
             prominence={incomplete ? "plain" : "primary"}
           />
@@ -112,6 +118,11 @@ export function SecretAskSheet({
             {title}
           </Text>
           <Text style={styles.destination}>{destination}</Text>
+          {replacedSite ? (
+            <Text style={styles.replaced}>
+              {t("Replaces the login saved for {site}", { site: replacedSite })}
+            </Text>
+          ) : null}
           <LoginFieldsEditor
             fields={fields}
             onChange={setFields}
@@ -121,6 +132,15 @@ export function SecretAskSheet({
             onEndEditing={endEditing}
             onSubmit={() => void save()}
           />
+          <View style={[styles.group, styles.row]}>
+            <Text style={styles.switchLabel}>{t("Save to Vault")}</Text>
+            <NativeSwitch
+              accessibilityLabel={t("Save to Vault")}
+              disabled={submitting || closing}
+              value={remember}
+              onValueChange={setRemember}
+            />
+          </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
       </View>
@@ -142,6 +162,10 @@ function createStyles() {
     content: { paddingHorizontal: 20, paddingBottom: 40, gap: 12 },
     title: { color: tokens.foreground, fontSize: 20, fontWeight: "600" },
     destination: { color: tokens.foreground, fontSize: 15, marginBottom: 8 },
+    replaced: { color: tokens.mutedForeground, fontSize: 13, marginTop: -8, marginBottom: 8 },
+    group: { backgroundColor: tokens.muted, borderRadius: 13, overflow: "hidden" },
+    row: { flexDirection: "row", alignItems: "center", minHeight: 52, paddingHorizontal: 16 },
+    switchLabel: { flex: 1, color: tokens.foreground, fontSize: 17 },
     error: { color: tokens.destructive, fontSize: 13 },
   });
 }

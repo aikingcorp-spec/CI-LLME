@@ -1,17 +1,17 @@
+import { MODEL_KEY_FORMAT_ERROR, ModelConnectInputSchema } from "@rakazo/contracts";
+import { canUseCompatibleModelAsDefault } from "@rakazo/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
   CLOUDFLARE_AI_GATEWAY_PROVIDER_ID,
-  MODEL_KEY_FORMAT_ERROR,
-  ModelConnectInputSchema,
-} from "@rakazo/contracts";
-import { canUseCompatibleModelAsDefault } from "@rakazo/core";
-import { afterEach, describe, expect, it, vi } from "vitest";
+} from "./cloudflare-ai-gateway.js";
 import {
   buildModelConnectPlaintext,
   modelCredentialDto,
   storedOpenAiCompatibleProbeKey,
 } from "./model-connect.js";
-import { parseModelSecret, serializeModelSecret } from "./pi-oauth.js";
+import { parseModelSecret, serializeModelSecret } from "./model-secret.js";
+import { COMPATIBLE_ENDPOINT_PRESETS } from "./openai-compatible-url.js";
 
 /** Fixtures connect as the deployment owner, who may use local model servers. */
 const connectAsOwner = (
@@ -197,6 +197,29 @@ describe("built-in provider output limits", () => {
     ).toBe("oauth");
   });
 
+  it("keeps an output limit saved while the connection needs sign-in again", () => {
+    const previous = serializeModelSecret({
+      kind: "oauth",
+      reconnectRequired: true,
+      maxTokens: 4096,
+    });
+    expect(
+      parseModelSecret(connectAsOwner({ provider: "openai-codex", maxTokens: 8192 }, previous)),
+    ).toEqual({ kind: "oauth", reconnectRequired: true, maxTokens: 8192 });
+  });
+
+  it("names a compatible connection at a hosted preset and nowhere else", () => {
+    const dto = (baseUrl: string) =>
+      modelCredentialDto(
+        { id: "cred-compat", provider: "openai-compatible", label: "Compatible" },
+        serializeModelSecret({ kind: "openai_compatible", baseUrl }),
+      );
+    expect(dto(COMPATIBLE_ENDPOINT_PRESETS[0]!.baseUrl).endpointName).toBe(
+      COMPATIBLE_ENDPOINT_PRESETS[0]!.name,
+    );
+    expect(dto("http://127.0.0.1:8000/v1").endpointName).toBeUndefined();
+  });
+
   it("rejects a limit update when no credential exists", () => {
     expect(() => connectAsOwner({ provider: "anthropic", maxTokens: 8192 })).toThrow(/API key/);
   });
@@ -362,6 +385,34 @@ describe("openai-codex API key guard", () => {
 });
 
 describe("modelCredentialDto", () => {
+  it("advertises account voice only for a usable account connection without exposing its tokens", () => {
+    const row = { id: "account-voice", provider: "openai-codex", label: "My account" };
+    const credential = {
+      type: "oauth" as const,
+      access: "fixture-access",
+      refresh: "fixture-refresh",
+      expires: 1,
+      accountId: "fixture-account",
+    };
+    const dto = modelCredentialDto(row, serializeModelSecret({ kind: "oauth", credential }));
+    expect(dto.supportsAccountVoice).toBe(true);
+    expect(JSON.stringify(dto)).not.toContain("fixture-access");
+    expect(JSON.stringify(dto)).not.toContain("fixture-account");
+    for (const plaintext of [
+      undefined,
+      "fixture-api-key",
+      serializeModelSecret({ kind: "oauth", reconnectRequired: true }),
+      serializeModelSecret({ kind: "oauth", credential: { ...credential, accountId: undefined } }),
+    ]) {
+      expect(modelCredentialDto(row, plaintext).supportsAccountVoice).toBeUndefined();
+    }
+    expect(
+      modelCredentialDto(
+        { ...row, provider: "anthropic" },
+        serializeModelSecret({ kind: "oauth", credential }),
+      ).supportsAccountVoice,
+    ).toBeUndefined();
+  });
   it("returns stored baseUrl and modelId for openai-compatible credentials", () => {
     const plaintext = serializeModelSecret({
       kind: "openai_compatible",
@@ -390,6 +441,7 @@ describe("modelCredentialDto", () => {
       modelId: "qwen3-4b",
       reasoning: false,
       thinkingLevels: ["off"],
+      visionModelIds: [],
     });
   });
 
@@ -549,6 +601,21 @@ describe("modelCredentialDto", () => {
     });
     expect(modelCredentialDto({ ...row, provider: "openai-codex" }, oauth).hasKey).toBe(false);
     expect(modelCredentialDto(row).hasKey).toBe(false);
+
+    const rejected = serializeModelSecret({
+      kind: "oauth",
+      reconnectRequired: true,
+      maxTokens: 4096,
+    });
+    const rejectedDto = modelCredentialDto({ ...row, provider: "openai-codex" }, rejected);
+    expect(rejectedDto).toMatchObject({
+      authKind: "oauth",
+      reconnectRequired: true,
+      maxTokens: 4096,
+      hasKey: false,
+    });
+    expect(JSON.stringify(rejectedDto)).not.toContain("access");
+    expect(JSON.stringify(rejectedDto)).not.toContain("refresh");
   });
 
   it("exposes defaultModel as modelId for provider credentials", () => {

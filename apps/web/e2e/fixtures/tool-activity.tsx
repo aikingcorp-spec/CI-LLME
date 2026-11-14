@@ -1,14 +1,11 @@
 import { I18nProvider } from "@lingui/react";
 import type { MessageBlock, ThreadMessage } from "@rakazo/contracts";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { bootstrapI18n, i18n } from "../../src/lib/i18n";
 import { queryClient } from "../../src/lib/query";
-import {
-  getToolActivityEnabled,
-  subscribeToolActivity,
-} from "../../src/lib/tool-activity-preference";
+import { rpc } from "../../src/lib/rpc";
+import { toolActivityPreference } from "../../src/lib/tool-activity-preference";
 import { SettingsOverlay } from "../../src/pages/SettingsOverlay";
 import "../../src/styles.css";
 import { FixtureTranscript } from "./thread-fixture";
@@ -60,7 +57,17 @@ const messages: ThreadMessage[] = [
     threadId: "thread-1",
     seq: 2,
     role: "bot",
-    blocks: live ? [stepsBlock] : [stepsBlock, { kind: "text", text: REPLY_TEXT }],
+    blocks: live
+      ? [
+          stepsBlock,
+          {
+            kind: "progress",
+            text: "Running: cat /home/aiking/report.txt",
+            activity: true,
+            pendingToolNames: ["shell"],
+          },
+        ]
+      : [stepsBlock, { kind: "text", text: REPLY_TEXT }],
     botId: "bot-1",
     runId: "run-1",
     createdAt,
@@ -68,7 +75,7 @@ const messages: ThreadMessage[] = [
 ];
 
 function ThreadFixture() {
-  const showToolActivity = useSyncExternalStore(subscribeToolActivity, getToolActivityEnabled);
+  const showToolActivity = toolActivityPreference.use();
   return (
     <FixtureTranscript messages={messages} running={live} showToolActivity={showToolActivity} />
   );
@@ -78,10 +85,14 @@ function SettingsFixture() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <SettingsOverlay
+        shellRpc={rpc}
         email="owner@example.test"
         name="Owner"
         memoryConfig={null}
         onMemoryConfigChange={() => {}}
+        onUsageOpen={() => {}}
+        timezone="UTC"
+        onTimezoneChange={async () => {}}
         onClose={() => {}}
         section="general"
         onSectionChange={() => {}}

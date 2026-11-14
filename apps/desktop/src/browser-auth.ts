@@ -1,8 +1,8 @@
 import type { Server } from "node:http";
 import { createServer } from "node:http";
 import type { RakazoDesktopOAuthCallback } from "@rakazo/contracts";
+import { t } from "./i18n.js";
 import { LOOPBACK_HOSTS } from "./oauth-callback.js";
-import { strings } from "./strings.js";
 
 /** Native transport only: providers still own PKCE, token exchange and persistence. */
 export async function openBrowserAuth(
@@ -85,11 +85,11 @@ export async function openBrowserAuth(
             !code ||
             target.searchParams.has("error")
           ) {
-            response.writeHead(400).end(strings().signIn.rejected);
+            response.writeHead(400).end(t("Sign-in callback rejected. Return to VNBot to retry."));
             return;
           }
           consumed = true;
-          response.end(strings().signIn.done, close);
+          response.end(t("You can close this tab and return to VNBot."), close);
           options.onCallback({ code, state });
         });
         server.requestTimeout = 10_000;

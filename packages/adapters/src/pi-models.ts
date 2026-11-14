@@ -1,12 +1,19 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
-import type { ModelOAuthSignInMode, ThinkingLevel } from "@rakazo/contracts";
+import type {
+  CompatibleEndpointPreset,
+  ModelOAuthSignInMode,
+  ModelRoutingField,
+  ThinkingLevel,
+} from "@rakazo/contracts";
 import {
   assertHeaderSafeApiKey,
   canonicalPiProviderId,
   MODEL_KEY_REJECTED_ERROR,
 } from "@rakazo/contracts";
+import { cloudflareRoutingFields } from "./cloudflare-ai-gateway.js";
+import { COMPATIBLE_ENDPOINT_PRESETS } from "./openai-compatible-url.js";
 import { LOCAL_PROVIDER_ID, registerLocalProvider } from "./pi-local-provider.js";
 import { applyPiModelCompatibility } from "./pi-model-compat.js";
 import { loadProviderOAuth, SUBSCRIPTION_SIGN_IN_PROVIDERS } from "./pi-oauth.js";
@@ -38,6 +45,8 @@ export type PiCatalogEntry = {
   placeholder?: boolean;
   /** Provider models share one pinned HTTPS models-list base URL. */
   catalogProbe?: boolean;
+  routingFields?: ModelRoutingField[];
+  endpointPresets?: CompatibleEndpointPreset[];
   live?: true;
 };
 
@@ -46,9 +55,10 @@ export type PiCatalogEntry = {
  * without one preselects its first offered model, so set one where that model is a poor start.
  */
 const RECOMMENDED_MODEL_IDS: Readonly<Record<string, string>> = {
+  "cloudflare-workers-ai": "@cf/openai/gpt-oss-20b",
   "openai-codex": "gpt-6-luna",
   openai: "gpt-6-luna",
-  openrouter: "openai/gpt-6-luna",
+  openrouter: "anthropic/claude-haiku-5.5",
   anthropic: "claude-haiku-5-5",
   google: "gemini-3.8-flash",
   groq: "openai/gpt-oss-120b",
@@ -133,6 +143,8 @@ const KEY_CHECK_URLS = new Map([
   ["google", "https://generativelanguage.googleapis.com/v1beta/models"],
 ]);
 
+const KEY_CHECK_CANCELLED = "Could not verify the API key. Try again.";
+
 /** Google reports invalid keys as HTTP 400 with a structured ErrorInfo reason. */
 async function googleKeyWasRejected(response: Response): Promise<boolean> {
   const reader = response.body?.getReader();
@@ -161,6 +173,8 @@ async function googleKeyWasRejected(response: Response): Promise<boolean> {
     reader.releaseLock();
   }
 }
+
+/** Refuses only a key the provider rejects; a slow or failing provider is no reason to block saving it. */
 export async function verifyCatalogProviderApiKey(
   input: { provider: string; apiKey: string },
   fetchImpl: typeof fetch = globalThis.fetch,
@@ -185,7 +199,8 @@ export async function verifyCatalogProviderApiKey(
     });
   } catch {
     // Transport errors may contain the request's credential. Never forward them.
-    throw new Error("Could not verify the API key. Try again.");
+    if (signal?.aborted) throw new Error(KEY_CHECK_CANCELLED);
+    return;
   }
   const rejected =
     provider === "google" && response.status === 400
@@ -195,7 +210,7 @@ export async function verifyCatalogProviderApiKey(
   if (rejected) {
     throw new Error(MODEL_KEY_REJECTED_ERROR);
   }
-  if (!response.ok) throw new Error("Could not verify the API key. Try again.");
+  if (signal?.aborted) throw new Error(KEY_CHECK_CANCELLED);
 }
 
 /**
@@ -290,6 +305,7 @@ function buildPiCatalog(): PiCatalogEntry[] {
       ),
     );
     const modelIds = providerModels.map((model) => model.id);
+    const routingFields = cloudflareRoutingFields(provider.id);
     for (const model of providerModels) {
       if (!catalogModelServesAgents(model)) hiddenCatalogKeys.add(`${provider.id}:${model.id}`);
       const thinkingLevels = getSupportedThinkingLevels(model) as ThinkingLevel[];
@@ -312,9 +328,10 @@ function buildPiCatalog(): PiCatalogEntry[] {
         // endpoint. Keep each custom connection scoped to its entered model ID.
         // Its image support is the connection's own setting, not the catalog's.
         ...(provider.id === OPENAI_COMPATIBLE_PROVIDER_ID
-          ? { placeholder: true }
+          ? { placeholder: true, endpointPresets: COMPATIBLE_ENDPOINT_PRESETS }
           : { images: model.input.includes("image") }),
         ...(probeBaseUrl ? { catalogProbe: true } : {}),
+        ...(routingFields ? { routingFields } : {}),
       });
     }
   }
@@ -379,7 +396,6 @@ function isAliasModelId(id: string, providerModelIds: readonly string[]): boolea
   );
 }
 
-/** Shown as provider guidance; VNBot is Vietnamese-first (PRODUCT.md) and the catalog has no request locale. */
 function catalogBilling(
   providerId: string,
   name: string,
@@ -388,18 +404,18 @@ function catalogBilling(
   const signInMeta = SUBSCRIPTION_SIGN_IN_PROVIDERS[providerId];
   if (signInMeta) return signInMeta.billing;
   if (providerId === LOCAL_PROVIDER_ID) {
-    return "Chạy trên hạ tầng do người quản trị máy chủ cấu hình. VNBot không thu phí mô hình.";
+    return "Runs on infrastructure configured by the server operator. No model charges from VNBot.";
   }
   if (providerId === OPENAI_COMPATIBLE_PROVIDER_ID) {
-    return "Chạy trên địa chỉ do bạn quản lý. VNBot không trả phí dùng mô hình.";
+    return "Runs on a URL you control. VNBot does not pay for model usage.";
   }
   if (opts.oauth && !opts.apiKey) {
-    return `Giao diện VNBot chưa hỗ trợ đăng nhập gói ${name}. Bỏ qua nếu máy chủ này đã có thông tin đăng nhập.`;
+    return `${name} subscription login is not in the VNBot UI yet. Skip if this deployment already has credentials.`;
   }
   if (opts.apiKey) {
-    return `Dùng khóa API ${name} của bạn. VNBot không trả phí dùng mô hình.`;
+    return `Uses your ${name} API key. VNBot does not pay for model usage.`;
   }
-  return `Dùng khóa ${name} của bạn. VNBot không trả phí dùng mô hình.`;
+  return `Uses your ${name} key. VNBot does not pay for model usage.`;
 }
 
 export const scriptedCatalogEntry: PiCatalogEntry = {

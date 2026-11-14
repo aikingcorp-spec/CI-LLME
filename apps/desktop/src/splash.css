@@ -1,0 +1,75 @@
+html {
+  color-scheme: light;
+  background: var(--background);
+}
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+main {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.icon {
+  width: 96px;
+  height: 96px;
+}
+.wordmark {
+  height: 28px;
+  margin-top: 18px;
+}
+.bar {
+  margin-top: 26px;
+  width: 120px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--sidebar-accent);
+  overflow: hidden;
+}
+.bar span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+  animation: slide 1.2s ease-in-out infinite alternate;
+}
+.hint {
+  margin: 14px 24px 0;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  text-align: center;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+a {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--link);
+}
+@keyframes slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(150%);
+  }
+}
+@keyframes pulse {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar span {
+    margin-left: 30%;
+    animation: pulse 1.2s ease-in-out infinite alternate;
+  }
+}

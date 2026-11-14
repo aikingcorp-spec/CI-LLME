@@ -4,6 +4,8 @@ import { createServer } from "node:http";
 import { HOST_COMPUTER_MAX_BYTES } from "./host-computer-protocol.js";
 import { createHostComputerRunner } from "./host-computer-runner.js";
 
+export { managedLoopbackHost } from "./host-computer-protocol.js";
+
 /** No renderer receives the credential. Docker reaches this listener through its host gateway. */
 export async function startHostComputerServer(options: {
   root: string;

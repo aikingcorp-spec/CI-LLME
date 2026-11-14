@@ -24,8 +24,10 @@ export {
 
 import { timingSafeEqual } from "node:crypto";
 import path from "node:path";
+import { StringDecoder } from "node:string_decoder";
 import { pathToFileURL } from "node:url";
 import { canReleaseScreenLease, canTakeScreenLease } from "@rakazo/core";
+import type Docker from "dockerode";
 import { z } from "zod";
 import type { SandboxInput } from "./computer-spec.js";
 import { xdotoolCommand } from "./computer-spec.js";
@@ -111,7 +113,8 @@ export function hasComputerIdentity(
 }
 
 export function hasValidBearerToken(authorization: string | undefined, expectedToken: string) {
-  const supplied = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const supplied =
+    authorization?.slice(0, 7).toLowerCase() === "bearer " ? authorization.slice(7) : "";
   const actual = Buffer.from(expectedToken);
   const candidate = Buffer.from(supplied);
   return actual.length === candidate.length && timingSafeEqual(actual, candidate);
@@ -388,6 +391,18 @@ export function pageBrowserNotReady(result: { code: number; stdout: string }) {
   }
 }
 
+/** The page helper's own reply when it refused a command (exit 2), or nothing when the output is not one. */
+export function refusedCommand(stdout: string): { ok: false; error: string } | undefined {
+  try {
+    const reply = JSON.parse(stdout) as { ok?: unknown; error?: unknown };
+    return reply && reply.ok === false && typeof reply.error === "string"
+      ? (reply as { ok: false; error: string })
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** How long a page-browser request trusts the last setup instead of rerunning it. */
 export const SCREEN_REUSE_MS = 30_000;
 
@@ -587,7 +602,7 @@ export function normalizeWorkspaceRelative(value: string) {
 }
 
 export function workspaceTarget(relative: string) {
-  return relative ? path.posix.join("/home/rakazo", relative) : "/home/rakazo";
+  return relative ? path.posix.join("/home/aiking", relative) : "/home/aiking";
 }
 
 export function sandboxTimeoutCommand(argv: string[], timeoutMs: number, completionMarker: string) {
@@ -662,12 +677,14 @@ export interface DockerStreamChunk {
 export function createDockerStreamDemuxer() {
   let mode: "pending" | "raw" | "multiplex" = "pending";
   let buffer = Buffer.alloc(0);
+  // Docker splits output at arbitrary bytes, so a character can straddle two frames.
+  const decoders = { stdout: new StringDecoder("utf8"), stderr: new StringDecoder("utf8") };
 
   const consume = (final: boolean): DockerStreamChunk[] => {
     const events: DockerStreamChunk[] = [];
     if (mode === "raw") {
       if (buffer.length === 0) return events;
-      events.push({ stream: "stdout", data: buffer.toString("utf8") });
+      events.push({ stream: "stdout", data: decoders.stdout.write(buffer) });
       buffer = Buffer.alloc(0);
       return events;
     }
@@ -679,7 +696,7 @@ export function createDockerStreamDemuxer() {
       if (!frameReady) {
         if (!final && headerReady) return events;
         mode = "raw";
-        events.push({ stream: "stdout", data: buffer.toString("utf8") });
+        events.push({ stream: "stdout", data: decoders.stdout.write(buffer) });
         buffer = Buffer.alloc(0);
         return events;
       }
@@ -689,10 +706,10 @@ export function createDockerStreamDemuxer() {
     while (offset + 8 <= buffer.length && isDockerFrameHeader(buffer, offset)) {
       const size = buffer.readUInt32BE(offset + 4);
       if (offset + 8 + size > buffer.length) break;
-      const payload = Buffer.from(buffer.subarray(offset + 8, offset + 8 + size));
+      const stream = buffer[offset] === 2 ? "stderr" : "stdout";
       events.push({
-        stream: buffer[offset] === 2 ? "stderr" : "stdout",
-        data: payload.toString("utf8"),
+        stream,
+        data: decoders[stream].write(buffer.subarray(offset + 8, offset + 8 + size)),
       });
       offset += 8 + size;
     }
@@ -707,7 +724,12 @@ export function createDockerStreamDemuxer() {
       return consume(false);
     },
     finish() {
-      return consume(true);
+      const events = consume(true);
+      for (const stream of ["stdout", "stderr"] as const) {
+        const rest = decoders[stream].end();
+        if (rest) events.push({ stream, data: rest });
+      }
+      return events;
     },
   };
 }
@@ -756,9 +778,53 @@ export function demuxDockerStream(buffer: Buffer): { stdout: string; stderr: str
 export function computerCommandEnv(layout: { display: string }) {
   return [
     `DISPLAY=${layout.display}`,
-    "HOME=/home/rakazo",
-    "PATH=/home/rakazo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-    "NPM_CONFIG_PREFIX=/home/rakazo/.local",
+    "HOME=/home/aiking",
+    "PATH=/home/aiking/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "NPM_CONFIG_PREFIX=/home/aiking/.local",
     "PIP_USER=1",
   ];
+}
+
+/** Resolve the inspected ID before removing, so a changed name cannot target another container. */
+export async function removeOwnedComputer(
+  named: Pick<Docker.Container, "inspect">,
+  remove: (id: string) => Promise<unknown>,
+  owns: (info: Docker.ContainerInspectInfo) => boolean,
+  removed: (id: string) => void,
+): Promise<boolean> {
+  try {
+    const info = await named.inspect();
+    if (!info.Id || !owns(info)) return false;
+    await remove(info.Id);
+    removed(info.Id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Only create's 409 can reclaim an owned name holder; never retry start failures. */
+export async function createComputerWithNameRetry<T>(
+  create: () => Promise<T>,
+  removeNamed: () => Promise<boolean>,
+): Promise<T> {
+  try {
+    return await create();
+  } catch (error) {
+    if ((error as { statusCode?: number })?.statusCode !== 409 || !(await removeNamed())) {
+      throw error;
+    }
+    return await create();
+  }
+}
+
+export function isManagedComputer(
+  info: Docker.ContainerInspectInfo,
+  botId: string,
+  spaceId: string,
+  image: string,
+) {
+  const labels = info.Config.Labels ?? {};
+  const managed = labels["rakazo.managed"] === "true" || info.Config.Image === image;
+  return managed && hasComputerIdentity(labels, botId, spaceId);
 }

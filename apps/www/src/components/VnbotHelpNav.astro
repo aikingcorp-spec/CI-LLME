@@ -1,0 +1,40 @@
+---
+import { VNBOT_HELP_SECTIONS, vnbotHelpPath } from "../vnbot-help";
+
+interface Props {
+  currentPath: string;
+  class?: string;
+}
+
+const { currentPath, class: className } = Astro.props;
+const indexPath = vnbotHelpPath();
+---
+
+<nav class:list={["docs-nav", className]} aria-label="Hướng dẫn VNBot">
+  <div class="docs-nav__section">
+    <ul>
+      <li>
+        <a href={indexPath} aria-current={currentPath === indexPath ? "page" : undefined}>Mục lục</a>
+      </li>
+    </ul>
+  </div>
+  {
+    VNBOT_HELP_SECTIONS.map((section) => (
+      <div class="docs-nav__section">
+        <p>{section.title}</p>
+        <ul>
+          {section.pages.map((page) => {
+            const href = vnbotHelpPath(page.slug);
+            return (
+              <li>
+                <a href={href} aria-current={href === currentPath ? "page" : undefined}>
+                  {page.title}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ))
+  }
+</nav>

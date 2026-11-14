@@ -1,14 +1,44 @@
 import { i18n } from "@lingui/core";
 import type { RunErrorTranslator } from "@rakazo/core";
-import { HOSTED_MODEL_CREDITS_REQUIRED_ERROR, normalizeRunError } from "@rakazo/core";
 
 /** Static descriptors keep shared run-error messages in Lingui extraction. */
 export const translateRunError: RunErrorTranslator = (message, values) => {
   switch (message) {
+    case "Computer requires recovery after an unconfirmed stop. Recover the computer to rebuild it.":
+      return i18n._({
+        id: "Computer requires recovery after an unconfirmed stop. Recover the computer to rebuild it.",
+        message:
+          "Computer requires recovery after an unconfirmed stop. Recover the computer to rebuild it.",
+        values,
+      });
+    case "Could not prepare the bot's computer. Check computer settings.":
+      return i18n._({
+        id: "Could not prepare the bot's computer. Check computer settings.",
+        message: "Could not prepare the bot's computer. Check computer settings.",
+        values,
+      });
+    case "Something went wrong. Try again.":
+      return i18n._({
+        id: "Something went wrong. Try again.",
+        message: "Something went wrong. Try again.",
+        values,
+      });
     case "Chat context is inconsistent. Try again or start a new chat.":
       return i18n._({
         id: "Chat context is inconsistent. Try again or start a new chat.",
         message: "Chat context is inconsistent. Try again or start a new chat.",
+        values,
+      });
+    case "Too many computer requests. Try again later.":
+      return i18n._({
+        id: "Too many computer requests. Try again later.",
+        message: "Too many computer requests. Try again later.",
+        values,
+      });
+    case "Computers are unavailable right now. Try again later.":
+      return i18n._({
+        id: "Computers are unavailable right now. Try again later.",
+        message: "Computers are unavailable right now. Try again later.",
         values,
       });
     case "This connection's request limit is too small. Choose another model.":
@@ -43,10 +73,12 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         message: "Connect a model in Settings before running bots.",
         values,
       });
-    case "Connect your own API key in Models.":
+    case "Not enough model credits. Add credits in Billing or connect your own API key.":
+    case "Connect your own API key in Models or choose Rakazo credits in Billing.":
+    case "Connect your own API key in Models or choose VNBot credits in Billing.":
       return i18n._({
-        id: "Connect your own API key in Models.",
-        message: "Connect your own API key in Models.",
+        id: "Connect a model in Settings before running bots.",
+        message: "Connect a model in Settings before running bots.",
         values,
       });
     case "The model provider returned an error.":
@@ -101,6 +133,13 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
       return i18n._({
         id: "This model's context window is too small. Choose another model.",
         message: "This model's context window is too small. Choose another model.",
+        values,
+      });
+    case "This server's tool result does not fit the model. Turn off Keep tool results whole for that server, or choose another model.":
+      return i18n._({
+        id: "This server's tool result does not fit the model. Turn off Keep tool results whole for that server, or choose another model.",
+        message:
+          "This server's tool result does not fit the model. Turn off Keep tool results whole for that server, or choose another model.",
         values,
       });
     case "{provider} took too long to respond. Try again.":
@@ -200,30 +239,6 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         message: "{provider} reached its monthly spending limit.",
         values,
       });
-    case "{provider} reached its usage limit.":
-      return i18n._({
-        id: "{provider} reached its usage limit.",
-        message: "{provider} reached its usage limit.",
-        values,
-      });
-    case "{provider} reached its daily usage limit.":
-      return i18n._({
-        id: "{provider} reached its daily usage limit.",
-        message: "{provider} reached its daily usage limit.",
-        values,
-      });
-    case "{provider} reached its weekly usage limit.":
-      return i18n._({
-        id: "{provider} reached its weekly usage limit.",
-        message: "{provider} reached its weekly usage limit.",
-        values,
-      });
-    case "{provider} reached its monthly usage limit.":
-      return i18n._({
-        id: "{provider} reached its monthly usage limit.",
-        message: "{provider} reached its monthly usage limit.",
-        values,
-      });
     case "{summary} Your backup models also failed.":
       return i18n._({
         id: "{summary} Your backup models also failed.",
@@ -246,19 +261,3 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
       return message;
   }
 };
-
-/**
- * Users bring their own model key, so a provider credit error asks them to pick another model;
- * only missing-key and legacy funding advice point to API key setup. Raw provider diagnostics
- * can carry removed billing copy, so they never reach the expandable details.
- */
-export function normalizeWebRunError(details: string, locale = i18n.locale || "en") {
-  const result = normalizeRunError(details, translateRunError, locale);
-  if (result.kind === "credit") {
-    return { ...result, details: result.summary, recovery: "model" as const };
-  }
-  const advice = translateRunError(HOSTED_MODEL_CREDITS_REQUIRED_ERROR);
-  return result.summary === advice
-    ? { ...result, summary: advice, details: advice, recovery: "connection" as const }
-    : result;
-}

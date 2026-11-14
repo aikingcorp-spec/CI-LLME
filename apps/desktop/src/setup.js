@@ -1,47 +1,50 @@
 (() => {
   const bridge = window.rakazoSetup;
-  const text = window.rakazoSetupText?.strings ?? {};
   document.documentElement.dataset.platform = bridge?.platform ?? "browser";
-  document.documentElement.lang = window.rakazoSetupText?.lang ?? "vi";
-  document.title = text.windowTitle ?? "VNBot";
-  for (const node of document.querySelectorAll("[data-text]")) {
-    node.textContent = text[node.dataset.text] ?? "";
+  const messages = bridge?.locale?.messages ?? {};
+
+  /** Core's `translate`, which this plain page cannot import: English-keyed, `{name}` placeholders. */
+  function t(message, values) {
+    const template = Object.hasOwn(messages, message) ? messages[message] : message;
+    if (!values) return template;
+    return template.replace(/\{([A-Za-z0-9_]+)\}/g, (match, key) =>
+      Object.hasOwn(values, key) ? String(values[key]) : match,
+    );
   }
-  for (const [attribute, key] of [
-    ["title", "title"],
-    ["aria-label", "ariaLabel"],
-    ["placeholder", "placeholder"],
-  ]) {
-    for (const node of document.querySelectorAll(`[data-${attribute}]`)) {
-      node.setAttribute(attribute, text[node.dataset[key]] ?? "");
+
+  /** The page is written in English; it switches to the app's language before it first paints. */
+  function translatePage() {
+    document.documentElement.lang = bridge?.locale?.lang ?? "en";
+    document.documentElement.dir = bridge?.locale?.dir ?? "ltr";
+    document.title = t(document.title);
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node.nodeValue.trim();
+      if (text !== "") node.nodeValue = node.nodeValue.replace(text, () => t(text));
+    }
+    for (const element of document.querySelectorAll("[title], [aria-label], [placeholder]")) {
+      for (const name of ["title", "aria-label", "placeholder"]) {
+        const value = element.getAttribute(name);
+        if (value !== null) element.setAttribute(name, t(value));
+      }
     }
   }
-  const format = (template, values) =>
-    template.replace(/\{(\w+)\}/g, (match, key) => (key in values ? String(values[key]) : match));
+  translatePage();
 
-  const emailForm = document.getElementById("step-email");
-  const codeForm = document.getElementById("step-code");
-  const accountEmail = document.getElementById("account-email");
-  const accountCode = document.getElementById("account-code");
-  const accountStatus = document.getElementById("account-status");
-  const legacyProfileNotice = document.getElementById("legacy-profile-notice");
-  const legacyProfileMessage = document.getElementById("legacy-profile-message");
-  const dismissLegacyProfile = document.getElementById("dismiss-legacy-profile");
-  const retryCodeButton = document.getElementById("retry-code");
-  const sendCodeButton = document.getElementById("send-code");
-  const verifyCodeButton = document.getElementById("verify-code");
-  const resendCodeButton = document.getElementById("resend-code");
-  const changeEmailButton = document.getElementById("change-email");
-  const subheading = document.getElementById("subheading");
   const form = document.getElementById("setup");
+  const choices = document.getElementById("instance-choices");
+  const panelEmail = document.getElementById("panel-email");
+  const setupEmail = document.getElementById("setup-email");
+  const setupCode = document.getElementById("setup-code");
+  const setupCodeLabel = document.getElementById("setup-code-label");
+  const resendCode = document.getElementById("resend-code");
   const serverUrl = document.getElementById("server-url");
+  const serverHeaders = document.getElementById("server-headers");
+  const serverHeadersSection = document.getElementById("server-headers-section");
   const panelNew = document.getElementById("panel-new");
   const panelExisting = document.getElementById("panel-existing");
   const stackSection = document.getElementById("stack");
   const stackPhase = document.getElementById("stack-phase");
-  const stackFailure = document.getElementById("stack-failure");
-  const stackFailureMessage = document.getElementById("stack-failure-message");
-  const stackFailureCode = document.getElementById("stack-failure-code");
   const stackOutput = document.getElementById("stack-output");
   const stackDetail = document.getElementById("stack-detail");
   const stackDetails = document.getElementById("stack-details");
@@ -55,12 +58,12 @@
 
   const STACK_POLL_MS = 1000;
   const PHASE_LABELS = {
-    "checking-docker": text.phasePreparing,
-    preparing: text.phasePreparing,
-    pulling: text.phasePulling,
-    starting: text.phaseStarting,
-    "waiting-healthy": text.phaseWaiting,
-    ready: text.phaseReady,
+    "checking-docker": t("Getting ready…"),
+    preparing: t("Getting ready…"),
+    pulling: t("Downloading VNBot…"),
+    starting: t("Starting VNBot…"),
+    "waiting-healthy": t("Almost ready…"),
+    ready: t("VNBot is ready."),
   };
   const TERMINAL_PHASES = new Set([
     "idle",
@@ -81,34 +84,8 @@
   const PULL_SPAN = 0.6;
   const PULL_SCALE_BYTES = 1.2e9;
 
-  const setupState = window.rakazoSetupState;
-  let machine = setupState.initial();
-  function dispatchMachine(event) {
-    machine = setupState.transition(machine, event);
-    renderMachine();
-    return machine;
-  }
-  function renderMachine() {
-    const phase = machine.phase;
-    if (machine.stack !== null) {
-      const visibleStack =
-        (phase === "probing" || phase === "failed") && machine.stack.phase === "ready"
-          ? { ...machine.stack, phase: "waiting-healthy" }
-          : machine.stack;
-      renderStack(visibleStack);
-    }
-    if (phase === "failed") {
-      if (machine.stack !== null) {
-        stackPhase.textContent = machine.messageVi ?? text.startFailed;
-        stackPhase.setAttribute("data-tone", "error");
-        setStatus("");
-      } else setStatus(machine.messageVi ?? text.startFailed, "error");
-      setBusy(false);
-    } else if (phase === "starting" || phase === "probing" || phase === "ready") {
-      setStatus("");
-      setBusy(true);
-    }
-  }
+  let defaultLocalUrl = "";
+  let firstRun = false;
   /** Bumped on user edits, mode switches, and new async runs; a run left behind is stale. */
   let requestGeneration = 0;
   /** Generation of the check in flight; an edit or mode switch retires it and releases its lock. */
@@ -121,6 +98,9 @@
   let detailsOpenedByFailure = false;
   /** Resolves the poll wait early when the main process pushes a new state. */
   let wakePoll = null;
+  /** `address` collects the mailbox, `code` collects the one-time code, `done` shows the computer. */
+  let emailPhase = "done";
+  let emailGate = false;
 
   function selectedMode() {
     const checked = form.querySelector('input[name="mode"]:checked');
@@ -138,13 +118,21 @@
     continueButton.disabled = busy;
   }
 
+  /** A save in flight cannot be cancelled, so the choice it commits must not change under it. */
+  function lockChoice(locked) {
+    for (const input of form.querySelectorAll('input[name="mode"]')) {
+      input.disabled = locked;
+    }
+    serverUrl.disabled = locked;
+    serverHeaders.disabled = locked;
+  }
+
   function syncPanels() {
     const mode = selectedMode();
     panelNew.hidden = mode !== "new";
     panelExisting.hidden = mode !== "existing";
-    checkButton.hidden = true;
-    continueButton.hidden = mode === "existing";
-    if (mode !== "new") continueButton.textContent = text.continue;
+    checkButton.hidden = mode !== "existing";
+    if (mode !== "new") continueButton.textContent = t("Continue");
     setStatus("");
   }
 
@@ -189,8 +177,7 @@
 
   function renderDetails(stack) {
     const bytes = stack.phase === "pulling" ? downloadedBytes(stack) : 0;
-    stackDetail.textContent =
-      bytes > 0 ? format(text.downloaded, { size: formatBytes(bytes) }) : "";
+    stackDetail.textContent = bytes > 0 ? t("{size} downloaded", { size: formatBytes(bytes) }) : "";
 
     // A new attempt clears the output, so drop an expansion the person did not ask for.
     if (stack.phase === "checking-docker" && detailsOpenedByFailure) {
@@ -217,7 +204,7 @@
     const { phase } = stack;
     stackSection.hidden = phase === "idle";
     if (phase === "idle") {
-      continueButton.textContent = text.continue;
+      continueButton.textContent = t("Continue");
       return;
     }
     const failed = isDockerPhase(phase) || phase === "failed";
@@ -225,21 +212,51 @@
     if (failed) stackPhase.setAttribute("data-tone", "error");
     else if (phase === "ready") stackPhase.setAttribute("data-tone", "ok");
     else stackPhase.removeAttribute("data-tone");
-    const failure = phase === "failed" ? stack.failure : null;
-    // Stack state owns a failed start; an earlier status or a generic fallback adds no reason.
-    if (phase === "failed") setStatus("");
-    stackFailure.hidden = !failure || failure.messageVi === stack.message;
-    stackFailureMessage.textContent = stackFailure.hidden ? "" : failure.messageVi;
-    stackFailureCode.textContent = failure?.code ?? "";
 
     renderProgress(stack);
     renderDetails(stack);
     stackDockerHelp.hidden = !isDockerPhase(phase);
 
-    if (isDockerPhase(phase)) continueButton.textContent = text.checkAgain;
-    else if (phase === "failed") continueButton.textContent = text.retry;
-    else continueButton.textContent = text.continue;
+    if (isDockerPhase(phase)) continueButton.textContent = t("Check again");
+    else if (phase === "failed") continueButton.textContent = t("Retry");
+    else continueButton.textContent = t("Continue");
     setBusy(!TERMINAL_PHASES.has(phase));
+  }
+
+  /** One "Name: value" per line; null when a line has no name. The main process validates the rest. */
+  function readHeaders() {
+    const headers = {};
+    for (const line of serverHeaders.value.split("\n")) {
+      if (line.trim() === "") continue;
+      const colon = line.indexOf(":");
+      if (colon <= 0) return null;
+      headers[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
+    }
+    return headers;
+  }
+
+  async function save(mode, url, headers) {
+    const generation = ++requestGeneration;
+    // Locking the address blurs it; a failed save hands focus back so Enter can retry.
+    const focused = document.activeElement;
+    setBusy(true);
+    lockChoice(true);
+    setStatus(t("Connecting…"));
+    try {
+      const saved = await bridge.save({ mode, serverUrl: url, ...(headers ? { headers } : {}) });
+      if (!saved.ok) {
+        setStatus(saved.error ?? t("Could not save that address."), "error");
+        if (emailGate) showEmailCode();
+      }
+    } catch {
+      setStatus(t("Could not save that address. Try again."), "error");
+    } finally {
+      lockChoice(false);
+      if (focused instanceof HTMLElement && document.activeElement === document.body)
+        focused.focus();
+      // A newer run may own the controls by now; only their owner unlocks them.
+      if (generation === requestGeneration) setBusy(false);
+    }
   }
 
   /** Wakes on the next pushed state, and on the timer if a push is ever missed. */
@@ -261,127 +278,89 @@
    * Follows a start already in flight until it settles. Leaving "This computer"
    * ends the follow so the stack becoming ready never saves over that choice.
    */
-  const PROBE_DEADLINE_MS = 90_000;
-  async function probeLocalPage(generation) {
-    const deadline = Date.now() + PROBE_DEADLINE_MS;
-    let delay = 400;
-    while (generation === machine.generation && machine.phase === "probing") {
-      try {
-        const state = await bridge.state();
-        if (generation !== machine.generation) return;
-        if (state === null || !state.defaultLocalUrl) throw new Error("Local address unavailable");
-        const localUrl = state.defaultLocalUrl;
-        const result = await bridge.test(localUrl);
-        if (generation !== machine.generation) return;
-        if (result.ok) {
-          const saved = await bridge.save({ mode: "new", serverUrl: localUrl });
-          if (generation !== machine.generation) return;
-          if (saved.ok) dispatchMachine({ type: "probe-ready", generation });
-          else
-            dispatchMachine({
-              type: "failure",
-              generation,
-              code: "open",
-              messageVi: saved.error ?? text.saveFailed,
-            });
-          return;
-        }
-        if (Date.now() >= deadline) {
-          dispatchMachine({
-            type: "failure",
-            generation,
-            code: "probe",
-            messageVi: result.error ?? text.unreachable,
-          });
-          return;
-        }
-      } catch {
-        if (generation !== machine.generation) return;
-        if (Date.now() >= deadline) {
-          dispatchMachine({
-            type: "failure",
-            generation,
-            code: "probe",
-            messageVi: text.checkFailed,
-          });
-          return;
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      delay = Math.min(delay * 1.6, 4000);
-    }
-  }
-
-  async function followStack(generation) {
+  async function followStack() {
     if (stackPolling) return;
     stackPolling = true;
     try {
-      while (generation === machine.generation && selectedMode() === "new") {
+      while (true) {
         const stack = await bridge.stack.state();
-        if (generation !== machine.generation || selectedMode() !== "new") return;
         if (stack === null) throw new Error("Setup is not active");
-        dispatchMachine({ type: "stack", generation, stack });
-        if (machine.phase === "probing") {
-          await probeLocalPage(generation);
+        // Checked after the await: a mode change during it hands the form to the change
+        // handler, and a save it started must stay busy and must not be re-rendered over.
+        if (selectedMode() !== "new") return;
+        renderStack(stack);
+        if (TERMINAL_PHASES.has(stack.phase)) {
+          if (stack.phase === "ready" && selectedMode() === "new" && emailPhase === "done") {
+            const current = await bridge.state();
+            if (selectedMode() !== "new") return;
+            defaultLocalUrl = current.defaultLocalUrl;
+            await save("new", defaultLocalUrl);
+          }
           return;
         }
-        if (machine.phase === "failed") return;
         await waitForStackChange();
       }
     } catch {
-      if (generation === machine.generation)
-        dispatchMachine({
-          type: "failure",
-          generation,
-          code: "follow",
-          messageVi: text.followFailed,
-        });
+      // Only report a follow the person still sees; leaving "new" already handed the form back.
+      if (selectedMode() === "new") {
+        setStatus(t("Could not follow the local stack. Try again."), "error");
+        setBusy(false);
+      }
     } finally {
       stackPolling = false;
     }
   }
 
   async function runStack() {
-    if (machine.phase === "starting" || machine.phase === "probing" || machine.phase === "ready")
-      return;
-    const generation = dispatchMachine({ type: "start" }).generation;
+    const generation = ++requestGeneration;
+    setStatus("");
+    setBusy(true);
     try {
+      // A queued start still reads `idle`; leave the panel as it is and let the follow render it.
       const started = await bridge.stack.start();
-      if (generation !== machine.generation) return;
-      if (started !== null) dispatchMachine({ type: "stack", generation, stack: started });
-      if (machine.phase === "failed") return;
+      // The person left "This computer" mid-start; the next pushed state re-attaches the follow.
+      if (generation !== requestGeneration) return;
+      if (started !== null && started.phase !== "idle") renderStack(started);
     } catch {
-      dispatchMachine({ type: "failure", generation, code: "start", messageVi: text.startFailed });
+      if (generation === requestGeneration) {
+        setStatus(t("Could not start the local stack. Try again."), "error");
+        setBusy(false);
+      }
       return;
     }
-    await followStack(generation);
+    await followStack();
   }
 
   async function check() {
     const value = serverUrl.value;
     if (value.trim() === "") {
-      setStatus(text.enterAddressFirst, "error");
+      setStatus(t("Enter a server address first."), "error");
+      return null;
+    }
+    const headers = readHeaders();
+    if (headers === null) {
+      setStatus(t("Invalid custom headers"), "error");
       return null;
     }
 
     const generation = ++requestGeneration;
     activeCheck = generation;
     setBusy(true);
-    setStatus(text.checking);
+    setStatus(t("Checking…"));
     try {
-      const result = await bridge.test(value);
+      const result = await bridge.test(value, headers);
       // The address or the mode changed under the test, so its result speaks for neither.
       if (generation !== requestGeneration) return result;
       if (result.ok) {
         serverUrl.value = result.url;
-        setStatus(format(text.answered, { url: result.url }), "ok");
+        setStatus(t("VNBot answered at {url}.", { url: result.url }), "ok");
       } else {
-        setStatus(result.error ?? text.unreachable, "error");
+        setStatus(result.error ?? t("Could not reach that address."), "error");
       }
       return result;
     } catch {
       if (generation === requestGeneration) {
-        setStatus(text.checkFailed, "error");
+        setStatus(t("Could not run the connection check. Try again."), "error");
       }
       return null;
     } finally {
@@ -394,7 +373,6 @@
   form.addEventListener("change", (event) => {
     if (event.target instanceof HTMLInputElement && event.target.name === "mode") {
       requestGeneration++;
-      machine = setupState.transition(machine, { type: "reset" });
       // The interrupted check completes stale and stays silent, so retire its lock here.
       const interruptedCheck = activeCheck !== 0;
       activeCheck = 0;
@@ -405,7 +383,7 @@
     }
   });
 
-  serverUrl.addEventListener("input", () => {
+  function retireCheck() {
     // An edited address invalidates the pending check; retire it and hand the controls back so
     // its late result changes nothing.
     if (activeCheck === 0) return;
@@ -413,7 +391,9 @@
     activeCheck = 0;
     setStatus("");
     setBusy(false);
-  });
+  }
+  serverUrl.addEventListener("input", retireCheck);
+  serverHeaders.addEventListener("input", retireCheck);
 
   checkButton.addEventListener("click", () => {
     void check();
@@ -438,159 +418,92 @@
     void bridge.quit();
   });
 
+  function showEmailCode() {
+    emailPhase = "code";
+    panelEmail.hidden = false;
+    choices.hidden = true;
+    checkButton.hidden = true;
+    setupCodeLabel.hidden = false;
+    setupCode.hidden = false;
+    resendCode.hidden = false;
+  }
+
+  async function continueEmail() {
+    if (bridge.email === undefined) {
+      setStatus(t("Setup could not start. Quit VNBot and try again."), "error");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (emailPhase === "address") {
+        const result = await bridge.email.send(setupEmail.value.trim());
+        if (!result.ok) {
+          setStatus(result.error ?? t("Could not reach that address."), "error");
+          return;
+        }
+        showEmailCode();
+        setStatus(t("Check your email for a code."), "ok");
+        setupCode.focus();
+        return;
+      }
+      const result = await bridge.email.stage(setupEmail.value.trim(), setupCode.value.trim());
+      if (!result.ok) {
+        setStatus(result.error ?? t("That code was not accepted."), "error");
+        return;
+      }
+      emailPhase = "done";
+      panelEmail.hidden = true;
+      choices.hidden = firstRun;
+      syncPanels();
+      setStatus("");
+      if (firstRun) await runStack();
+      else continueButton.focus();
+    } catch {
+      setStatus(t("Could not reach that address."), "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  resendCode.addEventListener("click", () => {
+    emailPhase = "address";
+    setupCode.value = "";
+    void continueEmail();
+  });
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (emailPhase !== "done") {
+      void continueEmail();
+      return;
+    }
     const mode = selectedMode();
-    if (mode === "new") void runStack();
-    // Pairing is not available yet; there is no direct-address connection.
-  });
-
-  function showStep(step) {
-    emailForm.hidden = step !== "email";
-    codeForm.hidden = step !== "code";
-    form.hidden = step !== "machine";
-    accountStatus.hidden = step === "machine";
-    setAccountStatus("");
-    if (step === "email") {
-      subheading.textContent = text.subheadingEmail;
-      accountEmail.focus();
-    } else if (step === "code") {
-      subheading.textContent = format(text.subheadingCode, { email: accountEmail.value.trim() });
-      accountCode.value = "";
-      accountCode.focus();
+    if (mode === "new") {
+      if (lastStack !== null && lastStack.phase === "ready") void save("new", defaultLocalUrl);
+      else void runStack();
     } else {
-      subheading.textContent = text.subheading;
+      const headers = readHeaders();
+      if (headers === null) setStatus(t("Invalid custom headers"), "error");
+      else void save("existing", serverUrl.value, headers);
     }
-  }
-
-  function setAccountStatus(message, tone) {
-    accountStatus.textContent = message;
-    if (tone === undefined) accountStatus.removeAttribute("data-tone");
-    else accountStatus.setAttribute("data-tone", tone);
-  }
-
-  function showAccountRetry(visible) {
-    retryCodeButton.hidden = !visible;
-    sendCodeButton.hidden = visible;
-  }
-
-  function setAccountBusy(busy) {
-    sendCodeButton.disabled = busy;
-    verifyCodeButton.disabled = busy;
-    resendCodeButton.disabled = busy;
-    changeEmailButton.disabled = busy;
-  }
-
-  /** Runs one account request with the buttons held; a dead bridge reads as a failed request. */
-  async function accountRequest(pendingText, request) {
-    setAccountBusy(true);
-    setAccountStatus(pendingText);
-    try {
-      return await request();
-    } catch {
-      return { ok: false, error: text.otpFailed };
-    } finally {
-      setAccountBusy(false);
-    }
-  }
-
-  async function sendCode(isResend) {
-    showAccountRetry(false);
-    const email = accountEmail.value.trim();
-    if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
-      setAccountStatus(text.enterEmail, "error");
-      return;
-    }
-    const sent = await accountRequest(text.sendingCode, () => bridge.account.sendCode(email));
-    if (!sent.ok) {
-      setAccountStatus(sent.error ?? text.otpFailed, "error");
-      showAccountRetry(sent.kind === "unavailable");
-    } else if (isResend) setAccountStatus(text.codeResent, "ok");
-    else showStep("code");
-  }
-
-  async function verifyCode() {
-    const code = accountCode.value;
-    if (!/^\d{6}$/.test(code)) {
-      setAccountStatus(text.enterCode, "error");
-      return;
-    }
-    const email = accountEmail.value.trim();
-    const verified = await accountRequest(text.verifyingCode, () =>
-      bridge.account.verifyCode(email, code),
-    );
-    if (verified.ok) {
-      showStep("machine");
-      if (selectedMode() === "existing") document.getElementById("mode-existing").focus();
-      else continueButton.focus();
-      return;
-    }
-    const message = verified.error ?? text.otpFailed;
-    if (verified.kind === "unavailable") {
-      showStep("email");
-      setAccountStatus(message, "error");
-      showAccountRetry(true);
-      return;
-    }
-    if (verified.kind === "not-invited") showStep("email");
-    else {
-      accountCode.value = "";
-      accountCode.focus();
-    }
-    setAccountStatus(message, "error");
-  }
-
-  emailForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    void sendCode(false);
-  });
-
-  codeForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    void verifyCode();
-  });
-
-  accountCode.addEventListener("input", () => {
-    accountCode.value = accountCode.value.replace(/\D/g, "");
-  });
-
-  resendCodeButton.addEventListener("click", () => {
-    void sendCode(true);
-  });
-  retryCodeButton.addEventListener("click", () => {
-    void sendCode(false);
-  });
-
-  changeEmailButton.addEventListener("click", () => {
-    showStep("email");
-  });
-  dismissLegacyProfile.addEventListener("click", () => {
-    legacyProfileNotice.hidden = true;
-    void bridge.dismissLegacyProfileNotice();
   });
 
   /** Pushed state keeps progress moving even when the OS throttles this window's timers. */
   function watchStack() {
-    bridge.stack.onChange((stack) => {
+    bridge.stack.onChange(() => {
       wakePoll?.();
-      // Before sign-in there is no machine choice for a ready stack to save.
-      if (form.hidden) return;
       // A follow that ended on an error restarts here instead of leaving the panel frozen;
       // hold the controls until it has rendered the state it is restarting on.
       if (!stackPolling && selectedMode() === "new") {
-        if (machine.phase === "idle" && stack?.phase !== "idle") {
-          const generation = dispatchMachine({ type: "start" }).generation;
-          dispatchMachine({ type: "stack", generation, stack });
-          if (machine.phase === "probing") void probeLocalPage(generation);
-          else if (machine.phase === "starting") void followStack(generation);
-        } else if (machine.phase === "starting") void followStack(machine.generation);
+        setBusy(true);
+        void followStack();
       }
     });
   }
 
   async function init() {
     if (bridge === undefined) {
-      setStatus(text.bridgeUnavailable ?? "Không có cầu nối thiết lập.", "error");
+      setStatus(t("Setup bridge unavailable."), "error");
       setBusy(true);
       return;
     }
@@ -601,17 +514,26 @@
     try {
       const state = await bridge.state();
       if (state === null) throw new Error("Setup is not active");
-      if (state.legacyProfilePath) {
-        legacyProfileMessage.textContent = format(text.legacyProfileNotice, {
-          path: state.legacyProfilePath,
-        });
-        legacyProfileNotice.hidden = false;
+      defaultLocalUrl = state.defaultLocalUrl;
+      firstRun = state.firstRun === true;
+      if (firstRun) {
+        choices.hidden = true;
+        document.querySelector(".heading").textContent = t("Welcome to VNBot");
+        document.querySelector(".subheading").hidden = true;
       }
+      emailGate = state.emailGate === true;
+      if (emailGate) emailPhase = "address";
       if (state.saved !== null) {
-        const { mode } = state.saved;
+        const mode = state.saved.mode;
         const modeInput = document.querySelector(`input[name="mode"][value="${mode}"]`);
         if (modeInput !== null) modeInput.checked = true;
         if (mode === "existing") serverUrl.value = state.saved.serverUrl;
+        if (mode === "existing" && state.saved.headers) {
+          serverHeaders.value = Object.entries(state.saved.headers)
+            .map(([name, value]) => `${name}: ${value}`)
+            .join("\n");
+          serverHeadersSection.open = true;
+        }
       }
       // A relaunch with the stack down starts it before this window opens; show that
       // attempt instead of the saved mode, and follow it while it is still running.
@@ -619,27 +541,24 @@
       const attached = stack !== null && stack.phase !== "idle";
       if (attached) document.getElementById("mode-new").checked = true;
       syncPanels();
-      setBusy(false);
-      // A running start belongs to the machine step, whoever launched it.
-      if (!attached && state.verifiedEmail === null) {
-        showStep("email");
-        if (state.error) setAccountStatus(state.error, "error");
-        return;
+      if (emailGate && emailPhase !== "done") {
+        panelEmail.hidden = false;
+        choices.hidden = true;
+        checkButton.hidden = true;
       }
-      showStep("machine");
+      setBusy(false);
       if (state.error) setStatus(state.error, "error");
       if (attached) {
-        const generation = dispatchMachine({ type: "start" }).generation;
-        dispatchMachine({ type: "stack", generation, stack });
-        if (machine.phase === "probing") void probeLocalPage(generation);
-        else if (machine.phase === "starting") void followStack(generation);
-      } else if (selectedMode() === "existing") {
-        document.getElementById("mode-existing").focus();
-      } else {
-        continueButton.focus();
+        renderStack(stack);
+        if (!TERMINAL_PHASES.has(stack.phase) || (firstRun && emailPhase === "done"))
+          void followStack();
       }
+      if (emailGate && emailPhase !== "done") setupEmail.focus();
+      else if (!attached && selectedMode() === "existing") serverUrl.focus();
+      else if (!attached && firstRun) void runStack();
+      else if (!attached) continueButton.focus();
     } catch {
-      setStatus(text.setupFailed, "error");
+      setStatus(t("Setup could not start. Quit VNBot and try again."), "error");
       setBusy(true);
     }
   }

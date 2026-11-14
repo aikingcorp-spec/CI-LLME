@@ -1,0 +1,93 @@
+import { PRODUCT_HELP_URL, PRODUCT_NEWS_URL, SITE_NAME, SITE_URL } from "./site";
+
+export type HomeFaqItem = {
+  question: string;
+  answer: string;
+};
+
+export type HomeStructuredDataInput = {
+  pageUrl: string;
+  title: string;
+  description: string;
+  siteDescription: string;
+  inLanguage: string;
+  defaultInLanguage: string;
+  availableLanguages: string[];
+  faq?: readonly HomeFaqItem[];
+};
+
+export function homeStructuredData(input: HomeStructuredDataInput) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${SITE_URL}/#organization`,
+        name: SITE_NAME,
+        url: `${SITE_URL}/`,
+        logo: `${SITE_URL}/landing/img/vnbot-app-icon-128.png`,
+        contactPoint: {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          url: PRODUCT_HELP_URL,
+          availableLanguage: input.availableLanguages,
+        },
+        sameAs: [PRODUCT_NEWS_URL],
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_URL}/#website`,
+        url: `${SITE_URL}/`,
+        name: SITE_NAME,
+        description: input.siteDescription,
+        inLanguage: input.defaultInLanguage,
+        publisher: { "@id": `${SITE_URL}/#organization` },
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${input.pageUrl}#webpage`,
+        url: input.pageUrl,
+        name: input.title,
+        description: input.description,
+        inLanguage: input.inLanguage,
+        isPartOf: { "@id": `${SITE_URL}/#website` },
+        about: { "@id": `${SITE_URL}/#software` },
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${SITE_URL}/#software`,
+        name: SITE_NAME,
+        url: `${SITE_URL}/`,
+        description: input.siteDescription,
+        applicationCategory: "BusinessApplication",
+        applicationSubCategory: "AI agent platform",
+        operatingSystem: "Web, macOS, Windows, Linux, iOS, Android",
+        isAccessibleForFree: true,
+        provider: { "@id": `${SITE_URL}/#organization` },
+        inLanguage: input.availableLanguages,
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+        },
+      },
+      ...(input.faq && input.faq.length > 0
+        ? [
+            {
+              "@type": "FAQPage",
+              "@id": `${input.pageUrl}#faq`,
+              url: input.pageUrl,
+              mainEntity: input.faq.map((item) => ({
+                "@type": "Question",
+                name: item.question,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: item.answer,
+                },
+              })),
+            },
+          ]
+        : []),
+    ],
+  };
+}

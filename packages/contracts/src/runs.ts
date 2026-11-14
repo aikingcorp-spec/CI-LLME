@@ -1,8 +1,24 @@
 import * as z from "zod";
 import { Id, IsoDate, RunStatus } from "./ids.js";
 
+/** A computer whose stop was not confirmed needs explicit recovery before reuse. */
+export const COMPUTER_RECOVERY_REQUIRED_ERROR =
+  "Computer requires recovery after an unconfirmed stop. Recover the computer to rebuild it.";
+
 /** The computer provider refused a request at its own rate limit; the run tells the user to wait. */
 export const COMPUTER_RATE_LIMIT_ERROR = "Too many computer requests. Try again later.";
+
+/** The organization spent this period's computer allowance; computers start again at renewal. */
+export const COMPUTER_ALLOWANCE_USED_ERROR = "No computer hours left.";
+
+/** The deployment's computer provider account cannot start computers, such as when it is unpaid. */
+export const COMPUTER_PROVIDER_UNAVAILABLE_ERROR =
+  "Computers are unavailable right now. Try again later.";
+
+/** Whether an error says the computer hours are spent, which only a plan change can fix. */
+export function isComputerAllowanceUsed(message: string | null | undefined): boolean {
+  return message?.startsWith(COMPUTER_ALLOWANCE_USED_ERROR) ?? false;
+}
 
 export const RUN_TRIGGERS = [
   "user",
@@ -18,8 +34,11 @@ export const RUN_TRIGGERS = [
   "messaging",
   "cloud_agent",
   "purchase",
+  "media",
   "created",
   "tickets",
+  "helper",
+  "helper_result",
 ] as const;
 export const RunTriggerSchema = z.enum(RUN_TRIGGERS);
 export type RunTrigger = z.infer<typeof RunTriggerSchema>;
@@ -32,7 +51,6 @@ export const RUN_ERROR_KINDS = [
   "key",
   "credit",
   "spending",
-  "usage",
   "rate",
   "auth",
   "access",
@@ -42,6 +60,25 @@ export const RUN_ERROR_KINDS = [
 ] as const;
 export type RunErrorKind = (typeof RUN_ERROR_KINDS)[number];
 
+/** A limit that resets later than this is a quota to wait out, not a rate limit to retry. */
+const PROVIDER_QUOTA_MIN_RESET_MS = 60 * 60_000;
+
+/**
+ * When a provider error says its exhausted limit resets, if that is over an hour away. Gateways
+ * copy the response's `X-RateLimit-Reset` (an epoch in seconds or milliseconds) or `Retry-After`
+ * (seconds) headers into the error body, which is all a model runtime passes on.
+ */
+export function providerQuotaResetAt(text: string, now = Date.now()): number | undefined {
+  const epoch = text.match(/\bx-ratelimit-reset\\?"?\s*[:=]\s*\\?"?(\d{10,13})(?!\d)/i)?.[1];
+  const delay = text.match(/\bretry-after\\?"?\s*[:=]\s*\\?"?(\d+)(?![\d.])/i)?.[1];
+  const resetAt = epoch
+    ? Number(epoch) * (epoch.length > 10 ? 1 : 1000)
+    : delay
+      ? now + Number(delay) * 1000
+      : undefined;
+  return resetAt !== undefined && resetAt - now > PROVIDER_QUOTA_MIN_RESET_MS ? resetAt : undefined;
+}
+
 export const RoutineRunSchema = z.object({
   id: Id,
   botId: Id,
@@ -50,6 +87,8 @@ export const RoutineRunSchema = z.object({
   error: z.string().nullable(),
   createdAt: IsoDate,
   startedAt: IsoDate.nullable(),
+  /** When a scheduled run that started well after its time was due; null otherwise. */
+  lateSince: IsoDate.nullable(),
   completedAt: IsoDate.nullable(),
   messageId: Id.nullable(),
 });

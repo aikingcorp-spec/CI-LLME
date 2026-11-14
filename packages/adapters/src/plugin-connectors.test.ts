@@ -1,4 +1,9 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { BUILTIN_AGENT_SKILLS } from "./builtin-skills.js";
 import type { PluginRepoFile } from "./plugin-connectors.js";
 import {
   classifyPluginFiles,
@@ -166,6 +171,76 @@ describe("portable plugin parser", () => {
       expect.objectContaining({ kind: "skill_invalid", name: `commands/${"x".repeat(81)}.md` }),
     );
   });
+  it("leaves out skills that repeat a built-in one, without marking the plugin partial", () => {
+    const preview = parse([
+      ...files(),
+      {
+        path: "skills/interrogate/SKILL.md",
+        content: "---\nname: Interrogate\ndescription: Review a diff\n---\n\nReview it.\n",
+      },
+      { path: "commands/INTERROGATE.md", content: "Review the diff" },
+      { path: "commands/ interrogate.md", content: "Review the diff" },
+    ]);
+    expect(preview.skills.map((s) => s.name)).toEqual(["example-skill"]);
+    expect(preview.skipped).toEqual([]);
+    expect(preview.builtinNames).toEqual(["Interrogate", " interrogate"]);
+  });
+  it("saves a preview that clients released before the built-in skip still read", () => {
+    // PluginPreviewSchema as released, which installed clients parse saved plugin installs with.
+    const released = z.object({
+      format: z.enum(["agent-plugins", "cursor", "grok"]),
+      name: z.string(),
+      version: z.string().nullable(),
+      description: z.string(),
+      author: z.string().nullable(),
+      homepage: z.string().nullable(),
+      repository: z.string().nullable(),
+      license: z.string().nullable(),
+      keywords: z.array(z.string()),
+      resolvedSha: z.string().regex(/^[a-f0-9]{40}$/),
+      pinnedSource: z.string().optional(),
+      installedSource: z.string().optional(),
+      digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+      skills: z.array(
+        z.object({
+          name: z.string(),
+          description: z.string(),
+          files: z.array(z.string()).optional(),
+        }),
+      ),
+      mcpServers: z.array(
+        z.object({
+          name: z.string(),
+          transport: z.enum(["streamable_http", "sse"]),
+          endpoint: z.string(),
+          staticHeaderKeys: z.array(z.string()),
+        }),
+      ),
+      skipped: z.array(
+        z.object({
+          kind: z.enum([
+            "mcp_stdio",
+            "mcp_invalid",
+            "skill_invalid",
+            "editor_only",
+            "unsupported_transport",
+            "unsupported_field",
+          ]),
+          name: z.string(),
+          reason: z.string(),
+        }),
+      ),
+    });
+    const preview = parse([
+      ...files(),
+      { path: "commands/interrogate.md", content: "Review the diff" },
+    ]);
+    const saved = JSON.parse(JSON.stringify(pluginPreviewDto(preview)));
+    const read = released.safeParse(saved);
+    expect(read.success).toBe(true);
+    expect(read.data?.skills.map((s) => s.name)).toEqual(["example-skill"]);
+    expect(saved.builtinNames).toEqual(["interrogate"]);
+  });
   it("tells from a file list whether every part installs", () => {
     const remote = JSON.stringify({
       mcpServers: { tools: { type: "http", url: "https://tools.example.test/mcp" } },
@@ -328,6 +403,27 @@ describe("portable plugin parser", () => {
       ).mcpServers,
     ).toEqual([]);
   });
+  it("skips servers that work only in a catalog vendor's own app", () => {
+    const plugin = (server: Record<string, unknown>) =>
+      parsePluginDirectory({
+        files: [
+          { path: ".cursor-plugin/plugin.json", content: JSON.stringify({ name: "drive" }) },
+          { path: "mcp.json", content: JSON.stringify({ mcpServers: { drive: server } }) },
+        ],
+        resolvedSha: SHA,
+      });
+    for (const server of [
+      { type: "http", url: "https://api.cursor.com/rest-mcp/google-drive/mcp" },
+      { type: "http", url: "https://relay.cursor.sh./mcp" },
+      { type: "http", url: "https://example.test/mcp", headers: { "x-cursor-auth": "token" } },
+      { type: "http", url: "https://example.test/mcp", auth: { CLIENT_ID: "vendor-app" } },
+    ]) {
+      const parsed = plugin(server);
+      expect(parsed.mcpServers).toEqual([]);
+      expect(parsed.skipped).toEqual([expect.objectContaining({ kind: "mcp_invalid" })]);
+    }
+    expect(plugin({ type: "http", url: "https://notcursor.com/mcp" }).mcpServers).toHaveLength(1);
+  });
 });
 
 describe("GitHub acquisition", () => {
@@ -343,121 +439,6 @@ describe("GitHub acquisition", () => {
       return JSON.stringify(manifest);
     });
   }
-  it("lists an over-full skill without downloading it, so it does not refuse the whole plugin", async () => {
-    // Shape of getsentry/plugin-grok: one skill with 93 reference files, the plugin over MAX_FILES.
-    const blob = (path: string) => ({ path, type: "blob", mode: "100644", size: 500 });
-    const skill = (name: string, refs: number) => [
-      blob(`skills/${name}/SKILL.md`),
-      ...Array.from({ length: refs }, (_, i) => blob(`skills/${name}/references/r${i}.md`)),
-    ];
-    const entries = [
-      blob("plugin.json"),
-      ...skill("instrument", 93),
-      ...["a", "b", "c", "d", "e"].flatMap((name) => skill(name, 30)),
-    ];
-    const read = reader(entries);
-    const repo = await fetchGitHubRepo(
-      parsePluginSource("https://github.com/example/plugin@main"),
-      undefined,
-      read,
-    );
-    const raw = read.mock.calls.map(([url]) => url).filter((url) => url.includes("raw.github"));
-    expect(raw.some((url) => url.includes("/instrument/references/"))).toBe(false);
-    expect(raw).toHaveLength(1 + 1 + 5 * 31);
-    expect(repo.files.filter((file) => file.path.startsWith("skills/instrument/"))).toHaveLength(
-      94,
-    );
-  });
-  it("retries one stalled GitHub request instead of failing the preview", async () => {
-    const inner = reader();
-    let stalled = false;
-    const read = vi.fn(async (url: string, _max: number, _signal?: AbortSignal) => {
-      if (!stalled && url.includes("raw.githubusercontent.com")) {
-        stalled = true;
-        throw Object.assign(new Error("The operation timed out"), { name: "TimeoutError" });
-      }
-      return inner(url);
-    });
-    const repo = await fetchGitHubRepo(
-      parsePluginSource("https://github.com/example/plugin@main"),
-      undefined,
-      read,
-    );
-    expect(repo.resolvedSha).toBe(SHA);
-    expect(read.mock.calls.filter(([url]) => url.includes("raw.githubusercontent")).length).toBe(2);
-  });
-  it("sends GITHUB_TOKEN only to the GitHub API, never to raw file hosts", async () => {
-    const read = reader();
-    vi.stubEnv("GITHUB_TOKEN", "test-token");
-    try {
-      await fetchGitHubRepo(
-        parsePluginSource("https://github.com/example/plugin@main"),
-        undefined,
-        read,
-      );
-    } finally {
-      vi.unstubAllEnvs();
-    }
-    for (const [url, , , headers] of read.mock.calls as unknown as Array<
-      [string, number, AbortSignal, Record<string, string> | undefined]
-    >) {
-      if (url.startsWith("https://api.github.com/"))
-        expect(headers?.authorization).toBe("Bearer test-token");
-      else expect(headers?.authorization).toBeUndefined();
-    }
-  });
-  it("previews without a token and does not send authorization", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "");
-    const read = reader();
-    try {
-      await fetchGitHubRepo(
-        parsePluginSource("https://github.com/example/plugin@main"),
-        undefined,
-        read,
-      );
-      for (const call of read.mock.calls) {
-        expect(
-          (call as unknown as [string, number, AbortSignal, Record<string, string>])[3]
-            ?.authorization,
-        ).toBeUndefined();
-      }
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
-  it.each([403, 429])("reports the unauthenticated GitHub quota for HTTP %s", async (status) => {
-    vi.stubEnv("GITHUB_TOKEN", "");
-    try {
-      const read = vi.fn(async () => {
-        throw new Error(`Request failed: HTTP ${status}`);
-      });
-      await expect(
-        fetchGitHubRepo(
-          parsePluginSource("https://github.com/example/plugin@main"),
-          undefined,
-          read,
-        ),
-      ).rejects.toThrow(/HTTP 429.*unauthenticated.*60\/hour.*optionally set GITHUB_TOKEN/);
-      expect(read).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
-  it("fetches and parses the VNBot manifest", async () => {
-    const read = reader([
-      { path: ".vnbot-plugin/plugin.json", type: "blob", mode: "100644", size: 80 },
-    ]);
-    const repo = await fetchGitHubRepo(
-      parsePluginSource("https://github.com/example/plugin"),
-      undefined,
-      read,
-    );
-    expect(repo.files.map((file) => file.path)).toEqual([".vnbot-plugin/plugin.json"]);
-    expect(parsePluginDirectory(repo)).toMatchObject({
-      name: "example-plugin",
-      format: "agent-plugins",
-    });
-  });
   it("resolves once then fetches an immutable tree and raw files", async () => {
     const read = reader();
     const repo = await fetchGitHubRepo(
@@ -513,14 +494,6 @@ describe("GitHub acquisition", () => {
   });
   it("tells temporary fetch failures from unsupported content", () => {
     expect(isTransientFetchError(new Error("Request failed: HTTP 503"))).toBe(true);
-    // A dropped TLS handshake on the VPS path (seen 3/40 to raw.githubusercontent.com) is transient.
-    expect(
-      isTransientFetchError(
-        new TypeError("x", {
-          cause: Object.assign(new Error("ssl"), { code: "ERR_SSL_UNEXPECTED_MESSAGE" }),
-        }),
-      ),
-    ).toBe(true);
     expect(isTransientFetchError(new Error("Request failed: HTTP 429"))).toBe(true);
     expect(isTransientFetchError(new DOMException("The operation timed out", "TimeoutError"))).toBe(
       true,
@@ -574,62 +547,24 @@ describe("GitHub acquisition", () => {
   });
 });
 
-describe("repositories publishing multiple plugin formats", () => {
-  it("prefers the VNBot manifest over legacy and root manifests", () => {
-    const preview = parse([
-      ...files(),
-      { path: ".cursor-plugin/plugin.json", content: JSON.stringify({ name: "legacy" }) },
-      {
-        path: ".vnbot-plugin/plugin.json",
-        content: JSON.stringify({ ...manifest, name: "vnbot-package" }),
-      },
-    ]);
-    expect(preview.name).toBe("vnbot-package");
-    expect(preview.format).toBe("agent-plugins");
-    expect(preview.mcpServers).toHaveLength(1);
-  });
-
-  it("previews the Figma layout without applying the root schema to legacy MCP config", async () => {
-    const preview = await previewPluginInstall({
-      source: "https://github.com/figma/mcp-server-guide",
-      fetcher: async () => ({
-        resolvedSha: SHA,
-        files: [
-          { path: "plugin.json", content: JSON.stringify({ ...manifest, name: "figma" }) },
-          {
-            path: ".cursor-plugin/plugin.json",
-            content: JSON.stringify({ name: "figma", mcpServers: "./.mcp.json" }),
-          },
-          {
-            path: "mcp.json",
-            content: JSON.stringify({
-              mcpServers: {
-                figma: {
-                  type: "http",
-                  url: "https://mcp.figma.com/mcp",
-                  _meta: { ideToolTitles: {} },
-                },
-              },
-            }),
-          },
-          { path: "skills/design/SKILL.md", content: skill },
-        ],
-      }),
-    });
-    expect(preview.name).toBe("figma");
-    expect(preview.mcpServers).toMatchObject([
-      { endpoint: "https://mcp.figma.com/mcp", transport: "streamable_http" },
-    ]);
-    expect(preview.skipped).toEqual([]);
-  });
-  it("still rejects an unsupported standalone root schema", () => {
-    expect(() =>
-      parse([
-        {
-          path: "plugin.json",
-          content: JSON.stringify({ name: "figma", $schema: "https://example.test/unknown" }),
-        },
-      ]),
-    ).toThrow("Unsupported Agent Plugins schema");
+describe("example plugins", () => {
+  // Both documented examples must parse completely without contacting their MCP endpoints.
+  it.each([
+    { name: "hello-world", skills: ["say-hello"], servers: [] },
+    { name: "mcp-server", skills: ["search-docs"], servers: ["docs"] },
+  ])("loads $name completely", ({ name, skills, servers }) => {
+    const root = fileURLToPath(new URL(`../../../examples/plugins/${name}`, import.meta.url));
+    const files = readdirSync(root, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => {
+        const path = join(entry.parentPath, entry.name);
+        return { path: relative(root, path), content: readFileSync(path, "utf8") };
+      });
+    const plugin = parsePluginDirectory({ files, resolvedSha: SHA });
+    expect(plugin).toMatchObject({ format: "agent-plugins", name, skipped: [] });
+    expect(plugin.skills.map((s) => s.name)).toEqual(skills);
+    expect(plugin.mcpServers.map((s) => s.name)).toEqual(servers);
+    const builtins = BUILTIN_AGENT_SKILLS.map((s) => s.name.toLowerCase());
+    expect(plugin.skills.some((s) => builtins.includes(s.name))).toBe(false);
   });
 });

@@ -47,13 +47,19 @@ describe("PWA build", () => {
     const manifest = webManifest();
     expect(manifest).toMatchObject({
       id: "/",
-      description: "VNBot giúp bạn làm việc cùng các bot trên máy của mình.",
+      name: "VNBot",
+      short_name: "VNBot",
       scope: "/",
       start_url: "/",
       display: "standalone",
       background_color: webDarkTokens.background,
       theme_color: webDarkTokens.background,
     });
-    expect(manifest.icons.filter((icon) => icon.purpose === "maskable")).toHaveLength(2);
+    expect(manifest.icons).toEqual([
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon-maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ]);
   });
 });

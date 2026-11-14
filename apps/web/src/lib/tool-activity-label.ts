@@ -10,13 +10,18 @@ const LINES: readonly Line[] = [
   [/^Running: (.*)$/su, (detail) => t`Running: ${detail}`],
   [/^Rendering a chart$/u, () => t`Rendering a chart`],
   [/^Connecting MCP server: (.*)$/su, (detail) => t`Connecting MCP server: ${detail}`],
+  [/^Finding a tool$/u, () => t`Finding a tool`],
+  [/^Finding a service: (.*)$/su, (detail) => t`Finding a service: ${detail}`],
   [/^Looking at the screen$/u, () => t`Looking at the screen`],
+  [/^Looking at (.*)$/su, (detail) => t`Looking at ${detail}`],
   [/^Opening page: (.*)$/su, (detail) => t`Opening page: ${detail}`],
+  [/^Reading the page kit reference$/u, () => t`Reading the page kit reference`],
   [/^Reading the page$/u, () => t`Reading the page`],
   [/^Reading page: (.*)$/su, (detail) => t`Reading page: ${detail}`],
   [/^Reading skill: (.*)$/su, (detail) => t`Reading skill: ${detail}`],
   [/^Reading (.+) from (.+)$/su, (file, name) => t`Reading ${file} from ${name}`],
   [/^Reading (.*)$/su, (detail) => t`Reading ${detail}`],
+  [/^Writing the page code$/u, () => t`Writing the page code`],
   [/^Writing (.*)$/su, (detail) => t`Writing ${detail}`],
   [/^Listing (.*)$/su, (detail) => t`Listing ${detail}`],
   [/^Attaching (.*)$/su, (detail) => t`Attaching ${detail}`],
@@ -38,6 +43,7 @@ const LINES: readonly Line[] = [
   [/^Creating skill: (.*)$/su, (detail) => t`Creating skill: ${detail}`],
   [/^Updating skill: (.*)$/su, (detail) => t`Updating skill: ${detail}`],
   [/^Deleting skill: (.*)$/su, (detail) => t`Deleting skill: ${detail}`],
+  [/^Using service: (.*)$/su, (detail) => t`Using service: ${detail}`],
   [/^Using ([^:\s]+): (.*)$/su, (server, tool) => t`Using ${server}: ${tool}`],
   [
     /^Using (\S+)$/u,
@@ -94,4 +100,42 @@ export function builtinToolOfStepLabel(label: string): string | undefined {
 export function toolStepLabel(label: string): string {
   const name = builtinToolOfStepLabel(label);
   return name ? builtinToolLabel(name) : label;
+}
+
+/** Normal progress uses local labels; custom tool names stay in explicit details. */
+export function usingKnownTool(toolId: string): string {
+  if (!builtinToolNames().includes(toolId)) return t`Working…`;
+  if (toolId === "shell" || toolId === "user_computer_shell") return t`Running a task`;
+  if (toolId === "read_file") return t`Reading a file`;
+  if (toolId === "write_file") return t`Writing a file`;
+  if (toolId === "computer_observe") return t`Looking at the screen`;
+  if (toolId === "computer_act") return t`Operating the computer`;
+  const tool = builtinToolLabel(toolId);
+  return t`Performing ${tool}`;
+}
+
+function compactStepTool(label: string): string | undefined {
+  const id = builtinToolOfStepLabel(label);
+  if (!id) return undefined;
+  return id === "shell" || id === "user_computer_shell" ? t`Task` : builtinToolLabel(id);
+}
+
+export function usingRecordedStep(label: string): string {
+  const id = builtinToolOfStepLabel(label);
+  return id ? usingKnownTool(id) : t`Working…`;
+}
+
+export function finishedRecordedStep(label: string): string {
+  const tool = compactStepTool(label);
+  return tool ? t`Finished ${tool}` : t`Done`;
+}
+
+export function failedRecordedStep(label: string): string {
+  const tool = compactStepTool(label);
+  return tool ? t`Couldn't finish ${tool}` : t`Couldn't finish`;
+}
+
+export function stoppedRecordedStep(label: string): string {
+  const tool = compactStepTool(label);
+  return tool ? t`Stopped ${tool}` : t`Stopped`;
 }

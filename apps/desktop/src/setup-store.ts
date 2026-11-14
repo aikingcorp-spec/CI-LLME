@@ -8,7 +8,6 @@ import { parseStoredSetup, SETUP_FILE_NAME, serializeSetup } from "./setup-confi
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_NONBLOCK = constants.O_NONBLOCK ?? 0;
 const MAX_SETUP_BYTES = 64 * 1024;
-const VERIFIED_EMAIL_FILE_NAME = "account.json";
 
 export function setupFilePath(userDataDir: string): string {
   return path.join(userDataDir, SETUP_FILE_NAME);
@@ -72,25 +71,24 @@ export async function writePrivateFile(destination: string, contents: string): P
   }
 }
 
-function verifiedEmailPath(userDataDir: string): string {
-  return path.join(userDataDir, VERIFIED_EMAIL_FILE_NAME);
-}
+/** The language the app window last reported, so the next launch starts in it before any page loads. */
+const UI_LOCALE_FILE_NAME = "ui-locale.txt";
 
-/** Who passed the sign-in code on this computer. No session or token is ever kept with it. */
-export async function readVerifiedEmail(userDataDir: string): Promise<string | null> {
-  const raw = await readPrivateFile(verifiedEmailPath(userDataDir), MAX_SETUP_BYTES);
-  if (raw === null) return null;
-  try {
-    const email: unknown = (JSON.parse(raw) as { email?: unknown } | null)?.email;
-    return typeof email === "string" && email !== "" ? email : null;
-  } catch {
-    return null;
+/** Where 0.3.9 kept the same choice. Read only; the next choice is saved in the current file. */
+const LEGACY_UI_LOCALE_FILE_NAME = "ui-locale";
+
+/** Null before the app window ever reported one; callers validate the tag. */
+export async function readUiLocale(userDataDir: string): Promise<string | null> {
+  for (const name of [UI_LOCALE_FILE_NAME, LEGACY_UI_LOCALE_FILE_NAME]) {
+    const raw = (await readPrivateFile(path.join(userDataDir, name), 64))?.trim();
+    if (raw) return raw;
   }
+  return null;
 }
 
-export async function writeVerifiedEmail(userDataDir: string, email: string): Promise<void> {
+export async function writeUiLocale(userDataDir: string, locale: string): Promise<void> {
   await mkdir(userDataDir, { recursive: true });
-  await writePrivateFile(verifiedEmailPath(userDataDir), JSON.stringify({ email }));
+  await writePrivateFile(path.join(userDataDir, UI_LOCALE_FILE_NAME), `${locale}\n`);
 }
 
 /** Removes saved setup so the next launch runs first-run again. */

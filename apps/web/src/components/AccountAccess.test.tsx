@@ -6,8 +6,10 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fetchAccountSecurity, requestAccountDeletionCode } from "../lib/account-security";
 import { authClient } from "../lib/auth";
+import { readComposerDraft, writeComposerDraft } from "../lib/composer-draft";
+import { hasSignedInBefore, rememberSignedIn } from "../lib/returning-user";
 import { runSsoFlow } from "../lib/sso-flow";
-import { AccountAccess } from "./AccountAccess";
+import { AccountAccess, LinkSsoRow } from "./AccountAccess";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: (strings: TemplateStringsArray) => strings.join("") }),
@@ -63,7 +65,14 @@ afterEach(async () => {
   host.remove();
 });
 async function render() {
-  await act(async () => root.render(<AccountAccess />));
+  await act(async () =>
+    root.render(
+      <>
+        <LinkSsoRow />
+        <AccountAccess />
+      </>,
+    ),
+  );
 }
 async function click(label: string) {
   const button = Array.from(host.querySelectorAll("button")).find(
@@ -75,15 +84,33 @@ async function click(label: string) {
 it("uses the shared desktop flow for linking", async () => {
   await render();
   await click("Link SSO");
-  expect(runSsoFlow).toHaveBeenCalledWith(expect.any(Function), [window.location.href]);
+  const failed = `${window.location.origin}${window.location.pathname}?sso-link=1`;
+  expect(runSsoFlow).toHaveBeenCalledWith(expect.any(Function), [window.location.href, failed]);
   expect(authClient.linkSocial).toHaveBeenCalledWith(
     expect.objectContaining({
       provider: "oidc",
       disableRedirect: true,
       callbackURL: `popup:${window.location.href}`,
-      errorCallbackURL: `popup:${window.location.href}`,
+      errorCallbackURL: `popup:${failed}`,
     }),
   );
+});
+it("shows a failed link's redirect error on the SSO row, not under Delete account", async () => {
+  window.history.replaceState(null, "", "/?sso-link=1&error=account_not_linked");
+  try {
+    await render();
+    const alerts = host.querySelectorAll('[role="alert"]');
+    expect(alerts).toHaveLength(1);
+    expect(host.firstElementChild?.contains(alerts[0]!)).toBe(true);
+    await click("Delete account");
+    await click("Sign in again");
+    const clean = `${window.location.origin}/`;
+    expect(authClient.signIn.social).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCallbackURL: `popup:${clean}` }),
+    );
+  } finally {
+    window.history.replaceState(null, "", "/");
+  }
 });
 it("uses the shared desktop flow for account-bound deletion reauthentication", async () => {
   await render();
@@ -104,15 +131,14 @@ it("shows the password deletion path for legacy account security", async () => {
   await render();
   await click("Delete account");
   expect(host.querySelector('input[type="password"]')).not.toBeNull();
-  expect(host.textContent).not.toContain("Link SSO");
   expect(host.textContent).not.toContain("Sign in again");
   expect(host.textContent).not.toContain("Send deletion code");
 });
 
 function deleteButton() {
-  return Array.from(host.querySelectorAll("button")).filter(
-    (button) => button.textContent === "Delete account",
-  )[1]!;
+  return Array.from(host.querySelectorAll("button"))
+    .filter((button) => button.textContent === "Delete account")
+    .at(-1)!;
 }
 it("disables passwordless deletion without a proof or nonempty code", async () => {
   await render();
@@ -173,4 +199,32 @@ it("requires a nonempty code and allows it after the proof expires", async () =>
   await act(async () => deleteButton().click());
   expect(fetchAccountSecurity).toHaveBeenCalledTimes(2);
   expect(authClient.deleteUser).toHaveBeenCalledWith({ token: "123456" });
+});
+
+it("clears saved drafts and the returning-user mark only once the account is deleted", async () => {
+  const location = { assign: vi.fn() };
+  vi.stubGlobal("location", location);
+  try {
+    writeComposerDraft("bot:bot-1", "unsent thought");
+    rememberSignedIn();
+    vi.mocked(fetchAccountSecurity).mockResolvedValue({ ...security, freshOidcAuth: true });
+    vi.mocked(authClient.deleteUser)
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: "Server error", status: 500, statusText: "Internal Server Error" },
+      })
+      .mockResolvedValueOnce({ data: { success: true }, error: null });
+    await render();
+    await click("Delete account");
+    await act(async () => deleteButton().click());
+    expect(readComposerDraft("bot:bot-1")).toBe("unsent thought");
+    expect(hasSignedInBefore()).toBe(true);
+    await act(async () => deleteButton().click());
+    expect(location.assign).toHaveBeenCalledWith("/sign-in");
+    expect(readComposerDraft("bot:bot-1")).toBe("");
+    expect(hasSignedInBefore()).toBe(false);
+  } finally {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  }
 });

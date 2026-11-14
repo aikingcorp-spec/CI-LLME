@@ -68,6 +68,13 @@ html[data-platform="darwin"] .titlebar {
   background: var(--accent);
 }
 
+.wordmark {
+  display: block;
+  width: 168px;
+  height: auto;
+  margin: 0 0 20px;
+}
+
 .shell {
   flex: 1;
   width: 100%;
@@ -84,6 +91,7 @@ html[data-platform="darwin"] .titlebar {
   font-size: 26px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  color: var(--foreground, #f5f5f5);
 }
 
 .subheading {
@@ -132,22 +140,7 @@ html[data-platform="darwin"] .titlebar {
 
 .choice-title {
   font-weight: 600;
-}
-
-.choice:has(input:disabled) {
-  cursor: not-allowed;
-  border-color: var(--border);
-  color: var(--muted-foreground);
-}
-
-.choice-badge {
-  margin-inline-start: auto;
-  flex: none;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
+  color: var(--foreground, #f5f5f5);
 }
 
 .panel {
@@ -160,7 +153,7 @@ html[data-platform="darwin"] .titlebar {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--muted-foreground);
+  color: var(--muted-foreground, #f5f5f5);
   margin-bottom: 6px;
 }
 
@@ -174,6 +167,21 @@ html[data-platform="darwin"] .titlebar {
   font: inherit;
   font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
   font-size: 13px;
+}
+
+.headers {
+  margin-top: 10px;
+}
+
+.headers summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.headers .field {
+  margin-top: 6px;
+  resize: vertical;
 }
 
 .field:focus-visible {
@@ -272,22 +280,6 @@ html[data-platform="darwin"] .titlebar {
   color: var(--destructive);
 }
 
-.stack-failure {
-  margin-top: 8px;
-  color: var(--destructive);
-  font-size: 13px;
-}
-
-.stack-failure p {
-  margin: 0;
-}
-
-.stack-failure small {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted-foreground);
-}
-
 .stack-phase[data-tone="ok"] {
   color: var(--success);
 }
@@ -379,8 +371,8 @@ html[data-platform="darwin"] .titlebar {
 }
 
 .button-primary {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: var(--primary, #f5f5f5);
+  color: var(--primary-foreground, #121212);
 }
 
 .button-primary:hover:not(:disabled) {
@@ -388,9 +380,9 @@ html[data-platform="darwin"] .titlebar {
 }
 
 .button-secondary {
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-  border-color: var(--input);
+  background: var(--secondary, #2a2a2a);
+  color: var(--secondary-foreground, #f5f5f5);
+  border-color: var(--input, #666);
 }
 
 .button-secondary:hover:not(:disabled) {
@@ -400,12 +392,4 @@ html[data-platform="darwin"] .titlebar {
 /* Last so it wins over the flex layouts above at equal specificity. */
 [hidden] {
   display: none;
-}
-
-#legacy-profile-notice {
-  margin-bottom: 18px;
-}
-
-#retry-code {
-  margin-top: 14px;
 }

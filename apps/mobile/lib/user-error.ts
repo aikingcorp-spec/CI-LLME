@@ -1,7 +1,13 @@
-import { isVoiceAccountErrorCode } from "@rakazo/contracts";
+import {
+  COMPUTER_RECOVERY_REQUIRED_ERROR,
+  CONNECTOR_AUTH_UNAVAILABLE,
+  isVoiceAccountErrorCode,
+  MCP_OAUTH_CLIENT_REQUIRED,
+} from "@rakazo/contracts";
 import type { CredentialField } from "@rakazo/core";
 import {
   authErrorMessage,
+  CALL_NOT_RINGING_ERROR,
   isServerUnreachable,
   isUnreachableStatus,
   MAX_PASSWORD_LENGTH,
@@ -26,6 +32,13 @@ export function errorText(
     return t("This model cannot read images. Choose a model that supports images.");
   if (typeof message === "string" && message.trim() === MODEL_IMAGE_INPUT_UNKNOWN)
     return t("Image input is not configured for this model.");
+  if (typeof message === "string" && message.trim() === CALL_NOT_RINGING_ERROR)
+    return t("This call is no longer ringing.");
+  if (typeof message === "string" && message.trim() === COMPUTER_RECOVERY_REQUIRED_ERROR)
+    return t(COMPUTER_RECOVERY_REQUIRED_ERROR);
+  if (errorCode(error) === CONNECTOR_AUTH_UNAVAILABLE)
+    return t("This app needs its own sign-in setup to connect.");
+  if (errorCode(error) === MCP_OAUTH_CLIENT_REQUIRED) return t("Needs an OAuth client ID");
   return (
     voiceAccountErrorText(error) ??
     userErrorMessage(error, { fallback, offline: t("Could not reach the server") })
@@ -34,11 +47,15 @@ export function errorText(
 
 /** Text for an error or `/api/voice` body whose code says the voice account needs attention. */
 export function voiceAccountErrorText(error: unknown): string | undefined {
-  const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+  const code = errorCode(error);
   if (!isVoiceAccountErrorCode(code)) return undefined;
   return code === "VOICE_OUT_OF_CREDIT"
     ? t("Your voice provider is out of credit.")
     : t("Your voice provider key was rejected.");
+}
+
+function errorCode(error: unknown): unknown {
+  return error && typeof error === "object" && "code" in error ? error.code : undefined;
 }
 
 export function credentialIssueText(field: CredentialField): string {
@@ -49,6 +66,7 @@ export function authErrorText(body: unknown, fallback: string): string {
   const code = body && typeof body === "object" && "code" in body ? body.code : undefined;
   if (code === "SSO_UNAVAILABLE") return t("SSO is temporarily unavailable. Try again.");
   if (code === "account_not_linked") return t("Sign in to your existing account to link SSO");
+  if (code === "ACCOUNT_DEACTIVATED") return t("This account is deactivated");
   if (code === "REGISTRATION_CLOSED") return t("Registration is closed");
   if (code === "EMAIL_NOT_ALLOWED") return t("Email is not allowed to register");
   if (code === "EMAIL_VERIFICATION_REQUIRED" || code === "unable_to_link_account")

@@ -57,7 +57,6 @@ async function render(
           onBoard={onBoard}
           onArtifacts={() => {}}
           onSettings={() => {}}
-          onUsage={() => {}}
           onLogOut={() => {}}
           signingOut={false}
           logOutError={null}
@@ -139,11 +138,10 @@ it("opens integrations and keeps the existing account actions and links", async 
   )!;
   await act(async () => connect.click());
   expect(onIntegrations).toHaveBeenCalledOnce();
-  expect(document.querySelector('a[href="https://vnbot.run"]')?.textContent).toBe("Docs");
   const menu = document.querySelector('[data-slot="popover-content"]')!;
+  // The 0.3.9 account menu order.
   expect([...menu.querySelectorAll("button, a")].map((row) => row.textContent)).toEqual([
     "Skills",
-    "Usage",
     "Get the mobile app",
     "Docs",
     "Board",
@@ -162,17 +160,14 @@ it("omits Board when unavailable", async () => {
   );
 });
 
-it.each(["Android", "iPhone"])(
-  "links the mobile app to the VNBot download page on %s",
-  async (agent) => {
-    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(agent);
-    await render();
-    const mobile = [...document.querySelectorAll("a")].find(
-      (link) => link.textContent === "Get the mobile app",
-    )!;
-    expect(mobile.href).toBe("https://vnbot.run/#tai-ve");
-  },
-);
+it("sends the mobile app and docs links to VNBot", async () => {
+  await render();
+  const links = [...document.querySelectorAll("a")];
+  expect(links.find((link) => link.textContent === "Get the mobile app")!.href).toBe(
+    "https://vnbot.run/#tai-ve",
+  );
+  expect(links.find((link) => link.textContent === "Docs")!.href).toBe("https://vnbot.run/");
+});
 
 it("falls back when app artwork fails and accepts replacement artwork", async () => {
   await render("Demo User", undefined, undefined, undefined, [

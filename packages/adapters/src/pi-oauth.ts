@@ -11,24 +11,13 @@ import type {
   ModelCredentialRetireReason,
   SecretStore,
 } from "@rakazo/adapter-kit";
-import type {
-  ModelContextLimits,
-  ModelOAuthBegin,
-  ModelOAuthSignInMode,
-  SettingsScope,
-  ThinkingLevel,
-} from "@rakazo/contracts";
-import {
-  canonicalPiProviderId,
-  MAX_MODEL_CONTEXT_WINDOW,
-  MAX_MODEL_MAX_TOKENS,
-  ModelContextLimitsSchema,
-  parseModelHeaders,
-  ThinkingLevelSchema,
-} from "@rakazo/contracts";
+import type { ModelOAuthBegin, ModelOAuthSignInMode, SettingsScope } from "@rakazo/contracts";
+import { canonicalPiProviderId } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { runAsSystem, runAsTenant } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import type { StoredModelSecret } from "./model-secret.js";
+import { parseModelSecret, serializeModelSecret } from "./model-secret.js";
 import { createManualAnthropicOAuthLogin } from "./pi-anthropic-oauth.js";
 
 export const CHATGPT_OAUTH_PROVIDER = "openai-codex";
@@ -49,20 +38,19 @@ export const SUBSCRIPTION_SIGN_IN_PROVIDERS: Record<
     mode: "device-code",
     loginLabel: "Sign in with ChatGPT",
     hint: "ChatGPT Plus/Pro",
-    billing: "Đăng nhập bằng ChatGPT Plus hoặc Pro. Dùng gói OpenAI của bạn. VNBot không trả phí.",
+    billing: "Sign in with ChatGPT Plus or Pro. Uses your OpenAI subscription. VNBot does not pay.",
   },
   [COPILOT_OAUTH_PROVIDER]: {
     mode: "device-code",
     loginLabel: "Sign in with GitHub Copilot",
     hint: "Copilot",
-    billing: "Đăng nhập bằng GitHub Copilot. Dùng gói Copilot của bạn. VNBot không trả phí.",
+    billing: "Sign in with GitHub Copilot. Uses your Copilot subscription. VNBot does not pay.",
   },
   [XAI_OAUTH_PROVIDER]: {
     mode: "device-code",
     loginLabel: "Sign in with SuperGrok or X Premium",
     hint: "SuperGrok / key",
-    billing:
-      "Đăng nhập bằng SuperGrok hoặc X Premium, hoặc dán khóa API của bạn. VNBot không trả phí.",
+    billing: "Sign in with SuperGrok or X Premium, or paste an xAI API key. VNBot does not pay.",
   },
   [ANTHROPIC_OAUTH_PROVIDER]: {
     mode: "auth-url",
@@ -73,14 +61,10 @@ export const SUBSCRIPTION_SIGN_IN_PROVIDERS: Record<
   },
 };
 
-const MIN_OAUTH_VALIDITY_MS = 5 * 60 * 1000;
+export const MIN_OAUTH_VALIDITY_MS = 5 * 60 * 1000;
 const SIGN_IN_START_WAIT_MS = 30_000;
 /** How long a sign-in that hands back a code stays open, on any API process. */
 const PASTED_CODE_TTL_SECONDS = 15 * 60;
-/** Bound on a detached credential refresh so it cannot pin the shared lock. */
-const REFRESH_KICK_TIMEOUT_MS = 30_000;
-const CORRUPT_MODEL_SECRET_MESSAGE =
-  "Stored model credential is corrupt. Connect the provider again.";
 
 const TERMINAL_REFRESH_ERROR_MARKERS = [
   "invalid_grant",
@@ -195,6 +179,10 @@ function decodeJwtPayload(token: string): Record<string, unknown> | undefined {
 export const OAUTH_ACCOUNT_CHANGED_ERROR =
   "The ChatGPT account changed during sign-in refresh. Connect the provider again.";
 
+/** Worded so `isModelCredentialRejected` moves a run to its backup model. */
+export const OAUTH_RECONNECT_REQUIRED_ERROR =
+  "The sign-in token expired or was revoked. Connect that model provider again.";
+
 function nonBlankString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
@@ -215,6 +203,49 @@ export function oauthCredentialAccountId(credential: OAuthCredential): string | 
       ? (namespaced as Record<string, unknown>)
       : undefined;
   return nonBlankString(claims?.chatgpt_account_id) ?? nonBlankString(payload.chatgpt_account_id);
+}
+
+/**
+ * The retirement detail when a refresh returned a token for a different account than the
+ * stored one. Either side without an account id disables the comparison.
+ */
+export function oauthAccountChange(
+  stored: OAuthCredential | undefined,
+  refreshed: OAuthCredential,
+): string | undefined {
+  const storedAccountId = stored ? oauthCredentialAccountId(stored) : undefined;
+  const refreshedAccountId = oauthCredentialAccountId(refreshed);
+  return storedAccountId && refreshedAccountId && storedAccountId !== refreshedAccountId
+    ? `stored account ${storedAccountId}, refreshed account ${refreshedAccountId}`
+    : undefined;
+}
+
+export type RetireModelCredential = (
+  reason: ModelCredentialRetireReason,
+  detail?: string,
+  failed?: ModelCredentialFailedState,
+) => Promise<boolean | undefined>;
+
+/**
+ * Retires a stored credential after a failed refresh; true only when this call retired it.
+ * Retirement fences on `failed`, the stored material, so a concurrently persisted newer
+ * credential survives and false means a retry may succeed. A retirement that throws is
+ * logged and reported as false, leaving the credential unmarked so a later attempt can
+ * retry after a database outage.
+ */
+export async function tryRetireModelCredential(
+  retire: RetireModelCredential | undefined,
+  reason: ModelCredentialRetireReason,
+  detail: string,
+  failed: ModelCredentialFailedState | undefined,
+): Promise<boolean> {
+  if (!retire) return false;
+  try {
+    return (await retire(reason, detail, failed)) === true;
+  } catch (retireError) {
+    getLogger().error("model credential retirement failed", retireError);
+    return false;
+  }
 }
 
 /**
@@ -258,40 +289,6 @@ export function isRetiredModelCredentialError(error: unknown): boolean {
     (typeof error === "object" && error !== null && retiredCredentialErrors.has(error))
   );
 }
-
-export type StoredModelLimits = ModelContextLimits;
-
-function modelLimits(value: Record<string, unknown>): StoredModelLimits {
-  const cache = ModelContextLimitsSchema.shape.cacheCapabilities.safeParse(value.cacheCapabilities);
-  const window = ModelContextLimitsSchema.shape.contextWindow.safeParse(value.contextWindow);
-  return {
-    ...(cache.success && cache.data !== undefined ? { cacheCapabilities: cache.data } : {}),
-    ...(window.success && window.data !== undefined ? { contextWindow: window.data } : {}),
-  };
-}
-
-export type StoredModelSecret =
-  | ({
-      kind: "api_key";
-      key: string;
-      maxTokens?: number;
-      accountId?: string;
-      gatewayId?: string;
-    } & StoredModelLimits)
-  | { kind: "oauth"; credential: OAuthCredential; maxTokens?: number }
-  | ({
-      kind: "openai_compatible";
-      baseUrl: string;
-      headers?: Record<string, string>;
-      apiKey?: string;
-      reasoning?: boolean;
-      thinkingLevel?: ThinkingLevel | null;
-      maxTokens?: number;
-      contextWindow?: number;
-      visionModelIds?: string[];
-      enabledModelIds?: string[];
-      maxImagesPerPrompt?: number;
-    } & StoredModelLimits);
 
 export type PiOAuthConnected = {
   status: "connected";
@@ -397,188 +394,6 @@ function isOAuthCredential(value: Credential): value is OAuthCredential {
   return value.type === "oauth";
 }
 
-function readOAuthCredential(value: unknown): OAuthCredential | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const parsed = value as Record<string, unknown>;
-  if (
-    parsed.type === "oauth" &&
-    typeof parsed.access === "string" &&
-    typeof parsed.refresh === "string" &&
-    typeof parsed.expires === "number"
-  ) {
-    return parsed as OAuthCredential;
-  }
-  return undefined;
-}
-
-function parsedRoutingId(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed || undefined;
-}
-
-function parsedMaxTokens(value: unknown): number | undefined {
-  return typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 1 &&
-    value <= MAX_MODEL_MAX_TOKENS
-    ? value
-    : undefined;
-}
-
-function parsedModelIds(value: unknown): string[] | undefined {
-  return Array.isArray(value)
-    ? value.filter(
-        (modelId): modelId is string => typeof modelId === "string" && modelId.trim().length > 0,
-      )
-    : undefined;
-}
-
-export function parseModelSecret(plaintext: string): StoredModelSecret {
-  const trimmed = plaintext.trim();
-  if (!trimmed.startsWith("{")) return { kind: "api_key", key: plaintext };
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(trimmed) as Record<string, unknown>;
-  } catch {
-    // Treat malformed JSON as a literal API key.
-    return { kind: "api_key", key: plaintext };
-  }
-  if (parsed.kind === "openai_compatible") {
-    if (typeof parsed.baseUrl !== "string" || !parsed.baseUrl.trim()) {
-      throw new Error(CORRUPT_MODEL_SECRET_MESSAGE);
-    }
-    const headers = parsed.headers === undefined ? undefined : parseModelHeaders(parsed.headers);
-    const apiKey = typeof parsed.apiKey === "string" ? parsed.apiKey : undefined;
-    const parsedThinkingLevel = ThinkingLevelSchema.nullable().safeParse(parsed.thinkingLevel);
-    const thinkingLevel = parsedThinkingLevel.success ? parsedThinkingLevel.data : undefined;
-    const maxTokens = parsedMaxTokens(parsed.maxTokens);
-    const contextWindow =
-      typeof parsed.contextWindow === "number" &&
-      Number.isInteger(parsed.contextWindow) &&
-      parsed.contextWindow >= 1 &&
-      parsed.contextWindow <= MAX_MODEL_CONTEXT_WINDOW
-        ? parsed.contextWindow
-        : undefined;
-    const visionModelIds = parsedModelIds(parsed.visionModelIds);
-    const enabledModelIds = parsedModelIds(parsed.enabledModelIds);
-    const maxImagesPerPrompt =
-      typeof parsed.maxImagesPerPrompt === "number" &&
-      Number.isInteger(parsed.maxImagesPerPrompt) &&
-      parsed.maxImagesPerPrompt >= 1 &&
-      parsed.maxImagesPerPrompt <= 1000
-        ? parsed.maxImagesPerPrompt
-        : undefined;
-    return {
-      kind: "openai_compatible",
-      baseUrl: parsed.baseUrl.trim(),
-      ...(headers !== undefined ? { headers } : {}),
-      ...(apiKey ? { apiKey } : {}),
-      ...(typeof parsed.reasoning === "boolean" ? { reasoning: parsed.reasoning } : {}),
-      ...(thinkingLevel !== undefined ? { thinkingLevel } : {}),
-      ...(maxTokens !== undefined ? { maxTokens } : {}),
-      ...(contextWindow !== undefined ? { contextWindow } : {}),
-      ...(visionModelIds ? { visionModelIds } : {}),
-      ...(enabledModelIds ? { enabledModelIds } : {}),
-      ...(maxImagesPerPrompt !== undefined ? { maxImagesPerPrompt } : {}),
-      ...modelLimits(parsed),
-    };
-  }
-  if (parsed.kind === "api_key") {
-    if (typeof parsed.key !== "string" || !parsed.key) {
-      throw new Error(CORRUPT_MODEL_SECRET_MESSAGE);
-    }
-    const maxTokens = parsedMaxTokens(parsed.maxTokens);
-    const accountId = parsedRoutingId(parsed.accountId);
-    const gatewayId = parsedRoutingId(parsed.gatewayId);
-    return {
-      kind: "api_key",
-      key: parsed.key,
-      ...(maxTokens !== undefined ? { maxTokens } : {}),
-      ...(accountId ? { accountId } : {}),
-      ...(gatewayId ? { gatewayId } : {}),
-      ...modelLimits(parsed),
-    };
-  }
-  if (parsed.kind === "oauth") {
-    const credential = readOAuthCredential(parsed.credential);
-    if (!credential) throw new Error(CORRUPT_MODEL_SECRET_MESSAGE);
-    const maxTokens = parsedMaxTokens(parsed.maxTokens);
-    return {
-      kind: "oauth",
-      credential,
-      ...(maxTokens !== undefined ? { maxTokens } : {}),
-    };
-  }
-  // Legacy secrets serialize the bare OAuth credential without a kind wrapper.
-  if (parsed.type === "oauth") {
-    const credential = readOAuthCredential(parsed);
-    if (!credential) throw new Error(CORRUPT_MODEL_SECRET_MESSAGE);
-    return { kind: "oauth", credential };
-  }
-  return { kind: "api_key", key: plaintext };
-}
-
-export function serializeModelSecret(secret: StoredModelSecret): string {
-  if (secret.kind === "oauth") {
-    if (secret.maxTokens === undefined) return JSON.stringify(secret.credential);
-    return JSON.stringify({
-      kind: "oauth",
-      credential: secret.credential,
-      maxTokens: secret.maxTokens,
-    });
-  }
-  if (secret.kind === "openai_compatible") {
-    return JSON.stringify({
-      kind: "openai_compatible",
-      ...modelLimits(secret as unknown as Record<string, unknown>),
-      baseUrl: secret.baseUrl,
-      ...(secret.headers !== undefined ? { headers: parseModelHeaders(secret.headers) } : {}),
-      ...(secret.apiKey ? { apiKey: secret.apiKey } : {}),
-      ...(secret.reasoning !== undefined ? { reasoning: secret.reasoning } : {}),
-      ...(secret.thinkingLevel !== undefined ? { thinkingLevel: secret.thinkingLevel } : {}),
-      ...(secret.maxTokens !== undefined ? { maxTokens: secret.maxTokens } : {}),
-      ...(secret.contextWindow !== undefined ? { contextWindow: secret.contextWindow } : {}),
-      ...(secret.visionModelIds !== undefined ? { visionModelIds: secret.visionModelIds } : {}),
-      ...(secret.enabledModelIds !== undefined ? { enabledModelIds: secret.enabledModelIds } : {}),
-      ...(secret.maxImagesPerPrompt !== undefined
-        ? { maxImagesPerPrompt: secret.maxImagesPerPrompt }
-        : {}),
-    });
-  }
-  if (
-    secret.maxTokens === undefined &&
-    secret.accountId === undefined &&
-    secret.gatewayId === undefined &&
-    secret.contextWindow === undefined &&
-    secret.cacheCapabilities === undefined
-  ) {
-    return secret.key;
-  }
-  return JSON.stringify({
-    kind: "api_key",
-    key: secret.key,
-    ...(secret.maxTokens !== undefined ? { maxTokens: secret.maxTokens } : {}),
-    ...(secret.accountId ? { accountId: secret.accountId } : {}),
-    ...(secret.gatewayId ? { gatewayId: secret.gatewayId } : {}),
-    ...modelLimits(secret as unknown as Record<string, unknown>),
-  });
-}
-
-const MIN_REDACTED_HEADER_VALUE_LENGTH = 8;
-
-export function secretValuesToRedact(secret: StoredModelSecret): string[] {
-  if (secret.kind === "api_key") return secret.key ? [secret.key] : [];
-  if (secret.kind === "openai_compatible")
-    return [
-      secret.apiKey,
-      ...Object.values(secret.headers ?? {}).filter(
-        (value) => value.length >= MIN_REDACTED_HEADER_VALUE_LENGTH,
-      ),
-    ].filter((value): value is string => Boolean(value));
-  return [secret.credential.access, secret.credential.refresh].filter(Boolean);
-}
-
 /**
  * Stale-failure fence for `retireModelCredential`: true only while the secret row
  * still decrypts to the exact OAuth material whose refresh failed, so a row
@@ -594,6 +409,7 @@ export function matchesFailedOAuthSecret(
       const stored = parseModelSecret(await load(secret.ciphertext, secret.id));
       return (
         stored.kind === "oauth" &&
+        !stored.reconnectRequired &&
         stored.credential.access === failed.access &&
         stored.credential.refresh === failed.refresh &&
         stored.credential.expires === failed.expires
@@ -635,13 +451,9 @@ function providerCatalog() {
   return cachedProviderCatalog;
 }
 
-type ResolveModelOpts = {
+export type ResolveModelOpts = {
   persist?: (next: string) => Promise<void>;
-  retire?: (
-    reason: ModelCredentialRetireReason,
-    detail?: string,
-    failed?: ModelCredentialFailedState,
-  ) => Promise<boolean | undefined>;
+  retire?: RetireModelCredential;
   now?: number;
   oauth?: Pick<OAuthAuth, "refresh" | "toAuth">;
   signal?: AbortSignal;
@@ -651,11 +463,14 @@ export async function resolveModelAuth(
   plaintext: string,
   provider: string,
   opts?: ResolveModelOpts,
-): Promise<{ secret: StoredModelSecret; apiKey: string }> {
+): Promise<{ secret: Exclude<StoredModelSecret, { reconnectRequired: true }>; apiKey: string }> {
   const parsed = parseModelSecret(plaintext);
   if (parsed.kind === "api_key") return { secret: parsed, apiKey: parsed.key };
   if (parsed.kind === "openai_compatible") {
     return { secret: parsed, apiKey: parsed.apiKey ?? "" };
+  }
+  if (parsed.reconnectRequired) {
+    throw new RetiredModelCredentialError(OAUTH_RECONNECT_REQUIRED_ERROR);
   }
   const oauth = opts?.oauth ?? loadProviderOAuth(provider);
   if (!oauth) {
@@ -669,45 +484,32 @@ export async function resolveModelAuth(
       credential = await oauth.refresh(credential, opts?.signal ?? new AbortController().signal);
     } catch (error) {
       const marker = terminalOAuthRefreshErrorMarker(error);
-      if (marker && opts?.retire) {
-        let deleted = false;
-        try {
-          // Retirement fences on the stored material so a concurrently persisted
-          // newer credential survives the delete.
-          deleted = (await opts.retire("terminal-refresh-failure", marker, credential)) === true;
-        } catch (retireError) {
-          // Leave the error unmarked so setup can retry after a database outage.
-          getLogger().error("model credential retirement failed", retireError);
-          throw error;
-        }
-        // A skipped delete means a newer credential won the race and a retry may succeed.
-        if (deleted) markRetiredModelCredentialError(error);
-      }
+      // The provider error can quote response text, so a confirmed failure is reported
+      // with a fixed message that contains no token material.
+      if (
+        marker &&
+        (await tryRetireModelCredential(
+          opts?.retire,
+          "terminal-refresh-failure",
+          marker,
+          credential,
+        ))
+      )
+        throw new RetiredModelCredentialError(OAUTH_RECONNECT_REQUIRED_ERROR);
       throw error;
     }
     // Compare before persist so a token for a different account is never stored.
-    // Either side without an account id disables the comparison.
-    const storedAccountId = oauthCredentialAccountId(parsed.credential);
-    const refreshedAccountId = oauthCredentialAccountId(credential);
-    if (storedAccountId && refreshedAccountId && storedAccountId !== refreshedAccountId) {
-      let deleted = false;
-      if (opts?.retire) {
-        try {
-          // Retirement fences on the stored material so a concurrently persisted
-          // newer credential survives the delete.
-          deleted =
-            (await opts.retire(
-              "account-changed",
-              `stored account ${storedAccountId}, refreshed account ${refreshedAccountId}`,
-              parsed.credential,
-            )) === true;
-        } catch (retireError) {
-          // Leave it unmarked so setup can retry after a database outage.
-          getLogger().error("model credential retirement failed", retireError);
-        }
-      }
-      // A skipped delete means a newer credential survived and a retry may succeed.
-      if (deleted) throw new RetiredModelCredentialError(OAUTH_ACCOUNT_CHANGED_ERROR);
+    const accountChange = oauthAccountChange(parsed.credential, credential);
+    if (accountChange) {
+      if (
+        await tryRetireModelCredential(
+          opts?.retire,
+          "account-changed",
+          accountChange,
+          parsed.credential,
+        )
+      )
+        throw new RetiredModelCredentialError(OAUTH_ACCOUNT_CHANGED_ERROR);
       throw new Error(OAUTH_ACCOUNT_CHANGED_ERROR);
     }
     await opts?.persist?.(
@@ -739,112 +541,6 @@ export async function resolveModelApiKey(
 ): Promise<string> {
   const resolved = await resolveModelAuth(plaintext, provider, opts);
   return resolved.apiKey;
-}
-
-const modelCredentialLocks = new Map<string, Promise<void>>();
-
-/** Concurrent runs and refresh kicks must not double-refresh or clobber each other's token write. */
-export async function withModelCredentialLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
-  const previous = modelCredentialLocks.get(key) ?? Promise.resolve();
-  let release!: () => void;
-  const current = previous.then(
-    () =>
-      new Promise<void>((resolve) => {
-        release = resolve;
-      }),
-  );
-  modelCredentialLocks.set(key, current);
-  await previous;
-  try {
-    return await fn();
-  } finally {
-    release();
-    if (modelCredentialLocks.get(key) === current) modelCredentialLocks.delete(key);
-  }
-}
-
-/** The only token writer, shared by the run path and the detached refresh kick. */
-export function persistStoredModelSecret(
-  prisma: Pick<PrismaClient, "secret">,
-  secretStore: Pick<SecretStore, "put">,
-  scope: { userId: string; spaceId: string },
-  secretId: string,
-): (next: string) => Promise<void> {
-  return async (next) => {
-    const stored = await secretStore.put(
-      next,
-      {
-        operationId: "cred",
-        traceId: "cred-refresh",
-        spaceId: scope.spaceId,
-        userId: scope.userId,
-        signal: new AbortController().signal,
-      },
-      { recordId: secretId },
-    );
-    await prisma.secret.update({
-      where: { id: secretId },
-      data: { ciphertext: stored.ciphertext },
-    });
-  };
-}
-
-/**
- * `resolveModelAuth` refreshes only a near-expiry credential, so a kick queued
- * behind a run's own refresh is a no-op once the stored token is fresh.
- */
-export async function refreshExpiredModelCredential(
-  prisma: Pick<PrismaClient, "secret">,
-  secretStore: Pick<SecretStore, "load" | "put">,
-  scope: { userId: string; spaceId: string },
-  secretId: string,
-  provider: string,
-  opts?: Pick<ResolveModelOpts, "oauth" | "signal" | "now">,
-): Promise<void> {
-  await withModelCredentialLock(secretId, async () => {
-    const row = await prisma.secret.findFirst({
-      where: { id: secretId, userId: scope.userId, spaceId: null },
-      select: { id: true, ciphertext: true },
-    });
-    if (!row) return;
-    let plaintext: string;
-    try {
-      plaintext = await secretStore.load(row.ciphertext, row.id);
-      if (parseModelSecret(plaintext).kind !== "oauth") return;
-    } catch {
-      return;
-    }
-    await resolveModelAuth(plaintext, provider, {
-      ...opts,
-      persist: persistStoredModelSecret(prisma, secretStore, scope, row.id),
-    });
-  });
-}
-
-const credentialRefreshKicks = new Map<string, Promise<void>>();
-
-/** Concurrent kicks for one credential collapse into a single refresh. */
-export function kickModelCredentialRefresh(
-  prisma: Pick<PrismaClient, "secret">,
-  secretStore: Pick<SecretStore, "load" | "put">,
-  scope: { userId: string; spaceId: string },
-  secretId: string,
-  provider: string,
-  opts?: Pick<ResolveModelOpts, "oauth" | "signal" | "now">,
-): void {
-  if (credentialRefreshKicks.has(secretId)) return;
-  const kick = refreshExpiredModelCredential(prisma, secretStore, scope, secretId, provider, {
-    signal: opts?.signal ?? AbortSignal.timeout(REFRESH_KICK_TIMEOUT_MS),
-    ...(opts?.oauth ? { oauth: opts.oauth } : {}),
-    ...(opts?.now !== undefined ? { now: opts.now } : {}),
-  })
-    .catch(() => undefined)
-    .finally(() => {
-      if (credentialRefreshKicks.get(secretId) === kick) {
-        credentialRefreshKicks.delete(secretId);
-      }
-    });
-  credentialRefreshKicks.set(secretId, kick);
 }
 
 export class PiOAuthLogins {

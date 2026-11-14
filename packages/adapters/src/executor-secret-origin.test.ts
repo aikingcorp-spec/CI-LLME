@@ -51,6 +51,7 @@ function recordingPrisma(models: Record<string, Record<string, unknown>>, calls:
         if (model === "$transaction") {
           return async (fn: (tx: unknown) => unknown) => fn(prisma);
         }
+        if (model === "$queryRaw") return async () => [];
         const methods = models[model] ?? {};
         return new Proxy(methods, {
           get: (target, method: string) => {
@@ -98,6 +99,7 @@ async function requestSecretWith(origin: string, extra: Record<string, unknown> 
   });
   const prisma = recordingPrisma(
     {
+      spaceMember: { findUnique: async () => ({ id: "member-1" }) },
       run: {
         findUnique: async () => run,
         findUniqueOrThrow: async () => run,

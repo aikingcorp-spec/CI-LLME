@@ -7,11 +7,18 @@ import {
   saveAutoReviewPreference,
 } from "./approval-settings.js";
 import type { PrismaClient } from "./client.js";
+import { GuestForbiddenError } from "./guest-access.js";
 
 const scope = { userId: "user", spaceId: "space" };
 const rule = { effect: "always_allow", matchKind: "tool", matchValue: "send" };
 
-function confirmationsClient({ overridden = false } = {}) {
+function confirmationsClient({
+  overridden = false,
+  role = "member",
+}: {
+  overridden?: boolean;
+  role?: string;
+} = {}) {
   const table = () => ({
     findMany: vi.fn().mockResolvedValue([]),
     findUnique: vi.fn().mockResolvedValue(null),
@@ -27,12 +34,16 @@ function confirmationsClient({ overridden = false } = {}) {
   const spaceSettingOverride = {
     findUnique: vi.fn().mockResolvedValue(overridden ? { setting: "confirmations" } : null),
   };
+  const spaceMember = {
+    findUnique: vi.fn().mockResolvedValue({ role }),
+  };
   const prisma = {
     ...tables,
     spaceSettingOverride,
+    spaceMember,
     $queryRaw: vi.fn().mockResolvedValue([{ locked: 1 }]),
   } as unknown as PrismaClient;
-  return { prisma, ...tables, spaceSettingOverride };
+  return { prisma, ...tables, spaceSettingOverride, spaceMember };
 }
 
 describe("approval rules", () => {
@@ -58,6 +69,22 @@ describe("approval rules", () => {
     expect(client.actionApprovalRule.findMany).not.toHaveBeenCalled();
     expect(client.actionApprovalRule.upsert).not.toHaveBeenCalled();
     expect(client.actionApprovalRule.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("replace every other rule for the same match, including case variants", async () => {
+    const client = confirmationsClient();
+    client.userActionApprovalRule.findMany.mockResolvedValueOnce([
+      { id: "same", effect: "always_allow", matchValue: "send" },
+      { id: "upper", effect: "always_allow", matchValue: "SEND" },
+      { id: "ask", effect: "require_approval", matchValue: "Send" },
+      { id: "other", effect: "always_allow", matchValue: "send_email" },
+    ]);
+
+    await saveApprovalRule(client.prisma, scope, rule);
+
+    expect(client.userActionApprovalRule.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["upper", "ask"] } },
+    });
   });
 
   it("use the Space's own copy when it overrides confirmations", async () => {
@@ -91,6 +118,34 @@ describe("approval rules", () => {
     expect(client.spaceSettingOverride.findUnique).not.toHaveBeenCalled();
     expect(client.userActionApprovalRule.findMany).toHaveBeenCalled();
     expect(client.actionApprovalRule.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("space guests", () => {
+  it("read the Space copy and cannot write confirmation rules", async () => {
+    const client = confirmationsClient({ role: "guest" });
+
+    await listApprovalRules(client.prisma, scope);
+    await expect(saveApprovalRule(client.prisma, scope, rule)).rejects.toBeInstanceOf(
+      GuestForbiddenError,
+    );
+    await expect(removeApprovalRule(client.prisma, scope, "rule-1")).rejects.toBeInstanceOf(
+      GuestForbiddenError,
+    );
+    await expect(
+      saveAutoReviewPreference(
+        client.prisma,
+        scope,
+        { enabled: true },
+        { enabled: false, skipApprovals: false },
+      ),
+    ).rejects.toBeInstanceOf(GuestForbiddenError);
+
+    expect(client.actionApprovalRule.findMany).toHaveBeenCalled();
+    expect(client.userActionApprovalRule.findMany).not.toHaveBeenCalled();
+    expect(client.userActionApprovalRule.upsert).not.toHaveBeenCalled();
+    expect(client.actionApprovalRule.upsert).not.toHaveBeenCalled();
+    expect(client.userActionAutoReviewPreference.upsert).not.toHaveBeenCalled();
   });
 });
 

@@ -1,10 +1,11 @@
 # Desktop icons
 
-Approved bé Nón set from the VNBot logo set (`logo-v2`):
+The shared editable source and export notes are in
+[`packages/ui-tokens/assets`](../../../packages/ui-tokens/assets/README.md).
 
-- `icon.icns`: macOS app icon (`macos/VNBot.icns`), used directly by `mac.icon`.
-- `icon.ico`: Windows icon (`windows/vnbot.ico`).
-- `icon.png` / `icon-macos.png`: Linux and development icon (`full-bleed/vnbot-master-1024.png`).
+Mac packaging requires Xcode 26 or newer. Electron builder compiles `Rakazo.icon`
+into `Assets.car` for Tahoe and generates `icon.icns` for older macOS versions.
+`icon-macos.png` is the matching development export with Dock margins.
 
-`packages/ui-tokens/assets/VNBot.icon` stays as the editable Icon Composer source but is
-not used by the desktop build.
+`icon.png` and `icon.ico` are matching orange exports for Linux and Windows.
+Refresh them with `pnpm --filter @rakazo/ui-tokens export:brand`.

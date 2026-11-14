@@ -14,24 +14,17 @@ import {
   autoReviewMinConfidence,
   autoReviewTimeoutMs,
   MAX_OWNER_WORDS_CHARS,
+  MEMORY_WRITE_ASK,
+  MEMORY_WRITE_PASS,
+  reviewArgsTooLong,
   sanitizeAutoReviewReason,
+  TOO_LONG_TO_REVIEW,
   truncateReviewText,
 } from "./auto-review.js";
 
 const MAX_TASK_CHARS = 400;
 const MAX_BOT_CHARS = 240;
-const MAX_ARGS_CHARS = 1_200;
-export const APPROVAL_DECISION_RUBRIC_VERSION = "approval-v2";
-function boundArgs(args: Record<string, unknown>): Record<string, unknown> {
-  try {
-    const text = JSON.stringify(args);
-    return text.length <= MAX_ARGS_CHARS
-      ? args
-      : { _truncated: truncateReviewText(text, MAX_ARGS_CHARS) };
-  } catch {
-    return { _unserializable: true };
-  }
-}
+export const APPROVAL_DECISION_RUBRIC_VERSION = "approval-v3";
 export class DecisionAutoReviewProvider implements AutoReviewProvider {
   constructor(
     private readonly options: {
@@ -52,6 +45,9 @@ export class DecisionAutoReviewProvider implements AutoReviewProvider {
   }
   async review(request: AutoReviewRequest, context: AdapterContext): Promise<AutoReviewResult> {
     const modelLabel = `${this.options.providerId}/${this.options.model}`;
+    if (reviewArgsTooLong(request)) {
+      return { decision: "ask", model: modelLabel, reason: TOO_LONG_TO_REVIEW };
+    }
     try {
       const result = await this.options.provider.decide(
         {
@@ -60,11 +56,10 @@ export class DecisionAutoReviewProvider implements AutoReviewProvider {
             rubricVersion: APPROVAL_DECISION_RUBRIC_VERSION,
             toolName: request.toolName,
             connectorKind: request.connectorKind,
-            // A new site is judged on the whole URL, since any part of it can carry data out.
-            args: request.newSite ? request.args : boundArgs(request.args),
+            args: request.args,
             userTask: truncateReviewText(
               request.userTask,
-              request.newSite ? MAX_OWNER_WORDS_CHARS : MAX_TASK_CHARS,
+              request.newSite || request.memoryWrite ? MAX_OWNER_WORDS_CHARS : MAX_TASK_CHARS,
             ),
             botDescription: truncateReviewText(request.botDescription, MAX_BOT_CHARS),
             matchingRules: request.matchingRules.map((rule) => ({
@@ -73,6 +68,7 @@ export class DecisionAutoReviewProvider implements AutoReviewProvider {
               matchValue: rule.matchValue,
             })),
             ...(request.newSite ? { newSite: true } : {}),
+            ...(request.memoryWrite ? { memoryWrite: true } : {}),
           },
           questions: {
             decision: {
@@ -83,10 +79,12 @@ export class DecisionAutoReviewProvider implements AutoReviewProvider {
                     pass: "The owner's words or the bot's role clearly call for this site, and the URL carries nothing beyond what that needs",
                     ask: "The site does not fit, or the URL's path or query holds data that looks taken from private context. Ask the user",
                   }
-                : {
-                    pass: AUTO_REVIEW_PASS,
-                    ask: AUTO_REVIEW_ASK,
-                  },
+                : request.memoryWrite
+                  ? { pass: MEMORY_WRITE_PASS, ask: MEMORY_WRITE_ASK }
+                  : {
+                      pass: AUTO_REVIEW_PASS,
+                      ask: AUTO_REVIEW_ASK,
+                    },
             },
           },
         },

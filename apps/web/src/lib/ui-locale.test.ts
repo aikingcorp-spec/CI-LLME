@@ -1,15 +1,40 @@
-import { readFileSync } from "node:fs";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { APP_LOCALE_LABELS } from "@rakazo/core";
+import { afterEach, describe, expect, it } from "vitest";
 import {
-  migrateStoredUiLocale,
   normalizeUiLocale,
-  PICKER_LOCALES,
+  offeredUiLocales,
   persistUiLocale,
   resolveUiLocale,
   UI_LOCALE_STORAGE_KEY,
+  UI_LOCALES,
 } from "./ui-locale";
 
 describe("normalizeUiLocale", () => {
+  it.each(["pl", "pl-PL", "pl_PL", " PL-pl "])("maps %s to Polish", (tag) => {
+    expect(normalizeUiLocale(tag)).toBe("pl");
+  });
+
+  it("offers Polish in the language picker", () => {
+    expect(UI_LOCALES).toContain("pl");
+    expect(APP_LOCALE_LABELS.pl).toBe("Polski");
+  });
+
+  it("offers Vietnamese and English, and keeps a saved choice outside that pair visible", () => {
+    expect(offeredUiLocales("vi")).toEqual(["vi", "en"]);
+    expect(offeredUiLocales("en")).toEqual(["vi", "en"]);
+    expect(offeredUiLocales(null)).toEqual(["vi", "en"]);
+    expect(offeredUiLocales("pl")).toEqual(["pl", "vi", "en"]);
+  });
+
+  it("offers Vietnamese and keeps the saved locale key", () => {
+    expect(UI_LOCALES).toContain("vi");
+    expect(APP_LOCALE_LABELS.vi).toBe("Tiếng Việt");
+    expect(UI_LOCALE_STORAGE_KEY).toBe("rakazo.uiLocale");
+    expect(normalizeUiLocale("vi")).toBe("vi");
+    expect(normalizeUiLocale("vi-VN")).toBe("vi");
+    expect(normalizeUiLocale("VI_vn")).toBe("vi");
+  });
+
   it("maps regional tags onto supported locales", () => {
     expect(normalizeUiLocale("de-DE")).toBe("de");
     expect(normalizeUiLocale("ko-KR")).toBe("ko");
@@ -78,11 +103,6 @@ describe("normalizeUiLocale", () => {
     expect(normalizeUiLocale("de-HK")).toBe("de");
   });
 
-  it("accepts Vietnamese and its region tag", () => {
-    expect(normalizeUiLocale("vi")).toBe("vi");
-    expect(normalizeUiLocale("vi-VN")).toBe("vi");
-  });
-
   it("falls back to English for unknown locales", () => {
     expect(normalizeUiLocale("sv-SE")).toBe("en");
     expect(normalizeUiLocale("")).toBe("en");
@@ -91,77 +111,74 @@ describe("normalizeUiLocale", () => {
 });
 
 describe("resolveUiLocale", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("prefers saved English even with a Vietnamese env default", () => {
-    expect(resolveUiLocale({ stored: "en", envDefault: "vi" })).toBe("en");
+  it("resolves Polish from a saved choice or an explicit environment default", () => {
+    expect(resolveUiLocale({ stored: null, envDefault: null, navigatorLanguage: "pl-PL" })).toBe(
+      "vi",
+    );
+    expect(resolveUiLocale({ stored: null, envDefault: "pl", navigatorLanguage: "en" })).toBe("pl");
+    expect(resolveUiLocale({ stored: "pl", envDefault: "de", navigatorLanguage: "en" })).toBe("pl");
+    expect(resolveUiLocale({ stored: "en", envDefault: "pl", navigatorLanguage: "pl-PL" })).toBe(
+      "en",
+    );
   });
 
-  it("keeps saved-choice normalization unchanged", () => {
-    expect(resolveUiLocale({ stored: "sv-SE", envDefault: "vi" })).toBe("en");
+  it("prefers the saved choice over env and navigator", () => {
+    expect(
+      resolveUiLocale({
+        stored: "ko",
+        envDefault: "de",
+        navigatorLanguage: "en-US",
+      }),
+    ).toBe("ko");
   });
 
-  it("defaults to Vietnamese in an English browser with no saved preference", () => {
-    vi.stubGlobal("navigator", { language: "en-US", languages: ["en-US"] });
-    expect(resolveUiLocale({ stored: null, envDefault: "vi" })).toBe("vi");
+  it("uses VITE_DEFAULT_UI_LOCALE when nothing is saved", () => {
+    expect(
+      resolveUiLocale({
+        stored: null,
+        envDefault: "de-AT",
+        navigatorLanguage: "ko-KR",
+      }),
+    ).toBe("de");
   });
 
-  it.each([
-    ["de-AT", "de"],
-    ["en", "en"],
-    [" en-US ", "en"],
-    ["zh-TW", "zh-TW"],
-  ])("uses supported env override %s when nothing is saved", (envDefault, expected) => {
-    expect(resolveUiLocale({ stored: null, envDefault })).toBe(expected);
+  it("uses Vietnamese when nothing is saved, including when the browser is another language", () => {
+    for (const navigatorLanguage of ["ko-KR", "zh-CN", "es-MX", "ru-RU", "fr-FR", "nl-NL", null]) {
+      expect(
+        resolveUiLocale({
+          stored: null,
+          envDefault: null,
+          navigatorLanguage,
+        }),
+      ).toBe("vi");
+    }
   });
-
-  it("defaults to Vietnamese when the env is unset", () => {
-    expect(resolveUiLocale({ stored: null, env: {} })).toBe("vi");
-  });
-
-  it("defaults to Vietnamese when the env is unset and navigator is en-US", () => {
-    vi.stubGlobal("navigator", { language: "en-US", languages: ["en-US"] });
-    expect(resolveUiLocale({ stored: null, env: {} })).toBe("vi");
-  });
-
-  it.each([null, "", "   ", "sv-SE", "garbage", "english"])(
-    "defaults to Vietnamese for missing or unsupported env value %s",
-    (envDefault) => {
-      expect(resolveUiLocale({ stored: null, envDefault })).toBe("vi");
-    },
-  );
 
   it("reads localStorage via the storage helper", () => {
     const storage = {
       getItem: (key: string) => (key === UI_LOCALE_STORAGE_KEY ? "de" : null),
     };
-    expect(resolveUiLocale({ storage, envDefault: null })).toBe("de");
+    expect(resolveUiLocale({ storage, envDefault: null, navigatorLanguage: null })).toBe("de");
   });
 });
 
-it("ships Vietnamese as the web build default", () => {
-  for (const file of [
-    "../../../../.env.example",
-    "../../.env.development",
-    "../../.env.production",
-  ]) {
-    expect(readFileSync(new URL(file, import.meta.url), "utf8")).toMatch(
-      /^VITE_DEFAULT_UI_LOCALE=vi$/m,
-    );
-  }
-});
+describe("blocked storage", () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  afterEach(() => {
+    if (original) Object.defineProperty(globalThis, "localStorage", original);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  });
 
-it("passes the Vietnamese default into the Docker web build", () => {
-  // .dockerignore drops .env.production from the image context, so the Dockerfile must carry it.
-  const dockerfile = readFileSync(
-    new URL("../../../../infra/compose/Dockerfile", import.meta.url),
-    "utf8",
-  );
-  expect(dockerfile).toMatch(/^ARG VITE_DEFAULT_UI_LOCALE=vi$/m);
-  const viteEnv = readFileSync(new URL("../vite-env.d.ts", import.meta.url), "utf8");
-  for (const [, name] of viteEnv.matchAll(/readonly (VITE_[A-Z0-9_]+)/g)) {
-    expect(dockerfile).toMatch(new RegExp(`^ARG ${name}=`, "m"));
-  }
+  it("falls back to the browser language and skips saving when reading storage throws", () => {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("Access is denied for this document.", "SecurityError");
+      },
+    });
+    expect(resolveUiLocale({ envDefault: null, navigatorLanguage: "de-DE" })).toBe("vi");
+    expect(() => persistUiLocale("de")).not.toThrow();
+  });
 });
 
 describe("persistUiLocale", () => {
@@ -176,51 +193,19 @@ describe("persistUiLocale", () => {
   });
 });
 
-function memoryStorage(initial?: string) {
-  const store = new Map<string, string>();
-  if (initial !== undefined) store.set(UI_LOCALE_STORAGE_KEY, initial);
-  return {
-    store,
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      store.set(key, value);
-    },
-  };
-}
-
-describe("retired saved locales", () => {
-  it.each(["ja", "ko", "zh-CN", "zh-TW", "ja-JP", "ko-KR", "zh", "zh-Hant"])(
-    "moves saved %s to Vietnamese and rewrites storage",
-    (saved) => {
-      const storage = memoryStorage(saved);
-      expect(resolveUiLocale({ storage, envDefault: "en" })).toBe("vi");
-      migrateStoredUiLocale(storage);
-      expect(storage.store.get(UI_LOCALE_STORAGE_KEY)).toBe("vi");
-    },
-  );
-
-  it.each(["en", "vi", "de"])("leaves saved %s unchanged", (saved) => {
-    const storage = memoryStorage(saved);
-    expect(resolveUiLocale({ storage })).toBe(saved);
-    migrateStoredUiLocale(storage);
-    expect(storage.store.get(UI_LOCALE_STORAGE_KEY)).toBe(saved);
-  });
-
-  it("writes nothing when nothing is saved", () => {
-    const storage = memoryStorage();
-    migrateStoredUiLocale(storage);
-    expect(storage.store.size).toBe(0);
-  });
-});
-
 describe("Traditional Chinese preferences", () => {
-  it("lets a saved choice override the configured default", () => {
-    expect(resolveUiLocale({ stored: "en", envDefault: "zh-TW" })).toBe("en");
-    expect(resolveUiLocale({ stored: null, envDefault: "zh-TW" })).toBe("zh-TW");
+  it("uses the device locale and lets a saved choice override it", () => {
+    expect(resolveUiLocale({ stored: null, envDefault: null, navigatorLanguage: "zh-TW" })).toBe(
+      "vi",
+    );
+    expect(resolveUiLocale({ stored: "zh-TW", envDefault: "en", navigatorLanguage: "zh-CN" })).toBe(
+      "zh-TW",
+    );
+    expect(
+      resolveUiLocale({ stored: "zh-CN", envDefault: "zh-TW", navigatorLanguage: "zh-TW" }),
+    ).toBe("zh-CN");
+    expect(resolveUiLocale({ stored: null, envDefault: "zh-TW", navigatorLanguage: "en" })).toBe(
+      "zh-TW",
+    );
   });
-});
-
-it("offers only Vietnamese and English while keeping other saved catalog choices", () => {
-  expect(PICKER_LOCALES).toEqual(["vi", "en"]);
-  expect(resolveUiLocale({ stored: "de" })).toBe("de");
 });

@@ -2,6 +2,7 @@ import type { SettingsScope, SpaceSetting } from "@rakazo/contracts";
 import { SpaceSettingSchema } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
+import { assertNotSpaceGuest } from "./guest-access.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
 type Scope = { userId: string; spaceId: string };
@@ -82,6 +83,7 @@ export async function setSpaceSettingOverride(
     prisma.$transaction(
       async (tx) => {
         await lockSpaceSettings(tx, scope);
+        if (setting === "confirmations") await assertNotSpaceGuest(tx, scope);
         const key = {
           spaceId_userId_setting: { spaceId: scope.spaceId, userId: scope.userId, setting },
         };

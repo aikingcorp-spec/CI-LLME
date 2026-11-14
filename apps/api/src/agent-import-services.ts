@@ -3,10 +3,10 @@ import { mcpStdioRefusal, providerCatalogCache, validateBotModelChange } from "@
 import type { Actor } from "@rakazo/contracts";
 import { canonicalPiProviderId, ModelConnectInputSchema } from "@rakazo/contracts";
 import type { createRepos } from "@rakazo/db";
-import { findModelCredential, Prisma } from "@rakazo/db";
+import { findModelCredential, Prisma, withTransactionRetry } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { isAdmin } from "./admins.js";
 import type { AgentImportServices } from "./agent-import.js";
-import type { createBotRemoval } from "./bot-removal.js";
 import type { createMcpServers } from "./mcp-servers.js";
 import { mcpCredentialRecords, mcpStdioPolicy } from "./mcp-servers.js";
 import type { createModelConnector } from "./model-credentials.js";
@@ -14,7 +14,6 @@ import { createImportedModelCredential, prepareModelCredential } from "./model-c
 import type { RouterDeps } from "./router.js";
 import type { createRoutineAnnouncer } from "./routines.js";
 import { assertRoutineSchedule, routineNextRunAt, routineRowData } from "./routines.js";
-import { withSerializableRetry } from "./serializable-retry.js";
 
 export function createAgentImportServices({
   deps,
@@ -25,8 +24,6 @@ export function createAgentImportServices({
   prepareMcpServer,
   insertMcpServer,
   announceRoutine,
-  removeBot,
-  removeMcpServerInTransaction,
 }: {
   deps: RouterDeps;
   repos: ReturnType<typeof createRepos>;
@@ -36,8 +33,6 @@ export function createAgentImportServices({
   prepareMcpServer: ReturnType<typeof createMcpServers>["prepareMcpServer"];
   insertMcpServer: ReturnType<typeof createMcpServers>["insertMcpServer"];
   announceRoutine: ReturnType<typeof createRoutineAnnouncer>;
-  removeBot: ReturnType<typeof createBotRemoval>;
-  removeMcpServerInTransaction: ReturnType<typeof createMcpServers>["removeMcpServerInTransaction"];
 }) {
   type ImportKey = {
     credential: Parameters<typeof prepareModelCredential>[2];
@@ -47,7 +42,7 @@ export function createAgentImportServices({
     prisma: deps.prisma,
     // Serializable so the create-only key check cannot race a connection saved meanwhile.
     createBot: (actor, input) =>
-      withSerializableRetry(() =>
+      withTransactionRetry(() =>
         repos.createBot(actor, {
           ...input,
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -91,7 +86,10 @@ export function createAgentImportServices({
       });
       return result.ok ? null : result.error;
     },
-    stdioAllowed: (command) => !mcpStdioRefusal(command, mcpStdioPolicy(deps)),
+    stdioAllowed: async (actor) => {
+      const admin = await isAdmin(deps, actor.userId);
+      return (command) => admin && !mcpStdioRefusal(command, mcpStdioPolicy(deps));
+    },
     prepareModelKey: async (actor, input, signal) => {
       const connect = ModelConnectInputSchema.parse({ ...input, credentialId: null });
       const { plaintext } = await verifyModelConnection(actor, connect, signal);
@@ -116,20 +114,12 @@ export function createAgentImportServices({
       (deps.providerCatalog ?? providerCatalogCache).invalidate(canonicalPiProviderId(provider)),
     prepareMcpServer,
     insertMcpServer,
-    inTransaction: (run) =>
-      withSerializableRetry(() =>
-        deps.prisma.$transaction(run, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        }),
-      ),
     findBot: async (actor, botId) =>
       (await repos.listBots(actor)).find((bot) => bot.id === botId) ?? null,
     assertRoutineSchedule,
     routineNextRunAt,
     routineRowData,
     announceRoutine,
-    destroyBot: removeBot,
-    removeMcpServer: removeMcpServerInTransaction,
     notifyThread: (threadId, seq) => deps.events.notify(threadId, seq),
   };
   return agentImportServices;

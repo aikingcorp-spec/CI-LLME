@@ -5,11 +5,13 @@ import {
   EMAIL_NOT_INVITED_MESSAGE,
   isAllowlistEmail,
   isEmailInvited,
+  lookupInvite,
   normalizeEmail,
   notInvited,
   parseEmailAllowlistArgs,
   removeAllowlistEmail,
   runEmailAllowlist,
+  sessionNotInvited,
 } from "./email-allowlist.js";
 
 describe("invite addresses", () => {
@@ -41,6 +43,12 @@ describe("invite addresses", () => {
       code: EMAIL_NOT_INVITED,
       message: EMAIL_NOT_INVITED_MESSAGE,
     });
+  });
+
+  it("returns HTTP 401 EMAIL_NOT_INVITED for a session that lost its invite", () => {
+    const error = sessionNotInvited();
+    expect(error.status).toBe("UNAUTHORIZED");
+    expect(error.body).toMatchObject({ code: EMAIL_NOT_INVITED });
   });
 });
 
@@ -121,7 +129,9 @@ describe("invite list commands", () => {
       created: false,
     });
     expect(await isEmailInvited(prisma, "LAN@gmail.com")).toBe(true);
+    expect(await lookupInvite(prisma, "LAN@gmail.com")).toBe("listed");
     expect(await isEmailInvited(prisma, "other@gmail.com")).toBe(false);
+    expect(await lookupInvite(prisma, "other@gmail.com")).toBe("absent");
     expect(rows.size).toBe(1);
     const listed = await runEmailAllowlist(prisma, { action: "list" });
     expect(listed).toContain('"email":"lan@gmail.com"');
@@ -138,9 +148,21 @@ describe("invite list commands", () => {
     ).toBe("not listed missing@x.test\n");
   });
 
-  it("rejects a command that is not add, remove, or list", () => {
+  it("reports a failed read instead of treating it as an empty list", async () => {
+    const findUnique = vi.fn();
+    const prisma = {
+      $queryRaw: vi.fn(async () => {
+        throw new Error("database unavailable");
+      }),
+      authEmailAllowlist: { findUnique },
+    };
+    expect(await lookupInvite(prisma as never, "ada@example.test")).toBe("unavailable");
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+
+  it("rejects a command that is not add, remove, or list", async () => {
     expect(() => parseEmailAllowlistArgs([])).toThrow(/Usage/);
     expect(() => parseEmailAllowlistArgs(["add"])).toThrow(/Usage/);
-    expect(() => addAllowlistEmail({} as never, "not-an-email")).rejects.toThrow(/usable invite/);
+    await expect(addAllowlistEmail({} as never, "not-an-email")).rejects.toThrow(/usable invite/);
   });
 });

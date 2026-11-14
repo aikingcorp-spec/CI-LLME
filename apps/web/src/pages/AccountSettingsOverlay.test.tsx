@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import type { AccountSecurity } from "@rakazo/contracts";
+import type { AccountSecurity, BotAvatarSet } from "@rakazo/contracts";
 import type * as UiWeb from "@rakazo/ui-web";
 import type { ReactNode } from "react";
-import { act, useEffect } from "react";
+import { act, Children, cloneElement, isValidElement, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
@@ -64,17 +64,63 @@ vi.mock("@rakazo/ui-web", async (importOriginal) => ({
       {children}
     </button>
   ),
-  ToggleGroup: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  ToggleGroupItem: ({ children }: { children?: ReactNode }) => (
-    <button type="button">{children}</button>
-  ),
-  OptionSelect: ({
+  ToggleGroup: ({
+    children,
+    value = [],
+    onValueChange,
     "data-testid": testId,
-    options,
   }: {
+    children?: ReactNode;
+    value?: string[];
+    onValueChange?: (next: string[]) => void;
     "data-testid"?: string;
-    options: { value: string; label: string }[];
-  }) => <div data-testid={testId} data-options={JSON.stringify(options)} />,
+  }) => (
+    <div data-testid={testId}>
+      {Children.map(children, (child) => {
+        if (
+          !isValidElement<{
+            value?: string;
+            "aria-pressed"?: boolean;
+            onClick?: () => void;
+          }>(child)
+        )
+          return child;
+        const itemValue = child.props.value;
+        return cloneElement(child, {
+          "aria-pressed": itemValue !== undefined && value.includes(itemValue),
+          onClick: () => {
+            if (itemValue) onValueChange?.([itemValue]);
+          },
+        });
+      })}
+    </div>
+  ),
+  ToggleGroupItem: ({
+    children,
+    value,
+    onClick,
+    "aria-pressed": pressed,
+    className,
+  }: {
+    children?: ReactNode;
+    value?: string;
+    onClick?: () => void;
+    "aria-pressed"?: boolean;
+    className?: string;
+  }) => (
+    <button
+      type="button"
+      value={value}
+      aria-pressed={pressed ? "true" : "false"}
+      onClick={onClick}
+      className={className}
+    >
+      {children}
+    </button>
+  ),
+  OptionSelect: ({ "data-testid": testId }: { "data-testid"?: string }) => (
+    <div data-testid={testId} />
+  ),
   cn: (...values: unknown[]) => values.filter(Boolean).join(" "),
 }));
 
@@ -99,6 +145,7 @@ vi.mock("../components/AccountAccess", () => ({
   },
 }));
 
+vi.mock("../components/AccountDataSettings", () => ({ AccountDataSettings: () => null }));
 vi.mock("../components/ApprovalRulesSettings", () => ({ ApprovalRulesSettings: () => null }));
 vi.mock("../components/TrustedLinkSitesSettings", () => ({
   TrustedLinkSitesSettings: () => null,
@@ -108,7 +155,10 @@ vi.mock("../components/ComputersUnavailableHint", () => ({
   ComputersUnavailableHint: () => null,
 }));
 vi.mock("../components/ComputerDeviceSettings", () => ({ ComputerDeviceSettings: () => null }));
-vi.mock("../components/DesktopUpdateViews", () => ({ DesktopUpdateSection: () => null }));
+vi.mock("../components/DesktopUpdates", () => ({ DesktopUpdateSection: () => null }));
+vi.mock("../components/ServerUpdateSection", () => ({
+  ServerUpdateSection: () => <div data-testid="server-update-settings" />,
+}));
 vi.mock("../lib/auth", () => ({ authClient: { changePassword: vi.fn(), updateUser: vi.fn() } }));
 vi.mock("../lib/i18n", () => ({
   getActiveUiLocale: () => "en",
@@ -122,15 +172,36 @@ vi.mock("../lib/ui-appearance", () => ({
 import { authClient } from "../lib/auth";
 import {
   COMPOSER_ENTER_TO_SEND_STORAGE_KEY,
-  getComposerEnterToSend,
-  setComposerEnterToSend,
+  composerEnterToSendPreference,
 } from "../lib/composer-enter-to-send-pref";
-import { getRemoteImagesEnabled } from "../lib/remote-images-preference";
+import { remoteImagesPreference } from "../lib/remote-images-preference";
 import { TOOL_ACTIVITY_STORAGE_KEY } from "../lib/tool-activity-preference";
-import { GeneralSettingsPanels, UsageSettingsPanel } from "./AccountSettingsOverlay";
+import {
+  GeneralSettingsPanels,
+  UpdatesSettingsPanel,
+  UsageSettingsPanel,
+} from "./AccountSettingsOverlay";
 
 afterEach(() => {
   localStorage.clear();
+});
+
+it("keeps the installation update section beside the desktop section", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(<UpdatesSettingsPanel />);
+    });
+    expect(container.querySelector('[data-testid="server-update-settings"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("rakazo");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
 });
 
 it("flips the stored tool activity preference from the settings toggle", async () => {
@@ -147,14 +218,6 @@ it("flips the stored tool activity preference from the settings toggle", async (
       '[data-testid="tool-activity-toggle"]',
     );
     if (!toggle) throw new Error("Missing tool activity toggle");
-    expect(
-      JSON.parse(
-        container.querySelector('[data-testid="ui-locale-select"]')!.getAttribute("data-options")!,
-      ),
-    ).toEqual([
-      { value: "vi", label: "Tiếng Việt" },
-      { value: "en", label: "English" },
-    ]);
     expect(toggle.getAttribute("aria-checked")).toBe("false");
 
     await act(async () => {
@@ -192,19 +255,19 @@ it("turns loading web images on and off from the settings toggle", async () => {
     );
     if (!toggle) throw new Error("Missing remote images toggle");
     expect(toggle.getAttribute("aria-checked")).toBe("false");
-    expect(getRemoteImagesEnabled()).toBe(false);
+    expect(remoteImagesPreference.get()).toBe(false);
 
     await act(async () => {
       toggle.click();
     });
     expect(toggle.getAttribute("aria-checked")).toBe("true");
-    expect(getRemoteImagesEnabled()).toBe(true);
+    expect(remoteImagesPreference.get()).toBe(true);
 
     await act(async () => {
       toggle.click();
     });
     expect(toggle.getAttribute("aria-checked")).toBe("false");
-    expect(getRemoteImagesEnabled()).toBe(false);
+    expect(remoteImagesPreference.get()).toBe(false);
   } finally {
     await act(async () => root.unmount());
     container.remove();
@@ -269,7 +332,7 @@ it("keeps the password form closed until asked and closes it after a change", as
 
 it("updates the Enter preference from Settings and reflects external changes", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  setComposerEnterToSend(true);
+  composerEnterToSendPreference.set(true);
   const container = document.createElement("div");
   const root = createRoot(container);
   try {
@@ -285,10 +348,10 @@ it("updates the Enter preference from Settings and reflects external changes", a
     );
     expect(toggle.getAttribute("aria-checked")).toBe("true");
     await act(async () => toggle.click());
-    expect(getComposerEnterToSend()).toBe(false);
+    expect(composerEnterToSendPreference.get()).toBe(false);
     expect(localStorage.getItem(COMPOSER_ENTER_TO_SEND_STORAGE_KEY)).toBe("0");
     expect(toggle.getAttribute("aria-checked")).toBe("false");
-    await act(async () => setComposerEnterToSend(true));
+    await act(async () => composerEnterToSendPreference.set(true));
     expect(toggle.getAttribute("aria-checked")).toBe("true");
   } finally {
     await act(async () => root.unmount());
@@ -335,18 +398,18 @@ it("shows usage totals and a per-model breakdown", async () => {
         />,
       ),
     );
-    expect(container.textContent).not.toContain("Cost");
     expect([...container.querySelectorAll("dd")].map((node) => node.textContent)).toEqual([
       "2",
       "1,234",
+      "$0.50",
     ]);
     expect(
       [...container.querySelectorAll("tbody tr")].map((row) =>
         [...row.querySelectorAll("td")].map((cell) => cell.textContent),
       ),
     ).toEqual([
-      ["model-aopenai", "2", "1,000", "30"],
-      ["model-blocal", "1", "200", "4"],
+      ["model-aopenai", "2", "1,000", "30", "$0.50"],
+      ["model-blocal", "1", "200", "4", "—"],
     ]);
   } finally {
     await act(async () => root.unmount());
@@ -470,6 +533,33 @@ it.each(["button", "Escape"])("cancels a name edit with %s without saving", asyn
   }
 });
 
+it.each([{ isComposing: true }, { keyCode: 229 }])(
+  "keeps a name edit open on the Escape that ends an IME composition (%o)",
+  async (composition) => {
+    const editor = await renderNameEditor();
+    try {
+      await editor.change("Sam Rivera");
+      const pressEscape = (init: KeyboardEventInit) =>
+        act(async () => {
+          editor.input.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Escape", bubbles: true, ...init }),
+          );
+        });
+      const onWindowKey = vi.fn();
+      window.addEventListener("keydown", onWindowKey);
+      await pressEscape(composition);
+      window.removeEventListener("keydown", onWindowKey);
+      expect(editor.card.querySelector("input")?.value).toBe("Sam Rivera");
+      // The form keeps Escape from chat listeners behind Settings, as a plain Escape does.
+      expect(onWindowKey).not.toHaveBeenCalled();
+      await pressEscape({});
+      expect(editor.card.querySelector("input")).toBeNull();
+    } finally {
+      await editor.cleanup();
+    }
+  },
+);
+
 it.each(["__AbCdEfGh__", "demo", "demo@example.com"])(
   "starts hidden name %s empty and rejects invalid submissions",
   async (name) => {
@@ -560,5 +650,76 @@ it("closes the name editor before refresh finishes and ignores a refresh failure
     expect(editor.card.querySelector('[role="alert"]')).toBeNull();
   } finally {
     await editor.cleanup();
+  }
+});
+
+it("saves vnbot from Bot style and shows that choice for a legacy product-brand preference", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const changed = vi.fn(async (_set: BotAvatarSet) => undefined);
+
+  function Harness({ initial }: { initial: BotAvatarSet }) {
+    const [botAvatarSet, setBotAvatarSet] = useState(initial);
+    return (
+      <GeneralSettingsPanels
+        name="Jamie"
+        botAvatarSet={botAvatarSet}
+        onBotAvatarSetChange={async (next) => {
+          await changed(next);
+          setBotAvatarSet(next);
+        }}
+      />
+    );
+  }
+
+  const styleButton = (label: string) => {
+    const found = [
+      ...(container.querySelector('[data-testid="bot-style-select"]')?.querySelectorAll("button") ??
+        []),
+    ].find((node) => node.textContent === label);
+    if (!found) throw new Error(`Missing bot style ${label}`);
+    return found;
+  };
+
+  try {
+    await act(async () => {
+      root.render(<Harness key="original" initial="organic" />);
+    });
+    expect(styleButton("VNBot").getAttribute("value")).toBe("vnbot");
+    expect(styleButton("Original").getAttribute("aria-pressed")).toBe("true");
+    expect(styleButton("VNBot").getAttribute("aria-pressed")).toBe("false");
+
+    await act(async () => {
+      styleButton("VNBot").click();
+    });
+    expect(changed).toHaveBeenLastCalledWith("vnbot");
+    expect(styleButton("VNBot").getAttribute("aria-pressed")).toBe("true");
+
+    changed.mockClear();
+    await act(async () => {
+      root.render(<Harness key="legacy" initial="rakazo" />);
+    });
+    expect(styleButton("VNBot").getAttribute("aria-pressed")).toBe("true");
+    expect(styleButton("Original").getAttribute("aria-pressed")).toBe("false");
+    await act(async () => {
+      styleButton("VNBot").click();
+    });
+    expect(changed).not.toHaveBeenCalled();
+
+    await act(async () => {
+      root.render(<Harness key="saved" initial="vnbot" />);
+    });
+    expect(styleButton("VNBot").getAttribute("aria-pressed")).toBe("true");
+    await act(async () => {
+      styleButton("Original").click();
+    });
+    expect(changed).toHaveBeenLastCalledWith("organic");
+    expect(styleButton("Original").getAttribute("aria-pressed")).toBe("true");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
   }
 });

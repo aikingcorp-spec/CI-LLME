@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
-  BoatSandboxProvider,
   CreateOSSandboxProvider,
+  createSandboxProvider,
   E2BSandboxProvider,
   NovitaSandboxProvider,
   PiAgentRuntime,
@@ -18,12 +18,14 @@ if (process.env.VERIFY_PROVIDERS) loadRootEnv({ allowInTests: true });
 
 const liveE2b = Boolean(process.env.VERIFY_PROVIDERS && process.env.E2B_API_KEY);
 const liveBoat = Boolean(process.env.VERIFY_PROVIDERS && process.env.BOAT_API_KEY);
+const liveBoxd = Boolean(process.env.VERIFY_PROVIDERS && process.env.BOXD_API_KEY);
 const liveCreateos = Boolean(process.env.VERIFY_PROVIDERS && process.env.CREATEOS_SANDBOX_API_KEY);
 const livePi = Boolean(process.env.VERIFY_PROVIDERS && process.env.OPENROUTER_API_KEY);
 const livePiApp = Boolean(livePi && process.env.DATABASE_URL);
 
 const describeE2b = liveE2b ? describe : describe.skip;
 const describeBoat = liveBoat ? describe : describe.skip;
+const describeBoxd = liveBoxd ? describe : describe.skip;
 const describeCreateos = liveCreateos ? describe : describe.skip;
 const describePi = livePi ? describe : describe.skip;
 const describePiApp = livePiApp ? describe : describe.skip;
@@ -58,9 +60,9 @@ describeE2b("live E2B canary", () => {
 
 describeBoat("live Boat canary", () => {
   it("provisions a desktop, observes it, preserves a file across stop/resume, and destroys it", async () => {
-    const sandbox = new BoatSandboxProvider({
-      apiKey: process.env.BOAT_API_KEY!,
-      apiUrl: process.env.BOAT_API_URL,
+    const sandbox = await createSandboxProvider("boat", {
+      boatApiKey: process.env.BOAT_API_KEY,
+      boatApiUrl: process.env.BOAT_API_URL,
     });
     const ctx = {
       operationId: "boat-canary",
@@ -100,6 +102,61 @@ describeBoat("live Boat canary", () => {
       await sandbox.destroy(computer, ctx);
     }
   }, 240_000);
+});
+
+describeBoxd("live boxd canary", () => {
+  it("provisions a desktop, observes it, keeps a file and a running process across stop/resume, and destroys it", async () => {
+    const sandbox = await createSandboxProvider("boxd", {
+      boxdApiKey: process.env.BOXD_API_KEY,
+      boxdOrg: process.env.BOXD_ORG,
+    });
+    const ctx = {
+      operationId: "boxd-canary",
+      traceId: "boxd-canary",
+      spaceId: "boxd-canary",
+      userId: "boxd-canary",
+      signal: new AbortController().signal,
+    };
+    const run = async (argv: string[]) => {
+      let stdout = "";
+      for await (const event of sandbox.execute(computer, { argv }, ctx)) {
+        if (event.type === "stdout") stdout += event.data;
+        if (event.type === "exit") expect(event.code).toBe(0);
+      }
+      return stdout;
+    };
+    const request = { botId: "boxd-canary", homePath: "/home/boxd/rakazo-home" };
+    let computer = await sandbox.provision(request, ctx);
+    try {
+      await sandbox.prepare(computer, ctx);
+      expect(await run(["echo", "boxd-ok"])).toContain("boxd-ok");
+      await sandbox.writeFile(
+        computer,
+        { path: "canary.txt", content: new TextEncoder().encode("preserved") },
+        ctx,
+      );
+      await run(["bash", "-c", "nohup sleep 600 >/dev/null 2>&1 & echo $! > canary.pid"]);
+      expect((await sandbox.observe(computer, ctx)).image.byteLength).toBeGreaterThan(0);
+
+      await sandbox.stop(computer, ctx);
+      expect(await sandbox.isStopped?.(computer, ctx)).toBe(true);
+      computer = await sandbox.provision(
+        { ...request, providerRef: computer.providerRef, providerKind: computer.kind },
+        ctx,
+      );
+      expect(computer).toMatchObject({ fresh: false, started: true });
+      await sandbox.prepare(computer, ctx);
+      expect(new TextDecoder().decode(await sandbox.readFile(computer, "canary.txt", ctx))).toBe(
+        "preserved",
+      );
+      // A suspend keeps memory, so the process is still running after the resume.
+      expect(await run(["bash", "-c", "kill -0 $(cat canary.pid) && echo alive"])).toContain(
+        "alive",
+      );
+    } finally {
+      await sandbox.destroy(computer, ctx);
+    }
+  }, 600_000);
 });
 
 describe.skipIf(!process.env.VERIFY_PROVIDERS || !process.env.NOVITA_API_KEY)(
@@ -311,7 +368,7 @@ describePiApp("live OpenRouter product journey", () => {
   }, 120_000);
 });
 
-type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
+type App = { request: (input: string, init?: RequestInit) => Response | Promise<Response> };
 type Snap = {
   messages: Array<{ role: string; blocks: unknown[] }>;
   run: { status: string } | null;

@@ -1,10 +1,14 @@
-import type { Locator, Page, TestInfo } from "@playwright/test";
+import type { Locator, Page, Route, TestInfo } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { signupRequiresEmailVerification } from "@rakazo/core";
 
 export function isRealSandboxProvider(provider = process.env.SANDBOX_PROVIDER) {
   return (
-    provider === "e2b" || provider === "novita" || provider === "daytona" || provider === "boat"
+    provider === "e2b" ||
+    provider === "novita" ||
+    provider === "daytona" ||
+    provider === "boat" ||
+    provider === "boxd"
   );
 }
 
@@ -79,59 +83,22 @@ export async function signup(
   await page.goto(verify ? "/sign-up?verify=email" : "/onboarding");
 }
 
-/** The 6-digit code from the e2e mailbox. It is typed into the form and never rendered. */
-export async function readSignInCode(page: Page, email: string): Promise<string> {
-  const emailApi = process.env.API_URL ?? "http://127.0.0.1:3110";
-  let found = "";
-  await expect
-    .poll(async () => {
-      const response = await page.request.get(`${emailApi}/__e2e/emails`);
-      const messages = (await response.json()) as Array<{
-        to: string;
-        subject: string;
-        text: string;
-      }>;
-      const mine = messages.filter(
-        (message) => message.to === email && /sign-in code|mã đăng nhập/i.test(message.subject),
-      );
-      found = mine.at(-1)?.text.match(/\b(\d{6})\b/)?.[1] ?? "";
-      return found;
-    })
-    .not.toBe("");
-  return found;
-}
-
-export async function signInWithEmailCode(page: Page, email: string) {
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByRole("button", { name: "Send code", exact: true }).click();
-  const code = await readSignInCode(page, email);
-  await page.getByLabel("6-digit sign-in code").fill(code);
-}
-
 export async function signupThroughForm(
   page: Page,
   email: string,
-  _password: string,
+  password: string,
   name: string,
   testInfo?: TestInfo,
 ) {
-  await page.goto("/sign-in");
-  await expect(page.getByRole("heading", { name: "Get started with VNBot" })).toBeVisible();
+  await page.goto("/sign-up");
+  await expect(page.getByRole("heading", { name: "Create your VNBot" })).toBeVisible();
   if (testInfo) await captureScreenshot(page, testInfo, "01-sign-up");
-  await signInWithEmailCode(page, email);
-  await page.waitForURL(/\/(onboarding|app)/, { timeout: 20_000 });
-  if (name) {
-    const response = await page.request.post("/api/auth/update-user", {
-      data: { name },
-      headers: { origin: new URL(page.url()).origin },
-    });
-    if (!response.ok()) throw new Error(`update-user ${response.status()}`);
-    // The app cached the session before the name was set; reload so it shows the new name.
-    await page.reload();
-  }
+  await page.getByPlaceholder("Your name").fill(name);
+  await page.getByPlaceholder("Your email address").fill(email);
+  await page.getByPlaceholder("Password").fill(password);
+  await page.getByRole("button", { name: "Create account" }).click();
 }
 
-/** Open Advanced through its trigger, preserving an already-expanded section. */
 /** Opens Integrations' add menu and picks one of its custom sources. */
 export async function openIntegrationsAdd(page: Page, item: string) {
   const dialog = page.getByRole("dialog", { name: "Integrations", exact: true });
@@ -139,11 +106,28 @@ export async function openIntegrationsAdd(page: Page, item: string) {
   await page.getByRole("menuitem", { name: item, exact: true }).click();
 }
 
-export async function expandAdvancedSection(section: Locator) {
-  const trigger = section.getByRole("button", { name: "Advanced", exact: true });
-  if ((await trigger.getAttribute("aria-expanded")) === "false") await trigger.click();
-  await expect(trigger).toHaveAttribute("aria-expanded", "true");
-  await waitForTransitions(section);
+/**
+ * Opens the bot panel from the header pill and shows one tab, leaving an open routine editor.
+ * `name` is the tab's label in the UI language ("Routines", or "자동 실행" in Korean).
+ */
+export async function openBotPanelTab(page: Page, name: string) {
+  const pill = page.getByTestId("bot-settings-trigger");
+  const tab = page.getByTestId("bot-settings").getByRole("tab", { name, exact: true });
+  // A reloaded page restores its saved panel a moment after it draws, so a single pass can
+  // race that restore; the sequence is retried until the tab shows.
+  await expect(async () => {
+    if (!(await tab.isVisible())) {
+      // The pill closes whatever else the sidebar shows, such as a restored routine editor.
+      if ((await pill.getAttribute("aria-expanded")) === "true") {
+        await pill.click();
+        await expect(pill).toHaveAttribute("aria-expanded", "false", { timeout: 2_000 });
+      }
+      await pill.click();
+    }
+    await expect(tab).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
 }
 
 /** Waits for fold-outs to settle before clicking or dragging their contents. */
@@ -233,9 +217,11 @@ export async function openUserSettings(
     | "memory"
     | "voice"
     | "vault"
+    | "wallet"
     | "usage"
     | "computer"
     | "billing"
+    | "organization"
     | "updates",
 ) {
   // A reload keeps settings open because the URL holds them; closing clears the URL at once.
@@ -384,4 +370,12 @@ export async function presentMainDeploymentDefault(page: Page, provider: string,
     body.json.deploymentPrimary = { provider, modelId };
     await route.fulfill({ response, json: body });
   });
+}
+
+export async function makeAdmin(route: Route, path: "me" | "bootstrap") {
+  const response = await route.fetch();
+  const body = (await response.json()) as { json?: Record<string, unknown> };
+  const me = path === "me" ? body.json : (body.json?.me as Record<string, unknown> | undefined);
+  if (me) me.isAdmin = true;
+  await route.fulfill({ response, json: body });
 }

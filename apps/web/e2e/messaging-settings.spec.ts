@@ -1,6 +1,110 @@
 import { expect, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
+test("the owner can save, replace, and remove a messaging credential", async ({
+  page,
+}, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem("rakazo.uiLocale", "vi"));
+  const fixture = (json: unknown) => ({ json: { json } });
+  let configured = false;
+  let state: "unconfigured" | "ready" | "error" = "unconfigured";
+  const saved: string[] = [];
+  const setup = () => ({
+    canManage: true,
+    connections: [{ id: "telegram", label: "Telegram", configured, state, canConfigure: true }],
+  });
+  // Only messaging responses are fixtures. Auth uses the existing harness outbox and real API.
+  await page.route("**/rpc/messaging/configuration/list", (route) =>
+    route.fulfill(fixture(setup())),
+  );
+  await page.route("**/rpc/messaging/configuration/set", (route) => {
+    const body = route.request().postDataJSON() as { json: { credential: string } };
+    saved.push(body.json.credential);
+    configured = true;
+    state = body.json.credential === "fixture-invalid" ? "error" : "ready";
+    return route.fulfill(fixture(setup()));
+  });
+  await page.route("**/rpc/messaging/configuration/remove", (route) => {
+    configured = false;
+    state = "unconfigured";
+    return route.fulfill(fixture(setup()));
+  });
+  await page.route("**/rpc/messaging/status", (route) =>
+    route.fulfill(fixture({ enabled: false, providers: [], identities: [], openSignup: false })),
+  );
+  await page.route("**/rpc/messaging/installations/list", (route) =>
+    route.fulfill(fixture({ available: false, installations: [] })),
+  );
+  await page.route("**/rpc/messaging/channels/list", (route) => route.fulfill(fixture([])));
+  await page.route("**/rpc/messaging/connections/list", (route) => route.fulfill(fixture([])));
+
+  const baseURL = testInfo.project.use.baseURL;
+  if (!baseURL) throw new Error("The messaging test needs the existing web server");
+  const email = `messaging-owner-${Date.now()}@example.test`;
+  const headers = { origin: new URL(baseURL).origin };
+  const sent = await page.request.post("/api/auth/email-otp/send-verification-otp", {
+    headers,
+    data: { email, type: "sign-in" },
+  });
+  expect(sent.ok()).toBe(true);
+  const outbox = await page.request.get(`${process.env.API_URL}/__e2e/emails`);
+  expect(outbox.ok()).toBe(true);
+  const messages: unknown = await outbox.json();
+  if (!Array.isArray(messages)) throw new Error("Invalid fixture outbox");
+  const message = messages.findLast((item) => item?.to === email && typeof item.text === "string");
+  const otp = message?.text.match(
+    /(?:Your VNBot sign-in code|Mã đăng nhập VNBot của bạn): (\d{6})/,
+  )?.[1];
+  if (!otp) throw new Error("Missing fixture sign-in code");
+  const signedIn = await page.request.post("/api/auth/sign-in/email-otp", {
+    headers,
+    data: { email, otp },
+  });
+  expect(signedIn.ok()).toBe(true);
+  const named = await page.request.post("/api/auth/update-user", {
+    headers,
+    data: { name: "Người thử" },
+  });
+  expect(named.ok()).toBe(true);
+  await page.goto("/app");
+  await expect(page.getByTestId("bot-settings-trigger")).toBeVisible();
+  const appUrl = page.url();
+  await page.goto(`${appUrl}?settings=messaging`);
+  const panel = page.getByTestId("messaging-settings");
+  await expect(panel).toBeVisible();
+  const connection = panel.getByTestId("messaging-connection-telegram");
+  const field = connection.locator('input[type="password"]');
+  await expect(field).toBeVisible();
+  await expect(connection.getByText("Chưa kết nối", { exact: true })).toBeVisible();
+  await expect(panel.getByTestId("messaging-absent-slack")).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await captureScreenshot(page, testInfo, "messaging-token-empty");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await captureScreenshot(page, testInfo, "messaging-token-empty-phone");
+  await field.fill("fixture-invalid");
+  await connection.getByRole("button", { name: "Lưu", exact: true }).click();
+  await expect(connection.getByText("Không thể kết nối", { exact: true })).toBeVisible();
+  await expect(field).toHaveValue("");
+  await field.fill("fixture-valid");
+  await connection.getByRole("button", { name: "Lưu", exact: true }).click();
+  await expect(connection.getByText("Đã kết nối", { exact: true })).toBeVisible();
+  await expect(field).toHaveCount(0);
+  await expect(panel).not.toContainText("fixture-valid");
+  expect(saved).toEqual(["fixture-invalid", "fixture-valid"]);
+  await captureScreenshot(page, testInfo, "messaging-token-connected-phone");
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await captureScreenshot(page, testInfo, "messaging-token-connected");
+  await connection.getByRole("button", { name: "Chỉnh sửa", exact: true }).click();
+  await expect(field).toHaveValue("");
+  await field.fill("fixture-replacement");
+  await connection.getByRole("button", { name: "Lưu", exact: true }).click();
+  await expect(field).toHaveCount(0);
+  expect(saved.at(-1)).toBe("fixture-replacement");
+  await connection.getByRole("button", { name: "Gỡ bỏ", exact: true }).click();
+  await expect(field).toHaveValue("");
+  await expect(connection.getByText("Chưa kết nối", { exact: true })).toBeVisible();
+});
+
 test.afterEach(async ({ page }) => {
   // Polling can leave a route.fetch response in use when the assertions finish.
   await page.unrouteAll({ behavior: "wait" });
@@ -185,15 +289,14 @@ test("messaging settings show linked chat apps, channels, connections, and team 
   await messagingSettings.getByRole("button", { name: "Settings", exact: true }).click();
   const conversationSettings = page.getByTestId("external-conversation-settings");
   await expect(conversationSettings).toBeVisible();
-  await expect(conversationSettings.getByText("Listening")).toBeVisible();
-  await expect(conversationSettings.getByText("Room guidance")).toBeVisible();
+  await expect(conversationSettings.getByText("Replies to")).toBeVisible();
+  await expect(conversationSettings.getByText("Instructions for this room")).toBeVisible();
   await expect(conversationSettings.getByText("GitHub")).toBeVisible();
   await captureScreenshot(page, testInfo, "messaging-team-conversation-settings");
   await settings.getByTestId("settings-nav-general").click();
   await settings.getByTestId("ui-locale-select").click();
-  // The picker offers only Vietnamese and English; the harness pins English.
-  await page.getByRole("option", { name: "Tiếng Việt", exact: true }).click();
-  await expect(settings.getByTestId("settings-nav-messaging")).toHaveText("Nhắn tin");
+  await page.getByRole("option", { name: "한국어", exact: true }).click();
+  await expect(settings.getByTestId("settings-nav-messaging")).toHaveText("메시징");
   await settings.getByTestId("settings-nav-messaging").click();
 
   await expect(messagingSettings).toBeVisible();
@@ -201,14 +304,14 @@ test("messaging settings show linked chat apps, channels, connections, and team 
   await expect(messagingSettings.getByText("424242, Lead")).toBeVisible();
   await expect(messagingSettings.getByText("Family")).toBeVisible();
   await expect(messagingSettings.getByText("Dana's Assistant")).toBeVisible();
-  // Scoped to the panel: the settings nav has its own "Phê duyệt" (Approvals).
-  await expect(messagingSettings.getByRole("button", { name: "Phê duyệt" })).toHaveCount(2);
+  // Scoped to the panel: the settings nav has its own 승인 (Approvals).
+  await expect(messagingSettings.getByRole("button", { name: "승인" })).toHaveCount(2);
 
-  await messagingSettings.getByRole("button", { name: "Kết nối ứng dụng trò chuyện" }).click();
+  await messagingSettings.getByRole("button", { name: "채팅 앱 연결" }).click();
   await page.getByRole("menuitem", { name: "iMessage", exact: true }).click();
   await expect(page.getByTestId("messaging-link-code")).toContainText("ABCD-2345");
   await expect(page.getByTestId("messaging-link-code")).toContainText("+15550001111");
-  await captureScreenshot(page, testInfo, "messaging-settings-vi");
+  await captureScreenshot(page, testInfo, "messaging-settings-ko");
 });
 
 test("Slack setup has one Connect action that opens workspace authorization", async ({

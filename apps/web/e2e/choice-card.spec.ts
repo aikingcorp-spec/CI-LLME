@@ -130,56 +130,37 @@ test("renders tappable choice buttons and submits the offered action id", async 
   await captureScreenshot(page, testInfo, "choice-card-answered");
 });
 
-test("a typed reply answers the latest question and resumes its run", async ({
-  page,
-}, testInfo) => {
-  await signup(page, `typed-choice-${Date.now()}@rakazo.test`, "password12", "Typed Choice");
+test("shows the content being decided on above the choices", async ({ page }, testInfo) => {
+  const stamp = Date.now();
+  await signup(page, `ask-detail-${stamp}@rakazo.test`, "password12", "Ask Detail");
   await completeOnboarding(page);
+
   const botId = activeBotId(page);
-  const composer = page.getByPlaceholder(/Message/);
-  await composer.fill("pick from these cities with tappable choices");
+  await page.getByPlaceholder(/Message/).fill("send the draft on the card");
   await page.keyboard.press("Enter");
 
-  let waitingRunId: string | undefined;
   await expect
     .poll(
       async () => {
-        const snapshot = await rpc<{ run?: { id: string; status: string } | null }>(
-          page,
-          "threads/get",
-          { botId },
-        );
-        waitingRunId = snapshot.run?.id;
-        return snapshot.run?.status;
+        const snapshot = await rpc<{ run?: { status: string } | null }>(page, "threads/get", {
+          botId,
+        });
+        return snapshot.run?.status ?? null;
       },
       { timeout: 60_000 },
     )
     .toBe("waiting_input");
-  const seoul = page.getByRole("button", { name: "Seoul", exact: true });
-  await expect(seoul).toBeVisible({ timeout: 15_000 });
-  await composer.fill("Paris");
-  await page.keyboard.press("Enter");
 
-  await expect(page.getByTestId("ask-answer").filter({ hasText: "Paris" })).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(seoul).toBeDisabled();
-  await expect(seoul).not.toHaveAttribute("aria-pressed");
-  await expect
-    .poll(async () => {
-      const snapshot = await rpc<{
-        messages: Array<{
-          role: string;
-          runId: string | null;
-          blocks: Array<{ kind: string; text?: string }>;
-        }>;
-      }>(page, "threads/get", { botId });
-      return snapshot.messages.findLast(
-        (message) =>
-          message.role === "user" &&
-          message.blocks.some((block) => block.kind === "text" && block.text === "Paris"),
-      )?.runId;
-    })
-    .toBe(waitingRunId);
-  await captureScreenshot(page, testInfo, "choice-card-typed-reply");
+  const question = page.locator("p").filter({ hasText: /^Send this email to Ana\?$/ });
+  if ((await question.count()) === 0) {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByPlaceholder(/Message/)).toBeVisible({ timeout: 15_000 });
+  }
+  const detail = page.getByTestId("ask-detail");
+  await expect(question).toBeVisible({ timeout: 15_000 });
+  await expect(detail).toBeVisible();
+  await expect(detail).toContainText("To: ana@example.test");
+  await expect(detail).toContainText("The draft body.");
+  await expect(page.getByRole("button", { name: "Send it", exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "ask-detail");
 });

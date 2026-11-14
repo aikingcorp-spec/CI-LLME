@@ -57,6 +57,7 @@ test("desktop update can be checked, deferred, and installed from settings", asy
       },
     });
   });
+  await page.addInitScript(() => localStorage.setItem("rakazo.uiLocale", "en"));
   const stamp = Date.now();
   await signup(page, `desktop-update-${stamp}@rakazo.test`, "password12", "Update Tester");
   await completeOnboarding(page);
@@ -89,4 +90,87 @@ test("desktop update can be checked, deferred, and installed from settings", asy
   await captureScreenshot(page, testInfo, "desktop-update-settings");
   await settings.getByRole("button", { name: "Restart to update" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-update-installed", "true");
+});
+
+test("a browser installation shows its update state without a desktop bridge", async ({
+  page,
+}, testInfo) => {
+  let checks = 0;
+  let applies = 0;
+  await page.route("**/rpc/updater/status", (route) =>
+    route.fulfill({
+      json: {
+        json: {
+          supported: false,
+          unsupportedReason: null,
+          installKind: "source",
+          manualCommands: [
+            "Download a newer VNBot package from the place you installed this one, then start it again.",
+          ],
+          mode: "unavailable",
+          strategy: null,
+          strategyNote: null,
+          version: "",
+          revision: "abc1234def89",
+          commit: "abc1234def89",
+          branch: null,
+          remoteUrl: null,
+          dirty: false,
+          dirtyPaths: [],
+          image: null,
+          imageTag: null,
+          previousImageTag: null,
+          canRollback: false,
+          source: { repoUrl: "", branch: "", official: false },
+          officialRepoUrl: "",
+          restartSupervisor: "none",
+          restartAdvice: "",
+          running: false,
+          lastRun: null,
+        },
+      },
+    }),
+  );
+  await page.route("**/rpc/updater/check", (route) => {
+    checks += 1;
+    return route.fulfill({
+      json: {
+        json: {
+          status: "unavailable",
+          reason: "unconfigured",
+          changed: [],
+          commit: null,
+          targetCommit: null,
+          targetTag: null,
+          behindBy: 0,
+        },
+      },
+    });
+  });
+  await page.route("**/rpc/updater/apply", (route) => {
+    applies += 1;
+    return route.fulfill({ status: 403, json: { code: "FORBIDDEN" } });
+  });
+  const stamp = Date.now();
+  await signup(page, `server-update-${stamp}@rakazo.test`, "password12", "Update Tester");
+  await completeOnboarding(page);
+  const settings = await openUserSettings(page, "updates");
+  const server = settings.getByTestId("server-update-settings");
+  await expect(server.getByText("Build abc1234def89")).toBeVisible();
+  await expect(
+    server.getByText(
+      "Download a newer VNBot package from the place you installed this one, then start it again.",
+    ),
+  ).toBeVisible();
+  await expect(server.getByText("Up to date", { exact: true })).toHaveCount(0);
+  await expect(server.getByRole("button", { name: "Update", exact: true })).toHaveCount(0);
+  await expect(settings.getByTestId("desktop-update-settings")).toHaveCount(0);
+  await server.getByRole("button", { name: "Check for updates" }).click();
+  await expect.poll(() => checks).toBe(1);
+  await server.getByRole("button", { name: "Check for updates" }).click();
+  await expect.poll(() => checks).toBe(2);
+  expect(applies).toBe(0);
+  await expect(server.getByText("Up to date", { exact: true })).toHaveCount(0);
+  await server.scrollIntoViewIfNeeded();
+  await captureScreenshot(page, testInfo, "server-update-settings");
 });

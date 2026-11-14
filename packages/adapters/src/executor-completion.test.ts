@@ -1,3 +1,5 @@
+import { ModelOutputError } from "@rakazo/adapter-kit";
+import { MISSING_TOOL_FINAL_RESPONSE_ERROR } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
 import { runIdentityInstruction } from "./run-instructions.js";
 import { mayOpenModelStream } from "./run-lifecycle.js";
@@ -14,15 +16,21 @@ import {
   DELEGATED_EMPTY_NOTICE,
   emptyDelegatedToolTurnShouldFail,
   longWorkProgressGuidance,
+  messagesModeReplyGuidance,
   REACTION_SILENT_REPLY_GUIDANCE,
   ROUTINE_SILENT_REPLY_GUIDANCE,
   runAllowsSilentEmpty,
   runPromotesMidTurnNarration,
   runReplyGuidance,
+  runReplyMode,
   TICKET_SILENT_REPLY_GUIDANCE,
 } from "./run-replies.js";
+import { handoffEndedTurn } from "./run-turn.js";
 import {
+  couldBecomeNoResponse,
   isExactNoResponse,
+  isNoResponseReply,
+  isPlaceholderReply,
   NO_RESPONSE,
   stripNoResponseReply,
   stripStrayNoResponse,
@@ -140,7 +148,7 @@ describe("secretAskNotification", () => {
       `Sign in for fake-token-123 ${"word ".repeat(100)}`,
       ["fake-token-123"],
     );
-    expect(notification.title).toBe("Bot cần bạn trả lời");
+    expect(notification.title).toBe("Bot needs an answer");
     expect(notification.body).toHaveLength(180);
     expect(notification.body.startsWith("Sign in for [redacted] word")).toBe(true);
   });
@@ -282,6 +290,11 @@ describe("background ticket runs", () => {
     expect(runSendsFinishNotification("user")).toBe(true);
     expect(runReplyGuidance("tickets")).toBe(TICKET_SILENT_REPLY_GUIDANCE);
     expect(runReplyGuidance("tickets")).toContain("ticket_comment");
+  });
+
+  it("sends no finish notice for a background helper; the turn passing on its result does", () => {
+    expect(runSendsFinishNotification("helper")).toBe(false);
+    expect(runSendsFinishNotification("helper_result")).toBe(true);
   });
 
   it("drops a tool-only ticket final so the transcript gets no bubble", () => {
@@ -519,12 +532,10 @@ describe("runReplyGuidance", () => {
   it("gives the creation intro the profile fields its prompt asks about", () => {
     const bot = {
       name: "Ada",
-      title: "Inbox lead",
       description: "Reads and sorts mail.",
       instructions: "Never send mail without asking.",
     };
     const intro = runIdentityInstruction(bot, "created");
-    expect(intro).toContain("Title: Inbox lead");
     expect(intro).toContain("Description: Reads and sorts mail.");
     expect(intro).toContain("Never send mail without asking.");
     expect(runIdentityInstruction({ ...bot, instructions: "" }, "created")).toContain(
@@ -536,12 +547,11 @@ describe("runReplyGuidance", () => {
   it("keeps the public description and private instructions distinct on normal runs", () => {
     const bot = {
       name: "Ada",
-      title: "Inbox lead",
       description: "Reads and sorts mail.",
       instructions: "Never send mail without asking.",
     };
     const prompt = runIdentityInstruction(bot, "user");
-    expect(prompt).toContain("Ada: Inbox lead\nReads and sorts mail.");
+    expect(prompt).toContain("Ada\nReads and sorts mail.");
     expect(prompt).toContain("Teammates see only the profile above.");
     expect(prompt.endsWith("Never send mail without asking.")).toBe(true);
   });
@@ -549,40 +559,31 @@ describe("runReplyGuidance", () => {
   it("does not repeat text that older bots saved as both fields", () => {
     const bot = {
       name: "Ada",
-      title: "Inbox lead",
       description: "Reads and sorts mail.",
       instructions: "Reads and sorts mail.",
     };
-    expect(runIdentityInstruction(bot, "user")).toBe("Reads and sorts mail.");
+    expect(runIdentityInstruction(bot, "user")).toBe("Ada\nReads and sorts mail.");
     expect(runIdentityInstruction({ ...bot, instructions: "" }, "user")).toBe(
-      "Ada: Inbox lead\nReads and sorts mail.",
+      "Ada\nReads and sorts mail.",
     );
   });
 
   it("omits blank profile lines and treats missing fields as empty", () => {
     expect(
-      runIdentityInstruction(
-        { name: "Ada", title: "", description: "", instructions: "Stay quiet." },
-        "user",
-      ),
+      runIdentityInstruction({ name: "Ada", description: "", instructions: "Stay quiet." }, "user"),
     ).toBe(
       "Ada\nTeammates see only the profile above. These instructions are private to you:\nStay quiet.",
     );
+    expect(runIdentityInstruction({ name: "Ada", description: "", instructions: "" }, "user")).toBe(
+      "Ada",
+    );
     expect(
       runIdentityInstruction(
-        { name: "Ada", title: "Inbox lead", description: "", instructions: "" },
-        "user",
-      ),
-    ).toBe("Ada: Inbox lead");
-    expect(
-      runIdentityInstruction(
-        { name: "Ada", title: "", description: "Reads and sorts mail.", instructions: "" },
+        { name: "Ada", description: "Reads and sorts mail.", instructions: "" },
         "user",
       ),
     ).toBe("Ada\nReads and sorts mail.");
-    expect(runIdentityInstruction({ name: "Ada", title: "Inbox lead" }, "routine")).toBe(
-      "Ada: Inbox lead",
-    );
+    expect(runIdentityInstruction({ name: "Ada" }, "routine")).toBe("Ada");
   });
 
   it("does not send a finish notification for the creation intro", () => {
@@ -607,6 +608,29 @@ describe("runReplyGuidance", () => {
     expect(runReplyGuidance("user")).toBe(longWorkProgressGuidance());
     expect(runReplyGuidance("user")).toContain("message_user");
     expect(runReplyGuidance("messaging")).toBe(longWorkProgressGuidance());
+  });
+});
+
+describe("runReplyMode", () => {
+  it("uses messages mode only on runs a person waits on, while message_user is offered", () => {
+    expect(runReplyMode("user", "messages")).toBe("messages");
+    expect(runReplyMode("messaging", "messages")).toBe("messages");
+    expect(runReplyMode("user", "chat")).toBe("chat");
+    for (const trigger of ["routine", "reaction", "bot_message", "tickets", "created", "webhook"])
+      expect(runReplyMode(trigger, "messages")).toBe("chat");
+    expect(runReplyMode("user", "messages", new Set(["message_user"]))).toBe("chat");
+  });
+
+  it("keeps a background helper in chat mode, since it cannot message the person", () => {
+    expect(runReplyMode("helper", "messages")).toBe("chat");
+    expect(runReplyMode("helper_result", "messages")).toBe("messages");
+  });
+
+  it("gives each mode its own guidance", () => {
+    expect(runReplyGuidance("user", "chat")).toBe(longWorkProgressGuidance());
+    expect(runReplyGuidance("user", "messages")).toBe(messagesModeReplyGuidance());
+    expect(messagesModeReplyGuidance()).toContain("private and never shown");
+    expect(messagesModeReplyGuidance()).toContain("message_user");
   });
 });
 
@@ -649,5 +673,63 @@ describe("stripStrayNoResponse for runs that must reply", () => {
   ])("leaves %j unchanged", (text) => {
     const blocks = text ? [{ kind: "text" as const, text }] : [];
     expect(stripStrayNoResponse(text, blocks)).toEqual({ assembled: text, blocks });
+  });
+});
+
+describe("isNoResponseReply", () => {
+  it("is true only for the sentinel alone, not for an empty or prose reply", () => {
+    expect(isNoResponseReply(NO_RESPONSE, [])).toBe(true);
+    expect(isNoResponseReply("", [{ kind: "text", text: NO_RESPONSE }])).toBe(true);
+    expect(isNoResponseReply("", [])).toBe(false);
+    expect(isNoResponseReply("Sure, here you go.", [])).toBe(false);
+    expect(isNoResponseReply(NO_RESPONSE, [{ kind: "text", text: "Sure, here you go." }])).toBe(
+      false,
+    );
+  });
+});
+
+describe("couldBecomeNoResponse", () => {
+  it("holds text that is, or may still grow into, the sentinel", () => {
+    for (const text of ["", "N", "NO_", "NO_RESPON", NO_RESPONSE, "NO_RESPONSE NO_RES"]) {
+      expect(couldBecomeNoResponse(text)).toBe(true);
+    }
+  });
+
+  it("lets real text through", () => {
+    for (const text of ["Sure", "No, I can't", "NO_RESPONSE_POLICY", "NO_RESPONSE Sure"]) {
+      expect(couldBecomeNoResponse(text)).toBe(false);
+    }
+  });
+});
+
+describe("isPlaceholderReply", () => {
+  it("is true for whitespace, invisible characters and a lone dot or ellipsis", () => {
+    for (const text of [".", "...", "…", "\u200c", "\u200b\u200c", " \n", "\ufeff", "\u200c."]) {
+      expect(isPlaceholderReply(text, [])).toBe(true);
+    }
+    expect(isPlaceholderReply("", [{ kind: "text", text: "\u200c" }])).toBe(true);
+  });
+
+  it("is false for empty text and for any real mark, letter, digit or emoji", () => {
+    expect(isPlaceholderReply("", [])).toBe(false);
+    for (const text of ["Paris", "ok", "7", "👍", "été", "好", "✓", "—", "-", "?", ". ok"]) {
+      expect(isPlaceholderReply(text, [])).toBe(false);
+    }
+  });
+});
+
+describe("handoffEndedTurn", () => {
+  const missing = new ModelOutputError(MISSING_TOOL_FINAL_RESPONSE_ERROR);
+
+  it("ends a handed-off turn that wrote no final answer without failing it", () => {
+    expect(handoffEndedTurn({ handedOff: true }, missing)).toBe(true);
+  });
+
+  it("still fails a turn that did not hand off, or failed for another reason", () => {
+    expect(handoffEndedTurn({ handedOff: false }, missing)).toBe(false);
+    expect(handoffEndedTurn({ handedOff: true }, new ModelOutputError("cut off"))).toBe(false);
+    expect(
+      handoffEndedTurn({ handedOff: true }, new Error(MISSING_TOOL_FINAL_RESPONSE_ERROR)),
+    ).toBe(false);
   });
 });

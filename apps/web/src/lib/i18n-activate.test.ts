@@ -6,7 +6,8 @@ import {
   setCatalogLoadersForTests,
   setUiLocale,
 } from "./i18n";
-import { UI_LOCALE_STORAGE_KEY } from "./ui-locale";
+import type { UiLocale } from "./ui-locale";
+import { UI_LOCALE_STORAGE_KEY, UI_LOCALES } from "./ui-locale";
 
 vi.mock("./apply-ui-direction", () => ({
   applyUiDirection: vi.fn(),
@@ -57,6 +58,7 @@ describe("activateUiLocale", () => {
       he: async () => ({ messages: { Settings: "הגדרות" } }),
       nl: async () => ({ messages: { Settings: "Instellingen" } }),
       ja: async () => ({ messages: { Settings: "設定" } }),
+      pl: async () => ({ messages: { Settings: "Ustawienia" } }),
       vi: async () => ({ messages: { Settings: "Cài đặt" } }),
     });
 
@@ -111,6 +113,9 @@ describe("activateUiLocale", () => {
       ja: async () => {
         throw new Error("ja missing");
       },
+      pl: async () => {
+        throw new Error("pl missing");
+      },
       vi: async () => {
         throw new Error("vi missing");
       },
@@ -142,6 +147,7 @@ describe("activateUiLocale", () => {
       he: async () => ({ messages: { Settings: "הגדרות" } }),
       nl: async () => ({ messages: { Settings: "Instellingen" } }),
       ja: async () => ({ messages: { Settings: "設定" } }),
+      pl: async () => ({ messages: { Settings: "Ustawienia" } }),
       vi: async () => ({ messages: { Settings: "Cài đặt" } }),
     });
 
@@ -176,6 +182,7 @@ describe("activateUiLocale", () => {
       he: async () => ({ messages: { Settings: "הגדרות" } }),
       nl: async () => ({ messages: { Settings: "Instellingen" } }),
       ja: async () => ({ messages: { Settings: "設定" } }),
+      pl: async () => ({ messages: { Settings: "Ustawienia" } }),
       vi: async () => ({ messages: { Settings: "Cài đặt" } }),
     });
 
@@ -215,6 +222,7 @@ describe("activateUiLocale", () => {
       he: async () => ({ messages: { Settings: "הגדרות" } }),
       nl: async () => ({ messages: { Settings: "Instellingen" } }),
       ja: async () => ({ messages: { Settings: "設定" } }),
+      pl: async () => ({ messages: { Settings: "Ustawienia" } }),
       vi: async () => ({ messages: { Settings: "Cài đặt" } }),
     });
 
@@ -229,4 +237,26 @@ describe("activateUiLocale", () => {
     expect(getActiveUiLocale()).toBe("ko");
     expect(store.get(UI_LOCALE_STORAGE_KEY)).toBe("ko");
   });
+
+  it.each(["es", "vi"] as const)(
+    "tells the desktop app the activated %s language even when refused",
+    async (locale) => {
+      const loaders = Object.fromEntries(
+        UI_LOCALES.map((locale) => [locale, async () => ({ messages: {} })]),
+      ) as Record<UiLocale, () => Promise<{ messages: Record<string, string> }>>;
+      setCatalogLoadersForTests(loaders);
+      const set = vi.fn(async (_locale: string) => {
+        throw new Error("refused");
+      });
+      vi.stubGlobal("window", { rakazoDesktop: { locale: { set } } });
+
+      await expect(activateUiLocale(locale)).resolves.toBe(locale);
+      expect(set).toHaveBeenCalledWith(locale);
+
+      // Older desktop releases have no locale bridge.
+      vi.stubGlobal("window", { rakazoDesktop: {} });
+      await expect(activateUiLocale("de")).resolves.toBe("de");
+      vi.unstubAllGlobals();
+    },
+  );
 });

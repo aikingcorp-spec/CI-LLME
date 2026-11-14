@@ -48,3 +48,5 @@ verify-report
 .playwright-cli
 .deploy.lock
 .last-deployed-revision
+# The private owner bundle keeps this outside the build context as well.
+**/mail.private.json

@@ -1,18 +1,19 @@
 import { createHash } from "node:crypto";
 import type { DesktopSetup, DesktopStackProbeResponse } from "@rakazo/contracts";
+import { parseServerHeaders } from "@rakazo/contracts";
 import { isLoopbackHost, isPrivateNetworkHost } from "@rakazo/contracts/network-host";
-import { strings } from "./strings.js";
+import { t } from "./i18n.js";
+
+export { PRODUCTION_PORTAL_ORIGIN, portalOrigin, RAKAZO_CLOUD_URL } from "./public-distribution.js";
 
 /** Managed desktop origin; development keeps its usual web/API ports. */
 export const DEFAULT_LOCAL_WEB_URL = "http://127.0.0.1:45173";
-/** Hosted VNBot web app (PRODUCT.md); setup saves it as an `existing` server so it opens like any other. */
-export const RAKAZO_CLOUD_URL = "https://app.vnbot.run";
 export const PROBE_RESPONSE_LIMIT_BYTES = 64 * 1024;
 
 export const SETUP_FILE_NAME = "setup.json";
 
 export type StartupTarget =
-  | { kind: "app"; url: string; source: "env" | "saved" }
+  | { kind: "app"; url: string; source: "env" | "saved" | "cloud" }
   | { kind: "setup" };
 
 const SCHEME = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//;
@@ -81,14 +82,32 @@ export function maySendDesktopStackToken(serverUrl: string): boolean {
 export function parseSetupInput(value: unknown): DesktopSetup | null {
   if (typeof value !== "object" || value === null) return null;
 
-  const { mode, serverUrl } = value as Record<string, unknown>;
+  const { mode, serverUrl, headers } = value as Record<string, unknown>;
   if (mode !== "new" && mode !== "existing") return null;
   if (typeof serverUrl !== "string") return null;
 
   const normalized = normalizeServerUrl(serverUrl);
   if (normalized === null) return null;
   if (mode === "new" && !isLoopbackHost(new URL(normalized).hostname)) return null;
-  return { mode, serverUrl: normalized };
+  if (headers === undefined) return { mode, serverUrl: normalized };
+  const parsed = parseServerHeaders(headers);
+  if (parsed === null || (mode === "new" && Object.keys(parsed).length > 0)) return null;
+  return Object.keys(parsed).length > 0
+    ? { mode, serverUrl: normalized, headers: parsed }
+    : { mode, serverUrl: normalized };
+}
+
+/** Configured headers for a request to the saved server, including its websockets; none elsewhere. */
+export function serverHeadersFor(url: string, setup: DesktopSetup | null): Record<string, string> {
+  if (!setup?.headers) return {};
+  try {
+    const target = new URL(url);
+    if (target.protocol === "ws:") target.protocol = "http:";
+    if (target.protocol === "wss:") target.protocol = "https:";
+    return target.origin === new URL(setup.serverUrl).origin ? setup.headers : {};
+  } catch {
+    return {};
+  }
 }
 
 export function parseStoredSetup(raw: string): DesktopSetup | null {
@@ -104,9 +123,10 @@ export function serializeSetup(setup: DesktopSetup): string {
 }
 
 /**
- * Decides between the first-run setup window and the app window. An explicit
- * `RAKAZO_WEB_URL` still wins over saved configuration so test and performance
- * harnesses can point the shell anywhere without touching a user's real setup.
+ * Decides between the setup window and the app window. A first launch stays in setup
+ * so the machine can choose the local host. VNBot Cloud is not opened from here.
+ * An explicit `RAKAZO_WEB_URL` still wins over saved configuration so test and
+ * performance harnesses can point the shell anywhere without touching a user's real setup.
  */
 export function resolveStartupTarget(input: {
   envUrl?: string;
@@ -121,6 +141,7 @@ export function resolveStartupTarget(input: {
   if (input.saved != null) {
     const saved = parseSetupInput(input.saved);
     if (saved !== null) return { kind: "app", url: saved.serverUrl, source: "saved" };
+    return { kind: "setup" };
   }
   return { kind: "setup" };
 }
@@ -129,20 +150,20 @@ export function resolveStartupTarget(input: {
 export function probeFailureMessage(error: unknown): string {
   const name = error instanceof Error ? error.name : "";
   if (name === "TimeoutError" || name === "AbortError") {
-    return strings().server.timeout;
+    return t("Timed out reaching that address.");
   }
 
   const detail = error instanceof Error ? error.message : String(error);
   if (detail.includes("CONNECTION_REFUSED") || detail.includes("ECONNREFUSED")) {
-    return strings().server.refused;
+    return t("Nothing is listening at that address yet.");
   }
   if (detail.includes("NAME_NOT_RESOLVED") || detail.includes("ENOTFOUND")) {
-    return strings().server.hostNotFound;
+    return t("That host could not be found.");
   }
   if (detail.includes("CERT_") || detail.includes("SSL")) {
-    return strings().server.certificate;
+    return t("The server's HTTPS certificate was rejected.");
   }
-  return strings().server.unreachable;
+  return t("Could not reach that address.");
 }
 
 /** Packaged shell overlays its web bundle only on the managed loopback stack. */

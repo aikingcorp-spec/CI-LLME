@@ -2,10 +2,11 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { RoutineWatchSchema } from "@rakazo/contracts";
+import { encodeLoginSecret, RoutineWatchSchema } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { accountVault, fakeDatabase } from "./bot-secrets.test-support.js";
 import { ComputerBusyError, provisionComputer } from "./computer-lifecycle.js";
+import { protectedComputerLifecycleRefusal } from "./desktop-command-guard.js";
 import type { RoutineWatchTickDeps } from "./routine-watch.js";
 import {
   checkRoutineWatch,
@@ -131,6 +132,8 @@ describe("tickRoutineWatch", () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
     const messages: Array<{ role: string; blocks: unknown }> = [];
     const tx = {
+      $queryRaw: vi.fn(async () => []),
+      $executeRaw: vi.fn(async () => 0),
       thread: { update: vi.fn(async () => ({ nextMessageSeq: 1, nextEventSeq: 1 })) },
       message: {
         create: vi.fn(async ({ data }: { data: { role: string; blocks: unknown } }) => {
@@ -146,6 +149,7 @@ describe("tickRoutineWatch", () => {
         connection: { findMany: vi.fn(async () => []) },
         spaceSettingOverride: { findUnique: vi.fn(async () => null) },
         actionApprovalRule: { findMany: vi.fn(async () => []) },
+        spaceMember: { findUnique: vi.fn(async () => null) },
         userActionApprovalRule: { findMany: vi.fn(async () => []) },
         bot: {
           findUnique: vi.fn(async () => ({
@@ -208,6 +212,20 @@ describe("tickRoutineWatch", () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("saves a check only for the owner it started with", async () => {
+    const { deps, routine, updateMany } = setup({ data: { changes: [] } });
+    // Someone else taking the routine over mid-check makes this write miss.
+    updateMany.mockResolvedValueOnce({ count: 0 });
+    await expect(tickRoutineWatch(deps, routine, target, scheduledAt)).resolves.toEqual({
+      run: false,
+    });
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: routine.id, userId: "user-1", active: true, nextRunAt: scheduledAt },
+      }),
+    );
+  });
+
   it("posts 'no changes' when loud", async () => {
     const { deps, routine, updateMany, messages } = setup(
       { data: { changes: [] } },
@@ -241,6 +259,24 @@ describe("tickRoutineWatch", () => {
       ).rejects.toThrow("can change data");
     },
   );
+
+  it("refuses a batch tool even when it is declared read-only", async () => {
+    const { deps, routine } = setup({ data: "ok" });
+    vi.mocked(deps.connector!.discoverTools).mockResolvedValue([
+      {
+        name: "brain_changed",
+        readOnly: true,
+        batch: { items: "tools", action: "tool_slug", arguments: "arguments" },
+        description: "Run actions",
+        inputSchema: {},
+      },
+    ]);
+    await expect(checkRoutineWatch(deps, routine)).rejects.toThrow("can change data");
+    expect(deps.connector!.execute).not.toHaveBeenCalled();
+    await expect(
+      validateRoutineWatch(deps, RoutineWatchSchema.parse(routine.watch), routine),
+    ).rejects.toThrow("can change data");
+  });
 
   it.each([false, undefined, true])("checks lazy tool readOnly %s", async (readOnly) => {
     const { deps, routine } = setup({ data: "ok" });
@@ -287,6 +323,22 @@ describe("tickRoutineWatch", () => {
       await expect(checkRoutineWatch(deps, routine)).rejects.toThrow("failed");
     },
   );
+
+  it("keeps the structured data in a change note beside supplemental text", async () => {
+    // The duplicate text was dropped on the way in, so the reader must not let
+    // the leftover note replace the data that triggered the routine.
+    const { deps, routine } = setup({
+      data: {
+        content: [{ type: "text", text: "Query completed." }],
+        structuredContent: { changes: [{ what: "add test note", at: "2026-11-01T09:30:00Z" }] },
+        isError: false,
+      },
+    });
+    routine.watchState = { checkedAt: "x", outcome: "unchanged", fingerprint: "old", detail: null };
+    const result = await checkRoutineWatch(deps, routine);
+    expect(result.state.detail).toContain("Query completed.");
+    expect(result.state.detail).toContain("add test note");
+  });
 
   it.each([new ComputerBusyError(), new DOMException("timed out", "TimeoutError")])(
     "retries temporary provisioning conflicts without losing the baseline",
@@ -386,36 +438,82 @@ describe("tickRoutineWatch", () => {
 });
 
 describe("tool results", () => {
-  it("treats an MCP error result as a failed check, not a reading", async () => {
-    const deps = {
-      prisma: {
-        connection: { findMany: vi.fn(async () => []) },
-        spaceSettingOverride: { findUnique: vi.fn(async () => null) },
-        actionApprovalRule: { findMany: vi.fn(async () => []) },
-        userActionApprovalRule: { findMany: vi.fn(async () => []) },
+  it.each([
+    [
+      "its text",
+      { content: [{ type: "text", text: "limit must be a number" }], isError: true },
+      /limit must be a number/,
+    ],
+    [
+      "structured diagnostics when the text is blank",
+      {
+        content: [{ type: "text", text: "" }],
+        structuredContent: { error: "Permission denied" },
+        isError: true,
       },
-      connector: {
-        discoverTools: vi.fn(async () => [
-          { name: "brain_changed", readOnly: true, route: { connectorId: "installed" } },
-        ]),
-        execute: vi.fn(async function* () {
-          yield {
-            type: "result",
-            data: { content: [{ type: "text", text: "limit must be a number" }], isError: true },
-          };
-        }),
+      /Permission denied/,
+    ],
+    [
+      "structured diagnostics the short text does not repeat",
+      {
+        content: [{ type: "text", text: "Request failed" }],
+        structuredContent: { error: "Permission denied", requiredScope: "reports:read" },
+        isError: true,
       },
-    } as unknown as RoutineWatchTickDeps;
-    const routine = {
-      id: "r",
-      spaceId: "s",
-      userId: "u",
-      botId: "b",
-      watch: { kind: "tool", tool: "brain_changed", args: {} },
-      watchState: null,
-    };
-    await expect(checkRoutineWatch(deps, routine)).rejects.toThrow(/limit must be a number/);
-  });
+      /Request failed[\s\S]*reports:read/,
+    ],
+    [
+      "a numeric diagnostic whose digits happen to appear in the text",
+      {
+        content: [{ type: "text", text: "Service returned HTTP 503" }],
+        structuredContent: { error: "Service returned HTTP 503", retryAfterSeconds: 3 },
+        isError: true,
+      },
+      /retryAfterSeconds/,
+    ],
+    [
+      "a text diagnostic whose value happens to appear in the text",
+      {
+        content: [{ type: "text", text: "Permission denied while reading repository" }],
+        structuredContent: {
+          error: "Permission denied while reading repository",
+          requiredScope: "repo",
+        },
+        isError: true,
+      },
+      /requiredScope/,
+    ],
+  ])(
+    "treats an MCP error result as a failed check that reports %s",
+    async (_case, data, reported) => {
+      const deps = {
+        prisma: {
+          connection: { findMany: vi.fn(async () => []) },
+          spaceSettingOverride: { findUnique: vi.fn(async () => null) },
+          actionApprovalRule: { findMany: vi.fn(async () => []) },
+          spaceMember: { findUnique: vi.fn(async () => null) },
+          userActionApprovalRule: { findMany: vi.fn(async () => []) },
+        },
+        connector: {
+          discoverTools: vi.fn(async () => [
+            { name: "brain_changed", readOnly: true, route: { connectorId: "installed" } },
+          ]),
+          execute: vi.fn(async function* () {
+            yield { type: "result", data };
+          }),
+        },
+      } as unknown as RoutineWatchTickDeps;
+      const routine = {
+        id: "r",
+        spaceId: "s",
+        userId: "u",
+        botId: "b",
+        watch: { kind: "tool", tool: "brain_changed", args: {} },
+        watchState: null,
+      };
+      await expect(checkRoutineWatch(deps, routine)).rejects.toThrow(reported);
+    },
+  );
 });
 
 describe("tickRoutineWatch on a computer", () => {
@@ -435,6 +533,8 @@ describe("tickRoutineWatch on a computer", () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
     const messages: unknown[] = [];
     const tx = {
+      $queryRaw: vi.fn(async () => []),
+      $executeRaw: vi.fn(async () => 0),
       thread: { update: vi.fn(async () => ({ nextMessageSeq: 1, nextEventSeq: 1 })) },
       message: {
         create: vi.fn(async ({ data }: { data: unknown }) => {
@@ -728,6 +828,118 @@ describe("tickRoutineWatch on a computer", () => {
     expect(saved).not.toContain(secret);
   });
 
+  it("hides saved logins' hidden fields and recent card numbers in command output, as runs do", async () => {
+    const password = "fake-watch-password-1";
+    const card = "4242 4242 4242 4242";
+    const vault = fakeDatabase();
+    await vault.prisma.vaultCredential.create({
+      data: {
+        id: "site-login",
+        ...accountVault,
+        name: "site_login",
+        origin: "https://login.example.test",
+        auth: { type: "login" },
+        ciphertext: "cipher-login",
+      },
+    });
+    const secretStore = {
+      async load(ciphertext: string) {
+        if (ciphertext === "cipher-card") return card;
+        if (ciphertext !== "cipher-login") throw new Error("unreadable");
+        return encodeLoginSecret({
+          fields: [
+            { label: "Username", value: "watcher@example.test", hidden: false },
+            { label: "Password", value: password, hidden: true },
+          ],
+        });
+      },
+    };
+    const withPurchases = (deps: RoutineWatchTickDeps) => {
+      Object.assign(deps, { paymentWallet: {} });
+      Object.assign(deps.prisma, {
+        purchase: {
+          // Only this bot's own purchases, as for its runs.
+          findMany: vi.fn(async ({ where }: { where: Record<string, unknown> }) =>
+            where.spaceId === "space-1" && where.userId === "user-1" && where.botId === "bot-1"
+              ? [{ id: "purchase-1", cardCiphertext: "cipher-card", tokenCiphertext: null }]
+              : [],
+          ),
+        },
+      });
+    };
+    const output = `Signed in as watcher@example.test with ${password}, paid with ${card.replaceAll(" ", "")} and ${card.replaceAll(" ", "-")}`;
+
+    vi.mocked(provisionComputer).mockResolvedValueOnce({
+      id: "computer-1",
+      botId: "bot-1",
+      kind: "fake",
+      providerRef: "fake",
+    });
+    const changed = setupComputer(
+      { kind: "command", command: "check-order" },
+      { stdout: output },
+      undefined,
+      { vault, secretStore },
+    );
+    withPurchases(changed.deps);
+    const tick = await tickRoutineWatch(changed.deps, changed.routine, target, scheduledAt);
+    if (!tick.run) throw new Error("expected a run");
+    expect(tick.note).toContain(
+      "Signed in as watcher@example.test with [redacted], paid with [redacted] and [redacted]",
+    );
+    expect(tick.note).not.toContain(password);
+    expect(tick.note).not.toContain("4242424242424242");
+    expect(tick.note).not.toContain("4242-4242-4242-4242");
+
+    vi.mocked(provisionComputer).mockResolvedValueOnce({
+      id: "computer-1",
+      botId: "bot-1",
+      kind: "fake",
+      providerRef: "fake",
+    });
+    const failed = setupComputer(
+      { kind: "command", command: "check-order" },
+      { stderr: output, code: 1 },
+      undefined,
+      { vault, secretStore },
+    );
+    withPurchases(failed.deps);
+    await tickRoutineWatch(failed.deps, failed.routine, target, scheduledAt);
+    const posted = JSON.stringify(failed.messages);
+    expect(posted).toContain(
+      "Signed in as watcher@example.test with [redacted], paid with [redacted] and [redacted]",
+    );
+    expect(posted).not.toContain(password);
+    expect(posted).not.toContain("4242424242424242");
+    expect(posted).not.toContain("4242-4242-4242-4242");
+
+    // An item saved before its value was hidden is named from the last reading when it goes.
+    vi.mocked(provisionComputer).mockResolvedValueOnce({
+      id: "computer-1",
+      botId: "bot-1",
+      kind: "fake",
+      providerRef: "fake",
+    });
+    const tracked = setupComputer(
+      { kind: "command", command: "list-orders", track: ["id"] },
+      { stdout: '[{"id":"8","title":"Order 8"}]' },
+      undefined,
+      { vault, secretStore },
+    );
+    withPurchases(tracked.deps);
+    tracked.routine.watchState = {
+      checkedAt: "x",
+      outcome: "unchanged",
+      fingerprint: "old",
+      entries: readItems([{ id: "7", title: `Reset ${password}` }], ["id"]).entries,
+      detail: null,
+    } as never;
+    const gone = await tickRoutineWatch(tracked.deps, tracked.routine, target, scheduledAt);
+    if (!gone.run) throw new Error("expected a run");
+    expect(gone.note).toContain("New: Order 8\nGone: Reset [redacted]");
+    expect(gone.note).not.toContain(password);
+  });
+
   it("scrubs a quote and backslash inside tracked command JSON", async () => {
     const secret = 'ghp_quote"slash\\secretToken';
     const vault = fakeDatabase();
@@ -844,7 +1056,7 @@ describe("tickRoutineWatch on a computer", () => {
         argv: ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
       },
       {
-        shell: { platform: "linux", shell: "/bin/bash", home: "/home/rakazo" },
+        shell: { platform: "linux", shell: "/bin/bash", home: "/home/aiking" },
         argv: ["/bin/bash", "-lc", command],
       },
     ];
@@ -869,6 +1081,33 @@ describe("tickRoutineWatch on a computer", () => {
         expect.anything(),
       );
     }
+  });
+
+  it("runs a Windows check in PowerShell without the bash desktop guard", async () => {
+    const computer = {
+      id: "computer-1",
+      botId: "bot-1",
+      kind: "desktop" as const,
+      providerRef: "ecd-1",
+    };
+    vi.mocked(provisionComputer).mockResolvedValueOnce(computer);
+    const command = "(Get-ChildItem inbox).Count";
+    expect(protectedComputerLifecycleRefusal(command)).toBeDefined();
+    const { deps, routine, execute } = setupComputer(
+      { kind: "command", command },
+      { stdout: "3\n" },
+      { id: "computer-1", scope: "team", kind: "desktop" },
+      { shell: { platform: "win32", shell: "powershell.exe", home: "C:\\Users\\rakazo" } },
+    );
+    deps.commandRefusal = protectedComputerLifecycleRefusal;
+    await checkRoutineWatch(deps, routine);
+    expect(execute).toHaveBeenCalledWith(
+      computer,
+      expect.objectContaining({
+        argv: ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
+      }),
+      expect.anything(),
+    );
   });
 
   it("retries in a minute without pausing when the computer is busy", async () => {
@@ -915,7 +1154,7 @@ describe("tickRoutineWatch on a computer", () => {
     const { deps, routine, updateMany } = setupComputer(
       { kind: "files", paths: ["a", "b"] },
       {
-        stdout: "/home/rakazo/bots/bot-1/b/x.txt\t1\t5.25\n",
+        stdout: "/home/aiking/bots/bot-1/b/x.txt\t1\t5.25\n",
         stderr: "find: a: Permission denied",
         code: 1,
       },
@@ -942,7 +1181,7 @@ describe("tickRoutineWatch on a computer", () => {
     });
     const { deps, routine, updateMany } = setupComputer(
       { kind: "files", paths: ["a"] },
-      { stdout: "/home/rakazo/bots/bot-1/a/x.txt\t1\t5.25\n" },
+      { stdout: "/home/aiking/bots/bot-1/a/x.txt\t1\t5.25\n" },
     );
     routine.watchState = {
       checkedAt: "x",
@@ -958,8 +1197,8 @@ describe("tickRoutineWatch on a computer", () => {
 describe("watchFolder", () => {
   // A team computer refuses "." as a bot path, which failed every files watch live.
   it("is the bot's own folder on a team computer and the workspace on a private one", () => {
-    expect(watchFolder("team", "bot-1")).toBe("/home/rakazo/bots/bot-1");
-    expect(watchFolder("dedicated", "bot-1")).toBe("/home/rakazo");
+    expect(watchFolder("team", "bot-1")).toBe("/home/aiking/bots/bot-1");
+    expect(watchFolder("dedicated", "bot-1")).toBe("/home/aiking");
   });
 });
 
@@ -986,6 +1225,16 @@ describe("toolResultText", () => {
     ).toBe("one\ntwo");
   });
 
+  it("keeps an error result's text alone instead of repeating its structured copy", () => {
+    expect(
+      toolResultText({
+        content: [{ type: "text", text: "Permission denied for folder Reports" }],
+        structuredContent: { error: "Permission denied for folder Reports" },
+        isError: true,
+      }),
+    ).toBe("Permission denied for folder Reports");
+  });
+
   it("keeps plain strings and other data readable", () => {
     expect(toolResultText("plain")).toBe("plain");
     expect(toolResultText({ b: 1, a: 2 })).toBe('{"a":2,"b":1}');
@@ -994,12 +1243,12 @@ describe("toolResultText", () => {
 
 describe("file watch boundaries", () => {
   it("allows normalized team paths inside the bot folder", () => {
-    expect(resolveWatchPath("team", "bot-1", "/home/rakazo/bots/bot-1/inbox/../notes")).toBe(
-      "/home/rakazo/bots/bot-1/notes",
+    expect(resolveWatchPath("team", "bot-1", "/home/aiking/bots/bot-1/inbox/../notes")).toBe(
+      "/home/aiking/bots/bot-1/notes",
     );
-    expect(resolveWatchPath("team", "bot-1", "notes")).toBe("/home/rakazo/bots/bot-1/notes");
+    expect(resolveWatchPath("team", "bot-1", "notes")).toBe("/home/aiking/bots/bot-1/notes");
   });
-  it.each(["/etc", "../bot-2", "/home/rakazo/bots/bot-1/../../shared", "shared/../../other"])(
+  it.each(["/etc", "../bot-2", "/home/aiking/bots/bot-1/../../shared", "shared/../../other"])(
     "refuses team escape %s",
     (path) => {
       expect(() => resolveWatchPath("team", "bot-1", path)).toThrow("inside the bot's folder");
@@ -1189,6 +1438,7 @@ describe("watch tool guard", () => {
         connection: { findMany: vi.fn(async () => []) },
         spaceSettingOverride: { findUnique: vi.fn(async () => null) },
         actionApprovalRule: { findMany: vi.fn(async () => []) },
+        spaceMember: { findUnique: vi.fn(async () => null) },
         userActionApprovalRule: { findMany: vi.fn(async () => rules) },
       },
       connector: {
@@ -1310,6 +1560,7 @@ it("loads authorized connection context for discovery, creation validation and c
       },
       spaceSettingOverride: { findUnique: vi.fn(async () => null) },
       actionApprovalRule: { findMany: vi.fn(async () => []) },
+      spaceMember: { findUnique: vi.fn(async () => null) },
       userActionApprovalRule: { findMany: vi.fn(async () => rules) },
     },
     connector: { discoverTools, execute },

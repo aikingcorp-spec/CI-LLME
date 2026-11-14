@@ -1,0 +1,194 @@
+import type { Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { rememberedComputerKey } from "../src/lib/remembered-computer";
+import { captureScreenshot } from "./helpers";
+
+async function signInForPortal(page: Page, email: string) {
+  const baseURL = test.info().project.use.baseURL;
+  if (!baseURL) throw new Error("The portal test needs the existing web server");
+  const headers = { origin: new URL(baseURL).origin };
+  const sent = await page.request.post("/api/auth/email-otp/send-verification-otp", {
+    headers,
+    data: { email, type: "sign-in" },
+  });
+  expect(sent.ok()).toBe(true);
+  // This is the existing harness outbox, not a real mailbox or mocked auth endpoint.
+  const emailApi = process.env.API_URL ?? "http://127.0.0.1:3110";
+  const outbox = await page.request.get(`${emailApi}/__e2e/emails`);
+  expect(outbox.ok()).toBe(true);
+  const messages: unknown = await outbox.json();
+  if (!Array.isArray(messages)) throw new Error("Invalid fixture outbox");
+  const message = messages.findLast(
+    (item) => item && item.to === email && typeof item.text === "string",
+  );
+  const otp = message?.text.match(
+    /(?:Your VNBot sign-in code|Mã đăng nhập VNBot của bạn): (\d{6})/,
+  )?.[1];
+  if (!otp) throw new Error("Missing fixture sign-in code");
+  const signedIn = await page.request.post("/api/auth/sign-in/email-otp", {
+    headers,
+    data: { email, otp },
+  });
+  expect(signedIn.ok()).toBe(true);
+}
+
+test("the remote entry keeps account switching available while loading, on errors, and without a computer", async ({
+  page,
+  context,
+}, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem("rakazo.uiLocale", "en"));
+  const baseURL = testInfo.project.use.baseURL;
+  if (!baseURL) throw new Error("The portal test needs the existing web server");
+  await signInForPortal(page, `portal-exit-${Date.now()}@example.test`);
+  const session = await page.request
+    .get("/api/auth/get-session")
+    .then((response) => response.json());
+  expect(session.user).toBeTruthy();
+  const cookie = (await context.cookies(baseURL))
+    .map((item) => `${item.name}=${item.value}`)
+    .join("; ");
+  let signedOut = false;
+  let fail = true;
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // Everything on the public host is intercepted; this never contacts the live portal.
+  await page.routeWebSocket(/app\.vnbot\.run/, (socket) => socket.close());
+  await context.route("http://app.vnbot.run/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === "/api/auth/get-session")
+      return route.fulfill({ json: signedOut ? null : session });
+    if (url.pathname === "/api/auth/sign-out") {
+      signedOut = true;
+      return route.fulfill({ json: { success: true } });
+    }
+    if (url.pathname === "/rpc/remoteHosts/list") {
+      await pending;
+      return fail
+        ? route.fulfill({
+            status: 503,
+            json: { code: "SERVICE_UNAVAILABLE", message: "Unavailable" },
+          })
+        : route.fulfill({ json: { json: { kind: "unavailable", devices: [] } } });
+    }
+    return route.fulfill({
+      response: await route.fetch({
+        url: new URL(url.pathname + url.search, baseURL).href,
+        headers: { ...request.headers(), origin: new URL(baseURL).origin, cookie },
+      }),
+    });
+  });
+  try {
+    await page.goto("http://app.vnbot.run/app");
+    const account = page.getByTestId("account-menu");
+    await expect(account).toBeVisible();
+    await expect(page.getByRole("status")).toBeVisible();
+    await captureScreenshot(page, testInfo, "remote-portal-loading-exit");
+    release();
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(account).toBeEnabled();
+    fail = false;
+    await page.getByRole("button", { name: "Thử lại", exact: true }).click();
+    await expect(page.getByTestId("remote-portal-empty")).toBeVisible();
+    await account.click();
+    const logout = page.getByRole("menuitem", { name: "Log out", exact: true });
+    await expect(logout).toBeVisible();
+    await captureScreenshot(page, testInfo, "remote-portal-empty-account-menu");
+    await logout.click();
+    await expect(page).toHaveURL((url) => url.pathname === "/sign-in");
+    await expect(page.getByRole("textbox", { name: "Email", exact: true })).toHaveValue("");
+  } finally {
+    release();
+  }
+});
+
+test("a remembered offline computer is not replaced by the only other ready computer", async ({
+  page,
+  context,
+}, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem("rakazo.uiLocale", "vi"));
+  const baseURL = testInfo.project.use.baseURL;
+  if (!baseURL) throw new Error("The portal test needs the existing web server");
+  await page.goto("/sign-in");
+  await expect(page.locator('input[type="email"]')).toBeVisible();
+  await expect(page.locator('a[href="https://vnbot.run/dieu-khoan"]')).toHaveCount(0);
+  await expect(page.locator('a[href="https://vnbot.run/quyen-rieng-tu"]')).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await captureScreenshot(page, testInfo, "remote-portal-auth-no-legal");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('input[type="email"]')).toBeVisible();
+  await captureScreenshot(page, testInfo, "remote-portal-auth-no-legal-phone");
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await signInForPortal(page, `portal-remember-${Date.now()}@example.test`);
+  const session = await page.request
+    .get("/api/auth/get-session")
+    .then((response) => response.json());
+  const userId = session?.user?.id;
+  if (typeof userId !== "string" || userId.length === 0) throw new Error("Missing signed-in user");
+  const storageKey = rememberedComputerKey(userId, "http://app.vnbot.run");
+  if (storageKey === null) throw new Error("Missing preference key");
+  await page.addInitScript((key) => {
+    localStorage.setItem(key, JSON.stringify({ deviceId: "computer-a" }));
+  }, storageKey);
+  const cookie = (await context.cookies(baseURL))
+    .map((item) => `${item.name}=${item.value}`)
+    .join("; ");
+  let entered = 0;
+  await page.routeWebSocket(/app\.vnbot\.run/, (socket) => socket.close());
+  await context.route("http://app.vnbot.run/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === "/api/auth/get-session") return route.fulfill({ json: session });
+    if (url.pathname === "/rpc/remoteHosts/list") {
+      return route.fulfill({
+        json: {
+          json: {
+            kind: "open",
+            deviceId: "computer-b",
+            logicalHost: "may-b",
+            devices: [
+              {
+                deviceId: "computer-a",
+                logicalHost: "may-a",
+                remoteEnabled: true,
+                state: "offline",
+              },
+              {
+                deviceId: "computer-b",
+                logicalHost: "may-b",
+                remoteEnabled: true,
+                state: "ready",
+              },
+            ],
+          },
+        },
+      });
+    }
+    if (url.pathname === "/rpc/remoteHosts/enter") {
+      entered += 1;
+      return route.fulfill({ json: { json: { href: "https://host.example/should-not-open" } } });
+    }
+    return route.fulfill({
+      response: await route.fetch({
+        url: new URL(url.pathname + url.search, baseURL).href,
+        headers: { ...request.headers(), origin: new URL(baseURL).origin, cookie },
+      }),
+    });
+  });
+  await page.goto("http://app.vnbot.run/app");
+  await expect(page.getByTestId("remote-portal-pick-computer-b")).toBeVisible();
+  await expect(page.getByText("Ngoại tuyến", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("remote-portal-remembered-absent")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Thử lại", exact: true })).toBeVisible();
+  await expect(page.getByTestId("account-menu")).toBeVisible();
+  expect(entered).toBe(0);
+  await expect(page).toHaveURL(/app\.vnbot\.run/);
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await captureScreenshot(page, testInfo, "remote-portal-remembered-offline");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("remote-portal-pick-computer-b")).toBeVisible();
+  expect(entered).toBe(0);
+  await captureScreenshot(page, testInfo, "remote-portal-remembered-offline-phone");
+});

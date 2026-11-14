@@ -1,6 +1,6 @@
 # App icon source
 
-`VNBot.icon` is the shared editable source for macOS and iOS. Open it in Apple's
+`Rakazo.icon` is the shared editable source for macOS and iOS. Open it in Apple's
 Icon Composer with Xcode 26 or newer. The orange foreground keeps its original
 lighting, sits 90 points below center, and uses the system dark background.
 
@@ -25,12 +25,16 @@ Refresh platform exports after changing the source. Android supplies its own mas
 never bake Mac corners, a rim, or an outer shadow into adaptive layers.
 
 Run `pnpm --filter @rakazo/ui-tokens export:brand` to refresh the web and marketing
-favicons, install icons, Windows/Linux icons, mobile splash, and
+favicons, install icons, marketing mark, Windows/Linux icons, mobile splash, and
 mobile web favicon. These use the same orange foreground with the shared dark
 background, a rounded mask for small browser marks, and transparent splash padding.
 The notification export uses the Android monochrome silhouette so its eyes remain
 transparent. Apple Icon Composer and Android launcher exports remain separate
 because their system masks and safe areas differ.
+
+After exporting, run `pnpm exec tsx apps/www/scripts/render-og.mjs` to refresh the
+marketing page social cards; set `CHROME_PATH` to a headless Chrome executable when
+it is not available at the script's default location.
 
 ## Animated vector avatars
 

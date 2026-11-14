@@ -59,6 +59,17 @@ export async function isEmailInvited(prisma: PrismaClient, raw: unknown): Promis
   });
 }
 
+/** A failed read is not an empty list. Callers deny both, and revoke sessions only for "absent". */
+export type InviteLookup = "listed" | "absent" | "unavailable";
+
+export async function lookupInvite(prisma: PrismaClient, raw: unknown): Promise<InviteLookup> {
+  try {
+    return (await isEmailInvited(prisma, raw)) ? "listed" : "absent";
+  } catch {
+    return "unavailable";
+  }
+}
+
 export interface AllowlistEntry {
   email: string;
   note: string | null;

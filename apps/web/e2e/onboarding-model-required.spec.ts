@@ -1,17 +1,23 @@
 import { expect, test } from "@playwright/test";
-import { signup } from "./helpers";
+import { captureScreenshot, signup } from "./helpers";
 
 test.afterEach(async ({ page }) => {
-  // Finish intercepted responses before the browser context is disposed.
-  await page.unrouteAll({ behavior: "wait" });
+  // Not "wait": a handler whose fulfill() lost a race to the route teardown never settles,
+  // and "wait" would then hang the test to its timeout.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
 });
 
 test("onboarding cannot continue with an empty or failed model catalog", async ({ page }) => {
   let unavailable: "empty" | "failed" = "empty";
   await page.route("**/rpc/me", async (route) => {
-    const response = await route.fetch();
-    const body = (await response.json()) as { json: Record<string, unknown> };
-    await route.fulfill({ response, json: { json: { ...body.json, needsModel: true } } });
+    // The reload below can cancel a profile read at any point while it is being rewritten.
+    try {
+      const response = await route.fetch();
+      const body = (await response.json()) as { json: Record<string, unknown> };
+      await route.fulfill({ response, json: { json: { ...body.json, needsModel: true } } });
+    } catch {
+      await route.abort().catch(() => {});
+    }
   });
   await page.route("**/rpc/models/list", (route) =>
     unavailable === "failed" ? route.abort() : route.fulfill({ json: { json: [] } }),
@@ -52,4 +58,33 @@ test("Ollama Cloud onboarding requires a key before continuing", async ({ page }
   await expect(continueButton).toBeEnabled();
   await apiKey.fill("");
   await expect(continueButton).toBeDisabled();
+});
+
+test("VNBot credits are chosen like a provider, with nothing else to fill in", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/rpc/me", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { json: Record<string, unknown> };
+    await route.fulfill({
+      response,
+      json: { json: { ...body.json, needsModel: true, billingEnabled: true } },
+    });
+  });
+  let funding: unknown = null;
+  await page.route("**/rpc/billing/selectFunding", async (route) => {
+    funding = route.request().postDataJSON().json;
+    await route.fulfill({ json: { json: { ok: true } } });
+  });
+  await signup(page, `credits-${Date.now()}@rakazo.test`, "password12", "Credits");
+  await expect(page.getByRole("heading", { name: "Connect a model" })).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.getByRole("combobox", { name: "Provider" }).click();
+  await page.getByRole("option", { name: "VNBot credits", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Model", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel(/API key/)).toHaveCount(0);
+  await captureScreenshot(page, testInfo, "onboarding-rakazo-credits");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect.poll(() => funding).toEqual({ funding: "credits" });
 });

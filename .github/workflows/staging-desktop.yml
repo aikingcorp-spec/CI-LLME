@@ -1,0 +1,206 @@
+name: staging-desktop
+
+# Customer-trial installers only. Push to staging/** or a manual dispatch.
+# No pull_request trigger, so a branch push does not run this twice.
+# Runner labels are the standard GitHub-hosted set checked on 2026-11-14:
+# https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+# ubuntu-24.04 and windows-2025 are x64. macos-26-intel is Intel. macos-26 is arm64.
+# Desktop package targets are x64 on Linux and Windows, so arm runners are not added.
+
+on:
+  push:
+    branches:
+      - "staging/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Package ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      STAGING_RUNNER: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            artifact: linux-x64
+          - os: windows-2025
+            artifact: windows-x64
+          - os: macos-26-intel
+            artifact: macos-x64
+          - os: macos-26
+            artifact: macos-arm64
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-workspace
+        with:
+          electron: "true"
+
+      - name: Check the staging desktop plan
+        shell: bash
+        run: node --test .github/scripts/staging-desktop-verify.test.mjs
+
+      - name: Require the public staging pin
+        shell: bash
+        env:
+          RAKAZO_IDENTITY_PIN: ${{ vars.RAKAZO_IDENTITY_PIN }}
+          RAKAZO_CLOUD_URL: ${{ vars.RAKAZO_CLOUD_URL }}
+        run: node .github/scripts/staging-desktop-verify.mjs require-public
+
+      - name: Generate the database client
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: postgres://rakazo:rakazo@127.0.0.1:5433/rakazo
+
+      - name: Desktop unit tests
+        run: pnpm --filter @rakazo/desktop test
+
+      - name: Install PostgreSQL 18 and 16
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" |
+            sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-18 postgresql-16
+
+      - name: Install PostgreSQL 18 and 16
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          brew install postgresql@18 postgresql@16
+
+      - name: Install PostgreSQL 18 and 16
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          function Install-Postgres([string]$Id, [string]$Binary) {
+            if (Test-Path -LiteralPath $Binary) { return }
+            winget install --id $Id -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+            if ($LASTEXITCODE -ne 0) { throw "winget failed for $Id ($LASTEXITCODE)" }
+            if (-not (Test-Path -LiteralPath $Binary)) { throw "Missing $Binary after installing $Id" }
+          }
+          Install-Postgres "PostgreSQL.PostgreSQL.18" "C:\Program Files\PostgreSQL\18\bin\postgres.exe"
+          Install-Postgres "PostgreSQL.PostgreSQL.16" "C:\Program Files\PostgreSQL\16\bin\postgres.exe"
+
+      - name: Build API, worker, web, and desktop
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @rakazo/api build
+          pnpm --filter @rakazo/worker build
+          pnpm --filter @rakazo/web build
+          pnpm --filter @rakazo/desktop build
+        env:
+          DATABASE_URL: postgres://rakazo:rakazo@127.0.0.1:5433/rakazo
+          BETTER_AUTH_SECRET: ci-build-auth-secret-at-least-32-characters
+          ENCRYPTION_KEY: ci-build-encryption-key-at-least-32-characters
+          RAKAZO_IDENTITY_PIN: ${{ vars.RAKAZO_IDENTITY_PIN }}
+          RAKAZO_CLOUD_URL: ${{ vars.RAKAZO_CLOUD_URL }}
+
+      - name: Assemble the native bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ runner.os }}" in
+            Linux)
+              current_root=/usr
+              legacy_root=/usr
+              ;;
+            macOS)
+              current_root="$(brew --prefix postgresql@18)"
+              legacy_root="$(brew --prefix postgresql@16)"
+              ;;
+            Windows)
+              current_root="/c/Program Files/PostgreSQL/18"
+              legacy_root="/c/Program Files/PostgreSQL/16"
+              ;;
+            *)
+              echo "Unsupported runner OS ${{ runner.os }}" >&2
+              exit 1
+              ;;
+          esac
+          current="$(node .github/scripts/staging-desktop-verify.mjs prepare-current --root "$current_root" --major 18 --dest "$RUNNER_TEMP/pg18")"
+          legacy="$(node .github/scripts/staging-desktop-verify.mjs prepare-legacy --root "$legacy_root" --major 16 --dest "$RUNNER_TEMP/pg16")"
+          pnpm --filter @rakazo/desktop run build:native -- \
+            --node "$(command -v node)" \
+            --postgres "$current" \
+            --legacy-postgres "$legacy"
+
+      - name: Package unsigned installers
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset GH_TOKEN GITHUB_TOKEN
+          args=()
+          while IFS= read -r line; do
+            if [[ -n "$line" ]]; then
+              args+=("$line")
+            fi
+          done < <(node .github/scripts/staging-desktop-verify.mjs plan --runner "$STAGING_RUNNER")
+          pnpm --filter @rakazo/desktop exec electron-builder "${args[@]}"
+
+      - name: Check installers and write checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/staging-desktop-verify.mjs artifacts \
+            --runner "$STAGING_RUNNER" \
+            --out apps/desktop/out \
+            --checksums apps/desktop/out/SHA256SUMS
+
+      - name: Smoke the packaged app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p staging-smoke
+          node .github/scripts/staging-desktop-verify.mjs smoke \
+            --runner "$STAGING_RUNNER" \
+            --out apps/desktop/out \
+            --profile "$RUNNER_TEMP/vnbot-desktop-smoke" \
+            --log staging-smoke/smoke.log
+
+      - name: Upload installers and checksums
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-desktop-${{ matrix.artifact }}-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          path: |
+            apps/desktop/out/*.AppImage
+            apps/desktop/out/*.deb
+            apps/desktop/out/*.dmg
+            apps/desktop/out/*.exe
+            apps/desktop/out/*.msi
+            apps/desktop/out/*.zip
+            apps/desktop/out/SHA256SUMS
+
+      - name: Upload smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-desktop-smoke-${{ matrix.artifact }}-${{ github.sha }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: staging-smoke/

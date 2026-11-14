@@ -1,6 +1,5 @@
 import { plural, t } from "@lingui/core/macro";
 import type { ModelCredential } from "@rakazo/contracts";
-import { modelConnectionErrorText } from "./user-error";
 
 type ModelPreflightOutcome =
   | "timeout"
@@ -22,8 +21,8 @@ type StoredModelAuthKind = NonNullable<ModelCredential["authKind"]>;
 
 const SECRET_PATTERNS: RegExp[] = [
   /\bsk-[a-zA-Z0-9_-]{8,}\b/g,
-  /\bBearer\s+[a-zA-Z0-9._-]+\b/gi,
-  /\bapi[_-]?key[=:]\s*\S+/gi,
+  /\bBearer\s+[\w.~+/=-]+/gi,
+  /\bapi[_-]?key["']?\s*[=:]\s*["']?[^\s"',}]+/gi,
 ];
 
 /** Strip patterns that look like credentials from user-visible errors. */
@@ -32,7 +31,7 @@ export function sanitizeModelConnectionError(raw: string): string {
   for (const pattern of SECRET_PATTERNS) {
     text = text.replace(pattern, "•••");
   }
-  return modelConnectionErrorText(text);
+  return text;
 }
 
 function messageFromError(error: unknown): string {
@@ -69,7 +68,7 @@ export function classifyModelConnectionFailure(
     };
   }
 
-  if (lower.includes("429") || lower.includes("rate limit") || lower.includes("rate-limit")) {
+  if (/\b429\b/.test(lower) || lower.includes("rate limit") || lower.includes("rate-limit")) {
     return {
       outcome: "rate_limit",
       message: message || t`The provider is rate-limiting requests.`,
@@ -78,8 +77,7 @@ export function classifyModelConnectionFailure(
   }
 
   if (
-    lower.includes("401") ||
-    lower.includes("403") ||
+    /\b(401|403)\b/.test(lower) ||
     lower.includes("unauthorized") ||
     lower.includes("invalid api key") ||
     lower.includes("authentication")
@@ -134,6 +132,7 @@ type ListedModelCredential = {
   authKind?: StoredModelAuthKind;
   modelId?: string;
   isDefault?: boolean;
+  reconnectRequired?: boolean;
 };
 
 /**
@@ -168,6 +167,7 @@ export async function loadStoredModelAuth(
   storedAuthKind: StoredModelAuthKind | null;
   credentialLookupFailed: boolean;
   credentialUnreadable: boolean;
+  reconnectRequired: boolean;
 }> {
   try {
     const credentials = await listCredentials();
@@ -179,12 +179,14 @@ export async function loadStoredModelAuth(
       storedAuthKind: match?.authKind ?? null,
       credentialLookupFailed: false,
       credentialUnreadable: Boolean(match && match.authKind === undefined),
+      reconnectRequired: match?.reconnectRequired === true,
     };
   } catch {
     return {
       storedAuthKind: null,
       credentialLookupFailed: true,
       credentialUnreadable: false,
+      reconnectRequired: false,
     };
   }
 }
@@ -199,6 +201,8 @@ type ModelConnectionPreflightInput = {
   credentialLookupFailed?: boolean;
   /** A credential row exists but its kind could not be read. */
   credentialUnreadable?: boolean;
+  /** The stored subscription sign-in was rejected and has to be signed in again. */
+  reconnectRequired?: boolean;
   /** Catalog entry says this provider has a pinned models-list URL. */
   catalogProbe?: boolean;
   probeCatalog?: (input: { provider: string; apiKey: string }) => Promise<{ models: string[] }>;
@@ -217,6 +221,16 @@ export async function runModelConnectionPreflight(
           outcome: "unknown",
           message: t`Could not check stored credentials.`,
           nextAction: t`Try the test again.`,
+        },
+      };
+    }
+    if (input.reconnectRequired) {
+      return {
+        ok: false,
+        failure: {
+          outcome: "needs_sign_in",
+          message: t`This provider is not connected yet.`,
+          nextAction: t`Finish subscription sign-in, then test again.`,
         },
       };
     }
@@ -282,7 +296,7 @@ export async function runModelConnectionPreflight(
   }
 }
 
-/** Catalog models-list result. Custom servers use `compatibleProbeSuccessMessage`. */
+/** Catalog models-list result. Custom servers use `openAiCompatibleProbeSuccessMessage`. */
 export function modelPreflightSuccessMessage(modelCount: number): string {
   if (modelCount === 0) {
     return t`No models listed.`;
@@ -291,11 +305,4 @@ export function modelPreflightSuccessMessage(modelCount: number): string {
     one: "# model",
     other: "# models",
   })} available. Chat was not tested.`;
-}
-
-/** Result of "Find models" on a custom OpenAI-compatible server. */
-export function compatibleProbeSuccessMessage(modelCount: number): string {
-  if (modelCount === 0) return t`Server found. Enter a model name.`;
-  if (modelCount === 1) return t`Found 1 model.`;
-  return t`Found ${modelCount} models.`;
 }

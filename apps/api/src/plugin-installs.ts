@@ -3,19 +3,18 @@ import { ORPCError } from "@orpc/server";
 import type { SecretStore } from "@rakazo/adapter-kit";
 import type { PluginMcpServerEntry, PluginRepoFetcher } from "@rakazo/adapters";
 import {
-  BUILTIN_AGENT_SKILLS,
   buildMcpCredentialBlob,
   persistPreparedSecret,
   pluginPreviewDto,
   previewPluginInstall,
 } from "@rakazo/adapters";
 import type { Actor, CapabilityInstall, PluginPart } from "@rakazo/contracts";
-import { PLUGIN_SKILL_CONFLICT } from "@rakazo/contracts";
 import { installedPluginParts } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 import {
   AVAILABILITY_SELECT,
   availableInSpace,
+  isUniqueViolation,
   runAsSystemInTransaction,
   spaceAvailability,
 } from "@rakazo/db";
@@ -94,13 +93,6 @@ function withPreparedServers<T>(
     );
   }
   return prepare(0);
-}
-
-const BUILTIN_SKILL_NAMES = new Set(BUILTIN_AGENT_SKILLS.map((skill) => skill.name.toLowerCase()));
-
-export function assertNoBuiltinSkillNames(plugin: Pick<LoadedPlugin, "skills">) {
-  if (plugin.skills.some((skill) => BUILTIN_SKILL_NAMES.has(skill.name.toLowerCase())))
-    throw new ORPCError(PLUGIN_SKILL_CONFLICT, { status: 409, message: PLUGIN_SKILL_CONFLICT });
 }
 
 /** Where an install's skills and connectors live: wherever the install itself is available. */
@@ -264,10 +256,6 @@ function installDto(row: {
   };
 }
 
-function uniqueViolation(error: unknown) {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
-}
-
 export async function installPlugin(
   deps: PluginInstallDeps,
   actor: Actor,
@@ -298,7 +286,6 @@ export async function installPlugin(
       message: "Plugin has no supported skills or MCP servers",
     });
   }
-  if (parts.includes("skills")) assertNoBuiltinSkillNames(plugin);
   const servers = parts.includes("connector") ? plugin.mcpServers : [];
   return withPreparedServers(deps, actor, servers, signal, async (prepared) => {
     const source = plugin.source.gitUrl + (plugin.source.subdir ? `#${plugin.source.subdir}` : "");
@@ -344,7 +331,7 @@ export async function installPlugin(
       });
       return installDto(row);
     } catch (error) {
-      if (uniqueViolation(error)) {
+      if (isUniqueViolation(error)) {
         throw new ORPCError("CONFLICT", { message: "Plugin or skill is already installed" });
       }
       throw error;
@@ -387,7 +374,6 @@ export async function setPluginParts(
     ? await loadPlugin(deps, pinnedSource(existing), existing.digest, signal)
     : null;
   const added = plugin ? availableParts(plugin, adding) : [];
-  if (plugin && added.includes("skills")) assertNoBuiltinSkillNames(plugin);
   const parts = [...current.filter((part) => !removing.includes(part)), ...added];
   if (!parts.length) return null;
   const servers = plugin && added.includes("connector") ? plugin.mcpServers : [];
@@ -423,6 +409,8 @@ export async function setPluginParts(
           data: {
             config: {
               ...(install.config as Record<string, unknown>),
+              // Re-read at the pinned commit, so the saved preview matches what is installed now.
+              ...(plugin ? pluginPreviewDto(plugin) : {}),
               parts,
             } as Prisma.InputJsonValue,
           },
@@ -431,7 +419,7 @@ export async function setPluginParts(
       });
       return installDto(row);
     } catch (error) {
-      if (uniqueViolation(error)) {
+      if (isUniqueViolation(error)) {
         throw new ORPCError("CONFLICT", { message: "A plugin skill name is already in use" });
       }
       throw error;

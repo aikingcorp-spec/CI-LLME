@@ -73,27 +73,102 @@ async function render(value: string, avatarSet?: BotAvatarSet, key = "initial") 
 }
 
 describe("selectable bot icon sets", () => {
-  it.each(["rakazo", "organic"] as const)(
-    "opens legacy %s as Classic without rewriting saved data",
-    async (set) => {
-      await render("#10B981", set);
-      await click("Customize bot avatar");
-      expect(button("Classic").getAttribute("aria-selected")).toBe("true");
-      expect(document.querySelector(".rakazo-organic-avatar")).not.toBeNull();
-      expect(document.querySelector(".rakazo-logo-avatar")).toBeNull();
-      expect(button("wedge")).toBeDefined();
-      expect(document.querySelector('[data-testid^="vnbot-shape-"]')).toBeNull();
-      expect(changed).not.toHaveBeenCalled();
-      const tabs = document.querySelector('[aria-label="Icon set"]')!;
-      expect([...tabs.querySelectorAll('[role="tab"]')].map((node) => node.textContent)).toEqual([
-        "VNBot",
-        "Classic",
-      ]);
-      await click("VNBot");
-      await click("Classic");
-      expect(changed).not.toHaveBeenCalled();
-    },
-  );
+  it("opens a legacy product-brand set on VNBot without rewriting saved data", async () => {
+    await render("#10B981", "rakazo");
+    expect(
+      document.querySelector('[data-testid="avatar-studio-trigger"] [data-vnbot-avatar]'),
+    ).not.toBeNull();
+    expect(document.querySelector(".rakazo-logo-avatar")).toBeNull();
+    await click("Customize bot avatar");
+    expect(button("VNBot").getAttribute("aria-selected")).toBe("true");
+    expect(
+      document.querySelector('[data-testid="avatar-studio"] [data-vnbot-avatar]'),
+    ).not.toBeNull();
+    expect(document.querySelector(".rakazo-logo-avatar")).toBeNull();
+    expect(document.querySelector(".rakazo-organic-avatar")).toBeNull();
+    expect(changed).not.toHaveBeenCalled();
+    const tabs = document.querySelector('[aria-label="Icon set"]')!;
+    expect([...tabs.querySelectorAll('[role="tab"]')].map((node) => node.textContent)).toEqual([
+      "VNBot",
+      "Classic",
+    ]);
+    await click("Classic");
+    await click("VNBot");
+    expect(changed).not.toHaveBeenCalled();
+    expect(
+      document.querySelector('[data-testid="avatar-studio-trigger"] [data-vnbot-avatar]'),
+    ).not.toBeNull();
+  });
+
+  it("opens organic as Classic without rewriting saved data", async () => {
+    await render("#10B981", "organic");
+    await click("Customize bot avatar");
+    expect(button("Classic").getAttribute("aria-selected")).toBe("true");
+    expect(document.querySelector(".rakazo-organic-avatar")).not.toBeNull();
+    expect(document.querySelector(".rakazo-logo-avatar")).toBeNull();
+    expect(button("wedge")).toBeDefined();
+    expect(document.querySelector('[data-testid^="vnbot-shape-"]')).toBeNull();
+    expect(changed).not.toHaveBeenCalled();
+    await click("VNBot");
+    await click("Classic");
+    expect(changed).not.toHaveBeenCalled();
+  });
+
+  it("keeps a legacy product-brand photo until Classic replaces it", async () => {
+    const photo = "data:image/png;base64,legacy";
+    await render(photo, "rakazo");
+    await click("Customize bot avatar");
+    expect(button("VNBot").getAttribute("aria-selected")).toBe("true");
+    expect(
+      document.querySelector(`[data-testid="avatar-studio-trigger"] img[src="${photo}"]`),
+    ).not.toBeNull();
+    expect(
+      document.querySelector(`[data-testid="avatar-studio"] img[src="${photo}"]`),
+    ).not.toBeNull();
+    expect(
+      document.querySelector('[data-testid="avatar-studio-trigger"] [data-vnbot-avatar]'),
+    ).toBeNull();
+    await click("Classic");
+    expect(changed).not.toHaveBeenCalled();
+    expect(document.querySelector(`img[src="${photo}"]`)).not.toBeNull();
+    await click("Default");
+    expect(changed).toHaveBeenLastCalledWith(DEFAULT_BOT_AVATAR_COLOR, "organic");
+    expect(document.querySelector(`img[src="${photo}"]`)).toBeNull();
+    expect(document.querySelector(".rakazo-organic-avatar")).not.toBeNull();
+  });
+
+  it("saves vnbot when a VNBot shape is picked on a legacy product-brand bot", async () => {
+    await render("#10B981", "rakazo");
+    await click("Customize bot avatar");
+    await click("Sen");
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).toHaveBeenLastCalledWith("#10B981::shape_4", "vnbot");
+    expect(
+      document.querySelector('[data-testid="avatar-studio-trigger"] [data-vnbot-shape="sen"]'),
+    ).not.toBeNull();
+  });
+
+  it("opens a legacy product-brand bot that already has a Classic shape on Classic", async () => {
+    await render("#10B981::shape_4", "rakazo");
+    expect(
+      document.querySelector('[data-testid="avatar-studio-trigger"] .bot-character-eyes'),
+    ).not.toBeNull();
+    expect(
+      document.querySelector('[data-testid="avatar-studio-trigger"] [data-vnbot-avatar]'),
+    ).toBeNull();
+    await click("Customize bot avatar");
+    expect(button("Classic").getAttribute("aria-selected")).toBe("true");
+    expect(button("pebble").getAttribute("aria-pressed")).toBe("true");
+    expect(changed).not.toHaveBeenCalled();
+    await click("VNBot");
+    expect(changed).not.toHaveBeenCalled();
+    await click("Sen");
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).toHaveBeenLastCalledWith("#10B981::shape_4", "vnbot");
+    expect(
+      document.querySelector('[data-testid="avatar-studio-trigger"] [data-vnbot-shape="sen"]'),
+    ).not.toBeNull();
+  });
 
   it("selects five VNBot shapes, preserves the shape when recolouring and on reload", async () => {
     await render("#10B981", "vnbot");
@@ -145,10 +220,10 @@ describe("selectable bot icon sets", () => {
   });
 
   it("keeps explicit Classic shapes while changing colour", async () => {
-    await render("#8B5CF6::shape_2", "organic");
+    await render("#A97EFE::shape_2", "organic");
     await click("Customize bot avatar");
-    await click("Color #10B981");
-    expect(changed).toHaveBeenLastCalledWith("#10B981::shape_2", undefined);
+    await click("Color #00C972");
+    expect(changed).toHaveBeenLastCalledWith("#00C972::shape_2", undefined);
     expect(button("Classic").getAttribute("aria-selected")).toBe("true");
     changed.mockClear();
     await click("VNBot");
@@ -172,7 +247,7 @@ describe("selectable bot icon sets", () => {
   });
 
   it("switching tabs never changes the saved look of an existing VNBot bot", async () => {
-    await render("#8B5CF6::shape_4", "vnbot");
+    await render("#A97EFE::shape_4", "vnbot");
     await click("Customize bot avatar");
     await click("Classic");
     expect(button("Classic").getAttribute("aria-selected")).toBe("true");

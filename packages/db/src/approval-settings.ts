@@ -1,6 +1,7 @@
 import type { SettingsScope } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
+import { assertNotSpaceGuest, isSpaceGuest } from "./guest-access.js";
 import { lockSpaceSettings, settingsTarget } from "./space-settings.js";
 
 type Scope = { userId: string; spaceId: string };
@@ -13,7 +14,16 @@ type ConfirmationsClient = Pick<
   | "userActionApprovalRule"
   | "actionAutoReviewPreference"
   | "userActionAutoReviewPreference"
+  | "spaceMember"
 >;
+
+/** A stored effect's batch actions, or undefined when the effect is not a batch. */
+export function storedBatchActions(
+  value: Prisma.JsonValue | null | undefined,
+): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((action): action is string => typeof action === "string");
+}
 
 export type ApprovalRuleInput = { effect: string; matchKind: string; matchValue: string };
 export type AutoReviewPreference = { enabled: boolean; skipApprovals: boolean };
@@ -22,7 +32,12 @@ export type AutoReviewPreference = { enabled: boolean; skipApprovals: boolean };
  * Approval rules and auto review are confirmations: the account's copy, or the Space's
  * override. Every call reads or writes the copy that applies unless it names one.
  */
-function confirmationsTarget(prisma: ConfirmationsClient, scope: Scope, requested?: SettingsScope) {
+async function confirmationsTarget(
+  prisma: ConfirmationsClient,
+  scope: Scope,
+  requested?: SettingsScope,
+) {
+  if (await isSpaceGuest(prisma, scope)) return "space";
   return settingsTarget(prisma, scope, "confirmations", requested);
 }
 
@@ -52,22 +67,24 @@ export async function saveApprovalRule(
   requested?: SettingsScope,
 ) {
   await lockSpaceSettings(tx, scope);
+  await assertNotSpaceGuest(tx, scope);
   const account = (await confirmationsTarget(tx, scope, requested)) === "account";
   const owner = account ? `account:${scope.userId}` : `${scope.spaceId}:${scope.userId}`;
   const value = rule.matchValue.toLowerCase();
   await tx.$queryRaw(Prisma.sql`
     SELECT pg_advisory_xact_lock(hashtextextended(${`approval-rule:${owner}:${rule.matchKind}:${value}`}, 0))::text AS "lock"
   `);
-  const others = { not: rule.effect };
-  // Compared here, not with Prisma's insensitive mode: that is ILIKE, where "_" is a wildcard.
-  const sameMatch = (rows: Array<{ id: string; matchValue: string }>) =>
-    rows.filter((row) => row.matchValue.toLowerCase() === value).map((row) => row.id);
-  const select = { id: true, matchValue: true } as const;
+  // One rule per match, whatever its effect or spelling. Compared here, not with Prisma's
+  // insensitive mode: that is ILIKE, where "_" is a wildcard.
+  const replaced = (rows: Array<{ id: string; effect: string; matchValue: string }>) =>
+    rows
+      .filter((row) => row.matchValue.toLowerCase() === value)
+      .filter((row) => row.effect !== rule.effect || row.matchValue !== rule.matchValue)
+      .map((row) => row.id);
+  const select = { id: true, effect: true, matchValue: true } as const;
   if (account) {
     const where = { userId: scope.userId, matchKind: rule.matchKind };
-    const ids = sameMatch(
-      await tx.userActionApprovalRule.findMany({ where: { ...where, effect: others }, select }),
-    );
+    const ids = replaced(await tx.userActionApprovalRule.findMany({ where, select }));
     await tx.userActionApprovalRule.deleteMany({ where: { id: { in: ids } } });
     const row = { userId: scope.userId, ...rule };
     return tx.userActionApprovalRule.upsert({
@@ -81,9 +98,7 @@ export async function saveApprovalRule(
     createdByUserId: scope.userId,
     matchKind: rule.matchKind,
   };
-  const ids = sameMatch(
-    await tx.actionApprovalRule.findMany({ where: { ...where, effect: others }, select }),
-  );
+  const ids = replaced(await tx.actionApprovalRule.findMany({ where, select }));
   await tx.actionApprovalRule.deleteMany({ where: { id: { in: ids } } });
   const row = { spaceId: scope.spaceId, createdByUserId: scope.userId, ...rule };
   return tx.actionApprovalRule.upsert({
@@ -100,6 +115,7 @@ export async function removeApprovalRule(
   requested?: SettingsScope,
 ) {
   await lockSpaceSettings(prisma, scope);
+  await assertNotSpaceGuest(prisma, scope);
   if ((await confirmationsTarget(prisma, scope, requested)) === "account") {
     await prisma.userActionApprovalRule.deleteMany({ where: { id, userId: scope.userId } });
   } else {
@@ -139,6 +155,7 @@ export async function saveAutoReviewPreference(
     skipApprovals: update.skipApprovals ?? defaults.skipApprovals,
   };
   await lockSpaceSettings(prisma, scope);
+  await assertNotSpaceGuest(prisma, scope);
   if ((await confirmationsTarget(prisma, scope, requested)) === "account") {
     await prisma.userActionAutoReviewPreference.upsert({
       where: { userId: scope.userId },

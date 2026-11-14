@@ -8,6 +8,16 @@
       "types": "./src/index.ts",
       "development": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./identity-exchange-config": {
+      "types": "./src/identity-exchange-config.ts",
+      "development": "./src/identity-exchange-config.ts",
+      "default": "./src/identity-exchange-config.ts"
+    },
+    "./remote-device-key": {
+      "types": "./src/remote-device-key.ts",
+      "development": "./src/remote-device-key.ts",
+      "default": "./src/remote-device-key.ts"
     }
   },
   "scripts": {
@@ -15,22 +25,24 @@
     "test": "vitest run --root ../.. packages/auth/src"
   },
   "dependencies": {
-    "@better-auth/expo": "1.7.12",
-    "@better-auth/passkey": "1.7.12",
+    "@better-auth/expo": "1.7.18",
+    "@better-auth/passkey": "1.7.18",
+    "@better-auth/scim": "1.7.18",
     "@rakazo/adapter-kit": "workspace:*",
     "@rakazo/contracts": "workspace:*",
     "@rakazo/core": "workspace:*",
     "@rakazo/db": "workspace:*",
     "@rakazo/ui-tokens": "workspace:*",
-    "better-auth": "1.7.12",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-email": "6.11.3"
+    "better-auth": "1.7.18",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-email": "6.11.8",
+    "jose": "6.2.8"
   },
   "devDependencies": {
-    "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.7",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "typescript": "7.0.2",
-    "vitest": "4.1.12"
+    "vitest": "5.1.0"
   }
 }

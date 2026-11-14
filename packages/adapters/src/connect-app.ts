@@ -2,7 +2,11 @@ import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-k
 import type { MessageBlock } from "@rakazo/contracts";
 import { appConnectCard, matchAppCatalog, matchesAppConnection } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
-import { appendEventInTransaction, createThreadMessageInTransaction } from "@rakazo/db";
+import {
+  appendEventInTransaction,
+  createThreadMessageInTransaction,
+  THREAD_LOCK_TRANSACTION_OPTIONS,
+} from "@rakazo/db";
 
 const RECENT_MESSAGES = 50;
 
@@ -38,7 +42,8 @@ export async function connectApp(
       catalog.filter((item) => item.connected),
       app,
     ) ?? matchAppCatalog(catalog, app);
-  if (!entry) return { error: "No such app is available in the connector catalog." };
+  if (!entry)
+    return { status: "unavailable", error: "No such app is available in the connector catalog." };
   if (entry.connected)
     return {
       status: "connected",
@@ -87,7 +92,7 @@ export async function connectApp(
       payload: { messageId: message.id, role: "bot", blocks: [block] },
     });
     return event;
-  });
+  }, THREAD_LOCK_TRANSACTION_OPTIONS);
   if (committed)
     await deps.events.notify(
       target.threadId,

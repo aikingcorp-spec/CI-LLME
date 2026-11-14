@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "VNBot używa mikrofonu do dyktowania i rozmów głosowych z Twoimi botami.";
+"NSSpeechRecognitionUsageDescription" = "VNBot zamienia mowę na tekst podczas dyktowania i rozmów głosowych z Twoimi botami.";

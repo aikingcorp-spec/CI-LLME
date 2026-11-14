@@ -20,9 +20,7 @@ apps/**/data
 .DS_Store
 apps/web/dist
 apps/desktop/dist
-apps/desktop/native
 apps/desktop/out
-smoke-artifacts/
 apps/desktop/e2e/screenshots
 apps/mobile/.expo
 apps/mobile/dist
@@ -46,5 +44,13 @@ PRODUCT_PLAN.md
 # Lingui compiled catalogs — Vite plugin compiles .po at build time
 apps/web/src/locales/**/*.mjs
 apps/web/src/locales/**/*.js
+# Every string in the source, extracted before each production build
+apps/web/src/locales/messages.pot
 apps/web/scripts/msgids.json
 playwright-report-www
+
+# Downloaded embedded computer screen SDK files
+apps/web/public/computer-screen/*.js
+apps/web/public/computer-screen/sdk/
+# Private mail bootstrap stays outside source control and public downloads.
+mail.private.json

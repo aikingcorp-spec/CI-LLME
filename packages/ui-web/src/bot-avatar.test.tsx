@@ -2,7 +2,7 @@ import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
-  BOT_AVATAR_COLORS,
+  BOT_COLORS,
   BotAvatar,
   BotShapePreview,
   DEFAULT_BOT_AVATAR_COLOR,
@@ -10,41 +10,10 @@ import {
   parseBotAvatar,
   resolvePersonaColorDef,
 } from "./bot-avatar.js";
-
-import { VNBOT_SHAPES, vnbotShape } from "./vnbot-avatar.js";
+import { vnbotShape } from "./vnbot-avatar.js";
 
 describe("BotAvatar", () => {
-  it.each(VNBOT_SHAPES)(
-    "honours the explicit VNBot shape %s over identity at every size",
-    (shape) => {
-      for (const size of [16, 26, 28, 36, 40, 72, 96]) {
-        const index = VNBOT_SHAPES.indexOf(shape);
-        const html = renderToString(
-          <BotAvatar
-            avatarSet="vnbot"
-            color={`#10B981::shape_${index}`}
-            identity="sample-bot"
-            size={size}
-          />,
-        );
-        expect(html).toContain(`data-vnbot-shape="${shape}"`);
-        expect(html).toContain(`width:${size}px;height:${size}px`);
-        // Inline CSS beats Button's descendant SVG size rule; presentation attributes do not.
-        expect(html).toMatch(
-          /<svg[^>]*width="100%"[^>]*height="100%"[^>]*style="width:100%;height:100%;display:block"/,
-        );
-        expect(html).not.toContain("bot-character-eyes");
-      }
-    },
-  );
-
-  it("keeps identity hashing for a VNBot with no explicit shape", () => {
-    const html = renderToString(
-      <BotAvatar avatarSet="vnbot" color="#10B981" identity="sample-bot" />,
-    );
-    expect(html).toContain(`data-vnbot-shape="${vnbotShape("sample-bot")}"`);
-  });
-  it("renders distinct SVG gradient IDs for concurrent working avatars", () => {
+  it("renders distinct ring gradient IDs for concurrent working avatars", () => {
     const html = renderToString(
       <div>
         <BotAvatar color="#8B5CF6::shape_0" status="running" />
@@ -53,8 +22,8 @@ describe("BotAvatar", () => {
     );
 
     const gradMatches = [...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
-    expect(gradMatches).toHaveLength(4);
-    expect(new Set(gradMatches).size).toBe(4);
+    expect(gradMatches).toHaveLength(2);
+    expect(new Set(gradMatches).size).toBe(2);
     for (const id of gradMatches) {
       expect(id).toBeTruthy();
       expect(html).toContain(`url(#${id})`);
@@ -99,9 +68,9 @@ describe("BotAvatar", () => {
   });
 
   it("resolves explicit colors and shapes", () => {
-    expect(resolvePersonaColorDef("bot", "#10B981").hex.toLowerCase()).toBe("#10b981");
+    expect(resolvePersonaColorDef("bot", "#10B981").hex).toBe("#00C972");
     expect(resolvePersonaColorDef("bot", "#fff").hex).toBe("#fff");
-    expect(BOT_AVATAR_COLORS.length).toBeGreaterThan(0);
+    expect(BOT_COLORS.length).toBeGreaterThan(0);
   });
 
   it("falls back to the identity palette for invalid custom hex", () => {
@@ -203,12 +172,17 @@ describe("BotAvatar", () => {
     expect(html).toContain("rakazo-organic-avatar");
   });
 
-  it("renders imported rakazo bots with the same VNBot avatar", () => {
-    const props = { color: "#10B981", identity: "imported-bot" };
-    const imported = renderToString(<BotAvatar {...props} avatarSet="rakazo" />);
-    const native = renderToString(<BotAvatar {...props} avatarSet="vnbot" />);
-    expect(imported).toBe(native);
-    expect(imported).toContain("data-vnbot-shape");
+  it("morphs the organic body only while working", () => {
+    const morphing = (status: string) =>
+      [
+        ...renderToString(<BotAvatar color="#8B5CF6" status={status} />).matchAll(
+          /rakazo-organic-avatar-body-(idle|working)"[^>]*>(<animate)?/g,
+        ),
+      ]
+        .filter((match) => match[2])
+        .map((match) => match[1]);
+    expect(morphing("idle")).toEqual([]);
+    expect(morphing("running")).toEqual(["working"]);
   });
 
   it("draws every plain-colour bot with the organic body", () => {
@@ -238,4 +212,77 @@ describe("BotAvatar", () => {
     expect(html).toContain(`fill="${fallback.hex}"`);
     expect(html).not.toContain("#zzzzzz");
   });
+});
+
+it("preserves a stored VNBot mascot body color instead of translating a legacy palette alias", () => {
+  const html = renderToString(
+    <BotAvatar color="#10B981::shape_0" avatarSet="vnbot" identity="old-bot" />,
+  );
+  expect(html).toContain("--body:#10B981");
+  expect(html).toContain('data-vnbot-shape="non"');
+});
+
+it("shows live status on a VNBot mascot and keeps an explicit activity", () => {
+  const running = renderToString(
+    <BotAvatar color="#10B981" avatarSet="vnbot" identity="status-bot" status="running" />,
+  );
+  expect(running).toContain('data-activity="working"');
+  expect(running).toContain('data-working="true"');
+  expect(running).toContain("rakazo-bot-avatar-ring-working");
+  expect(running).toContain(`data-vnbot-shape="${vnbotShape("status-bot")}"`);
+  const explicit = renderToString(
+    <BotAvatar
+      color="#10B981"
+      avatarSet="rakazo"
+      identity="status-bot"
+      activity="reading"
+      status="idle"
+    />,
+  );
+  expect(explicit).toContain('data-activity="reading"');
+  expect(explicit).toContain('data-working="true"');
+  expect(explicit).toContain("rakazo-bot-avatar-ring-working");
+});
+
+it("draws a VNBot mascot for a legacy product-brand set, including a pinned bot", () => {
+  const html = renderToString(
+    <BotAvatar color="#10B981" avatarSet="rakazo" identity="pinned-bot" />,
+  );
+  expect(html).toContain(`data-vnbot-shape="${vnbotShape("pinned-bot")}"`);
+  expect(html).toContain("data-vnbot-avatar");
+  expect(html).toContain("--body:#10B981");
+  expect(html).not.toContain("rakazo-logo-avatar");
+  expect(html).not.toContain("rakazo-organic-avatar");
+});
+
+it("keeps a Classic shape stored on a legacy product-brand set", () => {
+  const html = renderToString(
+    <BotAvatar color="#10B981::shape_4" avatarSet="rakazo" identity="pinned-bot" />,
+  );
+  expect(html).toContain("bot-character-eyes");
+  expect(html).not.toContain("data-vnbot-avatar");
+  expect(html).not.toContain("rakazo-logo-avatar");
+});
+
+it("keeps a photo on a legacy product-brand set", () => {
+  const html = renderToString(
+    <BotAvatar color="data:image/png;base64,abc" avatarSet="rakazo" identity="pinned-bot" />,
+  );
+  expect(html).toContain("<img");
+  expect(html).not.toContain("data-vnbot-avatar");
+  expect(html).not.toContain("rakazo-logo-avatar");
+});
+
+it("keeps an organic Classic body and an encoded Classic shape", () => {
+  const body = renderToString(
+    <BotAvatar color="#10B981" avatarSet="organic" identity="classic-bot" />,
+  );
+  expect(body).toContain("rakazo-organic-avatar");
+  expect(body).not.toContain("data-vnbot-avatar");
+  const shape = renderToString(
+    <BotAvatar color="#10B981::shape_2" avatarSet="organic" identity="classic-bot" />,
+  );
+  expect(shape).toContain("bot-character-eyes");
+  expect(shape).not.toContain("data-vnbot-avatar");
+  expect(shape).not.toContain("rakazo-logo-avatar");
 });

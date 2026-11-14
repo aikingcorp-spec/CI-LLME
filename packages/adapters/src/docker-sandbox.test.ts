@@ -1,4 +1,5 @@
 import type { ProcessEvent } from "@rakazo/adapter-kit";
+import { SandboxRequestRejectedError } from "@rakazo/adapter-kit";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DockerSandboxProvider,
@@ -88,7 +89,7 @@ describe("Docker sandbox", () => {
 
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
       argv: ["env", "-u", "FAILED", "--", "sleep", "10"],
-      cwd: "/home/rakazo",
+      cwd: "/home/aiking",
       timeoutMs: 75,
     });
     expect(events).toEqual([
@@ -157,6 +158,54 @@ describe("Docker sandbox", () => {
     await expect(rest).resolves.toEqual({ value: { type: "exit", code: 0 }, done: false });
   });
 
+  it("ends a stalled streaming exec at its stream deadline and cancels the body", async () => {
+    const deadline = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal);
+    const cancel = vi.fn(() => new Promise<void>(() => undefined));
+    const encoder = new TextEncoder();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  encoder.encode(`${JSON.stringify({ type: "stdout", data: "started\n" })}\n`),
+                );
+              },
+              cancel,
+            }),
+            { headers: { "content-type": "application/x-ndjson" } },
+          ),
+      ),
+    );
+    const provider = new DockerSandboxProvider("http://supervisor.test", "test-token");
+    try {
+      const iterator = provider
+        .execute(
+          { id: "computer", botId: "bot", kind: "docker", providerRef: "computer" },
+          { argv: ["sleep", "infinity"], timeoutMs: 100 },
+          context,
+        )
+        [Symbol.asyncIterator]();
+      await expect(iterator.next()).resolves.toEqual({
+        value: { type: "stdout", data: "started\n" },
+        done: false,
+      });
+      let settled: unknown;
+      iterator.next().then(
+        () => (settled = "resolved"),
+        (error: unknown) => (settled = error),
+      );
+      deadline.abort(new DOMException("The operation timed out.", "TimeoutError"));
+      await vi.waitFor(() => expect(settled).toBe(deadline.signal.reason));
+      expect(cancel).toHaveBeenCalledOnce();
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
   it("rejects a declared oversized success response without buffering it", async () => {
     const cancel = vi.fn();
     vi.stubGlobal(
@@ -200,6 +249,24 @@ describe("Docker sandbox", () => {
       providerRef: "computer",
       ...expected,
     });
+  });
+
+  it("sends the owner's time zone and language with the computer request only when known", async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+      Response.json({ id: "computer", resumed: true }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new DockerSandboxProvider("http://supervisor.test", "test-token");
+    const body = () => JSON.parse(String(fetchMock.mock.lastCall?.[1]?.body));
+
+    await provider.provision(
+      { botId: "bot", homePath: "/tmp/bot", timezone: "Europe/Warsaw", language: "pl" },
+      context,
+    );
+    expect(body()).toMatchObject({ timezone: "Europe/Warsaw", language: "pl" });
+    await provider.provision({ botId: "bot", homePath: "/tmp/bot" }, context);
+    expect(body()).not.toHaveProperty("timezone");
+    expect(body()).not.toHaveProperty("language");
   });
 
   it("translates a 429 computer limit reached error from the supervisor", async () => {
@@ -383,6 +450,14 @@ describe("Docker sandbox", () => {
     await expect(provider.destroy(computer, context)).rejects.toThrow(
       "sandbox destroy failed: 500 boom",
     );
+
+    fetchMock.mockImplementation(async () => Response.json({ ok: true }));
+    await expect(provider.destroy(computer, context)).resolves.toBeUndefined();
+    // A 404 that does not say the computer is missing could still leave it running.
+    fetchMock.mockImplementation(async () => new Response("404 Not Found", { status: 404 }));
+    await expect(provider.destroy(computer, context)).rejects.toThrow(
+      "sandbox destroy failed: 404 404 Not Found",
+    );
   });
 
   it("does not buffer an oversized supervisor error body", async () => {
@@ -527,6 +602,48 @@ describe("Docker page browser", () => {
         }),
       }),
     );
+  });
+});
+
+describe("Docker page browser refusals", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const computer = {
+    id: "computer",
+    botId: "team-home",
+    kind: "docker" as const,
+    providerRef: "computer",
+  };
+  const act = { command: "act" as const, actions: [{ kind: "click" as const, ref: "e1" }] };
+
+  async function failure(respond: () => Response | Promise<Response>) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => respond()),
+    );
+    const provider = new DockerSandboxProvider("http://supervisor.test", "test-token");
+    return provider.pageBrowser(computer, act, context).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+  }
+
+  it("names the supervisor's refusal of a malformed request as one that ran nothing", async () => {
+    const error = await failure(() =>
+      Response.json({ ok: false, code: "invalid_browser_request" }, { status: 400 }),
+    );
+    expect(error).toBeInstanceOf(SandboxRequestRejectedError);
+  });
+
+  it.each([
+    ["another 400", () => Response.json({ error: "bad" }, { status: 400 })],
+    ["a 400 that is not JSON", () => new Response("no", { status: 400 })],
+    ["a 404", () => Response.json({ code: "invalid_browser_request" }, { status: 404 })],
+    ["a 500", () => Response.json({ code: "invalid_browser_request" }, { status: 500 })],
+    ["a refused connection", () => Promise.reject(new TypeError("fetch failed"))],
+  ])("does not call %s a refusal that ran nothing", async (_name, respond) => {
+    const error = await failure(respond);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(SandboxRequestRejectedError);
   });
 });
 

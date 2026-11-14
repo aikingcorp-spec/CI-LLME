@@ -1,28 +1,23 @@
 import { useLingui } from "@lingui/react/macro";
-import type { SpaceMemoryConfig, UsageSummary } from "@rakazo/contracts";
-import { Button, Dialog, DialogClose, DialogContent, DialogTitle } from "@rakazo/ui-web";
+import type { BotAvatarSet, SpaceMemoryConfig, UsageSummary } from "@rakazo/contracts";
 import {
-  Brain,
-  ChevronLeft,
-  ChevronRight,
-  CloudDownload,
-  Cpu,
-  Gauge,
-  KeyRound,
-  MessageCircle,
-  Monitor,
-  Settings,
-  ShieldCheck,
-  Volume2,
-  XIcon,
-} from "lucide-react";
-import type { ComponentType } from "react";
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@rakazo/ui-web";
+import { ChevronLeft, ChevronRight, XIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
 import { computersAreUnavailable } from "../components/ComputersUnavailableHint";
+import { PlanUsage } from "../components/PlanUsage";
+import { RemoteSettings } from "../components/RemoteSettings";
 import { SETTINGS_CONTENT_WIDTH, SettingsGroup, SettingsRow } from "../components/SettingsRows";
 import { VaultSettings } from "../components/VaultSettings";
-import { desktopBridge } from "../lib/desktop";
+import { canChooseOwnComputer } from "../lib/computer-sandbox";
+import type { RpcClient } from "../lib/rpc";
 import { SpaceRpcProvider } from "../lib/space-rpc";
 import {
   ComputerSettingsPanel,
@@ -30,19 +25,16 @@ import {
   UpdatesSettingsPanel,
   UsageSettingsPanel,
 } from "./AccountSettingsOverlay";
+import { BillingSettingsPanel } from "./BillingSettingsPanel";
 import { MemorySettingsOverlay } from "./MemorySettingsOverlay";
 import { MessagingSettingsPanel } from "./MessagingSettingsPanel";
 import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
+import { PaymentWalletSettingsPanel } from "./PaymentWalletSettingsPanel";
 import { SpaceSettingsPanel } from "./SpaceSettingsPanel";
+import { useSettingsNavItems } from "./settings-nav";
 import type { SettingsSpace } from "./shell/dialogs";
 import type { SettingsSection } from "./shell-overlay";
 import { VoiceSettingsOverlay } from "./VoiceSettingsOverlay";
-
-type NavItem = {
-  id: SettingsSection;
-  label: string;
-  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
-};
 
 export function SettingsOverlay({
   space,
@@ -59,13 +51,23 @@ export function SettingsOverlay({
   onNameSaved,
   timezone,
   onTimezoneChange,
+  botAvatarSet,
+  onBotAvatarSetChange,
+  onAccountImported,
+  onImportAgent,
+  billingEnabled = false,
   sandboxProvider,
   onSandboxProviderChange,
+  canConfigureComputers = false,
+  computerSettingsEnabled = false,
   messagingEnabled = false,
+  paymentWalletProvider = null,
   memoryConfig,
   onMemoryConfigChange,
   onClose,
   onVoiceStatusMaybeChanged,
+  onLeftSpace,
+  shellRpc,
 }: {
   /** The space the Space page edits; it need not be the selected space. */
   space?: SettingsSpace | null;
@@ -82,30 +84,50 @@ export function SettingsOverlay({
   onNameSaved?: () => Promise<void>;
   timezone: string | null;
   onTimezoneChange: (timezone: string) => Promise<void>;
+  botAvatarSet?: BotAvatarSet;
+  onBotAvatarSetChange?: (set: BotAvatarSet) => Promise<void>;
+  onAccountImported?: () => Promise<void>;
+  onImportAgent?: () => void;
+  billingEnabled?: boolean;
   sandboxProvider?: string | null;
   onSandboxProviderChange?: (sandboxProvider: string) => void;
+  /** Admins choose where new computers run. */
+  canConfigureComputers?: boolean;
+  computerSettingsEnabled?: boolean;
   messagingEnabled?: boolean;
+  /** The wallet this deployment lets bots spend from; none hides Wallet. */
+  paymentWalletProvider?: { id: string; name: string } | null;
   memoryConfig: SpaceMemoryConfig | null | undefined;
   onMemoryConfigChange: (config: SpaceMemoryConfig | null) => void;
   onClose: () => void;
   onVoiceStatusMaybeChanged?: () => void | Promise<void>;
+  /** After leaving a space, with the space the server moved this person to. */
+  onLeftSpace?: (spaceId: string, activeSpaceId: string) => void;
+  /** Pinned to the space this window shows; billing acts on it. */
+  shellRpc: RpcClient;
 }) {
   const { t, i18n } = useLingui();
   const panelRef = useRef<HTMLDivElement>(null);
-  const navRef = useRef<HTMLElement>(null);
+  // State, not a ref: the overflow watcher must follow the nav when it remounts.
+  const [nav, setNav] = useState<HTMLElement | null>(null);
   const [navOverflow, setNavOverflow] = useState({ previous: false, next: false });
   const usageRef = useRef<HTMLDivElement>(null);
   const [memoryBusy, setMemoryBusy] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [keepComputerRecovery, setKeepComputerRecovery] = useState(false);
   const recoveryHoldTimer = useRef<number | undefined>(undefined);
-  const showComputer = keepComputerRecovery || computersAreUnavailable(sandboxProvider);
-  const showUpdates = Boolean(desktopBridge()?.update);
-  // Unavailable sections show General.
+  const showComputer =
+    computerSettingsEnabled &&
+    (canConfigureComputers ||
+      canChooseOwnComputer(sandboxProvider) ||
+      keepComputerRecovery ||
+      computersAreUnavailable(sandboxProvider));
+  // A section that isn't available yet (billing before its flag loads) shows General until it is.
   const section =
     (requestedSection === "computer" && !showComputer) ||
-    (requestedSection === "messaging" && !messagingEnabled) ||
-    (requestedSection === "updates" && !showUpdates)
+    (requestedSection === "billing" && !billingEnabled) ||
+    (requestedSection === "wallet" && !paymentWalletProvider) ||
+    requestedSection === "organization"
       ? "general"
       : requestedSection;
   const panelBusy = memoryBusy || voiceBusy;
@@ -138,23 +160,15 @@ export function SettingsOverlay({
     }
   }, [section, onUsageOpen]);
 
-  const navItems: NavItem[] = [
-    { id: "general", label: t`General`, icon: Settings },
-    { id: "models", label: t`Models`, icon: Cpu },
-    { id: "voice", label: t`Voice`, icon: Volume2 },
-    { id: "confirmations", label: t`Approvals`, icon: ShieldCheck },
-    { id: "vault", label: t`Vault`, icon: KeyRound },
-    ...(messagingEnabled
-      ? [{ id: "messaging" as const, label: t`Messaging`, icon: MessageCircle }]
-      : []),
-    { id: "memory", label: t`Memory`, icon: Brain },
-    { id: "usage", label: t`Usage`, icon: Gauge },
-    ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
-    ...(showUpdates ? [{ id: "updates" as const, label: t`Updates`, icon: CloudDownload }] : []),
-  ];
+  const navItems = useSettingsNavItems({
+    messaging: messagingEnabled,
+    wallet: Boolean(paymentWalletProvider),
+    computer: showComputer,
+    billing: billingEnabled,
+    updates: true,
+  });
 
   useEffect(() => {
-    const nav = navRef.current;
     if (!nav) return;
     const measure = () => {
       const offset = Math.abs(nav.scrollLeft);
@@ -181,10 +195,17 @@ export function SettingsOverlay({
       nav.removeEventListener("scroll", measure);
       observer?.disconnect();
     };
-  }, [section, showComputer, messagingEnabled, showUpdates, i18n.locale]);
+  }, [
+    nav,
+    section,
+    showComputer,
+    billingEnabled,
+    messagingEnabled,
+    paymentWalletProvider,
+    i18n.locale,
+  ]);
 
   function scrollSections(direction: number) {
-    const nav = navRef.current;
     if (!nav) return;
     const rtl = getComputedStyle(nav).direction === "rtl";
     nav.scrollBy({ left: nav.clientWidth * 0.75 * direction * (rtl ? -1 : 1), behavior: "smooth" });
@@ -195,6 +216,9 @@ export function SettingsOverlay({
       ? (space?.name ?? t`Space`)
       : (navItems.find((item) => item.id === section)?.label ??
         (section === "general" ? t`General` : t`Settings`));
+
+  const sectionDescription =
+    section === "space" ? undefined : navItems.find((item) => item.id === section)?.description;
 
   const closeLabel =
     section === "models"
@@ -256,10 +280,10 @@ export function SettingsOverlay({
               <ChevronLeft className="rtl:rotate-180" />
             </Button>
             <nav
-              ref={navRef}
+              ref={setNav}
               data-testid="settings-nav"
               aria-label={t`Settings`}
-              className="flex min-w-0 flex-1 flex-row gap-1 overflow-x-auto py-3 md:w-[200px] md:shrink-0 md:flex-none md:flex-col md:overflow-y-auto md:border-e md:border-border md:px-3 md:py-4"
+              className="flex min-w-0 flex-1 flex-row gap-1 overflow-x-auto py-3 md:w-[200px] md:shrink-0 md:flex-none md:flex-col md:overflow-y-auto md:border-e md:border-border md:bg-sidebar md:px-3 md:py-4"
             >
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -273,7 +297,7 @@ export function SettingsOverlay({
                     aria-current={active ? "page" : undefined}
                     disabled={panelBusy}
                     onClick={() => onSectionChange(item.id)}
-                    className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 md:min-h-0 ${
+                    className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-body transition-colors disabled:pointer-events-none disabled:opacity-50 md:min-h-0 ${
                       active
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -315,9 +339,16 @@ export function SettingsOverlay({
                     <ChevronLeft className="rtl:rotate-180" />
                   </Button>
                 ) : null}
-                <DialogTitle className="min-w-0 break-words text-heading2 font-medium text-foreground">
-                  {sectionTitle}
-                </DialogTitle>
+                <div className="min-w-0">
+                  <DialogTitle className="break-words text-heading2 font-medium text-foreground">
+                    {sectionTitle}
+                  </DialogTitle>
+                  {sectionDescription ? (
+                    <DialogDescription className="mt-1 text-body text-muted-foreground">
+                      {sectionDescription}
+                    </DialogDescription>
+                  ) : null}
+                </div>
               </div>
               <DialogClose
                 aria-label={closeLabel}
@@ -354,6 +385,10 @@ export function SettingsOverlay({
                         onNameSaved={onNameSaved}
                         timezone={timezone}
                         onTimezoneChange={onTimezoneChange}
+                        botAvatarSet={botAvatarSet}
+                        onBotAvatarSetChange={onBotAvatarSetChange}
+                        onAccountImported={onAccountImported}
+                        onImportAgent={onImportAgent}
                       />
                       {/* One space is just the app, so there is nothing to tell apart or manage. */}
                       {spaces.length > 1 && onOpenSpace ? (
@@ -379,21 +414,29 @@ export function SettingsOverlay({
                       ) : null}
                     </div>
                   ) : null}
+                  {section === "connection" ? <RemoteSettings /> : null}
                   {section === "space" && space ? (
                     <SpaceSettingsPanel
                       key={space.id}
                       space={space}
                       onRename={(name) => onRenameSpace?.(space.id, name) ?? Promise.resolve()}
                       onDelete={() => onDeleteSpace?.(space.id) ?? Promise.resolve()}
+                      onLeft={(activeSpaceId) => onLeftSpace?.(space.id, activeSpaceId)}
                       onClose={requestClose}
                       onBusyChange={setVoiceBusy}
                     />
                   ) : null}
                   {section === "confirmations" ? <ApprovalRulesSettings scope="account" /> : null}
                   {section === "vault" ? <VaultSettings scope="account" /> : null}
-                  {section === "messaging" && messagingEnabled ? <MessagingSettingsPanel /> : null}
+                  {section === "messaging" ? <MessagingSettingsPanel /> : null}
+                  {section === "wallet" && paymentWalletProvider ? (
+                    <PaymentWalletSettingsPanel provider={paymentWalletProvider} />
+                  ) : null}
                   {section === "usage" ? (
-                    <UsageSettingsPanel usage={usage} panelRef={usageRef} />
+                    <>
+                      <PlanUsage />
+                      <UsageSettingsPanel usage={usage} panelRef={usageRef} />
+                    </>
                   ) : null}
                   {section === "computer" && showComputer ? (
                     <ComputerSettingsPanel
@@ -403,9 +446,14 @@ export function SettingsOverlay({
                         holdComputerRecovery();
                       }}
                       onRecoveryDismissed={releaseComputerRecovery}
+                      canConfigureComputers={canConfigureComputers}
+                      computerSettingsEnabled={computerSettingsEnabled}
                     />
                   ) : null}
-                  {section === "updates" && showUpdates ? <UpdatesSettingsPanel /> : null}
+                  {section === "billing" && billingEnabled ? (
+                    <BillingSettingsPanel client={shellRpc} />
+                  ) : null}
+                  {section === "updates" ? <UpdatesSettingsPanel /> : null}
                   {section === "models" ? (
                     <ModelSettingsOverlay embedded scope="account" onClose={requestClose} />
                   ) : null}

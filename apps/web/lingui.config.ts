@@ -19,6 +19,7 @@ export default defineConfig({
     "he",
     "nl",
     "ja",
+    "pl",
   ],
   catalogs: [
     {

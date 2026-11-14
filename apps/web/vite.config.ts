@@ -1,6 +1,6 @@
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
-import type { ClientRequest, IncomingMessage } from "node:http";
+import type { ClientRequest, IncomingMessage, ServerResponse } from "node:http";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
@@ -11,6 +11,8 @@ import type { DesktopStackProbeResponse } from "@rakazo/contracts";
 import { buildIdAt } from "@rakazo/contracts/client-build";
 import {
   appContentSecurityPolicy,
+  COMPUTER_SCREEN_PREFIX,
+  COMPUTER_SCREEN_RUNTIME_PATH,
   CSP_REPORTING_ENDPOINTS,
   contentSecurityPolicyFor,
   parseContentSecuritySources,
@@ -23,13 +25,20 @@ import {
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import type { PreviewServer, ProxyOptions, ViteDevServer } from "vite";
+import type { PreviewServer, ViteDevServer } from "vite";
 import { defineConfig, loadEnv } from "vite";
+import { wuyingScreenAssets } from "../../packages/adapters/src/wuying-screen-assets.ts";
+import { wuyingScreenPolicy } from "../../packages/adapters/src/wuying-screen-policy.ts";
 import { resolveScreenProxySecret } from "../../packages/core/src/secrets-guard.ts";
 import { createServiceLogger } from "../../packages/logging/src/env.ts";
+import { apiProxy } from "./src/api-proxy.js";
 import { ASSET_ARCHIVE_DIR, archiveAssets } from "./src/asset-archive.js";
-import { appendForwardedFor } from "./src/forwarded-for.js";
-import { missingAssetMiddleware, sourceMapBlockPlugin } from "./src/missing-asset.js";
+import {
+  instanceThemeIndexMiddleware,
+  instanceThemeMiddleware,
+  withInstanceThemeLink,
+} from "./src/instance-theme.js";
+import { missingAssetMiddleware } from "./src/missing-asset.js";
 import {
   collectNovncHtml,
   injectNovncStorageShim,
@@ -100,6 +109,14 @@ function attachDesktopStackProbe(
     res.setHeader("content-type", "application/json; charset=utf-8");
     res.end(JSON.stringify(body));
   });
+}
+
+function sharedPageHeaders(req: IncomingMessage, res: ServerResponse, next: () => void) {
+  if (req.url?.startsWith("/p/")) {
+    res.setHeader("x-robots-tag", "noindex, nofollow");
+    res.setHeader("referrer-policy", "no-referrer");
+  }
+  next();
 }
 
 function attachNovncProxy(server: ViteDevServer | PreviewServer, secret: string, api: string) {
@@ -292,7 +309,13 @@ function attachNovncProxy(server: ViteDevServer | PreviewServer, secret: string,
 
   server.httpServer?.on("upgrade", async (req, socket, head) => {
     const path = novncRequestPath(req.url);
-    if (!path) return;
+    // Node drops its own socket error handler on upgrade, so a client reset with no listener
+    // crashes the server. Other upgrades belong to Vite's HMR or the API proxy, so only their
+    // errors are ignored.
+    if (!path) {
+      socket.on("error", () => {});
+      return;
+    }
     req.url = path;
     const connectionId = randomUUID();
     const startedAt = Date.now();
@@ -300,6 +323,16 @@ function attachNovncProxy(server: ViteDevServer | PreviewServer, secret: string,
       "screen.connection_id": connectionId,
       "screen.policy": screenPolicy(req.url),
     };
+    let closeInitiator: "client" | "upstream" | "revoked" | undefined;
+    // Listen before the access check; the close handler below tears down the upstream.
+    socket.on("error", (error) => {
+      screenLog.warn("screen.proxy.websocket_error", {
+        ...bindings,
+        "screen.side": "client",
+        "error.code": socketErrorCode(error),
+      });
+      closeInitiator ??= "client";
+    });
     const confirmedAt = performance.now();
     const target = await resolveNovncTarget(req.url, secret, api, (reason) => {
       screenLog.warn("screen.proxy.target_rejected", {
@@ -319,7 +352,6 @@ function attachNovncProxy(server: ViteDevServer | PreviewServer, secret: string,
         : net.connect(target.port, target.hostname);
     let upgraded = false;
     let closed = false;
-    let closeInitiator: "client" | "upstream" | "revoked" | undefined;
     const logClose = (side: "client" | "upstream") => {
       if (closed) return;
       closed = true;
@@ -440,15 +472,6 @@ function attachNovncProxy(server: ViteDevServer | PreviewServer, secret: string,
       closeInitiator ??= "upstream";
       socket.destroy();
     });
-    socket.on("error", (error) => {
-      screenLog.warn("screen.proxy.websocket_error", {
-        ...bindings,
-        "screen.side": "client",
-        "error.code": socketErrorCode(error),
-      });
-      closeInitiator ??= "client";
-      upstream.destroy();
-    });
   });
 }
 
@@ -457,30 +480,6 @@ export default defineConfig(({ command, mode }) => {
   const buildId = command === "build" ? buildIdAt(new Date()) : "";
   const rootEnv = loadEnv(mode, path.resolve(import.meta.dirname, "../.."), "");
   const api = process.env.API_PROXY_TARGET ?? rootEnv.API_PROXY_TARGET ?? "http://127.0.0.1:3100";
-  const apiProxy = Object.fromEntries(
-    [
-      "/api",
-      "/rpc",
-      // Deployment identity; without this the web server answers with the app shell.
-      "/version",
-      // Native app domain association, served by the API from deployment settings.
-      "/.well-known/apple-app-site-association",
-      "/.well-known/assetlinks.json",
-    ].map((path) => [
-      path,
-      {
-        target: api,
-        changeOrigin: true,
-        // Append the hop this proxy saw, so the API never mistakes a caller's own header for its
-        // address. The API reads past this hop only when it is listed in TRUSTED_PROXIES.
-        configure: (proxy) => {
-          proxy.on("proxyReq", (proxyReq, req) => {
-            proxyReq.setHeader("x-forwarded-for", appendForwardedFor(req));
-          });
-        },
-      } satisfies ProxyOptions,
-    ]),
-  );
   const previewHost = process.env.RAKAZO_HOST ?? rootEnv.RAKAZO_HOST ?? "localhost";
   const allowedHosts = [
     previewHost,
@@ -489,6 +488,10 @@ export default defineConfig(({ command, mode }) => {
       .map((entry) => entry.trim())
       .filter(Boolean),
   ];
+  // Set by the server built from this config; reusing one config object for two servers would
+  // leave the last one's list.
+  let proxyHosts: readonly string[] | true = [];
+  const proxy = apiProxy(api, () => proxyHosts);
   const screenProxySecret = () =>
     resolveScreenProxySecret({
       ...process.env,
@@ -500,6 +503,12 @@ export default defineConfig(({ command, mode }) => {
   const performanceAssetDelayMs = Number(process.env.RAKAZO_PERFORMANCE_ASSET_DELAY_MS ?? 0);
   const desktopStackToken =
     process.env.RAKAZO_DESKTOP_STACK_TOKEN ?? rootEnv.RAKAZO_DESKTOP_STACK_TOKEN ?? "";
+  const themeFile = process.env.RAKAZO_THEME ?? rootEnv.RAKAZO_THEME;
+  const instanceTheme =
+    themeFile &&
+    instanceThemeMiddleware(themeFile, (reason) =>
+      screenLog.warn("web.instance_theme_ignored", { reason }),
+    );
   const imageTag = process.env.RAKAZO_IMAGE_TAG ?? rootEnv.RAKAZO_IMAGE_TAG ?? "edge";
   // Invalid origins throw here, so the server refuses to start rather than serve a wider policy.
   const appPolicy = appContentSecurityPolicy({
@@ -515,34 +524,14 @@ export default defineConfig(({ command, mode }) => {
   });
   return {
     build: {
-      sourcemap: false,
+      sourcemap: true,
       rolldownOptions: {
         output: {
-          // Long-lived vendor chunks keep the entry small and stay cached across deploys.
-          // Heavy, rarely used features (mermaid, cytoscape, katex, plots) are already
-          // dynamic imports, so they are left to the default splitting.
           codeSplitting: {
+            // Shared chunks that build schemas run before the entry chunk's body, so the Zod
+            // config only lands in time when it ships inside Zod's own chunk.
             groups: [
-              {
-                name: "vendor-react",
-                test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?(?:react|react-dom|scheduler|react-router|react-router-dom)[\\/]/,
-                priority: 30,
-              },
-              {
-                name: "vendor-markdown",
-                test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?(?:react-markdown|micromark[^\\/]*|mdast-[^\\/]+|hast-[^\\/]+|unist-[^\\/]+|remark-[^\\/]+|rehype-[^\\/]+|unified|vfile[^\\/]*|property-information|markdown-table|linkify-it|decode-named-character-reference|character-entities[^\\/]*|space-separated-tokens|comma-separated-tokens|trim-lines|devlop|bail|trough|is-plain-obj|zwitch|longest-streak|ccount|html-url-attributes|style-to-js|style-to-object|inline-style-parser|estree-util-is-identifier-name|uc\.micro|mdurl|punycode\.js)[\\/]/,
-                priority: 20,
-              },
-              {
-                name: "vendor-tldts",
-                test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?tldts[^\\/]*[\\/]/,
-                priority: 20,
-              },
-              {
-                name: "vendor-query",
-                test: /node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?@tanstack[\\/]/,
-                priority: 20,
-              },
+              { name: "zod", test: /[\\/]node_modules[\\/]zod[\\/]|[\\/]src[\\/]zod-config\.ts$/ },
             ],
           },
         },
@@ -565,11 +554,41 @@ export default defineConfig(({ command, mode }) => {
       tailwindcss(),
       rakazoPwa(buildId),
       {
-        // Production only: the dev server injects inline scripts for React Refresh.
+        // Dev keeps React Refresh unrestricted in app pages; screen documents always use CSP.
         name: "rakazo-content-security-policy",
+        generateBundle() {
+          for (const [pathname, asset] of Object.entries(wuyingScreenAssets)) {
+            this.emitFile({ type: "asset", fileName: pathname.slice(1), source: asset.source });
+          }
+        },
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            const pathname = req.url?.split("?", 1)[0] ?? "/";
+            if (pathname.startsWith(COMPUTER_SCREEN_PREFIX)) {
+              res.setHeader(
+                "content-security-policy",
+                contentSecurityPolicyFor(pathname, appPolicy, wuyingScreenPolicy)!,
+              );
+              if (pathname !== COMPUTER_SCREEN_RUNTIME_PATH)
+                res.setHeader("x-frame-options", "SAMEORIGIN");
+            }
+            const asset = Object.hasOwn(wuyingScreenAssets, pathname)
+              ? wuyingScreenAssets[pathname]
+              : undefined;
+            if (asset) {
+              res.setHeader("content-type", asset.type);
+              res.end(asset.source);
+              return;
+            }
+            next();
+          });
+        },
         configurePreviewServer(server) {
           server.middlewares.use((req, res, next) => {
-            const policy = contentSecurityPolicyFor(req.url?.split("?", 1)[0] ?? "/", appPolicy);
+            const pathname = req.url?.split("?", 1)[0] ?? "/";
+            if (pathname !== COMPUTER_SCREEN_RUNTIME_PATH)
+              res.setHeader("x-frame-options", "SAMEORIGIN");
+            const policy = contentSecurityPolicyFor(pathname, appPolicy, wuyingScreenPolicy);
             if (policy) {
               res.setHeader("content-security-policy", policy);
               res.setHeader("reporting-endpoints", CSP_REPORTING_ENDPOINTS);
@@ -579,27 +598,15 @@ export default defineConfig(({ command, mode }) => {
         },
       },
       {
-        // Hashed bundles never change under their name; the HTML that names them must be revalidated.
-        name: "rakazo-cache-control",
-        configurePreviewServer({ config, middlewares }) {
-          const assetsPrefix = `${config.base}${config.build.assetsDir}/`;
-          middlewares.use((req, res, next) => {
-            if (req.method !== "GET" && req.method !== "HEAD") {
-              next();
-              return;
-            }
-            const pathname = req.url?.split("?", 1)[0] ?? "/";
-            if (pathname.startsWith(assetsPrefix)) {
-              res.setHeader("cache-control", "public, max-age=31536000, immutable");
-            } else if (!path.extname(pathname) || pathname.endsWith(".html")) {
-              res.setHeader("cache-control", "no-cache");
-            }
-            next();
-          });
+        // A shared page's link is its only key: keep it out of search results and Referer.
+        name: "rakazo-shared-page-headers",
+        configureServer(server) {
+          server.middlewares.use(sharedPageHeaders);
+        },
+        configurePreviewServer(server) {
+          server.middlewares.use(sharedPageHeaders);
         },
       },
-      // Before Vite's static handling, so a map in dist or the asset archive is never served.
-      sourceMapBlockPlugin(),
       {
         name: "rakazo-missing-asset-404",
         configurePreviewServer({ config, middlewares }) {
@@ -619,6 +626,22 @@ export default defineConfig(({ command, mode }) => {
           middlewares.use(
             missingAssetMiddleware(assetsDir, `${config.base}${config.build.assetsDir}/`, archive),
           );
+        },
+      },
+      {
+        // Without RAKAZO_THEME the page never links the theme, so the default deploy is unchanged.
+        name: "rakazo-instance-theme",
+        transformIndexHtml: (html) =>
+          command === "serve" && instanceTheme ? withInstanceThemeLink(html) : html,
+        configureServer: (server) => {
+          if (instanceTheme) server.middlewares.use(instanceTheme);
+        },
+        configurePreviewServer: ({ config, middlewares }) => {
+          if (!instanceTheme) return;
+          middlewares.use(instanceTheme);
+          const outDir = path.resolve(config.root, config.build.outDir);
+          // A post hook, so it runs after Vite's SPA fallback has resolved the page.
+          return () => middlewares.use(instanceThemeIndexMiddleware(outDir));
         },
       },
       {
@@ -642,6 +665,16 @@ export default defineConfig(({ command, mode }) => {
         },
       },
       {
+        // The hosts the running server allows, as Vite resolved them, for proxied upgrades.
+        name: "rakazo-api-proxy-hosts",
+        configureServer: (server) => {
+          proxyHosts = server.config.server.allowedHosts;
+        },
+        configurePreviewServer: (server) => {
+          proxyHosts = server.config.preview.allowedHosts;
+        },
+      },
+      {
         name: "rakazo-novnc-proxy",
         configureServer: (server) => attachNovncProxy(server, screenProxySecret(), api),
         configurePreviewServer: (server) => attachNovncProxy(server, screenProxySecret(), api),
@@ -652,13 +685,13 @@ export default defineConfig(({ command, mode }) => {
       port: webPort,
       strictPort: true,
       allowedHosts,
-      proxy: apiProxy,
+      proxy,
     },
     preview: {
       host: "0.0.0.0",
       port: Number(process.env.WEB_PORT ?? 5173),
       allowedHosts,
-      proxy: apiProxy,
+      proxy,
     },
   };
 });

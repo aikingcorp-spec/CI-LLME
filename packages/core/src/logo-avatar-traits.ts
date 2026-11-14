@@ -1,10 +1,6 @@
+import { BOT_COLORS } from "@rakazo/contracts";
 import { vnbotBodyColors } from "@rakazo/ui-tokens";
-import {
-  contrastRatio,
-  resolvePersonaColorDef,
-  shippedHash,
-  shippedRandom,
-} from "./bot-avatar-colors.js";
+import { resolvePersonaColorDef, shippedHash, shippedRandom } from "./bot-avatar-colors.js";
 
 /** Every supported track completes whole cycles in this exact export interval. */
 export const LOGO_AVATAR_LOOP_MS = 24_000;
@@ -13,36 +9,7 @@ const SLOW_PERIODS = [4000, 4800, 6000] as const;
 /** A saved bot id supplies the colour seed; this stream never advances its motion clocks. */
 export function seededLogoAvatarColor(identity: string): string {
   const random = shippedRandom(shippedHash(`logo-avatar/color/v1/${identity}`));
-  const hue = random() * 6;
-  const saturation = 0.65 + random() * 0.2;
-  const second = 1 - Math.abs((hue % 2) - 1);
-  const channels = [
-    [1, second, 0],
-    [second, 1, 0],
-    [0, 1, second],
-    [0, second, 1],
-    [second, 0, 1],
-    [1, 0, second],
-  ][Math.floor(hue)]!;
-  let lightness = 0.54 + random() * 0.1;
-  const hex = () => {
-    const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
-    const offset = lightness - chroma / 2;
-    return `#${channels
-      .map((value) =>
-        Math.round((value * chroma + offset) * 255)
-          .toString(16)
-          .padStart(2, "0"),
-      )
-      .join("")}`.toUpperCase();
-  };
-  let color = hex();
-  // Leave headroom for the shaded flank while keeping the existing dark eye ink clear.
-  while (contrastRatio(color, "#141414") < 7 && lightness < 0.85) {
-    lightness += 0.01;
-    color = hex();
-  }
-  return color;
+  return BOT_COLORS[Math.floor(random() * BOT_COLORS.length)]!;
 }
 
 /** Stable body colour for a `vnbot` bot: one hex from `vnbotBodyColors`. */
@@ -64,6 +31,7 @@ export function logoAvatarTraits(identity: string, color?: string) {
   const colorDef = resolvePersonaColorDef(identity, color || seededLogoAvatarColor(identity));
   return {
     color: colorDef.hex,
+    originalOrange: colorDef.id === "orange",
     blinkMs,
     blinkVariant,
     blinkDelayMs,

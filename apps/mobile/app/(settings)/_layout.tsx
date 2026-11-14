@@ -67,6 +67,7 @@ export default function SettingsLayout() {
       />
       <Stack.Screen name="ai-data-sharing" options={glassHeaderOptions(t("AI data sharing"))} />
       <Stack.Screen name="archived-bots" options={{ title: t("Archived") }} />
+      <Stack.Screen name="change-password" options={{ title: t("Change password") }} />
       <Stack.Screen name="signup-survey" options={glassHeaderOptions(t("Welcome to VNBot"))} />
       <Stack.Screen name="language" options={glassHeaderOptions(t("Language"))} />
       <Stack.Screen name="model-picker" options={glassHeaderOptions(t("Model"))} />
@@ -74,10 +75,19 @@ export default function SettingsLayout() {
       <Stack.Screen name="billing" options={glassHeaderOptions(t("Billing"))} />
       <Stack.Screen name="models" options={glassHeaderOptions(t("Models"))} />
       <Stack.Screen name="voice" options={glassHeaderOptions(t("Voice"))} />
+      <Stack.Screen name="wallet" options={glassHeaderOptions(t("Wallet"))} />
+      <Stack.Screen name="spending-limit" options={glassHeaderOptions(t("Spending limit"))} />
       <Stack.Screen
         name="approvals"
         options={{
           ...glassHeaderOptions(t("Rules")),
+          contentStyle: { backgroundColor: native.groupedPage },
+        }}
+      />
+      <Stack.Screen
+        name="approval-rule-add"
+        options={{
+          ...glassHeaderOptions(t("Add rule")),
           contentStyle: { backgroundColor: native.groupedPage },
         }}
       />
@@ -98,12 +108,37 @@ export default function SettingsLayout() {
           contentStyle: { backgroundColor: native.groupedPage },
         })}
       />
+      <Stack.Screen
+        name="organization"
+        options={{
+          ...glassHeaderOptions(t("Organization")),
+          contentStyle: { backgroundColor: native.groupedPage },
+        }}
+      />
       <Stack.Screen name="messaging" options={glassHeaderOptions(t("Messaging"))} />
       <Stack.Screen name="team-conversation" />
       <Stack.Screen name="integrations" options={glassHeaderOptions(t("Integrations"))} />
       <Stack.Screen name="skills" options={glassHeaderOptions(t("Skills"))} />
+      <Stack.Screen name="bot-templates" options={glassHeaderOptions(t("Bot templates"))} />
+      {/* The template's name heads the page itself. */}
+      <Stack.Screen
+        name="bot-template"
+        options={{
+          ...glassHeaderOptions(""),
+          contentStyle: { backgroundColor: native.groupedPage },
+        }}
+      />
       {/* Titled by the screen once the skill loads. */}
       <Stack.Screen name="skill" options={glassHeaderOptions("")} />
+      <Stack.Screen
+        name="memory"
+        options={{
+          ...glassHeaderOptions(t("Memory")),
+          contentStyle: { backgroundColor: native.groupedPage },
+        }}
+      />
+      {/* Titled by the screen once the note loads. */}
+      <Stack.Screen name="memory-note" options={glassHeaderOptions("")} />
       <Stack.Screen
         name="plugin"
         // Named after the plugin it opened.
