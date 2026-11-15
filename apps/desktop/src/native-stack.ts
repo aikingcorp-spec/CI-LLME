@@ -55,6 +55,7 @@ import { smokeLog } from "./native-smoke.js";
 import { nativeWeb } from "./native-web.js";
 import { postgresReady } from "./postgres-ready.js";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
+import { ensureWindowsLinks } from "./windows-links.js";
 
 const SECRET_KEYS = ["owner", "runtime", "auth", "encryption", "token", "screen"] as const;
 const NODE_NAME = process.platform === "win32" ? "node.exe" : "node";
@@ -357,7 +358,9 @@ export function assertNativeBundleManifest(
     typeof manifest !== "object" ||
     Reflect.get(manifest, "version") !== 1 ||
     Reflect.get(manifest, "platform") !== platform ||
-    Reflect.get(manifest, "arch") !== arch ||
+    // One macOS bundle can serve both chips; its node and servers are universal.
+    (Reflect.get(manifest, "arch") !== arch &&
+      !(platform === "darwin" && Reflect.get(manifest, "arch") === "universal")) ||
     Reflect.get(manifest, "postgresMajor") !== 18 ||
     !files ||
     typeof files !== "object"
@@ -412,6 +415,7 @@ export async function validateNativeBundle(
   const manifest: unknown = JSON.parse(await readFile(path.join(root, "manifest.json"), "utf8"));
   const files = assertNativeBundleManifest(manifest);
   await assertNativeBundleTree(root, files);
+  await ensureWindowsLinks(root);
   const target = await run(
     path.join(root, NODE_NAME),
     ["-p", "process.platform + '/' + process.arch"],

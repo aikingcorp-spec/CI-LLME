@@ -313,3 +313,17 @@ it("refuses a dependency symlink that leaves the repository and writes no manife
     await rm(fixture.root, { recursive: true, force: true });
   }
 });
+
+it("builds a universal bundle only for macOS", async () => {
+  await expect(
+    assembleNativeBundle({
+      platform: "linux",
+      arch: "universal",
+      nodeBinary: "/node",
+      postgresPrefix: "/pg",
+      legacyPostgresPrefix: "/pg16",
+      output: "/out",
+      repoRoot: "/repo",
+    }),
+  ).rejects.toThrow("Unsupported native bundle target.");
+});

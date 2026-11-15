@@ -32,13 +32,21 @@ export const STAGING_RUNNERS = [
     arch: "x64",
     targetFlags: ["--win", "nsis", "--x64"],
   },
+  // One universal macOS app serves Intel and Apple silicon. It is built on Apple silicon and the
+  // Intel runner only smokes that same download.
+  {
+    runner: "macos-26",
+    platform: "darwin",
+    arch: "universal",
+    targetFlags: ["--mac", "--universal"],
+  },
   {
     runner: "macos-26-intel",
     platform: "darwin",
-    arch: "x64",
-    targetFlags: ["--mac", "--x64"],
+    arch: "universal",
+    targetFlags: ["--mac", "--universal"],
+    smokeOnly: true,
   },
-  { runner: "macos-26", platform: "darwin", arch: "arm64", targetFlags: ["--mac", "--arm64"] },
 ];
 
 const EXTENSIONS = {
@@ -301,7 +309,7 @@ export async function prepareLegacyPrefix({ root, major, dest, platform = proces
 }
 
 export const SMOKE_TIMEOUT_MS = 180_000;
-export const INSTALL_TIMEOUT_MS = 600_000;
+export const INSTALL_TIMEOUT_MS = 1_200_000;
 
 const SMOKE_STRIPPED_ENV = [
   "RAKAZO_IDENTITY_PIN",

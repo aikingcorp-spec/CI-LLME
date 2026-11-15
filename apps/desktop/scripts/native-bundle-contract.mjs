@@ -48,3 +48,6 @@ export function isNativePostgresVersion(text) {
 export function isLegacyPostgresVersion(text) {
   return /^postgres \(PostgreSQL\) 16\./.test(text);
 }
+
+/** Windows bundles list their package links here; the app recreates them as junctions. */
+export const WINDOWS_LINKS_FILE = "windows-links.json";

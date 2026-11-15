@@ -247,6 +247,16 @@ it("keeps an existing PostgreSQL 18 data directory for the next start", async ()
   }
 });
 
+it("accepts a universal macOS bundle on either chip and nowhere else", () => {
+  const universal = nativeBundleManifest({ platform: "darwin", arch: "universal" });
+  expect(assertNativeBundleManifest(universal, "darwin", "x64")).toBe(universal.files);
+  expect(assertNativeBundleManifest(universal, "darwin", "arm64")).toBe(universal.files);
+  const linux = nativeBundleManifest({ platform: "linux", arch: "universal" });
+  expect(() => assertNativeBundleManifest(linux, "linux", "x64")).toThrow(
+    "Native bundle target mismatch.",
+  );
+});
+
 it("accepts only a PostgreSQL 18 manifest whose files stay inside the bundle", async () => {
   const root = await tempProfile();
   try {

@@ -4,6 +4,7 @@ import {
   cp,
   lstat,
   mkdir,
+  open,
   readdir,
   readFile,
   readlink,
@@ -23,10 +24,11 @@ import {
   legacyPostgresBundleFiles,
   nativeBundleFiles,
   nativeBundleManifest,
+  WINDOWS_LINKS_FILE,
 } from "./native-bundle-contract.mjs";
 
 const PLATFORMS = new Set(["darwin", "linux", "win32"]);
-const ARCHES = new Set(["x64", "arm64", "ia32", "arm"]);
+const ARCHES = new Set(["x64", "arm64", "ia32", "arm", "universal"]);
 const SERVER_DIST = ["apps/api/dist", "apps/worker/dist"];
 // The loader owns these. Copying them onto LD_LIBRARY_PATH makes Node load the wrong libc.
 const LOADER_LIBRARIES = new Set([
@@ -96,6 +98,10 @@ function validateRequest(input) {
   if (!PLATFORMS.has(input.platform) || !ARCHES.has(input.arch)) {
     throw new Error("Unsupported native bundle target.");
   }
+  // One macOS bundle serves Intel and Apple silicon; every executable in it must carry both.
+  if (input.arch === "universal" && input.platform !== "darwin") {
+    throw new Error("Unsupported native bundle target.");
+  }
   for (const [flag, value] of [
     ["--node", input.nodeBinary],
     ["--postgres", input.postgresPrefix],
@@ -120,7 +126,11 @@ function validateRequest(input) {
 
 export async function assembleNativeBundle(input) {
   const request = validateRequest(input);
-  if (request.platform !== process.platform || request.arch !== process.arch) {
+  windowsLinks = [];
+  if (
+    request.platform !== process.platform ||
+    (request.arch !== process.arch && request.arch !== "universal")
+  ) {
     throw new Error("Native bundle must be assembled on its target platform and architecture.");
   }
   const staging = `${request.output}.staging`;
@@ -165,7 +175,9 @@ export async function assembleNativeBundle(input) {
     await stagePostgres(request, staging);
     await stageLegacyPostgres(request, staging);
     await confineSymlinks(staging);
+    if (request.arch === "universal") await assertUniversalExecutables(staging);
     await probeBundle(request, staging);
+    if (request.platform === "win32") await recordWindowsLinks(staging);
     const manifest = nativeBundleManifest({
       platform: request.platform,
       arch: request.arch,
@@ -345,6 +357,21 @@ async function copyPnpmPackage(repoRoot, staging, id) {
   await copyPreservingStoreLinks(source, destination, path.join(repoRoot, "node_modules", ".pnpm"));
 }
 
+const PNPM_DIR = path.join("node_modules", ".pnpm");
+/** Junctions made while staging a Windows bundle; removed before packaging. */
+let windowsLinks = [];
+
+/** Replaces the staging junctions with a list the app turns back into junctions. */
+async function recordWindowsLinks(staging) {
+  const links = windowsLinks.map(({ link, target }) => ({
+    link: path.relative(staging, link).split(path.sep).join("/"),
+    target: path.relative(staging, target).split(path.sep).join("/"),
+  }));
+  for (const { link } of windowsLinks) await rmdir(link);
+  windowsLinks = [];
+  await writeFile(path.join(staging, WINDOWS_LINKS_FILE), `${JSON.stringify(links)}\n`);
+}
+
 async function copyPreservingStoreLinks(source, destination, pnpmRoot) {
   await mkdir(destination, { recursive: true });
   for (const entry of await readdir(source, { withFileTypes: true })) {
@@ -354,9 +381,15 @@ async function copyPreservingStoreLinks(source, destination, pnpmRoot) {
       const target = await readlink(from);
       const resolved = path.resolve(path.dirname(from), target);
       if (inside(pnpmRoot, resolved)) {
-        // Windows installers do not carry links, so the package is copied in place there.
+        // Windows installers carry no links. A junction serves the probe below, then is
+        // listed in windows-links.json and recreated by the app on first start.
         if (process.platform === "win32") {
-          await cp(await realpath(from), to, { recursive: true, dereference: true });
+          const staged = path.join(
+            destination.slice(0, destination.indexOf(PNPM_DIR) + PNPM_DIR.length),
+            path.relative(pnpmRoot, resolved),
+          );
+          await symlink(staged, to, "junction");
+          windowsLinks.push({ link: to, target: staged });
         } else {
           await symlink(target, to);
         }
@@ -773,7 +806,9 @@ async function probeBundle(request, staging) {
     { LD_LIBRARY_PATH: lib, DYLD_LIBRARY_PATH: lib },
     "Native Node target mismatch.",
   );
-  if (nodeTarget !== `${request.platform}/${request.arch}`) {
+  // A universal node answers with the chip it runs on, which is the build host.
+  const expectedArch = request.arch === "universal" ? process.arch : request.arch;
+  if (nodeTarget !== `${request.platform}/${expectedArch}`) {
     throw new Error("Native Node target mismatch.");
   }
   const postgres = nativeBundleFiles(request.platform).find((file) =>
@@ -864,5 +899,38 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${error instanceof Error ? error.message : "Native bundle assembly failed."}\n`,
     );
     process.exitCode = 1;
+  }
+}
+
+/** Thin Mach-O headers. A thin node, server or library would start on one chip only. */
+const THIN_MAGIC = new Set(["cffaedfe", "cefaedfe"]);
+
+/** A universal bundle keeps node and both PostgreSQL trees fat; per-arch npm packages may be thin. */
+async function assertUniversalExecutables(root) {
+  const pending = [root];
+  while (pending.length > 0) {
+    const directory = pending.pop();
+    if (directory === undefined) continue;
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (path.relative(root, full) !== "node_modules") pending.push(full);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const handle = await open(full, "r");
+      const header = Buffer.alloc(4);
+      try {
+        await handle.read(header, 0, 4, 0);
+      } finally {
+        await handle.close();
+      }
+      const magic = header.toString("hex");
+      if (THIN_MAGIC.has(magic)) {
+        throw new Error(
+          `Universal native bundle has a single-architecture file: ${path.relative(root, full)}`,
+        );
+      }
+    }
   }
 }

@@ -46,14 +46,15 @@ test("plans unsigned installers from the desktop package targets", () => {
   assert.equal(windows.args[windows.args.indexOf("--publish") + 1], "never");
   assert.ok(windows.args.includes("electron-builder.staging.json"));
 
+  // One universal app; the Intel runner smokes the same download.
   const intel = planStagingDesktop(pkg.build, "macos-26-intel");
   const arm = planStagingDesktop(pkg.build, "macos-26");
-  assert.deepEqual(intel.extensions, [".dmg", ".zip"]);
   assert.deepEqual(arm.extensions, [".dmg", ".zip"]);
-  assert.ok(intel.args.includes("--x64"));
-  assert.ok(arm.args.includes("--arm64"));
-  assert.ok(intel.args.includes("-c.mac.notarize=false"));
-  assert.ok(intel.args.includes("-c.mac.identity=null"));
+  assert.deepEqual(intel.args, arm.args);
+  assert.ok(arm.args.includes("--universal"));
+  assert.equal(arm.arch, "universal");
+  assert.ok(arm.args.includes("-c.mac.notarize=false"));
+  assert.ok(arm.args.includes("-c.mac.identity=null"));
   assert.ok(!arm.args.includes("-c.forceCodeSigning=true"));
   assert.throws(() => planStagingDesktop(pkg.build, "macos-13"), /Unsupported staging runner/);
 });
