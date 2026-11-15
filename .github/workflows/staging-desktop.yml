@@ -161,19 +161,9 @@ jobs:
             --out apps/desktop/out \
             --checksums apps/desktop/out/SHA256SUMS
 
-      - name: Smoke the packaged app
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p staging-smoke
-          node .github/scripts/staging-desktop-verify.mjs smoke \
-            --runner "$STAGING_RUNNER" \
-            --out apps/desktop/out \
-            --profile "$RUNNER_TEMP/vnbot-desktop-smoke" \
-            --log staging-smoke/smoke.log
-
+      # Uploaded before the smoke so a tester can try every built installer; the smoke result
+      # below says which ones started on a clean runner.
       - name: Upload installers and checksums
-        if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: staging-desktop-${{ matrix.artifact }}-${{ github.sha }}
@@ -188,6 +178,17 @@ jobs:
             apps/desktop/out/*.msi
             apps/desktop/out/*.zip
             apps/desktop/out/SHA256SUMS
+
+      - name: Smoke the packaged app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p staging-smoke
+          node .github/scripts/staging-desktop-verify.mjs smoke \
+            --runner "$STAGING_RUNNER" \
+            --out apps/desktop/out \
+            --profile "$RUNNER_TEMP/vnbot-desktop-smoke" \
+            --log staging-smoke/smoke.log
 
       - name: Upload smoke diagnostics
         if: always()

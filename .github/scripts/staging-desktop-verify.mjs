@@ -247,6 +247,9 @@ export async function prepareCurrentPrefix({ root, major, dest, platform = proce
   if (found.kind !== "nested-share") return path.resolve(root);
   await copyTree(found.binDir, path.join(dest, "bin"));
   await copyTree(found.libDir, path.join(dest, "lib"));
+  // The app points dynamic_library_path at pg/lib, so modules kept in lib/postgresql sit there too.
+  const modules = path.join(found.libDir, "postgresql");
+  if (await exists(modules)) await copyTree(modules, path.join(dest, "lib"));
   await copyTree(found.shareDir, path.join(dest, "share"));
   // The server still looks for its data where it was built, such as share/postgresql.
   await copyTree(found.shareDir, path.join(dest, "share", path.basename(found.shareDir)));
@@ -298,6 +301,7 @@ export async function prepareLegacyPrefix({ root, major, dest, platform = proces
 }
 
 export const SMOKE_TIMEOUT_MS = 180_000;
+export const INSTALL_TIMEOUT_MS = 600_000;
 
 const SMOKE_STRIPPED_ENV = [
   "RAKAZO_IDENTITY_PIN",
@@ -427,7 +431,7 @@ export async function packagedSmokePlan({ runner, outDir, profile }) {
   };
 }
 
-function captureCommand(command, args, env) {
+function captureCommand(command, args, env, timeoutMs = SMOKE_TIMEOUT_MS) {
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       env,
@@ -467,8 +471,11 @@ function captureCommand(command, args, env) {
         child.kill(signal);
       }
     };
-    timer = setTimeout(() => killTree("SIGTERM"), SMOKE_TIMEOUT_MS);
-    killAfter = setTimeout(() => killTree("SIGKILL"), SMOKE_TIMEOUT_MS + 10_000);
+    timer = setTimeout(() => {
+      stderr += `smoke: timed out after ${timeoutMs} ms\n`;
+      killTree("SIGTERM");
+    }, timeoutMs);
+    killAfter = setTimeout(() => killTree("SIGKILL"), timeoutMs + 10_000);
     child.on("close", (code) => {
       finish({ stdout, stderr, code: code ?? 1 });
     });
@@ -504,7 +511,14 @@ export async function launchPackagedApp(plan, baseEnv = process.env) {
     const localAppData = baseEnv.LOCALAPPDATA;
     if (!localAppData) throw new Error("Windows smoke requires LOCALAPPDATA.");
     const install = windowsInstallCommand(plan.installer);
-    const installed = await captureCommand(install.command, install.args, baseEnv);
+    // Installing thousands of bundle files takes longer than starting the app.
+    const installed = await captureCommand(
+      install.command,
+      install.args,
+      baseEnv,
+      INSTALL_TIMEOUT_MS,
+    );
+    installed.stderr = `smoke: installer exited ${installed.code}\n${installed.stderr}`;
     if (installed.code !== 0) return installed;
     const installDir = path.win32.join(localAppData, "Programs", "VNBot");
     const exe = windowsInstalledExe(localAppData);
@@ -518,7 +532,8 @@ export async function launchPackagedApp(plan, baseEnv = process.env) {
       };
     }
     try {
-      return await captureCommand(exe, [], plan.env);
+      const launched = await captureCommand(exe, [], plan.env);
+      return { ...launched, stderr: `${installed.stderr}${launched.stderr}` };
     } finally {
       const uninstall = windowsUninstallCommand(installDir);
       await captureCommand(uninstall.command, uninstall.args, baseEnv);

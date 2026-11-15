@@ -340,7 +340,8 @@ test("the workflow stays on staging branches and read-only contents", async () =
   const uploadAt = workflow.indexOf("Upload installers and checksums");
   const logsAt = workflow.indexOf("Upload smoke diagnostics");
   assert.ok(requireAt > 0 && requireAt < buildAt);
-  assert.ok(smokeAt > buildAt && smokeAt < uploadAt && uploadAt < logsAt);
+  // Installers upload before the smoke so a tester gets every build; diagnostics upload last.
+  assert.ok(uploadAt > buildAt && uploadAt < smokeAt && smokeAt < logsAt);
   assert.match(workflow.slice(logsAt), /if: always\(\)/);
   assert.match(setup, /node-version: 24/);
   assert.match(setup, /pnpm install --frozen-lockfile/);
