@@ -1,6 +1,6 @@
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
-import { openSync } from "node:fs";
+import { closeSync, openSync, rmSync } from "node:fs";
 import path from "node:path";
 import type { NativeRuntimeService } from "./native-runtime.js";
 
@@ -107,6 +107,21 @@ function smokeOutput(input: {
 }
 
 /**
+ * A server log this account cannot append to, such as one an elevated launch created, makes
+ * pg_ctl refuse to start. Replace it, or log beside it, rather than keep the app from opening.
+ */
+export function serverLog(file: string): string {
+  for (const attempt of [() => undefined, () => rmSync(file, { force: true })]) {
+    try {
+      attempt();
+      closeSync(openSync(file, "a"));
+      return file;
+    } catch {}
+  }
+  return file.replace(/\.log$/, `-${process.pid}.log`);
+}
+
+/**
  * PostgreSQL refuses to start from a process with administrator rights, which a Windows account
  * with UAC off (or an elevated launch) has. `pg_ctl` starts the server under a restricted token,
  * as 0.3.9 did, so Windows runs it through `pg_ctl`; other platforms keep the owned child.
@@ -172,7 +187,7 @@ export function createPostgresProcess(input: {
             "-W",
             "-s",
             "-l",
-            path.join(input.dataDir, "..", "postgres-server.log"),
+            serverLog(path.join(input.dataDir, "..", "postgres-server.log")),
             "-o",
             windowsCommandLine(input.options),
           ],

@@ -6,6 +6,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  assertProductionDistribution,
   assertSmokeProfile,
   copyLogFiles,
   linuxCommand,
@@ -375,4 +376,35 @@ test("require-public accepts a staging pin without printing key material", () =>
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /RAKAZO_IDENTITY_PIN/);
   assert.doesNotMatch(missing.stderr, /pin-public-material/);
+});
+
+test("plans a production package with the update feed and the production pin only", async () => {
+  const build = {
+    publish: [{ provider: "generic" }],
+    win: { target: [{ target: "nsis", arch: "x64" }] },
+  };
+  const plan = planStagingDesktop(build, "windows-2025", "production");
+  assert.ok(!plan.args.includes("--config"));
+  assert.ok(planStagingDesktop(build, "windows-2025").args.includes("--config"));
+  const { generateKeyPairSync } = await import("node:crypto");
+  const { publicKey } = generateKeyPairSync("ed25519", {
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+  const pin = (origin) =>
+    JSON.stringify({
+      issuer: origin,
+      audience: "vnbot-desktop",
+      publicKey,
+      centralAuthUrl: `${origin}/api/auth`,
+      centralOrigin: origin,
+    });
+  assert.equal(
+    assertProductionDistribution({ RAKAZO_IDENTITY_PIN: pin("https://app.vnbot.run") })
+      .portalOrigin,
+    "https://app.vnbot.run",
+  );
+  assert.throws(() =>
+    assertProductionDistribution({ RAKAZO_IDENTITY_PIN: pin("https://staging.example.test") }),
+  );
 });

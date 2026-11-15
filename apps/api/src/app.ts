@@ -548,6 +548,8 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       env.identityExchange?.kind === "local"
         ? (input) => admitRemoteVisitor(prisma, input)
         : undefined,
+    legacyAccountsClaimable:
+      env.identityExchange?.kind === "local" && env.legacyAccountsClaimable === true,
     secret: env.authSecret,
     baseURL: env.authUrl,
     webOrigin: env.webOrigin,

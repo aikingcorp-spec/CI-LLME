@@ -51,6 +51,8 @@ export interface AppEnv {
   scimBearerToken?: string;
   nodeEnv: string;
   desktopStackToken?: string;
+  /** The desktop upgraded this stack from 0.3.9, whose accounts have no identity binding yet. */
+  legacyAccountsClaimable?: boolean;
   databaseUrl: string;
   realtimeDatabaseUrl: string;
   authSecret: string;
@@ -261,6 +263,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     databaseUrl: required(source, "DATABASE_URL"),
     realtimeDatabaseUrl: source.REALTIME_DATABASE_URL ?? required(source, "DATABASE_URL"),
     desktopStackToken: optional(source.RAKAZO_DESKTOP_STACK_TOKEN),
+    legacyAccountsClaimable: source.RAKAZO_LEGACY_ACCOUNTS === "claimable",
     authSecret,
     identityExchange,
     remoteAccess:

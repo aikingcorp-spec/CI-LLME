@@ -123,6 +123,8 @@ export interface AuthEnv {
     inviteToken?: string;
     createUser: (email: string) => Promise<string | null>;
   }) => Promise<string | null>;
+  /** The local stack carried accounts over from 0.3.9, which had no identity binding. */
+  legacyAccountsClaimable?: boolean;
   secret: string;
   baseURL: string;
   webOrigin: string;
@@ -479,6 +481,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             identityExchange(env.identityExchange, {
               enrollRemoteDevice: env.enrollRemoteDevice,
               resolveRemoteEnter: env.resolveRemoteEnter,
+              legacyAccountsClaimable: env.legacyAccountsClaimable,
             }),
           ]
         : []),

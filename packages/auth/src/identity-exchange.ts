@@ -101,6 +101,11 @@ export interface RemoteDeviceEnrollment {
     inviteToken?: string;
     createUser: (email: string) => Promise<string | null>;
   }) => Promise<string | null>;
+  /**
+   * The host carried this account over from an earlier release that had no identity binding,
+   * so the issuer's proof of the same email may claim it once.
+   */
+  legacyAccountsClaimable?: boolean;
 }
 
 /** The local OTP caller keeps central credentials server-side and returns only a local session. */
@@ -247,11 +252,14 @@ export function identityExchange(
               accountId,
             };
             if (existing) {
-              // A copied session proves local ownership; the issuer proof alone cannot claim it.
+              // A copied session proves local ownership. Otherwise only an account carried over
+              // from 0.3.9, which predates identity binding, may be claimed by the proof alone.
               const current = await sessionForAuthHook(ctx);
+              const owned =
+                (current?.user.id === existing.user.id && existing.user.emailVerified) ||
+                hooks?.legacyAccountsClaimable === true;
               if (
-                current?.user.id !== existing.user.id ||
-                !existing.user.emailVerified ||
+                !owned ||
                 ("deactivatedAt" in existing.user && existing.user.deactivatedAt) ||
                 existing.accounts.some((linked) => linked.providerId === "verified-identity")
               )

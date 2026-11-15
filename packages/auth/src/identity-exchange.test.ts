@@ -81,6 +81,7 @@ function servers(
     inviteToken?: string;
     createUser: (email: string) => Promise<string | null>;
   }) => Promise<string | null>,
+  legacyAccountsClaimable?: boolean,
 ) {
   const enrolled: { accountId: string; deviceId: string; publicKey: string }[] = [];
   const centralData: Record<
@@ -136,6 +137,7 @@ function servers(
       signedBearer,
       identityExchange(devicePrivateKey ? { ...local, devicePrivateKey } : local, {
         resolveRemoteEnter,
+        legacyAccountsClaimable,
       }),
     ],
   });
@@ -283,6 +285,50 @@ it("refuses to merge an existing local account by email", async () => {
     401,
   );
   expect(f.localData.account).toHaveLength(0);
+  expect(f.localData.session).toHaveLength(0);
+});
+
+it("lets a verified sign-in claim the matching account an upgrade carried over from 0.3.9", async () => {
+  const f = servers(undefined, undefined, true);
+  f.localData.user.push({
+    ...source,
+    id: "legacy-local",
+    name: "Legacy",
+    emailVerified: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  await f.call("/email-otp/send-verification-otp", { email: source.email });
+  const response = await f.call("/sign-in/email-otp", { email: source.email, otp: f.code() });
+  expect(response.status).toBe(200);
+  expect(((await response.json()) as { user: { id: string } }).user.id).toBe("legacy-local");
+  expect(f.localData.account).toEqual([
+    expect.objectContaining({ userId: "legacy-local", providerId: "verified-identity" }),
+  ]);
+  expect(f.localData.user).toHaveLength(1);
+});
+
+it("never lets an upgrade claim an account that already has a verified identity", async () => {
+  const f = servers(undefined, undefined, true);
+  f.localData.user.push({
+    ...source,
+    id: "bound-local",
+    name: "Bound",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  f.localData.account.push({
+    id: "identity:other",
+    userId: "bound-local",
+    providerId: "verified-identity",
+    accountId: "another-issuer-subject",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  await f.call("/email-otp/send-verification-otp", { email: source.email });
+  expect((await f.call("/sign-in/email-otp", { email: source.email, otp: f.code() })).status).toBe(
+    401,
+  );
   expect(f.localData.session).toHaveLength(0);
 });
 

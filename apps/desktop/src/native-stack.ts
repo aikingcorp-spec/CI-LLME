@@ -530,6 +530,12 @@ async function importLegacyProfile(input: {
   await rm(input.snapshot, { recursive: true, force: true }).catch(() => undefined);
 }
 
+/**
+ * The first start after an install reads thousands of files that antivirus scans on first
+ * touch, which can take minutes on an ordinary Windows machine; later starts take seconds.
+ */
+const FIRST_START_TIMEOUT_MS = 5 * 60_000;
+
 function safeMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   // A packaged smoke run records the cause; the window still shows the generic text.
@@ -758,6 +764,8 @@ export class NativeStackController {
       SANDBOX_PROVIDER: "none",
       SANDBOX_HOST_URL: "",
       SANDBOX_HOST_TOKEN: "",
+      // 0.3.9 accounts have no identity binding; the first verified sign-in of the same email claims one.
+      ...(receipt ? { RAKAZO_LEGACY_ACCOUNTS: "claimable" } : {}),
     };
     const serviceEnv = { ...env, ...nativeHostComputerEnv(this.input.hostComputer) };
     const service = (entry: string, ready: (readySignal: AbortSignal) => Promise<void>) =>
@@ -767,6 +775,7 @@ export class NativeStackController {
         cwd: prepared.root,
         env: serviceEnv,
         ready,
+        startupTimeoutMs: FIRST_START_TIMEOUT_MS,
       });
     const api = service("apps/api/dist/index.js", (readySignal) =>
       poll(
@@ -805,6 +814,7 @@ export class NativeStackController {
         cwd: prepared.root,
         env: base,
         ready: (readySignal) => poll(readySignal, () => postgresReady(pgPort, readySignal)),
+        startupTimeoutMs: FIRST_START_TIMEOUT_MS,
       }),
       migrate: async (readySignal) => {
         const migrationEnv = {

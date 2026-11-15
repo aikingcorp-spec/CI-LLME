@@ -16,7 +16,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { acceptSmokeOutput } from "../../apps/desktop/src/native-smoke.ts";
 import {
   assertStagingDistribution,
+  PRODUCTION_PORTAL_ORIGIN,
   readPublicPin,
+  resolvePublicDistribution,
 } from "../../apps/desktop/src/public-distribution.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -73,7 +75,17 @@ function targetArch(target) {
   return typeof target === "string" ? undefined : target.arch;
 }
 
-export function planStagingDesktop(build, runnerLabel) {
+/** A production package is pinned to the production portal and keeps package.json's update feed. */
+export function assertProductionDistribution(env) {
+  const distribution = resolvePublicDistribution(env);
+  const pin = readPublicPin(distribution.identityPin);
+  if (!pin || distribution.portalOrigin !== PRODUCTION_PORTAL_ORIGIN) {
+    throw new Error("Production installer requires the production issuer pin and portal.");
+  }
+  return distribution;
+}
+
+export function planStagingDesktop(build, runnerLabel, channel = "staging") {
   const runner = STAGING_RUNNERS.find((item) => item.runner === runnerLabel);
   if (!runner) throw new Error(`Unsupported staging runner: ${runnerLabel}`);
   const section =
@@ -92,7 +104,13 @@ export function planStagingDesktop(build, runnerLabel) {
     return extension;
   });
   // The staging config is package.json build with publish removed, so no update feed ships.
-  const args = [...runner.targetFlags, "--publish", "never", "--config", STAGING_BUILDER_CONFIG];
+  // Production keeps package.json build, whose publish entry writes the update feed files.
+  const args = [
+    ...runner.targetFlags,
+    "--publish",
+    "never",
+    ...(channel === "production" ? [] : ["--config", STAGING_BUILDER_CONFIG]),
+  ];
   if (runner.platform === "darwin") args.push("-c.mac.identity=null", "-c.mac.notarize=false");
   return {
     runner: runner.runner,
@@ -119,10 +137,14 @@ async function collectFeeds(directory, found) {
   }
 }
 
-export async function verifyInstallers({ outDir, extensions, checksumPath }) {
+export async function verifyInstallers({ outDir, extensions, checksumPath, channel = "staging" }) {
   const feeds = [];
   await collectFeeds(outDir, feeds);
-  if (feeds.length > 0) {
+  if (channel === "production") {
+    if (!feeds.some((feed) => /^latest.*\.ya?ml$/.test(path.basename(feed)))) {
+      throw new Error("Production installers need an update feed file.");
+    }
+  } else if (feeds.length > 0) {
     throw new Error(`Update feed files are present: ${feeds.join(", ")}`);
   }
   const names = (await readdir(outDir, { withFileTypes: true }))
@@ -619,6 +641,12 @@ function parseFlags(argv) {
   return flags;
 }
 
+function channelOf(flags) {
+  const channel = flags.channel ?? "staging";
+  if (channel !== "staging" && channel !== "production") throw new Error("Unknown channel.");
+  return channel;
+}
+
 function required(flags, name) {
   const value = flags[name];
   if (!value) throw new Error(`Missing --${name}`);
@@ -632,7 +660,7 @@ async function main(argv) {
     const pkg = JSON.parse(
       await readFile(path.join(repoRoot, "apps/desktop/package.json"), "utf8"),
     );
-    const plan = planStagingDesktop(pkg.build, required(flags, "runner"));
+    const plan = planStagingDesktop(pkg.build, required(flags, "runner"), channelOf(flags));
     await writeFile(
       path.join(repoRoot, "apps/desktop", STAGING_BUILDER_CONFIG),
       `${JSON.stringify(stagingBuilderConfig(pkg.build), null, 2)}\n`,
@@ -666,16 +694,20 @@ async function main(argv) {
     const pkg = JSON.parse(
       await readFile(path.join(repoRoot, "apps/desktop/package.json"), "utf8"),
     );
-    const plan = planStagingDesktop(pkg.build, required(flags, "runner"));
+    const plan = planStagingDesktop(pkg.build, required(flags, "runner"), channelOf(flags));
     await verifyInstallers({
       outDir: required(flags, "out"),
       extensions: plan.extensions,
       checksumPath: required(flags, "checksums"),
+      channel: channelOf(flags),
     });
     return;
   }
   if (command === "require-public") {
-    const distribution = assertStagingDistribution(process.env);
+    const distribution =
+      channelOf(flags) === "production"
+        ? assertProductionDistribution(process.env)
+        : assertStagingDistribution(process.env);
     const pin = readPublicPin(distribution.identityPin);
     process.stdout.write(
       `public-pin=accepted\nportal=${distribution.portalOrigin}\nissuer=${pin?.issuer ?? ""}\n`,
