@@ -347,7 +347,7 @@ function run(
       (error, stdout, stderr) => {
         if (error) {
           smokeLog(
-            `RAKAZO_DESKTOP_SMOKE command=${path.basename(args[0] ?? executable)} ${String(stderr || stdout || error.message).slice(-2000)}`,
+            `RAKAZO_DESKTOP_SMOKE command=${path.basename(args[0] ?? executable)} ${String(stderr || stdout || error.message).slice(-8000)}`,
           );
           reject(new Error("Native command failed."));
         } else resolve(stdout.trim());

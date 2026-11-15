@@ -514,7 +514,13 @@ async function linkDatabasePackages(staging, ids) {
     const target = path.join(staging, "node_modules", ".pnpm", id, "node_modules", name);
     if (!(await exists(target))) throw new Error(`Missing native bundle dependency: ${id}`);
     await mkdir(path.dirname(destination), { recursive: true });
-    await symlink(path.relative(path.dirname(destination), target), destination);
+    if (process.platform === "win32") {
+      // Packaging copies a link's contents, where Prisma could not reach its own dependencies.
+      await symlink(target, destination, "junction");
+      windowsLinks.push({ link: destination, target });
+    } else {
+      await symlink(path.relative(path.dirname(destination), target), destination);
+    }
   }
 }
 
