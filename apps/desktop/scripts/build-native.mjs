@@ -890,6 +890,9 @@ async function publishStaging(staging, output) {
   await removeTree(previous);
 }
 
+/** Thin Mach-O headers. A thin node, server or library would start on one chip only. */
+const THIN_MAGIC = new Set(["cffaedfe", "cefaedfe"]);
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const output = await assembleNativeBundle(parseNativeBuildArgs(process.argv.slice(2)));
@@ -901,9 +904,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exitCode = 1;
   }
 }
-
-/** Thin Mach-O headers. A thin node, server or library would start on one chip only. */
-const THIN_MAGIC = new Set(["cffaedfe", "cefaedfe"]);
 
 /** A universal bundle keeps node and both PostgreSQL trees fat; per-arch npm packages may be thin. */
 async function assertUniversalExecutables(root) {
