@@ -655,14 +655,17 @@ async function stageLegacyPostgres(request, staging) {
     if (!(await exists(extra))) throw new Error(`Missing native bundle source: ${file}`);
     await cp(extra, path.join(staging, file), { dereference: true });
   }
+  // The 0.3.9 Windows server reads timezones and modules from share and lib themselves;
+  // the macOS and Linux builds from share/postgresql and lib/postgresql.
+  const nested = request.platform === "win32" ? "" : "postgresql";
   await copyDereferenced(
     path.join(prefix, "share", "postgresql"),
-    path.join(root, "share", "postgresql"),
+    path.join(root, "share", nested),
     prefix,
   );
   await copyDereferenced(
     path.join(prefix, "lib", "postgresql"),
-    path.join(root, "lib", "postgresql"),
+    path.join(root, "lib", nested),
     prefix,
   );
   if (request.platform === "linux") {

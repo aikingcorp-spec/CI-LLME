@@ -86,12 +86,11 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" |
             sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-18 postgresql-16
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-18
 
-      # macOS and Windows use the relocatable @embedded-postgres builds; 16.14.0-beta.17 is the
+      # The relocatable @embedded-postgres builds (macOS, Windows; 16 on Linux): 16.14.0-beta.17 is the
       # server 0.3.9 shipped, so its data directory upgrades with the same binaries.
       - name: Fetch embedded PostgreSQL 18 and 16
-        if: runner.os != 'Linux'
         shell: bash
         run: |
           set -euo pipefail
@@ -99,8 +98,10 @@ jobs:
             # The darwin-arm64 package ships fat x86_64 + arm64 binaries; build-native checks that.
             macos-universal) package=@embedded-postgres/darwin-arm64 ;;
             windows-x64) package=@embedded-postgres/windows-x64 ;;
+            # Linux keeps PostgreSQL 18 from Debian; only the 0.3.9 server comes from the package.
+            linux-x64) package=@embedded-postgres/linux-x64 ;;
           esac
-          node .github/scripts/staging-desktop-verify.mjs fetch-embedded --package "$package" --version 18.4.0-beta.17 --dest "$RUNNER_TEMP/ep18" > "$RUNNER_TEMP/ep18.path"
+          [ "${{ runner.os }}" = Linux ] || node .github/scripts/staging-desktop-verify.mjs fetch-embedded --package "$package" --version 18.4.0-beta.17 --dest "$RUNNER_TEMP/ep18" > "$RUNNER_TEMP/ep18.path"
           node .github/scripts/staging-desktop-verify.mjs fetch-embedded --package "$package" --version 16.14.0-beta.17 --dest "$RUNNER_TEMP/ep16" > "$RUNNER_TEMP/ep16.path"
 
       # The universal app runs this node on both chips, so join the official x64 and arm64 builds.
@@ -143,7 +144,7 @@ jobs:
           case "${{ runner.os }}" in
             Linux)
               current_root=/usr
-              legacy_root=/usr
+              legacy_root="$(cat "$RUNNER_TEMP/ep16.path")"
               ;;
             macOS|Windows)
               current_root="$(cat "$RUNNER_TEMP/ep18.path")"

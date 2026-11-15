@@ -5,7 +5,12 @@
 export function legacyPostgresBundleFiles(platform = process.platform) {
   return [
     `pg16/bin/postgres${platform === "win32" ? ".exe" : ""}`,
-    "pg16/share/postgresql/postgres.bki",
+    // The Windows build looks for its data and modules directly in share and lib. A 0.3.9
+    // profile names its own timezone and uses PL/pgSQL, so both must be where it looks.
+    ...["postgres.bki", "timezonesets/Default", "timezone/Asia/Bangkok"].map(
+      (file) => `pg16/share/${platform === "win32" ? "" : "postgresql/"}${file}`,
+    ),
+    `pg16/lib/${platform === "win32" ? "plpgsql.dll" : `postgresql/plpgsql.${platform === "darwin" ? "dylib" : "so"}`}`,
     // Windows starts the server through pg_ctl, which drops administrator rights.
     ...(platform === "win32" ? ["pg16/bin/pg_ctl.exe"] : []),
   ];

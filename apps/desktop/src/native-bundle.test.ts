@@ -53,6 +53,11 @@ async function fixtureRepo() {
   await mkdir(path.join(legacyPostgres, "share", "postgresql"), { recursive: true });
   await writeFile(path.join(legacyPostgres, "lib", "postgresql", "plpgsql.so"), "lib");
   await writeFile(path.join(legacyPostgres, "share", "postgresql", "postgres.bki"), "bki");
+  for (const file of ["timezonesets/Default", "timezone/Asia/Bangkok"]) {
+    const target = path.join(legacyPostgres, "share", "postgresql", file);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, "tz");
+  }
 
   const dep = path.join(repo, "node_modules/.pnpm/dep@1.0.0/node_modules/dep");
   const pkg = path.join(repo, "node_modules/.pnpm/pkg@1.0.0/node_modules/pkg");

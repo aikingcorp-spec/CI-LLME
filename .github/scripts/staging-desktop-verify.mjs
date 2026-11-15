@@ -300,7 +300,8 @@ export async function prepareLegacyPrefix({ root, major, dest, platform = proces
   const entries = await readdir(found.libDir, { withFileTypes: true });
   for (const entry of entries) {
     const lower = entry.name.toLowerCase();
-    if (!entry.isFile() || (!lower.endsWith(".dylib") && !lower.endsWith(".dll"))) continue;
+    const shared = lower.endsWith(".dylib") || lower.endsWith(".dll") || /\.so(\.|$)/.test(lower);
+    if (!entry.isFile() || !shared) continue;
     await cp(path.join(found.libDir, entry.name), path.join(dest, "lib", entry.name), {
       dereference: true,
     });
