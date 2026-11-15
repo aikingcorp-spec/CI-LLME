@@ -517,6 +517,9 @@ async function importLegacyProfile(input: {
 
 function safeMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "";
+  // A packaged smoke run reports the cause on stderr; the window still shows the generic text.
+  if (process.env.RAKAZO_DESKTOP_SMOKE === "1")
+    process.stderr.write(`RAKAZO_DESKTOP_SMOKE cause=${message}\n`);
   return SAFE_MESSAGES.has(message) ? message : GENERIC_FAILURE;
 }
 

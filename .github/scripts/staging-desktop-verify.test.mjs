@@ -39,7 +39,8 @@ test("plans unsigned installers from the desktop package targets", () => {
   ]);
 
   const windows = planStagingDesktop(pkg.build, "windows-2025");
-  assert.deepEqual(windows.extensions, [".exe", ".msi"]);
+  assert.deepEqual(windows.extensions, [".exe"]);
+  assert.equal(windows.args[windows.args.indexOf("--win") + 1], "nsis");
   assert.ok(windows.args.includes("--win"));
   assert.ok(windows.args.includes("--x64"));
   assert.equal(windows.args[windows.args.indexOf("--publish") + 1], "never");

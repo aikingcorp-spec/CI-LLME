@@ -26,7 +26,12 @@ export const repoRoot = path.resolve(scriptDir, "../..");
 // https://docs.github.com/en/actions/reference/runners/github-hosted-runners
 export const STAGING_RUNNERS = [
   { runner: "ubuntu-24.04", platform: "linux", arch: "x64", targetFlags: ["--linux", "--x64"] },
-  { runner: "windows-2025", platform: "win32", arch: "x64", targetFlags: ["--win", "--x64"] },
+  {
+    runner: "windows-2025",
+    platform: "win32",
+    arch: "x64",
+    targetFlags: ["--win", "nsis", "--x64"],
+  },
   {
     runner: "macos-26-intel",
     platform: "darwin",
@@ -70,7 +75,9 @@ export function planStagingDesktop(build, runnerLabel) {
       const arch = targetArch(target);
       return arch === undefined || arch === runner.arch;
     })
-    .map(targetName);
+    .map(targetName)
+    // A trial needs one Windows installer; MSI cannot link a bundle with this many files.
+    .filter((name) => runner.platform !== "win32" || name === "nsis");
   const extensions = names.map((name) => {
     const extension = EXTENSIONS[name];
     if (!extension) throw new Error(`Unsupported installer target: ${name}`);
