@@ -17,7 +17,6 @@ export function nativeBundleFiles(platform = process.platform) {
     node,
     executable("postgres"),
     executable("initdb"),
-    executable("pg_isready"),
     "pg/share/postgres.bki",
     ...legacyPostgresBundleFiles(platform),
     "apps/api/dist/index.js",

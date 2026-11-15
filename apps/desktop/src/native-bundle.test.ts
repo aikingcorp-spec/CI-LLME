@@ -40,7 +40,6 @@ async function fixtureRepo() {
     "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then printf '%s\\n' 'postgres (PostgreSQL) 18.2'; fi\n",
   );
   await executable(path.join(postgres, "bin", "initdb"), "#!/bin/sh\n");
-  await executable(path.join(postgres, "bin", "pg_isready"), "#!/bin/sh\n");
   await mkdir(path.join(postgres, "lib"), { recursive: true });
   await mkdir(path.join(postgres, "share"), { recursive: true });
   await writeFile(path.join(postgres, "lib", "libpq.so"), "lib");

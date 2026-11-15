@@ -135,7 +135,7 @@ jobs:
           current="$(node .github/scripts/staging-desktop-verify.mjs prepare-current --root "$current_root" --major 18 --dest "$RUNNER_TEMP/pg18")"
           legacy="$(node .github/scripts/staging-desktop-verify.mjs prepare-legacy --root "$legacy_root" --major 16 --dest "$RUNNER_TEMP/pg16")"
           pnpm --filter @rakazo/desktop run build:native \
-            --node "$(command -v node)" \
+            --node "$(node -p process.execPath)" \
             --postgres "$current" \
             --legacy-postgres "$legacy"
 

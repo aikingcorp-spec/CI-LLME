@@ -52,6 +52,7 @@ import {
 import { createNativeProcess } from "./native-process.js";
 import { NativeRuntime } from "./native-runtime.js";
 import { nativeWeb } from "./native-web.js";
+import { postgresReady } from "./postgres-ready.js";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
 
 const SECRET_KEYS = ["owner", "runtime", "auth", "encryption", "token", "screen"] as const;
@@ -446,7 +447,7 @@ async function importLegacyProfile(input: {
   receipt: LegacyUpgradeReceipt;
   /** Migration environment of the current stack. */
   env: NodeJS.ProcessEnv;
-  /** PostgreSQL 18 child environment, for `pg_isready`. */
+  /** PostgreSQL 18 child environment. */
   base: NodeJS.ProcessEnv;
   signal: AbortSignal;
 }) {
@@ -478,17 +479,7 @@ async function importLegacyProfile(input: {
     // A copy of a profile that was not shut down cleanly replays its log first.
     startupTimeoutMs: 10 * 60_000,
     stopTimeoutMs: 60_000,
-    ready: (readySignal) =>
-      poll(readySignal, async () => {
-        await run(
-          path.join(input.bundle, "pg", "bin", `pg_isready${exe}`),
-          ["-h", "127.0.0.1", "-p", port],
-          input.root,
-          input.base,
-          readySignal,
-        );
-        return true;
-      }),
+    ready: (readySignal) => poll(readySignal, () => postgresReady(Number(port), readySignal)),
   });
   const source = new URL(`postgresql://127.0.0.1:${port}/${LEGACY_CLUSTER.database}`);
   source.username = LEGACY_CLUSTER.ownerRole;
@@ -797,17 +788,7 @@ export class NativeStackController {
         ],
         cwd: prepared.root,
         env: base,
-        ready: (readySignal) =>
-          poll(readySignal, async () => {
-            await run(
-              executable("pg_isready"),
-              ["-h", "127.0.0.1", "-p", String(pgPort)],
-              prepared.root,
-              base,
-              readySignal,
-            );
-            return true;
-          }),
+        ready: (readySignal) => poll(readySignal, () => postgresReady(pgPort, readySignal)),
       }),
       migrate: async (readySignal) => {
         const migrationEnv = {
