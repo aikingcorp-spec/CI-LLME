@@ -154,9 +154,23 @@ export function nativeEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv 
     "TMPDIR",
     "LANG",
     "LC_ALL",
+    // Windows programs (Node, Prisma, PostgreSQL) expect these system locations.
+    "windir",
+    "ComSpec",
+    "PATHEXT",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "ProgramData",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "NUMBER_OF_PROCESSORS",
+    "PROCESSOR_ARCHITECTURE",
   ]) {
     if (source[name] !== undefined) env[name] = source[name];
   }
+  // Windows names are case-insensitive; keep one PATH so a child cannot read the other copy.
+  if (process.platform === "win32" && env.Path !== undefined) delete env.PATH;
+  if (process.platform === "win32") delete env.SYSTEMROOT;
   return env;
 }
 
@@ -330,9 +344,13 @@ function run(
       executable,
       args,
       { cwd, env, signal, timeout, maxBuffer: 1024 * 1024, windowsHide: true },
-      (error, stdout) => {
-        if (error) reject(new Error("Native command failed."));
-        else resolve(stdout.trim());
+      (error, stdout, stderr) => {
+        if (error) {
+          smokeLog(
+            `RAKAZO_DESKTOP_SMOKE command=${path.basename(args[0] ?? executable)} ${String(stderr || stdout || error.message).slice(-2000)}`,
+          );
+          reject(new Error("Native command failed."));
+        } else resolve(stdout.trim());
       },
     );
   });
@@ -435,7 +453,8 @@ function childEnvironment(source: NodeJS.ProcessEnv, bundle: string, home: strin
   env.USERPROFILE = home;
   env.LD_LIBRARY_PATH = lib;
   const pathName = process.platform === "win32" ? "Path" : "PATH";
-  const current = env[pathName] ?? env.PATH;
+  const current = env[pathName] ?? env.PATH ?? env.Path;
+  if (process.platform === "win32") delete env.PATH;
   env[pathName] = current ? `${lib}${path.delimiter}${current}` : lib;
   return env;
 }
