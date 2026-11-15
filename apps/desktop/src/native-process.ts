@@ -1,5 +1,7 @@
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
+import { openSync } from "node:fs";
+import path from "node:path";
 import type { NativeRuntimeService } from "./native-runtime.js";
 
 /** Executables and environment come from the desktop composition root, never chat input. */
@@ -22,7 +24,7 @@ export function createNativeProcess(input: {
         env: input.env,
         shell: false,
         windowsHide: true,
-        stdio: "ignore",
+        stdio: smokeOutput(input),
       });
       let resolveExit: () => void = () => {};
       const exited = new Promise<void>((resolve) => {
@@ -83,4 +85,23 @@ export function createNativeProcess(input: {
       if (owned === current) owned = undefined;
     },
   };
+}
+
+/** A packaged smoke run keeps each child's output in the temporary profile; otherwise none. */
+function smokeOutput(input: {
+  executable: string;
+  args: string[];
+}): "ignore" | ["ignore", number, number] {
+  const profile = process.env.RAKAZO_PERFORMANCE_USER_DATA;
+  if (process.env.RAKAZO_DESKTOP_SMOKE !== "1" || !profile) return "ignore";
+  const name = path.basename(input.args[0] ?? input.executable).replace(/[^\w.-]/g, "_");
+  try {
+    const fd = openSync(
+      path.join(profile, `native-${path.basename(input.executable)}-${name}.log`),
+      "a",
+    );
+    return ["ignore", fd, fd];
+  } catch {
+    return "ignore";
+  }
 }

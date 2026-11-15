@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { appendFileSync, mkdtempSync } from "node:fs";
 import { access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -11,6 +11,20 @@ export type SmokeStack = {
   webUrl(): string;
   matchesDesiredStack(): Promise<boolean>;
 };
+
+/**
+ * Smoke diagnostics: stderr plus a log file in the temporary profile, because a Windows GUI
+ * build may write nothing to the pipes its parent reads. A no-op outside a smoke run.
+ */
+export function smokeLog(line: string, env: NodeJS.ProcessEnv = process.env) {
+  if (env.RAKAZO_DESKTOP_SMOKE !== "1") return;
+  process.stderr.write(`${line}\n`);
+  const profile = env.RAKAZO_PERFORMANCE_USER_DATA;
+  if (!profile) return;
+  try {
+    appendFileSync(path.join(profile, "desktop-smoke.log"), `${line}\n`);
+  } catch {}
+}
 
 export function loopbackWebUrl(value: string): boolean {
   if (!LOOPBACK.test(value)) return false;
@@ -88,8 +102,13 @@ export async function runNativeSmoke(input: {
   print?: (line: string) => void;
   printError?: (line: string) => void;
 }): Promise<0 | 1> {
-  const print = input.print ?? ((line: string) => console.log(line));
-  const printError = input.printError ?? ((line: string) => process.stderr.write(`${line}\n`));
+  const print =
+    input.print ??
+    ((line: string) => {
+      console.log(line);
+      smokeLog(line);
+    });
+  const printError = input.printError ?? ((line: string) => smokeLog(line));
   const fail = async (
     check: "identity" | "postgres" | "startup" | "health" | "web" | "shutdown",
   ) => {

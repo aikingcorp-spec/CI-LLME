@@ -78,7 +78,7 @@ import {
   refreshDesktopMonitoringUser,
   reportDesktopError,
 } from "./monitoring.js";
-import { ensureSmokeUserData, runNativeSmoke } from "./native-smoke.js";
+import { ensureSmokeUserData, runNativeSmoke, smokeLog } from "./native-smoke.js";
 import {
   NativeStackController,
   nativeBundleDirectory,
@@ -108,6 +108,7 @@ import { createUserDeviceAccess, deviceName } from "./user-device.js";
 process.setSourceMapsEnabled(true);
 installDesktopEarlyErrorReporting();
 ensureSmokeUserData(process.env);
+smokeLog("RAKAZO_DESKTOP_SMOKE stage=main");
 const PERFORMANCE_USER_DATA = process.env.RAKAZO_PERFORMANCE_USER_DATA;
 /** Test hook: where the app-managed stack answers. Mode `new` still requires loopback. */
 const LOCAL_WEB_URL = process.env.RAKAZO_LOCAL_WEB_URL?.trim() || DEFAULT_LOCAL_WEB_URL;

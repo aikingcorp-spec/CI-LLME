@@ -51,6 +51,7 @@ import {
 } from "./native-postgres-layout.js";
 import { createNativeProcess } from "./native-process.js";
 import { NativeRuntime } from "./native-runtime.js";
+import { smokeLog } from "./native-smoke.js";
 import { nativeWeb } from "./native-web.js";
 import { postgresReady } from "./postgres-ready.js";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
@@ -517,9 +518,8 @@ async function importLegacyProfile(input: {
 
 function safeMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "";
-  // A packaged smoke run reports the cause on stderr; the window still shows the generic text.
-  if (process.env.RAKAZO_DESKTOP_SMOKE === "1")
-    process.stderr.write(`RAKAZO_DESKTOP_SMOKE cause=${message}\n`);
+  // A packaged smoke run records the cause; the window still shows the generic text.
+  smokeLog(`RAKAZO_DESKTOP_SMOKE cause=${message}`);
   return SAFE_MESSAGES.has(message) ? message : GENERIC_FAILURE;
 }
 

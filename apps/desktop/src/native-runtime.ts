@@ -1,3 +1,5 @@
+import { smokeLog } from "./native-smoke.js";
+
 /** Desktop composition supplies the existing database and service adapters. */
 export interface NativeRuntimeService {
   /** Resolves only after readiness, rejects on failure or cancellation. */
@@ -100,14 +102,21 @@ export class NativeRuntime {
       // Retry retained cleanup before starting replacements.
       await this.cleanup();
       signal.throwIfAborted();
+      smokeLog("RAKAZO_DESKTOP_SMOKE service=postgres");
       await this.startService(this.options.postgres, signal);
+      smokeLog("RAKAZO_DESKTOP_SMOKE service=migrate");
       await this.options.migrate(signal);
       signal.throwIfAborted();
+      smokeLog("RAKAZO_DESKTOP_SMOKE service=api");
       await this.startService(this.options.api, signal);
+      smokeLog("RAKAZO_DESKTOP_SMOKE service=worker");
       await this.startService(this.options.worker, signal);
       this.state = "ready";
       return this.result();
-    } catch {
+    } catch (error) {
+      smokeLog(
+        `RAKAZO_DESKTOP_SMOKE runtime=${error instanceof Error ? error.message : "unknown"}`,
+      );
       this.state = "failed";
       await this.cleanup().catch(() => undefined);
       // Child output and connection strings must not escape through UI errors.
