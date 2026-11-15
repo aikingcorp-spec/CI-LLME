@@ -42,6 +42,12 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
+      # The universal app runs migrations on Intel and Apple silicon, so Prisma must download both
+      # schema engines during install; by default it fetches only the runner architecture.
+      - name: Fetch Prisma engines for both Mac architectures
+        if: runner.os == 'macOS'
+        shell: bash
+        run: echo "PRISMA_CLI_BINARY_TARGETS=darwin,darwin-arm64" >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-workspace
         with:
           electron: "true"
