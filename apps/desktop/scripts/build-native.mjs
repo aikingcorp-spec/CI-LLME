@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmod,
   cp,
@@ -177,7 +178,10 @@ export async function assembleNativeBundle(input) {
     await confineSymlinks(staging);
     if (request.arch === "universal") await assertUniversalExecutables(staging);
     await probeBundle(request, staging);
-    if (request.platform === "win32") await recordWindowsLinks(staging);
+    if (request.platform === "win32") {
+      await recordWindowsLinks(staging);
+      await assertWindowsPathLengths(staging);
+    }
     const manifest = nativeBundleManifest({
       platform: request.platform,
       arch: request.arch,
@@ -353,11 +357,51 @@ async function dependencyLinks(directory) {
 
 async function copyPnpmPackage(repoRoot, staging, id) {
   const source = path.join(repoRoot, "node_modules", ".pnpm", id);
-  const destination = path.join(staging, "node_modules", ".pnpm", id);
+  const destination = path.join(staging, "node_modules", ".pnpm", storeName(id));
   await copyPreservingStoreLinks(source, destination, path.join(repoRoot, "node_modules", ".pnpm"));
 }
 
 const PNPM_DIR = path.join("node_modules", ".pnpm");
+
+/**
+ * The Windows installer skips files whose path passes 260 characters, so a Windows bundle names
+ * each store package by a short hash instead of its long pnpm folder name.
+ */
+function storeName(id) {
+  if (process.platform !== "win32") return id;
+  return createHash("sha256").update(id).digest("hex").slice(0, 12);
+}
+
+/** A path inside the store, with its first folder renamed by `storeName`. */
+function storePath(relative) {
+  const [id = "", ...rest] = relative.split(/[\\/]/);
+  return path.join(storeName(id), ...rest);
+}
+
+/**
+ * The longest bundle path that still installs: Windows paths stop at 259 characters, and the
+ * bundle sits under C:\Users\<name up to 20>\AppData\Local\Programs\vnbot\resources\native\.
+ */
+export const WINDOWS_PATH_BUDGET =
+  259 - "C:\\Users\\".length - 20 - "\\AppData\\Local\\Programs\\vnbot\\resources\\native\\".length;
+
+async function assertWindowsPathLengths(root) {
+  const pending = [root];
+  while (pending.length > 0) {
+    const directory = pending.pop();
+    if (directory === undefined) continue;
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const candidate = path.join(directory, entry.name);
+      const relative = path.relative(root, candidate);
+      if (relative.length > WINDOWS_PATH_BUDGET) {
+        throw new Error(
+          `Native bundle path too long for Windows (${relative.length}): ${relative}`,
+        );
+      }
+      if (entry.isDirectory()) pending.push(candidate);
+    }
+  }
+}
 /** Junctions made while staging a Windows bundle; removed before packaging. */
 let windowsLinks = [];
 
@@ -386,7 +430,7 @@ async function copyPreservingStoreLinks(source, destination, pnpmRoot) {
         if (process.platform === "win32") {
           const staged = path.join(
             destination.slice(0, destination.indexOf(PNPM_DIR) + PNPM_DIR.length),
-            path.relative(pnpmRoot, resolved),
+            storePath(path.relative(pnpmRoot, resolved)),
           );
           await symlink(staged, to, "junction");
           windowsLinks.push({ link: to, target: staged });
@@ -403,9 +447,13 @@ async function copyPreservingStoreLinks(source, destination, pnpmRoot) {
       continue;
     }
     if (entry.isDirectory()) await copyPreservingStoreLinks(from, to, pnpmRoot);
-    else if (entry.isFile()) await cp(from, to);
+    else if (entry.isFile() && !(process.platform === "win32" && BUILD_ONLY_FILE.test(entry.name)))
+      await cp(from, to);
   }
 }
+
+/** Type declarations and source maps nothing reads at run time; Windows paths have no room. */
+const BUILD_ONLY_FILE = /\.(d\.[cm]?ts|map)$/;
 
 async function writeServer(repoRoot, staging, files) {
   for (const file of files) {
@@ -423,7 +471,7 @@ async function writeServer(repoRoot, staging, files) {
       const rest = specifier.slice(
         specifier.indexOf("node_modules/.pnpm/") + "node_modules/.pnpm/".length,
       );
-      const target = path.join(staging, "node_modules", ".pnpm", rest);
+      const target = path.join(staging, "node_modules", ".pnpm", storePath(rest));
       if (!(await exists(target))) throw new Error(`Missing native bundle dependency: ${id}`);
       replacements.set(specifier, relativeSpecifier(destination, target));
     }
@@ -511,7 +559,7 @@ async function copyDereferenced(source, destination, allowedRoot) {
 async function linkDatabasePackages(staging, ids) {
   for (const [name, id] of ids) {
     const destination = path.join(staging, "packages/db/node_modules", name);
-    const target = path.join(staging, "node_modules", ".pnpm", id, "node_modules", name);
+    const target = path.join(staging, "node_modules", ".pnpm", storeName(id), "node_modules", name);
     if (!(await exists(target))) throw new Error(`Missing native bundle dependency: ${id}`);
     await mkdir(path.dirname(destination), { recursive: true });
     if (process.platform === "win32") {
