@@ -594,6 +594,13 @@ async function stageLegacyPostgres(request, staging) {
   await mkdir(path.join(root, "bin"), { recursive: true });
   await cp(source, path.join(staging, binary), { dereference: true });
   await chmod(path.join(staging, binary), 0o755);
+  for (const file of legacyPostgresBundleFiles(request.platform).filter(
+    (entry) => entry.startsWith("pg16/bin/") && entry !== binary,
+  )) {
+    const extra = path.join(prefix, "bin", path.basename(file));
+    if (!(await exists(extra))) throw new Error(`Missing native bundle source: ${file}`);
+    await cp(extra, path.join(staging, file), { dereference: true });
+  }
   await copyDereferenced(
     path.join(prefix, "share", "postgresql"),
     path.join(root, "share", "postgresql"),

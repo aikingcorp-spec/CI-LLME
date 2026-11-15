@@ -105,3 +105,107 @@ function smokeOutput(input: {
     return "ignore";
   }
 }
+
+/**
+ * PostgreSQL refuses to start from a process with administrator rights, which a Windows account
+ * with UAC off (or an elevated launch) has. `pg_ctl` starts the server under a restricted token,
+ * as 0.3.9 did, so Windows runs it through `pg_ctl`; other platforms keep the owned child.
+ */
+export function createPostgresProcess(input: {
+  /** The bin directory holding postgres and pg_ctl. */
+  bin: string;
+  dataDir: string;
+  /** Server options after -D, such as -h, -p and -c settings. */
+  options: string[];
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+  ready(signal: AbortSignal): Promise<void>;
+  startupTimeoutMs?: number;
+  stopTimeoutMs?: number;
+  platform?: NodeJS.Platform;
+}): NativeRuntimeService {
+  const platform = input.platform ?? process.platform;
+  if (platform !== "win32") {
+    return createNativeProcess({
+      executable: path.join(input.bin, "postgres"),
+      args: ["-D", input.dataDir, ...input.options],
+      cwd: input.cwd,
+      env: input.env,
+      ready: input.ready,
+      startupTimeoutMs: input.startupTimeoutMs,
+      stopTimeoutMs: input.stopTimeoutMs,
+    });
+  }
+  const pgCtl = path.join(input.bin, "pg_ctl.exe");
+  const control = (args: string[], timeoutMs: number) =>
+    new Promise<void>((resolve, reject) => {
+      const child = spawn(pgCtl, args, {
+        cwd: input.cwd,
+        env: input.env,
+        shell: false,
+        windowsHide: true,
+        stdio: smokeOutput({ executable: pgCtl, args: [args[0] ?? ""] }),
+      });
+      const timer = setTimeout(() => child.kill(), timeoutMs);
+      child.once("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      child.once("exit", (code) => {
+        clearTimeout(timer);
+        if (code === 0) resolve();
+        else reject(new Error("PostgreSQL control failed."));
+      });
+    });
+  let started = false;
+  return {
+    async start(signal) {
+      if (started) throw new Error("Native process already exists.");
+      signal.throwIfAborted();
+      started = true;
+      try {
+        await control(
+          [
+            "start",
+            "-D",
+            input.dataDir,
+            "-W",
+            "-s",
+            "-l",
+            path.join(input.dataDir, "..", "postgres-server.log"),
+            "-o",
+            windowsCommandLine(input.options),
+          ],
+          60_000,
+        );
+        await input.ready(
+          AbortSignal.any([signal, AbortSignal.timeout(input.startupTimeoutMs ?? 30_000)]),
+        );
+      } catch {
+        throw new Error("Native process did not become ready.");
+      }
+    },
+    async stop() {
+      if (!started) return;
+      started = false;
+      const timeout = input.stopTimeoutMs ?? 5_000;
+      await control(
+        ["stop", "-D", input.dataDir, "-m", "fast", "-w", "-t", String(Math.ceil(timeout / 1000))],
+        timeout + 10_000,
+      ).catch(() =>
+        control(["stop", "-D", input.dataDir, "-m", "immediate", "-w"], 30_000).catch(() => {
+          throw new Error("Native process did not stop.");
+        }),
+      );
+    },
+  };
+}
+
+/** Quotes each option for the Windows command line pg_ctl passes to postgres. */
+export function windowsCommandLine(args: string[]): string {
+  return args
+    .map((arg) =>
+      arg === "" || /[\s"]/.test(arg) || /=$/.test(arg) ? `"${arg.replaceAll('"', '\\"')}"` : arg,
+    )
+    .join(" ");
+}

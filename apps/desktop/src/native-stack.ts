@@ -49,7 +49,7 @@ import {
   CURRENT_NATIVE_POSTGRES_MAJOR,
   LEGACY_PROFILE_MARKERS,
 } from "./native-postgres-layout.js";
-import { createNativeProcess } from "./native-process.js";
+import { createNativeProcess, createPostgresProcess } from "./native-process.js";
 import { NativeRuntime } from "./native-runtime.js";
 import { smokeLog } from "./native-smoke.js";
 import { nativeWeb } from "./native-web.js";
@@ -456,7 +456,6 @@ async function importLegacyProfile(input: {
   base: NodeJS.ProcessEnv;
   signal: AbortSignal;
 }) {
-  const exe = process.platform === "win32" ? ".exe" : "";
   const pathName = process.platform === "win32" ? "Path" : "PATH";
   const bin = path.join(input.bundle, "pg16", "bin");
   const lib = path.join(input.bundle, "pg16", "lib");
@@ -467,18 +466,10 @@ async function importLegacyProfile(input: {
     [pathName]: [bin, input.base[pathName]].filter(Boolean).join(path.delimiter),
   };
   const port = String(await allocateLoopbackPort());
-  const reader = createNativeProcess({
-    executable: path.join(bin, `postgres${exe}`),
-    args: [
-      "-D",
-      path.join(input.snapshot, "pg", "data"),
-      "-h",
-      "127.0.0.1",
-      "-p",
-      port,
-      "-c",
-      "unix_socket_directories=",
-    ],
+  const reader = createPostgresProcess({
+    bin,
+    dataDir: path.join(input.snapshot, "pg", "data"),
+    options: ["-h", "127.0.0.1", "-p", port, "-c", "unix_socket_directories="],
     cwd: input.root,
     env: readerEnv,
     // A copy of a profile that was not shut down cleanly replays its log first.
@@ -779,11 +770,10 @@ export class NativeStackController {
     let bootTime = 0;
     this.runtime = new NativeRuntime({
       origin: this.url,
-      postgres: createNativeProcess({
-        executable: executable("postgres"),
-        args: [
-          "-D",
-          prepared.dataDir,
+      postgres: createPostgresProcess({
+        bin: path.join(bundle, "pg", "bin"),
+        dataDir: prepared.dataDir,
+        options: [
           "-h",
           "127.0.0.1",
           "-p",

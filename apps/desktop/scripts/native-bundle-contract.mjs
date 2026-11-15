@@ -6,6 +6,8 @@ export function legacyPostgresBundleFiles(platform = process.platform) {
   return [
     `pg16/bin/postgres${platform === "win32" ? ".exe" : ""}`,
     "pg16/share/postgresql/postgres.bki",
+    // Windows starts the server through pg_ctl, which drops administrator rights.
+    ...(platform === "win32" ? ["pg16/bin/pg_ctl.exe"] : []),
   ];
 }
 
@@ -17,6 +19,7 @@ export function nativeBundleFiles(platform = process.platform) {
     node,
     executable("postgres"),
     executable("initdb"),
+    ...(platform === "win32" ? [executable("pg_ctl")] : []),
     "pg/share/postgres.bki",
     ...legacyPostgresBundleFiles(platform),
     "apps/api/dist/index.js",
