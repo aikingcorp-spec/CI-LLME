@@ -111,7 +111,7 @@ jobs:
           done
           lipo -create -output "$dir/node" \
             "$dir/node-$version-darwin-x64/bin/node" "$dir/node-$version-darwin-arm64/bin/node"
-          lipo -verify_arch x86_64 arm64 "$dir/node"
+          lipo "$dir/node" -verify_arch x86_64 arm64
           echo "NATIVE_NODE=$dir/node" >> "$GITHUB_ENV"
           echo "NATIVE_ARCH=universal" >> "$GITHUB_ENV"
 
