@@ -1,8 +1,14 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { describe, expect, it, vi } from "vitest";
-import { hasModelAccess, memberHasModelAccess, ownerHadTrial } from "./billing.js";
+import {
+  hasModelAccess,
+  memberHasModelAccess,
+  organizationForMember,
+  ownerHadTrial,
+} from "./billing.js";
 import { PrismaClient } from "./client.js";
+import { homeOrganizationId } from "./spaces.js";
 
 describe("model access", () => {
   const now = new Date("2030-01-15T12:00:00.000Z");
@@ -83,4 +89,74 @@ it("denies model access to an unpaid member without consulting another organizat
     await client.$disconnect();
     await pool.end();
   }
+});
+
+describe("a guest-only visitor on a remote computer", () => {
+  const hostOrganization = { id: "host-org", modelCredits: null, billing: null };
+
+  it("works with the inviting owner's models, never looking for an organization of their own", async () => {
+    const organizationLookup = vi.fn();
+    const client = {
+      spaceMember: {
+        findUnique: vi.fn().mockResolvedValue({
+          member: { role: "guest", organization: hostOrganization },
+        }),
+      },
+      member: {
+        findMany: vi.fn().mockResolvedValue([{ organizationId: "host-org", role: "guest" }]),
+      },
+      organization: { findUnique: organizationLookup },
+    } as unknown as PrismaClient;
+    await expect(
+      memberHasModelAccess(client, { spaceId: "space-1", userId: "visitor" }),
+    ).resolves.toBe(false);
+    expect(organizationLookup).not.toHaveBeenCalled();
+  });
+
+  it("keeps a guest with an organization of their own on their own models", async () => {
+    const organizationLookup = vi.fn().mockResolvedValue({ modelCredits: null, billing: null });
+    const client = {
+      spaceMember: {
+        findUnique: vi.fn().mockResolvedValue({
+          member: { role: "guest", organization: hostOrganization },
+        }),
+      },
+      member: {
+        findMany: vi.fn().mockResolvedValue([{ organizationId: "own-org", role: "owner" }]),
+      },
+      organization: { findUnique: organizationLookup },
+    } as unknown as PrismaClient;
+    await memberHasModelAccess(client, { spaceId: "space-1", userId: "guest" });
+    expect(organizationLookup.mock.calls[0]?.[0].where).toEqual({ id: "own-org" });
+  });
+
+  it("bills the inviting owner's organization without making the visitor its owner", async () => {
+    const client = {
+      space: { findUnique: vi.fn().mockResolvedValue({ organizationId: "host-org" }) },
+      member: {
+        findUnique: vi.fn().mockResolvedValue({ role: "guest" }),
+        findMany: vi.fn().mockResolvedValue([{ organizationId: "host-org", role: "guest" }]),
+      },
+    } as unknown as PrismaClient;
+    await expect(
+      organizationForMember(client, { spaceId: "space-1", userId: "visitor" }),
+    ).resolves.toEqual({ organizationId: "host-org", isOwner: false });
+  });
+
+  it("lists the Spaces it was invited to through the shared Space's organization", async () => {
+    const client = {
+      spaceMember: {
+        findUnique: vi.fn().mockResolvedValue({
+          organizationId: "host-org",
+          member: { role: "guest" },
+        }),
+      },
+      member: {
+        findMany: vi.fn().mockResolvedValue([{ organizationId: "host-org", role: "guest" }]),
+      },
+    } as unknown as PrismaClient;
+    await expect(
+      homeOrganizationId(client, { userId: "visitor", spaceId: "space-1" }),
+    ).resolves.toBe("host-org");
+  });
 });

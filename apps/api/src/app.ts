@@ -78,7 +78,7 @@ import {
   WorkActivities,
   withSecretPersistence,
 } from "@rakazo/adapters";
-import type { DirectoryAccountChange } from "@rakazo/auth";
+import type { DirectoryAccountChange, Edition } from "@rakazo/auth";
 import {
   buildTrustedOrigins,
   CLIENT_IP_HEADER,
@@ -86,12 +86,14 @@ import {
   createDirectory,
   isBlockedAuthPath,
   issueRemoteEnterTicket,
+  lookupEdition,
 } from "@rakazo/auth";
 import type { Actor, AuthCapabilities } from "@rakazo/contracts";
 import {
   isLocalhostOrLoopbackIp,
   PLUGIN_SUBMISSIONS_PATH,
   SERVER_BUILD_HEADER,
+  WEB_APP_NOT_INCLUDED,
 } from "@rakazo/contracts";
 import { withPortalFrameAncestor } from "@rakazo/contracts/content-security-policy";
 import {
@@ -156,6 +158,7 @@ import {
 } from "./client-ip.js";
 import { createConnectorTokenHold } from "./connector-tokens.js";
 import { cspReportRoutes } from "./csp-report.js";
+import { desktopDownloads } from "./desktop-downloads.js";
 import { configuredEmailProvider, verifiedEmailRequired } from "./email.js";
 import { mountEmailInboundRoute } from "./email-inbound.js";
 import type { AppEnv } from "./env.js";
@@ -789,6 +792,16 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       });
     }
   };
+  // A free address uses the desktop app on its own computer: no hosted web app and no remote
+  // access. Only a server with the invite list knows editions; a desktop's own server has none.
+  const editions = Boolean(env.emailAllowlist) && !localDeviceId;
+  const accountEdition = async (userId: string): Promise<Edition | null> => {
+    if (!editions) return "team";
+    const user = await runAsSystem("read an account's edition", () =>
+      prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+    );
+    return user ? lookupEdition(prisma, user.email) : null;
+  };
   const remoteRegistry =
     localIdentity?.devicePrivateKey && localDeviceId
       ? createRemoteRegistryClient({
@@ -979,6 +992,19 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       });
     });
   }
+  if (editions) {
+    // Team accounts install from here; free accounts use the public site.
+    const downloads = desktopDownloads();
+    app.get("/api/desktop-downloads", async (c) => {
+      c.header("cache-control", "no-store");
+      const session = await auth.api.getSession({ headers: c.req.raw.headers });
+      if (!session?.user) return c.json({ error: "unauthorized" }, 401);
+      if ((await lookupEdition(prisma, session.user.email)) !== "team")
+        return c.json({ error: "forbidden" }, 403);
+      const value = await downloads().catch(() => null);
+      return value ? c.json(value) : c.json({ error: "unavailable" }, 503);
+    });
+  }
   if (issuerIdentity) {
     app.get("/api/remote-entry", (c) => {
       c.header("cache-control", "no-store");
@@ -1020,6 +1046,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
             policy: remoteSeatPolicy(),
             tokens: connectorTokens,
             signed,
+            included: async (accountId) => (await accountEdition(accountId)) === "team",
           }),
       }),
     );
@@ -1221,6 +1248,21 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     if (tooLarge) return tooLarge;
     if (actor) {
       enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
+      if (editions && (await lookupEdition(prisma, actor.email)) === "free") {
+        // The oRPC error shape, so the web app reads it like any other RPC failure.
+        return c.json(
+          {
+            json: {
+              defined: false,
+              code: WEB_APP_NOT_INCLUDED,
+              status: 403,
+              message: "This account uses the desktop app",
+            },
+          },
+          403,
+          { "cache-control": "no-store" },
+        );
+      }
     }
     const { matched, response } = await rpc.handle(c.req.raw, {
       prefix: "/rpc",

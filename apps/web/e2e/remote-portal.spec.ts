@@ -108,6 +108,62 @@ test("the portal keeps a computer session isolated while its address stays on th
   await context.unrouteAll({ behavior: "ignoreErrors" });
 });
 
+test("an invitation opened before sign-in reaches the computer after sign-in", async ({
+  page,
+  context,
+}, testInfo) => {
+  const baseURL = testInfo.project.use.baseURL;
+  if (!baseURL) throw new Error("The portal test needs the existing web server");
+  await signInForPortal(page, `portal-join-${Date.now()}@example.test`);
+  const session = await page.request
+    .get("/api/auth/get-session")
+    .then((response) => response.json());
+  const cookie = (await context.cookies(baseURL))
+    .map((item) => `${item.name}=${item.value}`)
+    .join("; ");
+  const portal = "https://app.vnbot.run";
+  const computer = "https://computer.example.test";
+  let entered = 0;
+  await page.routeWebSocket(/app\.vnbot\.run|computer\.example\.test/, (socket) => socket.close());
+  await context.route(`${portal}/**`, async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === "/api/auth/get-session") return route.fulfill({ json: session });
+    if (url.pathname === "/rpc/remoteHosts/enter") {
+      entered += 1;
+      return route.fulfill({ json: { json: { href: `${computer}/remote-enter#fixture-ticket` } } });
+    }
+    const response = await route.fetch({
+      url: new URL(url.pathname + url.search, baseURL).href,
+      headers: { ...request.headers(), cookie, origin: new URL(baseURL).origin },
+    });
+    const headers = { ...response.headers() };
+    if (headers["content-type"]?.includes("text/html"))
+      headers["content-security-policy"] = `frame-src 'self' ${computer}`;
+    return route.fulfill({ response, headers });
+  });
+  await context.route(`${computer}/**`, (route) =>
+    route.fulfill({
+      contentType: "text/html; charset=utf-8",
+      headers: { "content-security-policy": `frame-ancestors ${portal}` },
+      body: "<!doctype html><title>Computer</title><p>Computer</p>",
+    }),
+  );
+  // The join page saved the invitation before sending the person to sign in.
+  await page.addInitScript(() =>
+    sessionStorage.setItem("rakazo-remote-join", "device=join-computer&invite=fixture-invite"),
+  );
+  // Signed in, the sign-in page moves on to /remote-join inside the app, without a new page load.
+  await page.goto(`${portal}/sign-in?next=%2Fremote-join`);
+  await expect(page).toHaveURL(`${portal}/m/join-computer/app`);
+  expect(entered).toBeGreaterThan(0);
+  const src = await page.locator('iframe[title="VNBot"]').getAttribute("src");
+  expect(new URLSearchParams(new URL(src ?? "").hash.slice(1)).get("invite")).toBe(
+    "fixture-invite",
+  );
+  await context.unrouteAll({ behavior: "ignoreErrors" });
+});
+
 async function signInForPortal(page: Page, email: string) {
   const baseURL = test.info().project.use.baseURL;
   if (!baseURL) throw new Error("The portal test needs the existing web server");

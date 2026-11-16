@@ -45,18 +45,47 @@ export function sessionNotInvited(): APIError {
   });
 }
 
-export async function isEmailInvited(prisma: PrismaClient, raw: unknown): Promise<boolean> {
+/** "team" uses everything VNBot offers; "free" uses the desktop app on the person's own computer. */
+export type Edition = "team" | "free";
+export const EDITIONS: readonly Edition[] = ["team", "free"];
+
+/**
+ * A row with this address admits every other address as free. Adding it opens free sign-up to
+ * everyone; removing it returns to approving each address.
+ */
+export const FREE_FOR_EVERYONE = "*@*";
+
+/** The address's edition, or null when the list does not admit it. Throws when the list cannot be read. */
+export async function emailEdition(prisma: PrismaClient, raw: unknown): Promise<Edition | null> {
   const email = normalizeEmail(raw);
-  if (!isAllowlistEmail(email)) return false;
+  if (!isAllowlistEmail(email) || email === FREE_FOR_EVERYONE) return null;
   // The shared API client does not set bypass on every checkout. This system
   // context does, so the lookup connection gets app.rls_bypass = 'on'.
   return runAsSystemInTransaction(prisma, "read the sign-in invite list", async () => {
-    const row = await prisma.authEmailAllowlist.findUnique({
+    const own = await prisma.authEmailAllowlist.findUnique({
       where: { email },
+      select: { edition: true },
+    });
+    if (own) return own.edition === "free" ? "free" : "team";
+    const everyone = await prisma.authEmailAllowlist.findUnique({
+      where: { email: FREE_FOR_EVERYONE },
       select: { email: true },
     });
-    return row !== null;
+    return everyone ? "free" : null;
   });
+}
+
+export async function isEmailInvited(prisma: PrismaClient, raw: unknown): Promise<boolean> {
+  return (await emailEdition(prisma, raw)) !== null;
+}
+
+/** The edition, with a failed read treated as not admitted. */
+export async function lookupEdition(prisma: PrismaClient, raw: unknown): Promise<Edition | null> {
+  try {
+    return await emailEdition(prisma, raw);
+  } catch {
+    return null;
+  }
 }
 
 /** A failed read is not an empty list. Callers deny both, and revoke sessions only for "absent". */
@@ -72,6 +101,7 @@ export async function lookupInvite(prisma: PrismaClient, raw: unknown): Promise<
 
 export interface AllowlistEntry {
   email: string;
+  edition: string;
   note: string | null;
   addedBy: string | null;
   createdAt: Date;
@@ -80,18 +110,28 @@ export interface AllowlistEntry {
 export async function addAllowlistEmail(
   prisma: PrismaClient,
   raw: unknown,
-  meta: { note?: string | null; addedBy?: string | null } = {},
-): Promise<{ email: string; created: boolean }> {
+  meta: { note?: string | null; addedBy?: string | null; edition?: Edition } = {},
+): Promise<{ email: string; created: boolean; changed: boolean }> {
   const email = normalizeEmail(raw);
   if (!isAllowlistEmail(email)) throw new Error("Email is not a usable invite address");
   const note = blankToNull(meta.note);
   const addedBy = blankToNull(meta.addedBy);
+  const edition = meta.edition ?? "team";
   try {
-    await prisma.authEmailAllowlist.create({ data: { email, note, addedBy } });
-    return { email, created: true };
+    await prisma.authEmailAllowlist.create({ data: { email, note, addedBy, edition } });
+    return { email, created: true, changed: false };
   } catch (error) {
-    if (isUniqueViolation(error)) return { email, created: false };
-    throw error;
+    if (!isUniqueViolation(error)) throw error;
+    // Adding a listed address again moves it to the edition asked for. The runtime login has no
+    // UPDATE on this table, so the row is replaced; its sessions stay, as the address stays listed.
+    const changed = await prisma.$transaction(async (tx) => {
+      const row = await tx.authEmailAllowlist.findUnique({ where: { email } });
+      if (!row || row.edition === edition) return false;
+      await tx.authEmailAllowlist.deleteMany({ where: { email } });
+      await tx.authEmailAllowlist.create({ data: { ...row, edition } });
+      return true;
+    });
+    return { email, created: false, changed };
   }
 }
 
@@ -118,12 +158,12 @@ export async function removeAllowlistEmail(
 export async function listAllowlistEmails(prisma: PrismaClient): Promise<AllowlistEntry[]> {
   return prisma.authEmailAllowlist.findMany({
     orderBy: { email: "asc" },
-    select: { email: true, note: true, addedBy: true, createdAt: true },
+    select: { email: true, edition: true, note: true, addedBy: true, createdAt: true },
   });
 }
 
 export type AllowlistCommand =
-  | { action: "add"; email: string; note?: string; addedBy?: string }
+  | { action: "add"; email: string; note?: string; addedBy?: string; edition?: Edition }
   | { action: "remove"; email: string }
   | { action: "list" };
 
@@ -144,18 +184,24 @@ export async function runEmailAllowlist(
   const result = await addAllowlistEmail(prisma, command.email, {
     note: command.note,
     addedBy: command.addedBy,
+    edition: command.edition,
   });
-  return result.created ? `added ${result.email}\n` : `already listed ${result.email}\n`;
+  const edition = command.edition ?? "team";
+  if (result.created) return `added ${result.email} (${edition})\n`;
+  if (result.changed) return `moved ${result.email} to ${edition}\n`;
+  return `already listed ${result.email} (${edition})\n`;
 }
 
 function allowlistLine(row: AllowlistEntry): {
   email: string;
+  edition: string;
   note: string | null;
   addedBy: string | null;
   createdAt: string;
 } {
   return {
     email: row.email,
+    edition: row.edition,
     note: row.note,
     addedBy: row.addedBy,
     createdAt: row.createdAt.toISOString(),
@@ -176,26 +222,33 @@ export function parseEmailAllowlistArgs(args: string[]): AllowlistCommand {
       email,
       ...(values.note !== undefined ? { note: values.note } : {}),
       ...(values["added-by"] !== undefined ? { addedBy: values["added-by"] } : {}),
+      ...(action === "add" && values.edition ? { edition: values.edition } : {}),
     };
   }
   throw new Error(ALLOWLIST_USAGE);
 }
 
 export const ALLOWLIST_USAGE =
-  "Usage: email-allowlist <add|remove|list> [email] [--note text] [--added-by text]";
+  "Usage: email-allowlist <add|remove|list> [email] [--free|--team] [--note text] [--added-by text]";
 
 function parseAllowlistArgs(args: string[]) {
   return parseArgs(args);
 }
 
 function parseArgs(args: string[]): {
-  values: { note?: string; "added-by"?: string };
+  values: { note?: string; "added-by"?: string; edition?: Edition };
   positionals: string[];
 } {
-  const values: { note?: string; "added-by"?: string } = {};
+  const values: { note?: string; "added-by"?: string; edition?: Edition } = {};
   const positionals: string[] = [];
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!;
+    if (arg === "--free" || arg === "--team") {
+      const edition = arg === "--free" ? "free" : "team";
+      if (values.edition && values.edition !== edition) throw new Error(ALLOWLIST_USAGE);
+      values.edition = edition;
+      continue;
+    }
     if (arg === "--note" || arg === "--added-by") {
       const value = args[index + 1];
       if (value === undefined || value.startsWith("--")) throw new Error(ALLOWLIST_USAGE);

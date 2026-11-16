@@ -6,7 +6,9 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SpaceMembersSettings } from "./SpaceMembersSettings";
 
-const { rpc, toast } = vi.hoisted(() => ({
+const { rpc, toast, bridge, remoteHosts } = vi.hoisted(() => ({
+  bridge: { current: null as object | null },
+  remoteHosts: { list: vi.fn() },
   rpc: {
     spaces: {
       members: { list: vi.fn(), remove: vi.fn(), leave: vi.fn() },
@@ -54,6 +56,8 @@ vi.mock("@rakazo/ui-web", () => {
   };
 });
 vi.mock("../lib/space-rpc", () => ({ useSpaceRpc: () => rpc }));
+vi.mock("../lib/rpc", () => ({ rpc: { remoteHosts } }));
+vi.mock("../lib/desktop", () => ({ desktopBridge: () => bridge.current }));
 
 const owner = {
   userId: "user-owner",
@@ -76,6 +80,7 @@ let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  bridge.current = null;
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -107,6 +112,33 @@ it("lets the owner invite and remove members but not leave", async () => {
   ]);
   expect(buttonNamed("Mời")).toBeTruthy();
   expect(buttonNamed("Leave space")).toBeUndefined();
+});
+
+it("offers no invite on a computer the account cannot open remotely", async () => {
+  bridge.current = {};
+  remoteHosts.list.mockResolvedValue({ kind: "unavailable", devices: [] });
+  await renderWith({ spaceName: "Home", members: [owner, member], canManage: true });
+  expect(buttonNamed("Mời")).toBeUndefined();
+  expect(buttonNamed("Remove")).toBeTruthy();
+});
+
+it("offers invites on a computer that remote access can reach", async () => {
+  bridge.current = {};
+  remoteHosts.list.mockResolvedValue({
+    kind: "open",
+    deviceId: "device-1",
+    logicalHost: "computer.example.test",
+    devices: [
+      {
+        deviceId: "device-1",
+        logicalHost: "computer.example.test",
+        remoteEnabled: true,
+        state: "ready",
+      },
+    ],
+  });
+  await renderWith({ spaceName: "Home", members: [owner, member], canManage: true });
+  expect(buttonNamed("Mời")).toBeTruthy();
 });
 
 it("a member cannot invite or remove, and leaves after confirming", async () => {

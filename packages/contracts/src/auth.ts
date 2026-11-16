@@ -25,6 +25,9 @@ export type AuthCapabilities = z.infer<typeof authCapabilitiesSchema>;
 /** Admission denied by the backend's email invite list. */
 export const EMAIL_NOT_INVITED = "EMAIL_NOT_INVITED";
 
+/** The account is listed for the desktop app only, so the hosted web app refuses it. */
+export const WEB_APP_NOT_INCLUDED = "WEB_APP_NOT_INCLUDED";
+
 export const accountSecuritySchema = z.object({
   hasPassword: z.boolean(),
   // Older servers omit this field; clients treat omission as enabled.

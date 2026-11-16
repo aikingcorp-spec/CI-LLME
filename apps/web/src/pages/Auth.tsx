@@ -22,7 +22,7 @@ import { clearSpaceSelection } from "../lib/rpc";
 import { newAccountDestination, signInNext } from "../lib/sign-in-next";
 import { runSsoFlow } from "../lib/sso-flow";
 import { authErrorText, credentialIssueText } from "../lib/user-error";
-import { VNBOT_CONTACT_URL } from "../lib/vnbot-links";
+import { VNBOT_COMMUNITY_URL, VNBOT_CONTACT_URL } from "../lib/vnbot-links";
 import { WindowChrome } from "./WindowChrome";
 
 type AuthMode = "in" | "up" | "forgot";
@@ -316,6 +316,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     <AuthFrame
       onSubmit={submit}
       title={title}
+      notInvited={error !== null && error === authErrorText({ code: EMAIL_NOT_INVITED }, "")}
       subtitle={
         codeStep ? (
           <Trans>
@@ -669,11 +670,14 @@ export function AuthFrame({
   title,
   subtitle,
   onSubmit,
+  notInvited = false,
   children,
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   onSubmit: (event: React.FormEvent) => void;
+  /** The invite list refused the address: point the person to where approval happens. */
+  notInvited?: boolean;
   children: React.ReactNode;
 }) {
   const server = desktopBridge()?.server;
@@ -705,6 +709,15 @@ export function AuthFrame({
           )}
           {children}
         </form>
+        {notInvited ? (
+          <Button
+            variant="outline"
+            className={submitClass}
+            render={<a href={VNBOT_COMMUNITY_URL} target="_blank" rel="noopener noreferrer" />}
+          >
+            <Trans>VNBot community</Trans>
+          </Button>
+        ) : null}
         <p className="mt-8 flex gap-4 text-body text-muted-foreground">
           <a
             href={VNBOT_CONTACT_URL}

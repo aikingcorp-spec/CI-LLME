@@ -201,6 +201,20 @@ it("runs in-app OTP through the issuer and local session caller, then logs out l
   expect(f.seen.every((r) => !r.url.includes("token") && !r.url.includes("?"))).toBe(true);
 });
 
+it("passes on the issuer refusing an address it has not approved, and nothing else", async () => {
+  const f = servers();
+  const refuse = (status: number, body: unknown) =>
+    vi.stubGlobal("fetch", async () => Response.json(body, { status }));
+  refuse(403, { code: "EMAIL_NOT_INVITED", message: "This email is not invited yet" });
+  const refused = await f.call("/email-otp/send-verification-otp", { email: source.email });
+  expect(refused.status).toBe(403);
+  expect(await refused.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
+  refuse(403, { code: "SOMETHING_ELSE" });
+  const other = await f.call("/email-otp/send-verification-otp", { email: source.email });
+  expect(other.status).toBe(401);
+  expect(await other.json()).not.toMatchObject({ code: "EMAIL_NOT_INVITED" });
+});
+
 it("enrolls only the device public key and then closes the central session", async () => {
   const device = createRemoteDeviceKey();
   const f = servers(device.privateKey);

@@ -210,8 +210,11 @@ export async function memberHasModelAccess(
   if (membership.member.role !== GUEST_ROLE) {
     return organizationModelAccess(membership.member.organization);
   }
+  const owned = await ownedOrganizationIdOrNull(prisma, scope.userId);
+  // A guest-only visitor the computer's owner invited works with the owner's models.
+  if (!owned) return organizationModelAccess(membership.member.organization);
   const organization = await prisma.organization.findUnique({
-    where: { id: await ownedOrganizationId(prisma, scope.userId) },
+    where: { id: owned },
     select: MODEL_ACCESS_SELECT,
   });
   return organization ? organizationModelAccess(organization) : false;
@@ -461,6 +464,19 @@ export async function ownedOrganizationId(
   db: Pick<PrismaClient, "member">,
   userId: string,
 ): Promise<string> {
+  const owned = await ownedOrganizationIdOrNull(db, userId);
+  if (!owned) throw new IsolationError();
+  return owned;
+}
+
+/**
+ * The oldest live organization the person owns, or null for a guest-only account: someone who
+ * entered a computer through remote access by invitation and has no organization there.
+ */
+export async function ownedOrganizationIdOrNull(
+  db: Pick<PrismaClient, "member">,
+  userId: string,
+): Promise<string | null> {
   const memberships = await db.member.findMany({
     where: {
       userId,
@@ -469,9 +485,7 @@ export async function ownedOrganizationId(
     select: { organizationId: true, role: true },
     orderBy: { createdAt: "asc" },
   });
-  const owned = memberships.find((membership) => isOwnerRole(membership.role));
-  if (!owned) throw new IsolationError();
-  return owned.organizationId;
+  return memberships.find((membership) => isOwnerRole(membership.role))?.organizationId ?? null;
 }
 
 /**
@@ -495,7 +509,11 @@ export async function organizationForMember(
   });
   if (!member) return null;
   if (member.role === GUEST_ROLE) {
-    return { organizationId: await ownedOrganizationId(prisma, input.userId), isOwner: true };
+    const owned = await ownedOrganizationIdOrNull(prisma, input.userId);
+    // A guest-only visitor has nothing of their own to bill; the inviting owner's organization
+    // pays, as on a remote computer where the owner shares their bots.
+    if (!owned) return { organizationId: space.organizationId, isOwner: false };
+    return { organizationId: owned, isOwner: true };
   }
   return { organizationId: space.organizationId, isOwner: isOwnerRole(member.role) };
 }

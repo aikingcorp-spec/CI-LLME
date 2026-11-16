@@ -97,15 +97,39 @@ it("keeps the host inside a cross-origin sandbox and carries the pending invitat
   }
 });
 
-it("keeps account and retry exits when the computer is unavailable", async () => {
+it("keeps asking while the computer starts, then keeps account and retry exits", async () => {
+  vi.useFakeTimers();
   enter.mockResolvedValue({ href: null });
   const view = await mount();
   try {
     expect(view.container.querySelector("iframe")).toBeNull();
     expect(view.container.textContent).toContain("Account");
+    expect(view.container.textContent).toContain("Đang kết nối tới máy…");
+    for (let wait = 0; wait < 4; wait += 1)
+      await act(async () => vi.advanceTimersByTimeAsync(3_000));
+    expect(enter).toHaveBeenCalledTimes(5);
+    expect(view.container.textContent).toContain("Máy này đang tắt hoặc mất mạng.");
     expect(view.container.textContent).toContain("Thử lại");
   } finally {
     await view.stop();
+    vi.useRealTimers();
+  }
+});
+
+it("asks for a fresh entry when the computer page never answers", async () => {
+  vi.useFakeTimers();
+  enter
+    .mockResolvedValueOnce({ href: "https://computer.example.test/remote-enter#first-ticket" })
+    .mockResolvedValueOnce({ href: "https://computer.example.test/remote-enter#second-ticket" });
+  const view = await mount();
+  try {
+    expect(view.container.querySelector("iframe")!.src).toContain("first-ticket");
+    await act(async () => vi.advanceTimersByTimeAsync(15_000 + 3_000));
+    expect(enter).toHaveBeenCalledTimes(2);
+    expect(view.container.querySelector("iframe")!.src).toContain("second-ticket");
+  } finally {
+    await view.stop();
+    vi.useRealTimers();
   }
 });
 

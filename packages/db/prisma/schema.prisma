@@ -457,6 +457,8 @@ model AuthEmailAllowlist {
   note      String?
   /// Free text (admin email or handle). No foreign key.
   addedBy   String?
+  /// "team" uses everything; "free" uses the desktop app on its own computer only.
+  edition   String   @default("team")
   createdAt DateTime @default(now())
 
   @@map("auth_email_allowlist")

@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
+import { EMAIL_NOT_INVITED } from "@rakazo/contracts";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { sessionForAuthHook } from "./account-security.js";
+import { notInvited } from "./email-allowlist.js";
 import type { IdentityExchangeConfig } from "./identity-exchange-config.js";
 import { remoteDevicePublicKey } from "./remote-device-key.js";
 import { consumeRemoteEnterTicket, verifyRemoteEnterTicket } from "./remote-enter-ticket.js";
@@ -25,6 +27,10 @@ function optionalField(body: unknown, key: string): string | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== "string" || !value || value.length > 4096) throw denied();
   return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 export async function issueIdentityProof(
@@ -174,7 +180,10 @@ export function identityExchange(
       body: JSON.stringify(body),
     });
     if (!response.ok) {
-      await response.body?.cancel();
+      // The central list refusing the address is the one failure the person can act on.
+      const body: unknown = await response.json().catch(() => null);
+      if (response.status === 403 && isRecord(body) && body.code === EMAIL_NOT_INVITED)
+        throw notInvited();
       throw denied();
     }
     return response;

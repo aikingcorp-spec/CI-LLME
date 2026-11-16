@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
-import { act } from "react";
+import { act, cloneElement } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -25,12 +25,20 @@ vi.mock("@rakazo/ui-web", () => ({
     children,
     variant,
     size,
+    render,
     ...props
-  }: React.ComponentProps<"button"> & { variant?: string; size?: string }) => (
-    <button data-variant={variant ?? "default"} data-size={size} {...props}>
-      {children}
-    </button>
-  ),
+  }: React.ComponentProps<"button"> & {
+    variant?: string;
+    size?: string;
+    render?: React.ReactElement<{ children?: ReactNode }>;
+  }) =>
+    render ? (
+      cloneElement(render, { "data-variant": variant ?? "default" } as never, children)
+    ) : (
+      <button data-variant={variant ?? "default"} data-size={size} {...props}>
+        {children}
+      </button>
+    ),
   Input: (props: React.ComponentProps<"input">) => <input {...props} />,
   InputOTP: ({
     maxLength,
@@ -447,11 +455,12 @@ it("sends the selected English locale with the code request", async () => {
   });
 });
 
-it("shows the limited preview and keeps contact when the invite list refuses the address", async () => {
+it("says the address is not approved and points to the community when the invite list refuses it", async () => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue(codeCapabilities);
   await render("in", "/sign-in?error=EMAIL_NOT_INVITED");
-  expect(host.textContent).toContain("VNBot is in limited preview");
+  expect(host.textContent).toContain("This email is not approved for VNBot yet");
   expect(host.querySelector('a[href="https://aikingx.com/lien-he/"]')).not.toBeNull();
+  expect(host.querySelector('a[href^="https://zalo.me/"]')?.textContent).toBe("VNBot community");
   vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
     data: null,
     error: { code: "EMAIL_NOT_INVITED", message: "This email is not invited yet", status: 403 },
@@ -459,6 +468,6 @@ it("shows the limited preview and keeps contact when the invite list refuses the
   await enter(host.querySelector('input[name="email"]'), "ada@example.test");
   await submit();
   expect(host.querySelector("h1")!.textContent).not.toBe("Check your email");
-  expect(host.textContent).toContain("VNBot is in limited preview");
+  expect(host.textContent).toContain("This email is not approved for VNBot yet");
   expect(clearSpaceSelection).not.toHaveBeenCalled();
 });

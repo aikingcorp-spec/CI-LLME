@@ -8845,3 +8845,23 @@ msgstr "Đã hủy đăng nhập. Thử lại trong Quản lý máy chủ MCP."
 #: src/pages/PluginsOverlay.tsx
 msgid "This server needs an OAuth client ID. Add one in Manage MCP servers."
 msgstr "Máy chủ này cần OAuth client ID. Thêm trong Quản lý máy chủ MCP."
+
+#: src/lib/user-error.ts
+msgid "This email is not approved for VNBot yet"
+msgstr "Email này chưa được duyệt dùng VNBot"
+
+#: src/pages/Auth.tsx
+msgid "VNBot community"
+msgstr "Cộng đồng VNBot"
+
+#: src/components/DesktopOnly.tsx
+msgid "Use VNBot on your computer"
+msgstr "Dùng VNBot trên máy tính"
+
+#: src/components/DesktopOnly.tsx
+msgid "Your account works in the VNBot app, not on the web."
+msgstr "Tài khoản của bạn dùng trong ứng dụng VNBot, chưa dùng được trên web."
+
+#: src/components/DesktopOnly.tsx
+msgid "Download VNBot"
+msgstr "Tải VNBot"

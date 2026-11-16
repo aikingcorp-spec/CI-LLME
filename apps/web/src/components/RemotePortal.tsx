@@ -7,7 +7,6 @@ import { portalEntry, readRememberedComputer, rememberComputer } from "../lib/re
 import { machinePath } from "../lib/remote-frame";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
-import { VNBOT_DOWNLOAD_URL } from "../lib/vnbot-links";
 import { PageAccountMenu } from "./PageAccountMenu";
 import { RemoteStateLabel } from "./RemoteSettings";
 import { SettingsGroup, SettingsRow } from "./SettingsRows";
@@ -51,7 +50,7 @@ export function RemotePortalView({
           <p>
             <Trans>Chưa có máy nào để kết nối.</Trans>
           </p>
-          <Button render={<a href={VNBOT_DOWNLOAD_URL} />}>
+          <Button render={<a href="/tai-app" />}>
             <Trans>Tải VNBot</Trans>
           </Button>
         </div>
@@ -90,6 +89,11 @@ export function RemotePortalView({
           ))}
         </SettingsGroup>
       )}
+      {portal.devices.length > 0 ? (
+        <Button variant="ghost" className="mx-auto mt-4 flex" render={<a href="/tai-app" />}>
+          <Trans>Tải VNBot</Trans>
+        </Button>
+      ) : null}
     </div>
   );
 }

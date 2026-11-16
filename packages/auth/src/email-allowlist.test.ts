@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   addAllowlistEmail,
   EMAIL_NOT_INVITED_MESSAGE,
+  FREE_FOR_EVERYONE,
   isAllowlistEmail,
   isEmailInvited,
+  lookupEdition,
   lookupInvite,
   normalizeEmail,
   notInvited,
@@ -56,7 +58,13 @@ describe("invite list commands", () => {
   function memory() {
     const rows = new Map<
       string,
-      { email: string; note: string | null; addedBy: string | null; createdAt: Date }
+      {
+        email: string;
+        note: string | null;
+        addedBy: string | null;
+        edition?: string;
+        createdAt: Date;
+      }
     >();
     const sessions: { userEmail: string }[] = [
       { userEmail: "Lan@Gmail.com" },
@@ -87,14 +95,14 @@ describe("invite list commands", () => {
           async ({
             data,
           }: {
-            data: { email: string; note: string | null; addedBy: string | null };
+            data: { email: string; note: string | null; addedBy: string | null; edition: string };
           }) => {
             if (rows.has(data.email)) {
               const error = new Error("unique") as Error & { code: string };
               error.code = "P2002";
               throw error;
             }
-            const row = { ...data, createdAt: new Date("2026-10-28T00:00:00.000Z") };
+            const row = { createdAt: new Date("2026-10-28T00:00:00.000Z"), ...data };
             rows.set(data.email, row);
             return row;
           },
@@ -123,10 +131,12 @@ describe("invite list commands", () => {
     ).toEqual({
       email: "lan@gmail.com",
       created: true,
+      changed: false,
     });
     expect(await addAllowlistEmail(prisma, "lan@gmail.com")).toEqual({
       email: "lan@gmail.com",
       created: false,
+      changed: false,
     });
     expect(await isEmailInvited(prisma, "LAN@gmail.com")).toBe(true);
     expect(await lookupInvite(prisma, "LAN@gmail.com")).toBe("listed");
@@ -146,6 +156,44 @@ describe("invite list commands", () => {
     expect(
       await runEmailAllowlist(prisma, parseEmailAllowlistArgs(["remove", "missing@x.test"])),
     ).toBe("not listed missing@x.test\n");
+  });
+
+  it("keeps existing addresses on team and moves an address between editions", async () => {
+    const { prisma } = memory();
+    expect(parseEmailAllowlistArgs(["add", "free@x.test", "--free"])).toEqual({
+      action: "add",
+      email: "free@x.test",
+      edition: "free",
+    });
+    expect(() => parseEmailAllowlistArgs(["add", "a@x.test", "--free", "--team"])).toThrow(/Usage/);
+    expect(await runEmailAllowlist(prisma, parseEmailAllowlistArgs(["add", "team@x.test"]))).toBe(
+      "added team@x.test (team)\n",
+    );
+    expect(
+      await runEmailAllowlist(prisma, parseEmailAllowlistArgs(["add", "free@x.test", "--free"])),
+    ).toBe("added free@x.test (free)\n");
+    expect(await lookupEdition(prisma, "TEAM@x.test")).toBe("team");
+    expect(await lookupEdition(prisma, "free@x.test")).toBe("free");
+    expect(await lookupEdition(prisma, "other@x.test")).toBeNull();
+    expect(
+      await runEmailAllowlist(prisma, parseEmailAllowlistArgs(["add", "free@x.test", "--team"])),
+    ).toBe("moved free@x.test to team\n");
+    expect(await lookupEdition(prisma, "free@x.test")).toBe("team");
+    expect(await runEmailAllowlist(prisma, parseEmailAllowlistArgs(["add", "free@x.test"]))).toBe(
+      "already listed free@x.test (team)\n",
+    );
+  });
+
+  it("admits every other address as free only while the everyone row is listed", async () => {
+    const { prisma } = memory();
+    await addAllowlistEmail(prisma, "team@x.test");
+    expect(await isEmailInvited(prisma, "new@x.test")).toBe(false);
+    await addAllowlistEmail(prisma, FREE_FOR_EVERYONE, { edition: "free" });
+    expect(await lookupEdition(prisma, "new@x.test")).toBe("free");
+    expect(await lookupEdition(prisma, "team@x.test")).toBe("team");
+    expect(await lookupEdition(prisma, FREE_FOR_EVERYONE)).toBeNull();
+    await removeAllowlistEmail(prisma, FREE_FOR_EVERYONE);
+    expect(await isEmailInvited(prisma, "new@x.test")).toBe(false);
   });
 
   it("reports a failed read instead of treating it as an empty list", async () => {

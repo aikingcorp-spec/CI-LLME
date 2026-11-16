@@ -22,6 +22,7 @@ import {
 } from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { CallLayout } from "./components/call/CallLayout";
+import { DesktopOnlyPage } from "./components/DesktopOnly";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LocalRemotePresence } from "./components/LocalRemotePresence";
 import { MarkdownLinkPrompt } from "./components/markdown-link-prompt";
@@ -61,6 +62,8 @@ import {
 import { syncLogOutFailure, useSignOut } from "./lib/sign-out";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
 import { errorCode } from "./lib/user-error";
+import { subscribeWebAppRefusal, webAppRefused } from "./lib/web-app-access";
+import { DownloadsPage } from "./pages/Downloads";
 import { IntegrationCallbackPage } from "./pages/IntegrationCallback";
 import { IntegrationSetupPage } from "./pages/IntegrationSetup";
 import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
@@ -304,6 +307,7 @@ function SessionApp() {
     getTicketBoardEnabled,
     () => false,
   );
+  const webAppIsRefused = useSyncExternalStore(subscribeWebAppRefusal, webAppRefused, () => false);
   const session = authClient.useSession();
   const { pathname, search } = useLocation();
   const screen = analyticsScreen(pathname);
@@ -359,6 +363,7 @@ function SessionApp() {
   }
 
   const user = session.data?.user;
+  if (user && webAppIsRefused) return <DesktopOnlyPage />;
   return (
     <QueryUserProvider value={user?.id ?? null}>
       <RemoteFrameBridge authenticated={Boolean(user)} />
@@ -439,6 +444,14 @@ function SessionApp() {
                 }
               />
               <Route path="/invite/:token" element={user ? <InvitePage /> : <UnsignedInvite />} />
+              {/* Sign-in returns here inside the app; the first load is handled above. */}
+              <Route path="/remote-join" element={<RemoteJoinPage />} />
+              <Route
+                path="/tai-app"
+                element={
+                  user ? <DownloadsPage /> : <Navigate to="/sign-in?next=%2Ftai-app" replace />
+                }
+              />
               <Route
                 path="/m/:deviceId/*"
                 element={

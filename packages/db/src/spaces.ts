@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { displayName } from "@rakazo/core";
-import { GUEST_ROLE, isOwnerRole, ownedOrganizationId } from "./billing.js";
+import { GUEST_ROLE, isOwnerRole, ownedOrganizationIdOrNull } from "./billing.js";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
 import type { PageShareSecret } from "./page-shares.js";
@@ -155,6 +155,12 @@ export async function createSpaceForMember(
           userId: input.userId,
           spaceId: input.currentSpaceId,
         });
+        // A guest-only visitor's stand-in is the owner's organization, which is not theirs to grow.
+        const creator = await tx.member.findUnique({
+          where: { organizationId_userId: { organizationId, userId: input.userId } },
+          select: { role: true },
+        });
+        if (!creator || creator.role === GUEST_ROLE) throw new IsolationError();
         await lockOrganizationSpaces(tx, organizationId);
         const deleting = await tx.space.count({
           where: {
@@ -202,9 +208,9 @@ export async function homeOrganizationId(
     select: { organizationId: true, member: { select: { role: true } } },
   });
   if (!membership) throw new IsolationError();
-  return membership.member.role === GUEST_ROLE
-    ? ownedOrganizationId(db, actor.userId)
-    : membership.organizationId;
+  if (membership.member.role !== GUEST_ROLE) return membership.organizationId;
+  // A guest-only visitor has no organization of their own; the shared Space's stands in.
+  return (await ownedOrganizationIdOrNull(db, actor.userId)) ?? membership.organizationId;
 }
 
 /**

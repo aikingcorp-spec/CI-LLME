@@ -16,6 +16,8 @@ import {
 } from "@rakazo/ui-web";
 import { Copy, MoreHorizontal, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { desktopBridge } from "../lib/desktop";
+import { rpc as appRpc } from "../lib/rpc";
 import { useSpaceRpc } from "../lib/space-rpc";
 import { errorText } from "../lib/user-error";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -40,6 +42,7 @@ export function SpaceMembersSettings({
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const invitable = useInvitesReachThisComputer();
 
   // Not keyed on `t`: a new one each render must not reload the list.
   useEffect(() => {
@@ -137,10 +140,12 @@ export function SpaceMembersSettings({
     confirm?.kind === "remove" ? accountDisplay(confirm.member, confirm.member.email).label : "";
   const action = !members ? null : canManage ? (
     <div className="flex items-center gap-1">
-      <Button variant="ghost" size="sm" disabled={inviting} onClick={() => void invite()}>
-        <UserPlus />
-        <Trans>Mời</Trans>
-      </Button>
+      {invitable ? (
+        <Button variant="ghost" size="sm" disabled={inviting} onClick={() => void invite()}>
+          <UserPlus />
+          <Trans>Mời</Trans>
+        </Button>
+      ) : null}
       {/* Rare, so it waits in a menu and only while some link is still unused. */}
       {members.openInvites ? (
         <DropdownMenu>
@@ -293,4 +298,27 @@ function MemberRow({ member, onRemove }: { member: SpaceMember; onRemove?: () =>
       ) : null}
     </li>
   );
+}
+
+/**
+ * People reach the desktop app through remote access, so an account without it gets no invite
+ * links there. Elsewhere the server hosting the page is where the invite leads.
+ */
+function useInvitesReachThisComputer(): boolean {
+  const onComputer = Boolean(desktopBridge());
+  const [reachable, setReachable] = useState(!onComputer);
+  useEffect(() => {
+    if (!onComputer) return;
+    let active = true;
+    void appRpc.remoteHosts
+      .list()
+      .then((portal) => {
+        if (active) setReachable(portal.devices.length > 0);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [onComputer]);
+  return reachable;
 }

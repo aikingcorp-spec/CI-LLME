@@ -17,11 +17,32 @@ export async function actSignedRemoteHost(input: {
   policy?: RemoteSeatPolicy;
   tokens: { get(objectId: string): string | undefined };
   signed: SignedRemoteHost & { deviceId: string };
+  /** False when the account's edition has no remote access: the computer is never offered. */
+  included?: (accountId: string) => Promise<boolean>;
 }): Promise<{ body: Record<string, unknown>; connectorToken?: string }> {
   const now = new Date();
   const { accountId, deviceId, request } = input.signed;
   const origin = typeof request.originService === "string" ? request.originService : undefined;
   const policy = input.policy ?? remoteSeatPolicy();
+  if (input.included && !(await input.included(accountId))) {
+    const portal = { kind: "unavailable" as const, devices: [] };
+    if (request.action !== "present" && request.action !== "set") return { body: { portal } };
+    // An account moved off remote access stops being reachable on its next check-in.
+    const listed = await listRemoteHosts(input.prisma, input.provider, { accountId, now });
+    for (const device of listed.devices) {
+      if (!device.remoteEnabled) continue;
+      await setRemoteHost(input.prisma, input.provider, policy, {
+        accountId,
+        deviceId: device.deviceId,
+        enabled: false,
+        confirmed: true,
+        now,
+      });
+    }
+    return {
+      body: request.action === "set" ? { kind: "conflict", changed: false, portal } : { portal },
+    };
+  }
   if (request.action === "list") {
     return {
       body: { portal: await listRemoteHosts(input.prisma, input.provider, { accountId, now }) },

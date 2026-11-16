@@ -10,6 +10,7 @@ import { CLIENT_BUILD } from "./client-build";
 import { i18n } from "./i18n";
 import { identityLabels } from "./identity-display";
 import { reportClientError } from "./monitoring";
+import { noteWebAppAccess } from "./web-app-access";
 
 const SPACE_STORAGE_KEY = "rakazo:space-id";
 export const ORGANIZATION_SPACES_STORAGE_KEY = "rakazo:org-spaces";
@@ -103,6 +104,7 @@ const link = new RPCLink<RpcClientContext>({
     recheckSessionOnUnauthorized(response.status);
     if (response.status === 401 && spaceId && spaceId === selectedSpaceId())
       void leaveUnavailableSpace(spaceId);
+    void noteWebAppAccess(response);
     for (const listener of responseListeners) listener(response);
     return response;
   },

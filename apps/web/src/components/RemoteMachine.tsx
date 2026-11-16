@@ -1,5 +1,5 @@
 import { Trans } from "@lingui/react/macro";
-import { Button } from "@rakazo/ui-web";
+import { Button, Spinner } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryUserId } from "../lib/query";
@@ -13,9 +13,13 @@ import {
 import { rpc } from "../lib/rpc";
 import { signOut } from "../lib/sign-out";
 import { PageAccountMenu } from "./PageAccountMenu";
-import { PageLoading } from "./PageLoading";
 
 type Entry = { href: string; origin: string; userId: string; deviceId: string };
+
+/** A computer that just started needs a few seconds before its connection answers. */
+const TRIES = 5;
+const TRY_MS = 15_000;
+const RETRY_DELAY_MS = 3_000;
 
 /** The portal never gives a remote computer access to its own origin or session. */
 export function RemoteMachinePage() {
@@ -32,6 +36,18 @@ export function RemoteMachinePage() {
   const [entry, setEntry] = useState<Entry | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const tries = useRef(0);
+  // Each try asks for a fresh entry ticket: a page that never answered never used its own.
+  const retryOrFail = useRef(() => {});
+  retryOrFail.current = () => {
+    setEntry(null);
+    tries.current += 1;
+    if (tries.current >= TRIES) {
+      setFailed(true);
+      return;
+    }
+    window.setTimeout(() => setAttempt((value) => value + 1), RETRY_DELAY_MS);
+  };
   useEffect(() => {
     let active = true;
     setEntry(null);
@@ -56,7 +72,7 @@ export function RemoteMachinePage() {
         });
       })
       .catch(() => {
-        if (active) setFailed(true);
+        if (active) retryOrFail.current();
       });
     return () => {
       active = false;
@@ -68,11 +84,8 @@ export function RemoteMachinePage() {
     ready.current = false;
     setFrameReady(false);
     const timeout = window.setTimeout(() => {
-      if (!ready.current) {
-        setEntry(null);
-        setFailed(true);
-      }
-    }, 30_000);
+      if (!ready.current) retryOrFail.current();
+    }, TRY_MS);
     const receive = (event: MessageEvent) => {
       if (
         event.source === frame.current?.contentWindow &&
@@ -91,6 +104,7 @@ export function RemoteMachinePage() {
       });
       if (path) {
         ready.current = true;
+        tries.current = 0;
         setFrameReady(true);
         clearPendingFrameInvite();
         navigateRef.current(machinePath(deviceId, path), { replace: true });
@@ -107,9 +121,14 @@ export function RemoteMachinePage() {
       <main className="flex h-full flex-col items-center justify-center gap-4">
         <PageAccountMenu />
         <p>
-          <Trans>Chưa mở được máy này. Vui lòng thử lại.</Trans>
+          <Trans>Máy này đang tắt hoặc mất mạng.</Trans>
         </p>
-        <Button onClick={() => setAttempt((value) => value + 1)}>
+        <Button
+          onClick={() => {
+            tries.current = 0;
+            setAttempt((value) => value + 1);
+          }}
+        >
           <Trans>Thử lại</Trans>
         </Button>
         <Button variant="ghost" onClick={() => navigate("/app")}>
@@ -121,7 +140,7 @@ export function RemoteMachinePage() {
     return (
       <div className="h-full">
         <PageAccountMenu />
-        <PageLoading />
+        <Connecting />
       </div>
     );
   return (
@@ -129,7 +148,7 @@ export function RemoteMachinePage() {
       {!frameReady ? (
         <div className="absolute inset-0">
           <PageAccountMenu />
-          <PageLoading />
+          <Connecting />
         </div>
       ) : null}
       <iframe
@@ -142,6 +161,22 @@ export function RemoteMachinePage() {
         allow="microphone; autoplay; clipboard-write; fullscreen"
         referrerPolicy="origin"
       />
+    </div>
+  );
+}
+
+function Connecting() {
+  return (
+    <div className="grid h-full place-items-center bg-background">
+      <div
+        role="status"
+        className="flex flex-col items-center gap-3 animate-in fade-in-0 fill-mode-both delay-300 duration-300 motion-reduce:animate-none"
+      >
+        <Spinner className="size-6 text-muted-foreground" />
+        <p className="text-body text-muted-foreground">
+          <Trans>Đang kết nối tới máy…</Trans>
+        </p>
+      </div>
     </div>
   );
 }

@@ -37,13 +37,13 @@ describe("authErrorText", () => {
     ).toBe("Password must be 128 characters or fewer");
   });
 
-  it("maps EMAIL_NOT_INVITED to the limited preview notice", () => {
+  it("maps EMAIL_NOT_INVITED to the not approved notice", () => {
     expect(
       authErrorText(
         { code: "EMAIL_NOT_INVITED", message: "This email is not invited yet" },
         "Fallback",
       ),
-    ).toBe("VNBot is in limited preview");
+    ).toBe("This email is not approved for VNBot yet");
   });
 
   it("says when a deactivated account tries to sign in", () => {

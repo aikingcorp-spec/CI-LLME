@@ -75,7 +75,7 @@ export function authErrorText(error: unknown, fallback: string): string {
   if (code === "PASSWORD_TOO_LONG")
     return t`Password must be ${MAX_PASSWORD_LENGTH} characters or fewer`;
   if (code === "EMAIL_DELETION_UNAVAILABLE") return t`Could not continue`;
-  if (code === EMAIL_NOT_INVITED) return t`VNBot is in limited preview`;
+  if (code === EMAIL_NOT_INVITED) return t`This email is not approved for VNBot yet`;
   if (code === "INVALID_OTP") return t`Invalid code`;
   if (code === "OTP_EXPIRED" || code === "TOO_MANY_ATTEMPTS") return t`Request a new code`;
   return authErrorMessage(error, {

@@ -70,12 +70,15 @@ export {
   signInCodeEmail,
   verificationEmail,
 } from "./email.js";
-export type { InviteLookup } from "./email-allowlist.js";
+export type { Edition, InviteLookup } from "./email-allowlist.js";
 export {
   ALLOWLIST_USAGE,
   addAllowlistEmail,
+  EDITIONS,
   EMAIL_NOT_INVITED_MESSAGE,
+  FREE_FOR_EVERYONE,
   isAllowlistEmail,
+  lookupEdition,
   lookupInvite,
   normalizeEmail,
   parseEmailAllowlistArgs,

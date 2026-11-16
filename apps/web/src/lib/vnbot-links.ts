@@ -21,6 +21,12 @@ export const VNBOT_CONTACT_URL = httpsUrl(
   DEFAULT_CONTACT_URL,
 );
 
+/** Where people ask to be approved. Shown only behind a "VNBot community" button. */
+export const VNBOT_COMMUNITY_URL = httpsUrl(
+  import.meta.env.VITE_VNBOT_COMMUNITY_URL,
+  "https://zalo.me/g/qd14ki3pghxb5u3enjxh",
+);
+
 export const VNBOT_DOCS_URL = "https://vnbot.run/help/";
 export const VNBOT_DOWNLOAD_URL = httpsUrl(
   import.meta.env.VITE_DOWNLOAD_URL,
