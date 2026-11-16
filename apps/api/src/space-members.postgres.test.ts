@@ -486,9 +486,9 @@ describePostgres("shared spaces: invites and membership (PostgreSQL)", () => {
       system.spaceMember.count({ where: { spaceId: home, userId: invitee.id } }),
     ).resolves.toBe(0);
     // The next request resolves membership again. A removed guest is not an actor for this Space.
-    await expect(requireMembership(prisma, invitee.id, home)).rejects.toBeInstanceOf(
-      IsolationError,
-    );
+    await expect(
+      requireMembership(prisma, { id: invitee.id, email: `${invitee.id}@example.test` }, home),
+    ).rejects.toBeInstanceOf(IsolationError);
     expect(
       (await call(inSpace(invitee.actor, home), "spaces/members/list", { spaceId: home })).status,
     ).toBe(404);

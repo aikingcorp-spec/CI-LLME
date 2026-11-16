@@ -1,4 +1,7 @@
-import type { ActionApprovalRule as StoredActionApprovalRule } from "@rakazo/contracts";
+import type {
+  MessageBlock,
+  ActionApprovalRule as StoredActionApprovalRule,
+} from "@rakazo/contracts";
 import { BUILTIN_TOOL_NAMES } from "@rakazo/contracts";
 import { humanizeToolName } from "./events.js";
 
@@ -654,6 +657,16 @@ export function isSecretAskBlock(block: {
   approvalEffectId?: string;
 }): boolean {
   return block.kind === "ask" && block.input === "secret" && !block.approvalEffectId;
+}
+
+/** A conversational question, separate from permission and protected-input requests. */
+export function isQuestionAskBlock(block: MessageBlock): boolean {
+  return (
+    block.kind === "ask" &&
+    !isSecretAskBlock(block) &&
+    !block.approvalEffectId &&
+    !block.instructionUpdate
+  );
 }
 
 export function isApprovalAskBlock(block: {

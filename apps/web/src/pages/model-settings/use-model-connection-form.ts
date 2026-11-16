@@ -18,6 +18,8 @@ import {
   compatibleThinkingLevels,
   createModelProbe,
   initialModelProbeState,
+  modelConnectionFormSecrets,
+  sanitizeModelConnectionError,
   savedCompatibleModelIds,
 } from "@rakazo/core";
 import { useMemo, useRef, useState } from "react";
@@ -30,6 +32,7 @@ import {
   unavailableSelectedModel,
 } from "../../lib/model-connection-preflight";
 import type { RpcClient } from "../../lib/rpc";
+import { errorText } from "../../lib/user-error";
 
 type PreflightOutcome = { success: string } | { failure: ModelPreflightFailure };
 
@@ -203,7 +206,12 @@ export function useModelConnectionForm({
       },
       onError: (err) => {
         if (!stillCurrent()) return;
-        setPreflightFailure(classifyModelConnectionFailure(err, { modelId }));
+        setPreflightFailure(
+          classifyModelConnectionFailure(err, {
+            modelId,
+            secrets: modelConnectionFormSecrets({ apiKey, headerRows }),
+          }),
+        );
         setNotice(null);
       },
     });
@@ -246,8 +254,17 @@ export function useModelConnectionForm({
     });
   }
 
+  /** A failed connection's message, without the credentials this form holds. */
+  function connectionErrorText(err: unknown, fallback: string): string {
+    return sanitizeModelConnectionError(
+      errorText(err, fallback),
+      modelConnectionFormSecrets({ apiKey, headerRows }),
+    );
+  }
+
   return {
     accountId,
+    connectionErrorText,
     apiKey,
     apiProtocol,
     applyFields,

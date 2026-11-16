@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import path from "node:path";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import type {
@@ -172,6 +173,7 @@ import { pluginSubmissionRoutes } from "./plugin-submissions.js";
 import { serverUpdateProbeFromConfiguration } from "./product-update.js";
 import { sendReferralEmails } from "./referral-email.js";
 import { startRemoteConnector } from "./remote-connector.js";
+import { resolveConnectorExecutable } from "./remote-connector-binary.js";
 import { handleRemoteHostRequest } from "./remote-host-channel.js";
 import { presentLocalComputer, remoteProviderForDeployment } from "./remote-presence.js";
 import { createRemoteRegistryClient } from "./remote-registry-client.js";
@@ -798,6 +800,12 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       : undefined;
   const remoteConnector = localDeviceId
     ? startRemoteConnector({
+        executable: () =>
+          resolveConnectorExecutable({
+            toolsDir: path.join(env.dataDir, "tools"),
+            override: process.env.RAKAZO_REMOTE_CONNECTOR,
+          }),
+        onError: (error) => getLogger().error("remote access connector unavailable", error),
         onStop: () => {
           void remoteRegistry?.present(true).catch(() => undefined);
         },
@@ -1148,9 +1156,9 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     const actor = await actorFromMembership(
       requireMembership(
         prisma,
-        session.user.id,
+        session.user,
         request.headers.get("x-rakazo-space-id"),
-        session.session.id,
+        session.session,
       ),
     );
     return actor && { actor, sessionId: session.session.id };

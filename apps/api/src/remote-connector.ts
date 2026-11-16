@@ -6,7 +6,9 @@ import { spawn } from "node:child_process";
  * and is not written to this process's logs.
  */
 export function startRemoteConnector(input: {
-  executable?: string;
+  /** The connector to run, or how to find it, which may download it the first time. */
+  executable?: string | (() => Promise<string>);
+  onError?: (error: unknown) => void;
   onStop?: () => void;
   spawnProcess?: (
     executable: string,
@@ -24,6 +26,16 @@ export function startRemoteConnector(input: {
   failed(): boolean;
 } {
   const executable = input.executable ?? process.env.RAKAZO_REMOTE_CONNECTOR ?? "cloudflared";
+  // One lookup at a time; a failed one is tried again on the next token.
+  let finding: Promise<string> | undefined;
+  const find = () => {
+    if (typeof executable === "string") return executable;
+    finding ??= executable().catch((error: unknown) => {
+      finding = undefined;
+      throw error;
+    });
+    return finding;
+  };
   const launch =
     input.spawnProcess ??
     ((command: string, args: readonly string[], env: NodeJS.ProcessEnv) => {
@@ -48,11 +60,7 @@ export function startRemoteConnector(input: {
       stopped = false;
       didFail = false;
       current?.kill();
-      const child = launch(executable, ["tunnel", "run", "--token", token], {
-        ...process.env,
-        TUNNEL_TOKEN: token,
-      });
-      const handle = { token, kill: child.kill };
+      const handle: { token: string; kill: () => void } = { token, kill: () => undefined };
       current = handle;
       const lost = () => {
         if (current !== handle || stopped) return;
@@ -60,8 +68,23 @@ export function startRemoteConnector(input: {
         didFail = true;
         input.onStop?.();
       };
-      child.onError?.(lost);
-      child.onExit?.(() => lost());
+      const start = (command: string) => {
+        if (current !== handle || stopped) return;
+        const child = launch(command, ["tunnel", "run", "--token", token], {
+          ...process.env,
+          TUNNEL_TOKEN: token,
+        });
+        handle.kill = child.kill;
+        child.onError?.(lost);
+        child.onExit?.(() => lost());
+      };
+      const found = find();
+      if (typeof found === "string") start(found);
+      else
+        found.then(start, (error: unknown) => {
+          input.onError?.(error);
+          lost();
+        });
     },
     stop() {
       stopped = true;

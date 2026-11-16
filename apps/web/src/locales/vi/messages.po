@@ -8829,3 +8829,19 @@ msgstr "Đã có lỗi xảy ra. Hãy thử lại."
 #: src/lib/run-error.ts
 msgid "Computer requires recovery after an unconfirmed stop. Recover the computer to rebuild it."
 msgstr "Chưa xác nhận được lần dừng trước. Chọn Khôi phục máy tính để tiếp tục."
+
+#: src/pages/plugins/source-form.tsx
+msgid "OAuth"
+msgstr "OAuth"
+
+#: src/pages/plugins/source-form.tsx
+msgid "Save and sign in"
+msgstr "Lưu và đăng nhập"
+
+#: src/pages/PluginsOverlay.tsx
+msgid "Sign-in cancelled. Retry in Manage MCP servers."
+msgstr "Đã hủy đăng nhập. Thử lại trong Quản lý máy chủ MCP."
+
+#: src/pages/PluginsOverlay.tsx
+msgid "This server needs an OAuth client ID. Add one in Manage MCP servers."
+msgstr "Máy chủ này cần OAuth client ID. Thêm trong Quản lý máy chủ MCP."

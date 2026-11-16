@@ -104,6 +104,7 @@ import { destroySetupWindow, registerSetupIpc, showSetupWindow } from "./setup-w
 import { createSplash } from "./splash.js";
 import { createSystemSpeech } from "./system-speech.js";
 import { createUserDeviceAccess, deviceName } from "./user-device.js";
+import { isMcpOAuthServerId, mcpOAuthPartition } from "./window-open.js";
 
 process.setSourceMapsEnabled(true);
 installDesktopEarlyErrorReporting();
@@ -722,6 +723,20 @@ app.whenReady().then(async () => {
   ipcMain.handle("desktop.oauth.cancel", (event, url: unknown) => {
     if (!fromAppFrame(permissionTarget(), event) || typeof url !== "string") return;
     browserAuthAttempts.get(url)?.abort();
+  });
+  // Signing an MCP server in again with another account starts from an empty
+  // browser: no cookies, no cached login pages, no stored site data.
+  ipcMain.handle("desktop.mcpBrowser.clear", async (event, serverId: unknown) => {
+    const target = permissionTarget();
+    if (!target || !fromAppFrame(target, event) || !isMcpOAuthServerId(serverId))
+      throw new Error("Invalid sign-in browser request.");
+    const browser = session.fromPartition(mcpOAuthPartition(target.url, serverId));
+    await Promise.all([
+      browser.clearStorageData(),
+      browser.clearCache(),
+      browser.clearAuthCache(),
+      browser.clearCodeCaches({}),
+    ]);
   });
   const isManagedComputerRequest = (event: Electron.IpcMainInvokeEvent) =>
     fromMainWindow(event) &&

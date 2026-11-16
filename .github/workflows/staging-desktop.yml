@@ -129,8 +129,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pnpm --filter @rakazo/api build
-          pnpm --filter @rakazo/worker build
+          # The desktop app installs the server with its dependencies bundled: a few hundred files
+          # instead of every package, which antivirus scans one by one on install.
+          VNBOT_INLINE_DEPS=1 pnpm --filter @rakazo/api build
+          VNBOT_INLINE_DEPS=1 pnpm --filter @rakazo/worker build
           pnpm --filter @rakazo/web build
           pnpm --filter @rakazo/desktop build
         env:

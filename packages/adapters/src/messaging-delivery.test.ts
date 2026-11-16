@@ -1,4 +1,9 @@
 import type { AdapterContext, MessagingSurface } from "@rakazo/adapter-kit";
+import {
+  CHAT_APP_ASK_NOTE,
+  CHAT_APP_TAKEOVER_NOTE,
+  TAKEOVER_COMPUTER_PENDING_STATE,
+} from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { SpaceDeletionInProgressError } from "@rakazo/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -493,6 +498,113 @@ describe("deliverMessagingOutbound", () => {
     await mirrorMessagingOutbound(deps, "run-1");
     expect(deps.rows.map((row) => row.idempotencyKey)).toEqual(["msg:m-1", "msg:m-1:2", "msg:m-2"]);
     expect(deps.rows.map((row) => row.body).join("")).toContain("TAIL-MARK");
+  });
+
+  const waiting = { ...messagingRun, status: "waiting_input" };
+  const queued = (deps: ReturnType<typeof createDeps>) => deps.rows.map((row) => row.body);
+
+  it("sends a question the run waits on as text, with its options numbered", async () => {
+    const deps = createDeps({
+      run: waiting,
+      messages: [
+        { id: "m-1", blocks: [{ kind: "text", text: "Two places are open." }] },
+        {
+          id: "ask-1",
+          blocks: [
+            {
+              kind: "ask",
+              text: "Which one should I book?",
+              detail: "Both are free at 7pm.",
+              status: "pending",
+              actions: [
+                { id: "a", label: "Luigi's" },
+                { id: "b", label: "Noodle Bar" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    await mirrorMessagingOutbound(deps, "run-1");
+    expect(queued(deps)).toEqual([
+      "Two places are open.",
+      [
+        "Which one should I book?",
+        "Both are free at 7pm.",
+        "1. Luigi's",
+        "2. Noodle Bar",
+        CHAT_APP_ASK_NOTE,
+      ].join("\n"),
+    ]);
+  });
+
+  it("sends an approval's question without its options or detail, and nothing for an answered one", async () => {
+    const deps = createDeps({
+      run: waiting,
+      messages: [
+        {
+          id: "ask-1",
+          blocks: [
+            {
+              kind: "ask",
+              text: "Old question",
+              status: "answered",
+              actions: [{ id: "a", label: "Yes" }],
+            },
+          ],
+        },
+        {
+          id: "ask-2",
+          blocks: [
+            {
+              kind: "ask",
+              text: "Run this command?",
+              detail: "rm -rf ~/projects/old",
+              approvalEffectId: "effect-1",
+              status: "pending",
+              actions: [
+                { id: "allow", label: "Allow" },
+                { id: "deny", label: "Deny" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    await mirrorMessagingOutbound(deps, "run-1");
+    expect(queued(deps)).toEqual([`Run this command?\n${CHAT_APP_ASK_NOTE}`]);
+  });
+
+  it("skips a question its ended run cannot use", async () => {
+    const deps = createDeps({
+      run: { ...messagingRun, status: "cancelled" },
+      messages: [
+        { id: "m-1", blocks: [{ kind: "text", text: "Two places are open." }] },
+        { id: "ask-1", blocks: [{ kind: "ask", text: "Which one?", status: "pending" }] },
+      ],
+    });
+    await mirrorMessagingOutbound(deps, "run-1");
+    expect(queued(deps)).toEqual(["Two places are open."]);
+  });
+
+  it("sends a request to take over the bot's screen as text", async () => {
+    const deps = createDeps({
+      run: waiting,
+      messages: [
+        {
+          id: "takeover-1",
+          blocks: [
+            {
+              kind: "computer",
+              state: TAKEOVER_COMPUTER_PENDING_STATE,
+              text: "Please solve the captcha.",
+            },
+          ],
+        },
+      ],
+    });
+    await mirrorMessagingOutbound(deps, "run-1");
+    expect(queued(deps)).toEqual([`Please solve the captcha.\n${CHAT_APP_TAKEOVER_NOTE}`]);
   });
 
   it("leaves group and in-app runs to the end-of-run mirror", async () => {

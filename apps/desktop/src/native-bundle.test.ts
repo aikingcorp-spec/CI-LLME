@@ -254,6 +254,40 @@ it("assembles a bundle whose imports stay inside it and replaces that bundle on 
   }
 });
 
+it("ships shared chunks and links only real imports of bundled server code", async () => {
+  const fixture = await fixtureRepo();
+  try {
+    await mkdir(path.join(fixture.repo, "apps/api/dist/chunks"), { recursive: true });
+    // A chunk the entry reaches through a computed name, and bundled text that only names paths.
+    await writeFile(
+      path.join(fixture.repo, "apps/api/dist/chunks/shared-1.js"),
+      [
+        'import { value } from "../../../../node_modules/.pnpm/pkg@1.0.0/node_modules/pkg/index.js";',
+        'var init = { "../../node_modules/.pnpm/missing@1.0.0/node_modules/missing/index.js"() {} };',
+        'export const text = \x27import "./types.d.ts"\x27;',
+        "export { value, init };",
+        "",
+      ].join("\n"),
+    );
+    await assembleNativeBundle(request(fixture));
+    const chunk = path.join(fixture.output, "apps/api/dist/chunks/shared-1.js");
+    const source = await readFile(chunk, "utf8");
+    expect(source).toContain("missing@1.0.0");
+    await expect(
+      lstat(path.join(fixture.output, "node_modules/.pnpm/missing@1.0.0")),
+    ).rejects.toThrow();
+    const imported = await execFile(process.execPath, [
+      "--input-type=module",
+      "--eval",
+      `import { value } from ${JSON.stringify(pathToFileURL(chunk).href)};
+       if (value !== "dep") process.exit(1);`,
+    ]);
+    expect(imported.stdout).toBe("");
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
 it.skipIf(process.platform !== "linux").each(["usr", ""])(
   "keeps distribution timezone and extension paths relative to the real PostgreSQL binary under '%s'",
   async (directory) => {

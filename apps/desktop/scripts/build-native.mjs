@@ -17,8 +17,10 @@ import {
   unlink,
   writeFile,
 } from "node:fs/promises";
+import { builtinModules, createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { build } from "esbuild";
 import {
   isLegacyPostgresVersion,
   isNativePostgresVersion,
@@ -168,7 +170,8 @@ export async function assembleNativeBundle(input) {
     const databaseIds = await databasePackageIds(request.repoRoot);
     for (const id of databaseIds.values()) server.ids.add(id);
     const closure = await pnpmClosure(request.repoRoot, server.ids);
-    for (const id of closure) await copyPnpmPackage(request.repoRoot, staging, id);
+    for (const id of closure) await copyPnpmPackage(request.repoRoot, staging, id, closure);
+    await bundlePrismaCli(request.repoRoot, staging, closure);
     await writeServer(request.repoRoot, staging, server.files);
     await copyWebAndDatabase(request.repoRoot, staging);
     await linkDatabasePackages(staging, databaseIds);
@@ -233,16 +236,27 @@ function pnpmId(specifier) {
   return specifier.match(/node_modules\/\.pnpm\/([^/]+)\//)?.[1] ?? null;
 }
 
+// An import of a store package: `from`, `import` or `require` and a quoted path. Bundled code
+// also quotes store paths as module names, which are not imports.
+const STORE_IMPORT =
+  /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s*|\brequire\s*\(\s*)(["'])(\.[^"'\n]*node_modules\/[^"'\n]+)\2/g;
+
 function importSpecifiers(source) {
-  return [...source.matchAll(/(["'])(\.[^"']*node_modules\/[^"']+)\1/g)].map((match) => match[2]);
+  return [...source.matchAll(STORE_IMPORT)].map((match) => match[3]);
 }
 
 async function scanServer(repoRoot, platform) {
   const files = [];
   const ids = new Set();
-  const pending = nativeBundleFiles(platform)
-    .filter((file) => file.endsWith(".js"))
-    .map((file) => path.join(repoRoot, file));
+  // Everything the server build wrote ships: entries and the chunks they share.
+  const pending = [
+    ...nativeBundleFiles(platform)
+      .filter((file) => file.endsWith(".js"))
+      .map((file) => path.join(repoRoot, file)),
+    ...(
+      await Promise.all(SERVER_DIST.map((dist) => javascriptFiles(path.join(repoRoot, dist))))
+    ).flat(),
+  ];
   const seen = new Set();
   while (pending.length > 0) {
     const file = pending.pop();
@@ -265,14 +279,6 @@ async function scanServer(repoRoot, platform) {
       if (!(await exists(local))) throw new Error(`Missing native bundle dependency: ${id}`);
       ids.add(id);
     }
-    for (const specifier of localSpecifiers(source)) {
-      const next = path.resolve(path.dirname(real), specifier);
-      if (!SERVER_DIST.some((dist) => inside(path.join(repoRoot, dist), next))) continue;
-      if (!(await exists(next))) {
-        throw new Error(`Missing native bundle source: ${path.relative(repoRoot, next)}`);
-      }
-      pending.push(next);
-    }
   }
   for (const file of nativeBundleFiles(platform).filter((entry) => entry.endsWith(".js"))) {
     if (!files.includes(file)) throw new Error(`Missing native bundle source: ${file}`);
@@ -280,14 +286,12 @@ async function scanServer(repoRoot, platform) {
   return { files, ids };
 }
 
-function localSpecifiers(source) {
-  const found = [];
-  const pattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)["'](\.[^"']+)["']/g;
-  for (const match of source.matchAll(pattern)) {
-    const specifier = match[1];
-    if (specifier && !specifier.includes("node_modules/")) found.push(specifier);
-  }
-  return found;
+async function javascriptFiles(directory) {
+  if (!(await exists(directory))) return [];
+  const entries = await readdir(directory, { recursive: true, withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
+    .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
 async function databasePackageIds(repoRoot) {
@@ -315,10 +319,27 @@ async function databasePackageIds(repoRoot) {
   return ids;
 }
 
-async function pnpmClosure(repoRoot, ids) {
+/** The migration CLI, which the bundle carries as one file; see bundlePrismaCli. */
+const PRISMA_CLI = /^prisma@/;
+/** What the bundled migration CLI still loads from disk: its engines, and the config loader. */
+const PRISMA_CLI_RUNTIME = ["@prisma/engines", "jiti"];
+
+async function pnpmClosure(repoRoot, ids, { trimPrismaCli = true } = {}) {
   const pnpmRoot = path.join(repoRoot, "node_modules", ".pnpm");
   const seen = new Set();
   const pending = [...ids.values()];
+  if (trimPrismaCli) {
+    for (const id of ids.values()) {
+      if (!PRISMA_CLI.test(id)) continue;
+      // The CLI reaches the config loader through packages it now carries inside itself.
+      const full = await pnpmClosure(repoRoot, [id], { trimPrismaCli: false });
+      for (const name of PRISMA_CLI_RUNTIME) {
+        const found = [...full].filter((other) => other.startsWith(`${name.replace("/", "+")}@`));
+        if (found.length !== 1) throw new Error(`Missing native bundle dependency: ${name}`);
+        pending.push(found[0]);
+      }
+    }
+  }
   while (pending.length > 0) {
     const id = pending.pop();
     if (id === undefined || seen.has(id)) continue;
@@ -328,6 +349,7 @@ async function pnpmClosure(repoRoot, ids) {
     const modules = path.join(directory, "node_modules");
     if (!(await exists(modules))) continue;
     for (const link of await dependencyLinks(modules)) {
+      if (trimPrismaCli && PRISMA_CLI.test(id)) continue;
       // Windows links read back with backslashes, and junctions as absolute paths.
       const target = path.resolve(path.dirname(link), await readlink(link));
       const [dependency, nested] = path.relative(pnpmRoot, target).split(path.sep);
@@ -355,10 +377,108 @@ async function dependencyLinks(directory) {
   return links;
 }
 
-async function copyPnpmPackage(repoRoot, staging, id) {
+/** Studio and the local dev server, which the migration CLI loads but desktop never runs. */
+const PRISMA_CLI_UNUSED = ["@prisma/dev", "@prisma/studio-core"];
+
+function resolvesFrom(directory, specifier) {
+  try {
+    createRequire(path.join(directory, "package.json")).resolve(specifier);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function packageMatches(specifier, names) {
+  return names.some((name) => specifier === name || specifier.startsWith(`${name}/`));
+}
+
+/**
+ * Replaces the migration CLI, and the config module the schema config imports, with single files
+ * holding their dependencies, so the bundle skips the thousands of files those span. The CLI
+ * finds its wasm next to itself, which stays true in place.
+ */
+async function bundlePrismaCli(repoRoot, staging, closure) {
+  const ids = [...closure];
+  const cli = ids.find((id) => PRISMA_CLI.test(id));
+  if (!cli) return;
+  const pnpmRoot = path.join(repoRoot, "node_modules", ".pnpm");
+  const source = path.join(pnpmRoot, cli, "node_modules/prisma");
+  const target = path.join(staging, PNPM_DIR, storeName(cli), "node_modules/prisma");
+  const builtins = new Set(builtinModules);
+  for (const file of ["build/index.js", "config.js"]) {
+    const result = await build({
+      entryPoints: [path.join(source, file)],
+      outfile: path.join(target, file),
+      bundle: true,
+      platform: "node",
+      format: "cjs",
+      target: "node24",
+      conditions: ["node", "require"],
+      mainFields: ["main", "module"],
+      logLevel: "error",
+      allowOverwrite: true,
+      metafile: true,
+      define: { "import.meta.url": "__vnbotImportMetaUrl" },
+      banner: {
+        js: 'const __vnbotImportMetaUrl = require("node:url").pathToFileURL(__filename).href;',
+      },
+      plugins: [
+        {
+          name: "prisma-cli",
+          setup(builder) {
+            builder.onResolve({ filter: /^[^./]/ }, (args) => {
+              if (packageMatches(args.path, PRISMA_CLI_UNUSED))
+                return { path: args.path, namespace: "unused" };
+              if (args.path.startsWith("node:") || builtins.has(args.path.split("/")[0]))
+                return { path: args.path, external: true };
+              if (packageMatches(args.path, PRISMA_CLI_RUNTIME))
+                return { path: args.path, external: true };
+              return undefined;
+            });
+            builder.onLoad({ filter: /.*/, namespace: "unused" }, () => ({
+              contents: "module.exports = {};",
+              loader: "js",
+            }));
+          },
+        },
+      ],
+    });
+    for (const output of Object.values(result.metafile.outputs)) {
+      for (const { path: imported, external } of output.imports) {
+        // A relative path stays inside the CLI package, which ships whole.
+        if (
+          !external ||
+          imported.startsWith(".") ||
+          imported.startsWith("node:") ||
+          builtins.has(imported.split("/")[0])
+        )
+          continue;
+        if (packageMatches(imported, PRISMA_CLI_RUNTIME)) continue;
+        // An optional driver the CLI tries in a try block was never installed, here or before.
+        if (!resolvesFrom(source, imported)) continue;
+        throw new Error(`Unsupported native bundle import: ${imported}`);
+      }
+    }
+  }
+  // The config loader was a dependency of a dependency; the CLI now asks for it by name.
+  const loader = ids.find((id) => id.startsWith("jiti@"));
+  if (!loader) throw new Error("Missing native bundle dependency: jiti");
+  const link = path.join(staging, PNPM_DIR, storeName(cli), "node_modules/jiti");
+  const linked = path.join(staging, PNPM_DIR, storeName(loader), "node_modules/jiti");
+  if (process.platform === "win32") {
+    await symlink(linked, link, "junction");
+    windowsLinks.push({ link, target: linked });
+  } else {
+    await symlink(path.relative(path.dirname(link), linked), link);
+  }
+}
+
+async function copyPnpmPackage(repoRoot, staging, id, closure) {
   const source = path.join(repoRoot, "node_modules", ".pnpm", id);
   const destination = path.join(staging, "node_modules", ".pnpm", storeName(id));
-  await copyPreservingStoreLinks(source, destination, path.join(repoRoot, "node_modules", ".pnpm"));
+  const pnpmRoot = path.join(repoRoot, "node_modules", ".pnpm");
+  await copyPreservingStoreLinks(source, destination, pnpmRoot, closure);
 }
 
 const PNPM_DIR = path.join("node_modules", ".pnpm");
@@ -416,7 +536,7 @@ async function recordWindowsLinks(staging) {
   await writeFile(path.join(staging, WINDOWS_LINKS_FILE), `${JSON.stringify(links)}\n`);
 }
 
-async function copyPreservingStoreLinks(source, destination, pnpmRoot) {
+async function copyPreservingStoreLinks(source, destination, pnpmRoot, closure) {
   await mkdir(destination, { recursive: true });
   for (const entry of await readdir(source, { withFileTypes: true })) {
     const from = path.join(source, entry.name);
@@ -425,6 +545,8 @@ async function copyPreservingStoreLinks(source, destination, pnpmRoot) {
       const target = await readlink(from);
       const resolved = path.resolve(path.dirname(from), target);
       if (inside(pnpmRoot, resolved)) {
+        // A dependency the bundle leaves out, such as one the migration CLI carries inside itself.
+        if (closure && !closure.has(path.relative(pnpmRoot, resolved).split(path.sep)[0])) continue;
         // Windows installers carry no links. A junction serves the probe below, then is
         // listed in windows-links.json and recreated by the app on first start.
         if (process.platform === "win32") {
@@ -446,7 +568,7 @@ async function copyPreservingStoreLinks(source, destination, pnpmRoot) {
       await cp(real, to, { recursive: true, dereference: true });
       continue;
     }
-    if (entry.isDirectory()) await copyPreservingStoreLinks(from, to, pnpmRoot);
+    if (entry.isDirectory()) await copyPreservingStoreLinks(from, to, pnpmRoot, closure);
     else if (entry.isFile() && !(process.platform === "win32" && BUILD_ONLY_FILE.test(entry.name)))
       await cp(from, to);
   }
@@ -461,10 +583,9 @@ async function writeServer(repoRoot, staging, files) {
     const destination = path.join(staging, file);
     await mkdir(path.dirname(destination), { recursive: true });
     const original = await readFile(source, "utf8");
-    const pattern = /(["'])(\.[^"']*node_modules\/[^"']+)\1/g;
     const replacements = new Map();
-    for (const match of original.matchAll(pattern)) {
-      const specifier = match[2];
+    for (const match of original.matchAll(STORE_IMPORT)) {
+      const specifier = match[3];
       if (specifier === undefined || replacements.has(specifier)) continue;
       const id = pnpmId(specifier);
       if (!id) throw new Error("Unsupported native bundle import.");
@@ -475,11 +596,10 @@ async function writeServer(repoRoot, staging, files) {
       if (!(await exists(target))) throw new Error(`Missing native bundle dependency: ${id}`);
       replacements.set(specifier, relativeSpecifier(destination, target));
     }
-    pattern.lastIndex = 0;
-    const rewritten = original.replace(pattern, (_full, quote, specifier) => {
+    const rewritten = original.replace(STORE_IMPORT, (_full, keyword, quote, specifier) => {
       const next = replacements.get(specifier);
       if (next === undefined) throw new Error("Unsupported native bundle import.");
-      return `${quote}${next}${quote}`;
+      return `${keyword}${quote}${next}${quote}`;
     });
     await writeFile(destination, rewritten);
   }

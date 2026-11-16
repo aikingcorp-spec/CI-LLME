@@ -336,7 +336,8 @@ export interface LocalStackDeps {
 }
 
 /** Resolves early on abort so a stop never waits out a health poll. */
-function defaultSleep(ms: number, signal: AbortSignal) {
+export function defaultSleep(ms: number, signal: AbortSignal) {
+  if (signal.aborted) return Promise.resolve();
   return new Promise<void>((resolve) => {
     const timer = setTimeout(done, ms);
     function done() {

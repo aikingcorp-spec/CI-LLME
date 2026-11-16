@@ -6,6 +6,7 @@
 // node_modules stays external, but a bare specifier only resolves from the package that
 // declares it (pnpm keeps dependencies strict), not from dist/. Each one is therefore
 // rewritten to the relative path of the file it resolves to from its importer.
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { builtinModules } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -13,11 +14,56 @@ import { build } from "esbuild";
 
 const builtins = new Set(builtinModules);
 
+/**
+ * With VNBOT_INLINE_DEPS=1, the desktop build also bundles dependencies, so the app installs a few
+ * hundred files instead of every package. These stay external: they find their own files on disk
+ * (native addons, platform binaries, worker scripts, proto files) or generate code at install.
+ */
+export const NATIVE_EXTERNALS = [
+  "koffi",
+  "prisma",
+  "@prisma/",
+  ".prisma",
+  // The database adapter above checks for its own `pg` pool, so there must be one copy.
+  "pg",
+  "sharp",
+  "@img/",
+  "jsdom",
+  "esbuild",
+  "@esbuild/",
+  "@grpc/grpc-js",
+];
+
+function packageName(specifier) {
+  const parts = specifier.split("/");
+  return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
+}
+
+const EXTERNAL_MARK = "vnbot-external:";
+
+/** Whether `specifier` stays a separate package when dependencies are bundled. */
+export function staysExternal(specifier) {
+  const name = packageName(specifier);
+  return NATIVE_EXTERNALS.some((entry) =>
+    entry.endsWith("/") ? name.startsWith(entry) : name === entry,
+  );
+}
+
 /** esbuild options for bundling `entry` into `outfile`, shared with the lazy-vendor check. */
-export function serverBuildOptions(entry, outfile) {
+export function serverBuildOptions(entry, outfile, { inline = false } = {}) {
   return {
     entryPoints: [entry],
     outfile,
+    ...serverBundleOptions(path.dirname(outfile), inline),
+  };
+}
+
+/**
+ * Shared bundle options. `outDir` is where the output files land, so an external import can be
+ * rewritten to the path of the file it resolves to.
+ */
+function serverBundleOptions(outDir, inline) {
+  return {
     bundle: true,
     platform: "node",
     format: "esm",
@@ -36,6 +82,7 @@ export function serverBuildOptions(entry, outfile) {
               return { path: args.path, external: true };
             }
             if (args.path.startsWith("@rakazo/")) return undefined;
+            if (inline && !staysExternal(args.path)) return undefined;
             const resolved = await builder.resolve(args.path, {
               kind: args.kind,
               resolveDir: args.resolveDir,
@@ -43,7 +90,9 @@ export function serverBuildOptions(entry, outfile) {
               pluginData: { inner: true },
             });
             if (resolved.errors.length > 0) return { errors: resolved.errors };
-            let relative = path.relative(path.dirname(outfile), resolved.path);
+            // Output files sit at several depths, so their paths are written once each is known.
+            if (inline) return { path: `${EXTERNAL_MARK}${resolved.path}`, external: true };
+            let relative = path.relative(outDir, resolved.path);
             if (!relative.startsWith(".")) relative = `./${relative}`;
             return { path: relative.split(path.sep).join("/"), external: true };
           });
@@ -53,7 +102,51 @@ export function serverBuildOptions(entry, outfile) {
   };
 }
 
+/**
+ * One build for every entry, sharing chunks. Bundled CommonJS calls `require`, which ES modules
+ * lack, so each output file gets one made for it.
+ */
+export function inlineServerBuildOptions(entries, outDir) {
+  const options = serverBundleOptions(outDir, true);
+  return {
+    ...options,
+    absWorkingDir: process.cwd(),
+    entryPoints: entries,
+    outdir: outDir,
+    outbase: "src",
+    splitting: true,
+    chunkNames: "chunks/[name]-[hash]",
+    banner: {
+      js: `import { createRequire as __vnbotRequire } from "node:module"; const require = __vnbotRequire(import.meta.url);`,
+    },
+  };
+}
+
+/** Builds `entries` into `outDir` with dependencies bundled, external ones linked by path. */
+export async function buildInlineServer(entries, outDir) {
+  const result = await build({ ...inlineServerBuildOptions(entries, outDir), write: false });
+  const marked = new RegExp(`(["'])${EXTERNAL_MARK}([^"']+)\\1`, "g");
+  await rm(outDir, { recursive: true, force: true });
+  for (const file of result.outputFiles) {
+    let text = file.text;
+    if (file.path.endsWith(".js")) {
+      text = text.replace(marked, (_match, quote, target) => {
+        let relative = path.relative(path.dirname(file.path), target);
+        if (!relative.startsWith(".")) relative = `./${relative}`;
+        return `${quote}${relative.split(path.sep).join("/")}${quote}`;
+      });
+      if (text.includes(EXTERNAL_MARK)) throw new Error(`Unlinked external in ${file.path}`);
+    }
+    await mkdir(path.dirname(file.path), { recursive: true });
+    await writeFile(file.path, text);
+  }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (process.env.VNBOT_INLINE_DEPS === "1") {
+    await buildInlineServer(process.argv.slice(2), path.resolve("dist"));
+    process.exit(0);
+  }
   for (const entry of process.argv.slice(2)) {
     const outfile = path.resolve("dist", path.relative("src", entry).replace(/\.ts$/, ".js"));
     await build(serverBuildOptions(entry, outfile));

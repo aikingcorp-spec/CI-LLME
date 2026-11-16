@@ -112,6 +112,7 @@ describe("Pi runtime errors", () => {
     MODEL_CREDITS_EXHAUSTED_ERROR,
     `400: {"type":"server_error","message":"Upstream request failed: This example model requires Global regions. Select Global in your workspace's Privacy settings to use it."}`,
     'OAuth refresh failed for anthropic: Anthropic token refresh request failed. url=https://example.invalid/v1/oauth/token; details=Error: HTTP request failed. status=400; body={"error": "invalid_grant", "error_description": "Refresh token not found or invalid"}',
+    '400: {"type":"invalid_request_error","message":"This example model is hosted outside Europe and the United States. Select Global in your workspace\'s privacy settings to use it."}',
   ])("marks a provider account failure the user can fix: %s", async (message) => {
     provider.errorMessage = message;
     const failure = consume();
@@ -126,6 +127,9 @@ describe("Pi runtime errors", () => {
     "This request was blocked as it seems to violate Anthropic's Terms of Service restrictions on reverse engineering or duplicating model outputs.",
     "Provider returned an empty response",
     "Cyber safeguards flagged this message. If this is legitimate security work, you can apply for the Cyber Verification Program: https://support.claude.com/en/articles/<article-id>",
+    "This request triggered cyber-related safeguards. To learn about the Cyber Verification Program, see https://support.claude.com/en/articles/<article-id>",
+    "SAFETY",
+    '400: {"code":"data_inspection_failed","param":null,"message":"Input text data may contain inappropriate content.","type":"data_inspection_failed"}',
     'unexpected tokens remaining in message header: Some("to=functions.example")',
     'HarmonyError: unexpected tokens remaining in message header: Some("analysis")',
     '500: {"message":"unexpected tokens remaining in message header: Some(\\"analysis\\")"}',
@@ -185,6 +189,9 @@ describe("Pi runtime errors", () => {
     "Incomplete JSON segment at the end",
     "OpenCode rejected this chat session. Send the message again.",
     "The upstream model provider could not complete this request. Please retry shortly.",
+    "JSON error injected into SSE stream",
+    "Anthropic stream ended before message_stop",
+    "Example stream ended without a finish reason",
     "server_error: The model failed to generate a response.",
     '400 data: {"error":{"code":"invalid_parameter_error","param":null,"message":"Download multimodal file timed out","type":"invalid_request_error"},"id":"chatcmpl-example"}\n\n',
   ])("keeps a dropped connection transient: %s", async (message) => {

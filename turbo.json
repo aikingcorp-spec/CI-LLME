@@ -15,7 +15,8 @@
         "GIT_SHA",
         "PUBLIC_CRISP_WEBSITE_ID",
         "PUBLIC_POSTHOG_HOST",
-        "PUBLIC_POSTHOG_KEY"
+        "PUBLIC_POSTHOG_KEY",
+        "VNBOT_INLINE_DEPS"
       ],
       "outputs": ["dist/**", "src/generated/**"]
     },

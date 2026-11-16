@@ -43,6 +43,7 @@ import { subagentMarksUnread } from "./run-notifications.js";
 import { secretPausedToolResult } from "./run-secret.js";
 import type { createRunTrustLoaders } from "./run-trust.js";
 import type { inferScript } from "./scripted-runtime.js";
+import { providerToolCallId, runToolCallIds } from "./tool-call-ids.js";
 import type { LoopGuardStreak } from "./tool-loop.js";
 import { restoreTurnCheckpoint, unresolvedTurnCheckpointCalls } from "./turn-checkpoint.js";
 
@@ -492,7 +493,11 @@ export function restoreTurnCheckpointEffects(
     }
     if (saved.effectOccurrences) {
       effects.occurrences.push(...saved.effectOccurrences);
-      const pendingExecutionId = JSON.stringify(["pi-tool", "main", saved.pendingToolCallId]);
+      const pendingExecutionId = JSON.stringify([
+        "pi-tool",
+        "main",
+        providerToolCallId(runToolCallIds(saved.messages).provider, saved.pendingToolCallId),
+      ]);
       // Provider IDs can repeat in later responses. Only the restored
       // pending call may consume its saved assignment, exactly once.
       effects.restoredPending = saved.effectOccurrences.findLast(
