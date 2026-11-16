@@ -6,6 +6,33 @@ import { expect, it } from "vitest";
 import { allocateLoopbackPort } from "./local-stack.js";
 import { nativeWeb } from "./native-web.js";
 
+it("allows only the pinned portal to frame native HTML without restricting existing network providers", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "native-web-portal-"));
+  const webPort = await allocateLoopbackPort();
+  const server = nativeWeb({
+    port: webPort,
+    apiPort: 1,
+    web: root,
+    portalOrigin: "https://portal.example.test",
+  });
+  try {
+    await writeFile(path.join(root, "index.html"), "<!doctype html><html>VNBot</html>");
+    await writeFile(path.join(root, "html-viewer.html"), "<!doctype html><html>Viewer</html>");
+    await server.start(new AbortController().signal);
+    const main = await fetch(`http://127.0.0.1:${webPort}/app`);
+    expect(main.headers.get("content-security-policy")).toBe(
+      "frame-ancestors https://portal.example.test",
+    );
+    const viewer = await fetch(`http://127.0.0.1:${webPort}/html-viewer.html`);
+    expect(viewer.headers.get("content-security-policy")).toBe(
+      "frame-ancestors 'self' https://portal.example.test",
+    );
+  } finally {
+    await server.stop();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 function rawGet(port: number, urlPath: string): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const req = rawRequest({ hostname: "127.0.0.1", port, path: urlPath, method: "GET" }, (res) => {

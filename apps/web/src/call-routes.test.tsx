@@ -32,6 +32,7 @@ vi.mock("@rakazo/ui-web", () => ({
   Button: ({ children, ...props }: { children: ReactNode }) => (
     <button {...props}>{children}</button>
   ),
+  Spinner: () => null,
 }));
 vi.mock("@rakazo/core", async (importOriginal) => ({
   ...(await importOriginal<typeof CoreModule>()),

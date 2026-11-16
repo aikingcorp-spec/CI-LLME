@@ -4,6 +4,10 @@ import type { Server } from "node:http";
 import { createServer, request } from "node:http";
 import path from "node:path";
 import type { Duplex } from "node:stream";
+import {
+  contentSecurityPolicyFor,
+  withPortalFrameAncestor,
+} from "@rakazo/contracts/content-security-policy";
 import type { NativeRuntimeService } from "./native-runtime.js";
 
 /** Loopback static host for the built web app, with API and websocket routes proxied locally. */
@@ -12,6 +16,7 @@ export function nativeWeb(input: {
   apiPort: number;
   web: string;
   token?: string;
+  portalOrigin?: string;
 }): NativeRuntimeService {
   let webServer: Server | undefined;
   const sockets = new Set<Duplex>();
@@ -75,6 +80,14 @@ export function nativeWeb(input: {
           const extension = path.extname(file);
           const target = extension ? file : path.join(input.web, "index.html");
           const body = await readFile(target);
+          if (path.extname(target) === ".html") {
+            const policy = contentSecurityPolicyFor(pathname, "frame-ancestors 'none'");
+            if (policy)
+              res.setHeader(
+                "content-security-policy",
+                input.portalOrigin ? withPortalFrameAncestor(policy, input.portalOrigin) : policy,
+              );
+          }
           const types: Record<string, string> = {
             ".html": "text/html",
             ".js": "text/javascript",

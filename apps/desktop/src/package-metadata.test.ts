@@ -16,6 +16,7 @@ const packageJson = JSON.parse(
     productName?: string;
     appId?: string;
     linux?: { executableName?: string; target?: BuilderTarget[] };
+    deb?: { depends?: string[] };
     win?: { target?: BuilderTarget[]; verifyUpdateCodeSignature?: boolean };
     extraResources?: { from: string; to: string }[];
     publish?: { provider?: string; url?: string; owner?: string; repo?: string }[];
@@ -33,7 +34,7 @@ function targetNames(targets: BuilderTarget[] | undefined) {
 
 describe("desktop package metadata", () => {
   it("shares the customer-facing name between Electron and electron-builder", () => {
-    expect(packageJson.version).toBe("0.4.0");
+    expect(packageJson.version).toBe("0.4.1");
     expect(packageJson.productName).toBe("VNBot");
     expect(packageJson.scripts?.["build:native"]).toBe("node scripts/build-native.mjs");
     expect(targetNames(packageJson.build?.win?.target)).toEqual(["nsis", "msi"]);
@@ -43,6 +44,20 @@ describe("desktop package metadata", () => {
     expect(packageJson.build?.productName).toBeUndefined();
     expect(packageJson.build?.appId).toBe(NATIVE_DESKTOP_APP_ID);
     expect(packageJson.build?.linux?.executableName).toBe("vnbot");
+    expect(packageJson.build?.deb?.depends).toContain("libasound2t64 | libasound2");
+    expect(packageJson.build?.deb?.depends).toEqual(
+      expect.arrayContaining([
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+      ]),
+    );
     expect(packageJson.build?.publish).toEqual([
       { provider: "generic", url: "https://dl.vnbot.run/desktop/" },
     ]);

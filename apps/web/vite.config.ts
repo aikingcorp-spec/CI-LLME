@@ -49,6 +49,7 @@ import {
   shouldInjectNovncStorageShim,
 } from "./src/novnc-html.js";
 import { rakazoPwa } from "./src/pwa/plugin.js";
+import { portalFramePolicy } from "./src/remote-frame-policy.js";
 import type { ScreenTargetFailure } from "./src/screen-proxy.js";
 import {
   checkScreenAuthorization,
@@ -584,11 +585,15 @@ export default defineConfig(({ command, mode }) => {
           });
         },
         configurePreviewServer(server) {
-          server.middlewares.use((req, res, next) => {
+          server.middlewares.use(async (req, res, next) => {
             const pathname = req.url?.split("?", 1)[0] ?? "/";
             if (pathname !== COMPUTER_SCREEN_RUNTIME_PATH)
               res.setHeader("x-frame-options", "SAMEORIGIN");
-            const policy = contentSecurityPolicyFor(pathname, appPolicy, wuyingScreenPolicy);
+            const portalPolicy =
+              !path.extname(pathname) || pathname.endsWith(".html")
+                ? await portalFramePolicy(api, req.headers.host, appPolicy)
+                : appPolicy;
+            const policy = contentSecurityPolicyFor(pathname, portalPolicy, wuyingScreenPolicy);
             if (policy) {
               res.setHeader("content-security-policy", policy);
               res.setHeader("reporting-endpoints", CSP_REPORTING_ENDPOINTS);

@@ -748,6 +748,7 @@ export class NativeStackController {
     const env = {
       ...base,
       RAKAZO_IDENTITY_EXCHANGE: JSON.stringify(identity),
+      RAKAZO_REMOTE_NAME_SUFFIX: this.input.env.RAKAZO_REMOTE_NAME_SUFFIX,
       RAKAZO_DB_PACKAGE_DIR: path.join(bundle, "packages", "db"),
       DATABASE_URL: database("rakazo_app", prepared.secrets.runtime),
       API_HOST: "127.0.0.1",
@@ -790,6 +791,7 @@ export class NativeStackController {
       ),
     );
     const web = nativeWeb({
+      portalOrigin: identity.centralOrigin,
       port: prepared.webPort,
       apiPort,
       web: path.join(bundle, "apps", "web", "dist"),

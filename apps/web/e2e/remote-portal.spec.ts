@@ -1,7 +1,112 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { rememberedComputerKey } from "../src/lib/remembered-computer";
+import { portalFramePolicy } from "../src/remote-frame-policy";
 import { captureScreenshot } from "./helpers";
+
+test("the portal keeps a computer session isolated while its address stays on the portal", async ({
+  page,
+  context,
+}, testInfo) => {
+  const baseURL = testInfo.project.use.baseURL;
+  if (!baseURL) throw new Error("The portal test needs the existing web server");
+  await signInForPortal(page, `portal-frame-${Date.now()}@example.test`);
+  const session = await page.request
+    .get("/api/auth/get-session")
+    .then((response) => response.json());
+  const cookie = (await context.cookies(baseURL))
+    .map((item) => `${item.name}=${item.value}`)
+    .join("; ");
+  const portal = "https://app.vnbot.run";
+  const computer = "https://computer.example.test";
+  let signedOut = false;
+  const csp = await portalFramePolicy(
+    baseURL,
+    "app.vnbot.run",
+    "frame-src 'self'; frame-ancestors 'none'",
+    async () => Response.json({ kind: "portal", portalOrigin: portal, frameSrc: [computer] }),
+  );
+  await page.routeWebSocket(/app\.vnbot\.run|computer\.example\.test/, (socket) => socket.close());
+  await context.route(`${portal}/**`, async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === "/api/auth/get-session")
+      return route.fulfill({ json: signedOut ? null : session });
+    if (url.pathname === "/api/auth/sign-out") {
+      signedOut = true;
+      return route.fulfill({ json: { success: true } });
+    }
+    if (url.pathname === "/rpc/remoteHosts/list")
+      return route.fulfill({
+        json: {
+          json: {
+            kind: "open",
+            deviceId: "frame-computer",
+            logicalHost: "fixture-computer",
+            devices: [
+              {
+                deviceId: "frame-computer",
+                logicalHost: "fixture-computer",
+                remoteEnabled: true,
+                state: "ready",
+              },
+            ],
+          },
+        },
+      });
+    if (url.pathname === "/rpc/remoteHosts/enter")
+      return route.fulfill({ json: { json: { href: `${computer}/remote-enter#fixture-ticket` } } });
+    const response = await route.fetch({
+      url: new URL(url.pathname + url.search, baseURL).href,
+      headers: { ...request.headers(), cookie, origin: new URL(baseURL).origin },
+    });
+    const headers = { ...response.headers() };
+    if (headers["content-type"]?.includes("text/html")) headers["content-security-policy"] = csp;
+    return route.fulfill({ response, headers });
+  });
+  // Only the computer document is a fixture. The portal UI and account session are real harness code.
+  await context.route(`${computer}/**`, (route) =>
+    route.fulfill({
+      contentType: "text/html; charset=utf-8",
+      headers: { "content-security-policy": `frame-ancestors ${portal}` },
+      body: `<!doctype html><html lang="vi"><body>
+    <p>Phiên máy tính thử</p><button type="button" id="navigate">Mở bot thử</button>
+    <button type="button" id="unsafe">Điều hướng không hợp lệ</button><button type="button" id="logout">Đăng xuất</button>
+    <script>
+      const tell = path => parent.postMessage({type:'vnbot.remote.navigation',path}, '${portal}');
+      document.getElementById('navigate').onclick = () => tell('/app/fixture-bot');
+      document.getElementById('unsafe').onclick = () => tell('//untrusted.example.test');
+      document.getElementById('logout').onclick = () => parent.postMessage({type:'vnbot.remote.signed-out'}, '${portal}');
+      tell('/app');
+    </script></body></html>`,
+    }),
+  );
+  await page.goto(`${portal}/app`);
+  const frame = page.frameLocator('iframe[title="VNBot"]');
+  await expect(frame.getByText("Phiên máy tính thử", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(`${portal}/m/frame-computer/app`);
+  const sandbox = await page.locator('iframe[title="VNBot"]').getAttribute("sandbox");
+  expect(sandbox).not.toContain("allow-top-navigation");
+  await frame.getByRole("button", { name: "Mở bot thử" }).click();
+  await expect(page).toHaveURL(`${portal}/m/frame-computer/app/fixture-bot`);
+  await frame.getByRole("button", { name: "Điều hướng không hợp lệ" }).click();
+  await expect(page).toHaveURL(`${portal}/m/frame-computer/app/fixture-bot`);
+  expect(
+    await page.locator('iframe[title="VNBot"]').evaluate((element) => {
+      try {
+        void (element as HTMLIFrameElement).contentWindow!.document;
+        return false;
+      } catch {
+        return true;
+      }
+    }),
+  ).toBe(true);
+  await frame.getByRole("button", { name: "Đăng xuất", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.origin === portal && url.pathname === "/sign-in");
+  await expect(page.locator('iframe[title="VNBot"]')).toHaveCount(0);
+  // The sign-in page may still be loading through the portal routes.
+  await context.unrouteAll({ behavior: "ignoreErrors" });
+});
 
 async function signInForPortal(page: Page, email: string) {
   const baseURL = test.info().project.use.baseURL;

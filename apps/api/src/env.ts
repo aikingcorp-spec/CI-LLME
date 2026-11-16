@@ -275,9 +275,13 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     extraAuthOrigins: [
       ...parseExtraAuthOrigins(source.RAKAZO_EXTRA_AUTH_ORIGINS),
       ...(identityExchange?.kind === "local"
-        ? [localRemoteOrigin(identityExchange.deviceId, source.RAKAZO_REMOTE_NAME_SUFFIX)].filter(
-            (origin): origin is string => Boolean(origin),
-          )
+        ? [
+            localRemoteOrigin(
+              identityExchange.deviceId,
+              source.RAKAZO_REMOTE_NAME_SUFFIX,
+              identityExchange.issuer,
+            ),
+          ].filter((origin): origin is string => Boolean(origin))
         : []),
     ],
     passkeyAppleAppIds: list(source.PASSKEY_APPLE_APP_IDS),

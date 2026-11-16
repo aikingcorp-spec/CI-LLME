@@ -42,6 +42,7 @@ import type { RouterDeps } from "../router.js";
 import { listRoutinesDto } from "../routines.js";
 import { deleteSpaceWithContent } from "../space-deletion.js";
 import { afterSpaceDeparture } from "../space-departure.js";
+import { spaceInviteUrl } from "../space-invite-url.js";
 import { threadSnapshot } from "../thread-snapshot.js";
 import { resolveThreadTarget } from "../thread-target.js";
 import type { RouterContext } from "./context.js";
@@ -289,7 +290,11 @@ export function spacesRoutes(ctx: RouterContext) {
               spaceId: input.spaceId,
             });
             return {
-              url: new URL(`/invite/${invite.token}`, deps.env.webOrigin).toString(),
+              url: spaceInviteUrl(invite.token, {
+                webOrigin: deps.env.webOrigin,
+                deviceId: deps.localDeviceId,
+                portalOrigin: deps.env.remotePortalOrigin,
+              }),
               expiresAt: invite.expiresAt.toISOString(),
             };
           }),

@@ -4,6 +4,7 @@ import { Button } from "@rakazo/ui-web";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryUserId } from "../lib/query";
 import { portalEntry, readRememberedComputer, rememberComputer } from "../lib/remembered-computer";
+import { machinePath } from "../lib/remote-frame";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { VNBOT_DOWNLOAD_URL } from "../lib/vnbot-links";
@@ -153,7 +154,7 @@ export function RemotePortalPage() {
             return;
           }
           rememberComputer(preferenceStore(), { userId: requestedFor, origin, deviceId });
-          window.location.assign(href);
+          window.location.assign(machinePath(deviceId));
         })
         .catch((error: unknown) => {
           if (generation !== enterGeneration.current || userIdRef.current !== requestedFor) return;

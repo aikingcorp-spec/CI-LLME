@@ -34,9 +34,11 @@ export function parseRemoteAccessEnv(raw: string | undefined): RemoteAccessEnv |
 export function localRemoteOrigin(
   deviceId: string,
   rawSuffix: string | undefined,
+  issuer?: string,
 ): string | undefined {
-  if (!rawSuffix) return undefined;
-  return `https://${remoteConnectorHostname(remoteLogicalHost(deviceId), rawSuffix)}`;
+  const suffix = rawSuffix ?? (issuer === "https://app.vnbot.run" ? "vnbot.run" : undefined);
+  if (!suffix) return undefined;
+  return `https://${remoteConnectorHostname(remoteLogicalHost(deviceId), suffix)}`;
 }
 
 function text(value: object, key: string): string | undefined {

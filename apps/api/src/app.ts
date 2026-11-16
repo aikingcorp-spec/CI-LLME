@@ -93,6 +93,7 @@ import {
   PLUGIN_SUBMISSIONS_PATH,
   SERVER_BUILD_HEADER,
 } from "@rakazo/contracts";
+import { withPortalFrameAncestor } from "@rakazo/contracts/content-security-policy";
 import {
   encryptionKeyWarning,
   REMOTE_OFFLINE_AFTER_MS,
@@ -940,6 +941,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       deploymentModelHostCredentials: env.deploymentModelHostCredentials,
       webOrigin: env.webOrigin,
       privacyPolicyUrl: env.privacyPolicyUrl,
+      remotePortalOrigin: localIdentity?.centralOrigin,
       screenProxySecret: env.screenProxySecret,
       sandboxProvider: env.sandboxProvider,
       nativeHostBridge,
@@ -957,16 +959,35 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     clientInterceptors: [onError((error, { path, signal }) => handleRpcError(error, path, signal))],
   });
   const app = new Hono();
+  if (localIdentity)
+    app.use("*", async (c, next) => {
+      await next();
+      const policy = c.res.headers.get("content-security-policy");
+      if (policy)
+        c.header(
+          "content-security-policy",
+          withPortalFrameAncestor(policy, localIdentity.centralOrigin),
+        );
+    });
   if (localIdentity) {
     app.get("/api/remote-entry", (c) => {
       c.header("cache-control", "no-store");
       return c.json({
+        kind: "computer",
         deviceId: localIdentity.deviceId,
         portalOrigin: localIdentity.centralOrigin,
       });
     });
   }
   if (issuerIdentity) {
+    app.get("/api/remote-entry", (c) => {
+      c.header("cache-control", "no-store");
+      return c.json({
+        kind: "portal",
+        portalOrigin: env.webOrigin,
+        frameSrc: env.remoteAccess ? [`https://*.${env.remoteAccess.nameSuffix}`] : [],
+      });
+    });
     app.post("/api/remote-host", async (c) =>
       handleRemoteHostRequest(c.req.raw, {
         lookup: async (deviceId) => {

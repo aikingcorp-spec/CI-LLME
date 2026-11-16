@@ -26,6 +26,8 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LocalRemotePresence } from "./components/LocalRemotePresence";
 import { MarkdownLinkPrompt } from "./components/markdown-link-prompt";
 import { PageLoading } from "./components/PageLoading";
+import { RemoteFrameBridge } from "./components/RemoteFrameBridge";
+import { RemoteMachinePage } from "./components/RemoteMachine";
 import { RemotePortalPage } from "./components/RemotePortal";
 import { SubscriptionGate } from "./components/SubscriptionGate";
 import { authClient } from "./lib/auth";
@@ -37,8 +39,9 @@ import { identifyMonitoringUser } from "./lib/monitoring";
 import { markAfterPaint, markOnce } from "./lib/performance";
 import { lazyComponent } from "./lib/preload-recovery";
 import { QueryUserProvider, setQueryUser } from "./lib/query";
+import { machinePath, remoteFramePage } from "./lib/remote-frame";
 import { remoteImagesPreference } from "./lib/remote-images-preference";
-import { isRemotePortalHost } from "./lib/remote-portal-host";
+import { useRemotePortal } from "./lib/remote-portal-capability";
 import { rememberSignedIn } from "./lib/returning-user";
 import { rpc } from "./lib/rpc";
 import {
@@ -104,18 +107,23 @@ function SsoCallbackPage() {
 
 const REMOTE_JOIN_KEY = "rakazo-remote-join";
 
-function enterFragment(hash: string): { ticket: string; invite?: string } {
+function enterFragment(hash: string): { ticket: string; invite?: string; next?: string } {
   const raw = hash.startsWith("#") ? hash.slice(1) : hash;
   if (!raw.startsWith("ticket=")) return { ticket: raw };
   const params = new URLSearchParams(raw);
   const invite = params.get("invite");
-  return { ticket: params.get("ticket") ?? "", ...(invite ? { invite } : {}) };
+  const next = params.get("next");
+  return {
+    ticket: params.get("ticket") ?? "",
+    ...(invite ? { invite } : {}),
+    ...(next && remoteFramePage(next) ? { next } : {}),
+  };
 }
 
 function RemoteEnterPage() {
-  const [{ ticket, invite }] = useState(() => enterFragment(window.location.hash));
+  const [{ ticket, invite, next }] = useState(() => enterFragment(window.location.hash));
   const [failed, setFailed] = useState(false);
-  const destination = remoteEnterDestination(invite);
+  const destination = invite ? remoteEnterDestination(invite) : (next ?? "/app");
   const signInDestination =
     destination === "/app" ? "/sign-in" : `/sign-in?next=${encodeURIComponent(destination)}`;
   useEffect(() => {
@@ -198,10 +206,9 @@ function RemoteJoinPage() {
           return;
         }
         sessionStorage.removeItem(REMOTE_JOIN_KEY);
-        const url = new URL(result.href);
-        const ticket = url.hash.startsWith("#") ? url.hash.slice(1) : "";
-        url.hash = invite ? new URLSearchParams({ ticket, invite }).toString() : ticket;
-        window.location.assign(url.toString());
+        window.location.assign(
+          `${machinePath(deviceId)}${invite ? `#${new URLSearchParams({ invite })}` : ""}`,
+        );
       })
       .catch((error: unknown) => {
         if (errorCode(error) === "UNAUTHORIZED")
@@ -283,7 +290,9 @@ export function App() {
 }
 
 function ShellOrPortal() {
-  if (isRemotePortalHost(window.location.hostname)) return <RemotePortalPage />;
+  const portal = useRemotePortal();
+  if (portal === null) return <PageLoading />;
+  if (portal) return <RemotePortalPage />;
   return <ShellPage />;
 }
 
@@ -352,6 +361,7 @@ function SessionApp() {
   const user = session.data?.user;
   return (
     <QueryUserProvider value={user?.id ?? null}>
+      <RemoteFrameBridge authenticated={Boolean(user)} />
       <MarkdownLinkPrompt>
         <div className="h-full" data-rakazo-app-state="ready">
           {user ? <LocalRemotePresence /> : null}
@@ -429,6 +439,19 @@ function SessionApp() {
                 }
               />
               <Route path="/invite/:token" element={user ? <InvitePage /> : <UnsignedInvite />} />
+              <Route
+                path="/m/:deviceId/*"
+                element={
+                  user ? (
+                    <RemoteMachinePage />
+                  ) : (
+                    <Navigate
+                      to={`/sign-in?next=${encodeURIComponent(pathname + search)}`}
+                      replace
+                    />
+                  )
+                }
+              />
               <Route
                 path="/admin/access"
                 element={

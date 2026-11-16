@@ -311,7 +311,7 @@ it("remembers only the device id after the chosen computer returns an address", 
   );
   if (!pick) throw new Error("Missing computer choice");
   await act(async () => pick.click());
-  expect(assign).toHaveBeenCalledWith("https://host.example/open");
+  expect(assign).toHaveBeenCalledWith("/m/c/app");
   expect(JSON.parse(localStorage.getItem(key) ?? "")).toEqual({ deviceId: "c" });
   expect(localStorage.getItem(key)).not.toMatch(/https|ticket|token|@/i);
   await view.unmount();
@@ -413,7 +413,7 @@ it("still opens a computer when saving the preference is denied", async () => {
   list.mockResolvedValue({ kind: "open", deviceId: "b", logicalHost: "hb", devices: [ready] });
   enter.mockResolvedValue({ href: "https://host.example/open" });
   const view = await render(page("user-a"));
-  expect(assign).toHaveBeenCalledWith("https://host.example/open");
+  expect(assign).toHaveBeenCalledWith("/m/b/app");
   expect(view.container.querySelector("[data-testid='account-menu']")).not.toBeNull();
   await view.unmount();
 });

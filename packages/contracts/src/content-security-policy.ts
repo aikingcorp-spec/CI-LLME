@@ -61,6 +61,7 @@ function serialize(directives: Record<string, string[]>) {
 export interface ContentSecurityPolicyExtensions {
   scriptSrc?: readonly string[];
   connectSrc?: readonly string[];
+  frameSrc?: readonly string[];
   /** Allows the Crisp chat widget the paywall loads when `CRISP_WEBSITE_ID` is set. */
   crisp?: boolean;
 }
@@ -101,6 +102,31 @@ function validSource(source: string) {
   return Boolean(match) && (port === undefined || (Number(port) >= 1 && Number(port) <= 65535));
 }
 
+/** A nested app viewer must admit every ancestor, including the pinned portal. */
+export function withPortalFrameAncestor(policy: string, origin: string): string {
+  const portal = new URL(origin);
+  if (
+    portal.protocol !== "https:" ||
+    portal.origin !== origin ||
+    !validSource(origin) ||
+    origin.includes("*")
+  )
+    throw new Error("Invalid portal origin");
+  const directives = policy
+    .split(";")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const index = directives.findIndex((value) => value.startsWith("frame-ancestors "));
+  const ancestor = directives[index];
+  if (!ancestor) return policy;
+  const sources = ancestor
+    .split(/\s+/)
+    .slice(1)
+    .filter((value) => value !== "'none'");
+  directives[index] = `frame-ancestors ${[...new Set([...sources, origin])].join(" ")}`;
+  return directives.join("; ");
+}
+
 /**
  * Parses an operator's space- or comma-separated list of extra origins. Anything but an https
  * origin throws, so a typo cannot widen the policy to a keyword, a scheme or every host.
@@ -121,6 +147,7 @@ export function appContentSecurityPolicy(extensions: ContentSecurityPolicyExtens
     ...APP_DIRECTIVES,
     "script-src": ["'self'", ...(extensions.scriptSrc ?? [])],
     "connect-src": ["'self'", ...(extensions.connectSrc ?? [])],
+    "frame-src": ["'self'", "blob:", ...(extensions.frameSrc ?? [])],
   };
   if (extensions.crisp) {
     for (const [name, sources] of Object.entries(CRISP_DIRECTIVES)) {

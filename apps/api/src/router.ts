@@ -179,6 +179,7 @@ export interface RouterDeps {
     deploymentModelConfigured?: boolean;
     deploymentModelHostCredentials?: boolean;
     webOrigin: string;
+    remotePortalOrigin?: string;
     privacyPolicyUrl?: string;
     screenProxySecret: string;
     sandboxProvider: string;

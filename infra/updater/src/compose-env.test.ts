@@ -59,6 +59,8 @@ const NOT_PASSED: Record<string, string> = {
   GIT_SHA: "baked into the image at build time; a pass-through entry would unset it",
   SHELL: "host shell for the desktop computer, which only the Electron app runs",
   RAKAZO_SINGLE_ACCOUNT: "native desktop trial switch; Compose has no desktop stack token",
+  RAKAZO_LEGACY_ACCOUNTS: "native desktop sets it after a 0.3.9 upgrade; servers never claim accounts",
+  PATH: "searched for a remote access connector the computer already has; only the desktop runs one",
   CLOUDFLARE_ACCOUNT_ID: "written into Pi's environment from stored gateway settings",
   CLOUDFLARE_GATEWAY_ID: "written into Pi's environment from stored gateway settings",
   COMPOSE_PROJECT_NAME: "read by the updater sidecar, which has its own environment",

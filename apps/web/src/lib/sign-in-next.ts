@@ -1,3 +1,4 @@
+import { machineDestination } from "./remote-frame";
 export const MCP_OAUTH_CALLBACK_PATH = "/mcp/oauth/callback";
 export const SLACK_INSTALL_CALLBACK_PATH = "/messaging/slack/callback";
 
@@ -7,6 +8,7 @@ const REMOTE_JOIN_PATH = "/remote-join";
 /** The page sign-in or sign-up may return to; anything else is ignored, so `next` can't redirect off the app. */
 export function signInNext(next: string | null): string | null {
   if (!next) return null;
+  if (machineDestination(next)) return next;
   // A connector sign-in started on another device lands here signed out; finish it after sign-in.
   if (
     next === "/integrations/setup" ||
@@ -24,7 +26,8 @@ export function signInNext(next: string | null): string | null {
 
 /** Where a new account starts: an invite or host handoff it came for, otherwise onboarding. */
 export function newAccountDestination(next: string | null): string {
-  if (next && (INVITE_PATH.test(next) || next === REMOTE_JOIN_PATH)) return next;
+  if (next && (INVITE_PATH.test(next) || next === REMOTE_JOIN_PATH || machineDestination(next)))
+    return next;
   return "/onboarding";
 }
 
