@@ -1,3 +1,4 @@
+import { expectLinearTime } from "@rakazo/contracts/test-timing";
 import { describe, expect, it } from "vitest";
 import {
   buildSkillMd,
@@ -5,11 +6,11 @@ import {
   extractForcedSkillName,
   extractRoutineSkillMentions,
   findSkillByName,
-  formatSkillsCatalogInstruction,
   mergeBuiltinSkills,
   parseSkillMd,
   renameRoutineSkillMentions,
 } from "./agent-skill.js";
+import { formatForcedSkillPrompt, formatSkillsCatalogInstruction } from "./agent-skill.prompt.js";
 
 describe("built-in skill merging", () => {
   it("uses the same normalized names for catalog precedence and prompt expansion", () => {
@@ -420,6 +421,19 @@ clip: |
     );
   });
 
+  it("refuses fields their author must change as a bad request", () => {
+    for (const fields of [
+      { name: "", description: "ok" },
+      { name: "ok", description: "" },
+      { name: "N".repeat(81), description: "ok" },
+      { name: "ok", description: "D".repeat(2001) },
+    ]) {
+      expect(() => buildSkillMd({ ...fields, body: "body" })).toThrow(
+        expect.objectContaining({ name: "ClientError", kind: "BAD_REQUEST" }),
+      );
+    }
+  });
+
   it.each([2, 3])(
     "round-trips multiline keep-chomp values with %i trailing newlines",
     (trailing) => {
@@ -456,6 +470,12 @@ describe("skill prompt helpers", () => {
       rest: "",
     });
     expect(extractForcedSkillName("/Settings: General")).toBeNull();
+    expect(extractForcedSkillName("/")).toBeNull();
+    expect(extractForcedSkillName("Use skill:  Weekly review \nnow")).toEqual({
+      name: "Weekly review",
+      rest: "now",
+    });
+    expectLinearTime(() => expect(extractForcedSkillName(`/${"\t".repeat(200_000)}`)).toBeNull());
   });
 
   it("extracts @skill mentions from routine prompts", () => {
@@ -616,6 +636,37 @@ describe("skill prompt helpers", () => {
     expect(line).toContain("- Daily standup: Prepare standup notes");
     expect(line).toContain("skill_read");
     expect(line).toContain("Prefer matching skills");
+  });
+
+  it("describes skills without naming a vendor, runtime or how they are stored", () => {
+    const text = formatSkillsCatalogInstruction([
+      { name: "Standup", description: "Prepare standup notes", source: "user", readOnly: false },
+    ]);
+    expect(text).not.toMatch(/claude|anthropic|\bpi\b|runtime|SKILL\.md|persist|inject/i);
+  });
+
+  it("renders the whole catalog instruction and a forced skill prompt", () => {
+    expect(
+      formatSkillsCatalogInstruction([
+        { name: "Standup", description: "Prepare standup notes", source: "user", readOnly: false },
+        { name: "Review", description: "Review a change", source: "builtin", readOnly: true },
+      ]),
+    ).toBe(
+      [
+        "Available skills (reusable how-to recipes, not account-specific routines):",
+        "- Standup: Prepare standup notes",
+        "- Review: Review a change",
+        "When a skill matches the user's request, call skill_read for that name and follow it immediately. Prefer matching skills over improvising multi-step recipes.",
+        "Users can force a skill with /Name in the composer. Routines may mention a skill as @Name — that loads the skill at fire time.",
+        "Create a skill with skill_create when a multi-step task is worth repeating (or when asked). After creating one, mention /Name so the user can open it.",
+        "Only skill_update / skill_delete user-created skills (not builtin or plugin).",
+      ].join("\n"),
+    );
+    expect(formatSkillsCatalogInstruction([])).toBeUndefined();
+    expect(formatForcedSkillPrompt("Standup", " body \n", " rest ")).toBe(
+      "Use skill: Standup\n\nbody\n\nrest",
+    );
+    expect(formatForcedSkillPrompt("Standup", "body")).toBe("Use skill: Standup\n\nbody");
   });
 });
 

@@ -140,7 +140,6 @@ vi.mock("./native", () => ({
       secondary: "#7676801F",
     },
 }));
-vi.mock("./i18n", () => ({ useI18n: () => ({ t: (text: string) => text }) }));
 
 describe("BotAvatar", () => {
   it("does not draw the old orange mascot", () => {

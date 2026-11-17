@@ -13,13 +13,13 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { acceptSmokeOutput } from "../../apps/desktop/src/native-smoke.ts";
+import { acceptSmokeOutput } from "../../apps/desktop/src/main/native-smoke.ts";
 import {
   assertStagingDistribution,
   PRODUCTION_PORTAL_ORIGIN,
   readPublicPin,
   resolvePublicDistribution,
-} from "../../apps/desktop/src/public-distribution.ts";
+} from "../../apps/desktop/src/main/public-distribution.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 export const repoRoot = path.resolve(scriptDir, "../..");

@@ -11,6 +11,7 @@ export interface SignedRemoteHost {
     confirmed?: boolean;
     originService?: string;
     error?: boolean;
+    memberAccountId?: string;
   };
 }
 

@@ -70,4 +70,16 @@ export const HE_MESSAGES: Record<string, string> = {
     "קבצי המחשב השמורים שלך יימחקו ב-{date} אלא אם תחדש את המינוי.",
   "Your saved computer files will be deleted on {date} unless you choose a plan.":
     "קבצי המחשב השמורים שלך יימחקו ב-{date} אלא אם תבחר תוכנית.",
+  "{inviter} invited you to {organization} on VNBot":
+    "{inviter} הזמין/ה אותך ל-{organization} ב-VNBot",
+  "{inviter} invited you to join {organization} on VNBot.":
+    "{inviter} הזמין/ה אותך להצטרף ל-{organization} ב-VNBot.",
+  "Join {organization}": "הצטרפות ל-{organization}",
+  "This invitation expires in 7 days. Sign in with this email address to accept it.":
+    "ההזמנה תפוג בעוד 7 ימים. כדי לקבל אותה, יש להתחבר עם כתובת האימייל הזו.",
+  "{inviter} invited you to {space} on VNBot": "{inviter} הזמין/ה אותך ל-{space} ב-VNBot",
+  "{inviter} invited you to join {space} on VNBot.":
+    "{inviter} הזמין/ה אותך להצטרף ל-{space} ב-VNBot.",
+  "Join {space}": "הצטרפות ל-{space}",
+  "This invitation expires in 7 days.": "ההזמנה תפוג בעוד 7 ימים.",
 };

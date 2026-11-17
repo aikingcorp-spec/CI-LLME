@@ -42,10 +42,12 @@ test("the portal keeps a computer session isolated while its address stays on th
           json: {
             kind: "open",
             deviceId: "frame-computer",
+            shortCode: "k9x4m2p7q8",
             logicalHost: "fixture-computer",
             devices: [
               {
                 deviceId: "frame-computer",
+                shortCode: "k9x4m2p7q8",
                 logicalHost: "fixture-computer",
                 remoteEnabled: true,
                 state: "ready",
@@ -84,13 +86,13 @@ test("the portal keeps a computer session isolated while its address stays on th
   await page.goto(`${portal}/app`);
   const frame = page.frameLocator('iframe[title="VNBot"]');
   await expect(frame.getByText("Phiên máy tính thử", { exact: true })).toBeVisible();
-  await expect(page).toHaveURL(`${portal}/m/frame-computer/app`);
+  await expect(page).toHaveURL(`${portal}/m/k9x4m2p7q8/app`);
   const sandbox = await page.locator('iframe[title="VNBot"]').getAttribute("sandbox");
   expect(sandbox).not.toContain("allow-top-navigation");
   await frame.getByRole("button", { name: "Mở bot thử" }).click();
-  await expect(page).toHaveURL(`${portal}/m/frame-computer/app/fixture-bot`);
+  await expect(page).toHaveURL(`${portal}/m/k9x4m2p7q8/app/fixture-bot`);
   await frame.getByRole("button", { name: "Điều hướng không hợp lệ" }).click();
-  await expect(page).toHaveURL(`${portal}/m/frame-computer/app/fixture-bot`);
+  await expect(page).toHaveURL(`${portal}/m/k9x4m2p7q8/app/fixture-bot`);
   expect(
     await page.locator('iframe[title="VNBot"]').evaluate((element) => {
       try {
@@ -321,6 +323,7 @@ test("a remembered offline computer is not replaced by the only other ready comp
                 logicalHost: "may-b",
                 remoteEnabled: true,
                 state: "ready",
+                invited: true,
               },
             ],
           },
@@ -340,6 +343,7 @@ test("a remembered offline computer is not replaced by the only other ready comp
   });
   await page.goto("http://app.vnbot.run/app");
   await expect(page.getByTestId("remote-portal-pick-computer-b")).toBeVisible();
+  await expect(page.getByTestId("remote-portal-invited-computer-b")).toHaveText("Được mời");
   await expect(page.getByText("Ngoại tuyến", { exact: true })).toBeVisible();
   await expect(page.getByTestId("remote-portal-remembered-absent")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Thử lại", exact: true })).toBeVisible();

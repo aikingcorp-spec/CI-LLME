@@ -30,7 +30,7 @@ export function usePaletteActions({
   settingsAvailable: Parameters<typeof useSettingsNavItems>[0];
   onNewBot: () => void;
   onNewGroup: () => void;
-  onNewSpace: () => void;
+  onNewSpace?: () => void;
   onShortcuts: () => void;
   setOverlay: (overlay: ShellOverlay) => void;
   openSettings: (section: SettingsSection) => void;
@@ -50,12 +50,16 @@ export function usePaletteActions({
       icon: Users,
       onSelect: onNewGroup,
     },
-    {
-      id: "new-space",
-      label: t`New private space`,
-      icon: Lock,
-      onSelect: onNewSpace,
-    },
+    ...(onNewSpace
+      ? [
+          {
+            id: "new-space",
+            label: t`New private space`,
+            icon: Lock,
+            onSelect: onNewSpace,
+          },
+        ]
+      : []),
     {
       id: "integrations",
       label: t`Connect apps`,

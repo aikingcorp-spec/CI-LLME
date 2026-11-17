@@ -7,7 +7,7 @@ import {
   InputGroupInput,
   toast,
 } from "@rakazo/ui-web";
-import { Copy } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageAccountMenu } from "../components/PageAccountMenu";
@@ -17,6 +17,7 @@ import { VnbotWordmark } from "../components/VnbotWordmark";
 
 type Download = { version: string; url: string } | null;
 type Downloads = { windows: Download; mac: Download; linuxDeb: Download; linuxAppImage: Download };
+type DownloadRow = [name: string, download: Download, platform: "windows" | "mac" | "linux"];
 
 /** Installs and updates the app on a Debian or Ubuntu server, from the same feed. */
 export const LINUX_SERVER_COMMAND =
@@ -24,6 +25,30 @@ export const LINUX_SERVER_COMMAND =
 
 function isDownloads(value: unknown): value is Downloads {
   return Boolean(value && typeof value === "object" && "windows" in value && "mac" in value);
+}
+
+function preferredDownloadPlatform(): "windows" | "mac" | "linux" | null {
+  if (typeof navigator === "undefined") return null;
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes("mac os") || ua.includes("macintosh")) return "mac";
+  if (ua.includes("linux") && !ua.includes("android")) return "linux";
+  if (ua.includes("win")) return "windows";
+  return null;
+}
+
+function DownloadsBackLink() {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      data-testid="downloads-back"
+      className="fixed top-4 left-6 z-10 text-muted-foreground"
+      render={<Link to="/app?choose=1" />}
+    >
+      <ArrowLeft className="size-4" />
+      <Trans>Quay lại</Trans>
+    </Button>
+  );
 }
 
 /** Team accounts install the desktop app from here. The app updates itself afterwards. */
@@ -50,20 +75,29 @@ export function DownloadsPage() {
   if (!downloads && !failed)
     return (
       <div className="h-full">
+        <DownloadsBackLink />
         <PageAccountMenu />
         <PageLoading />
       </div>
     );
-  const rows: [string, Download][] = downloads
+  const preferred = preferredDownloadPlatform();
+  const allRows: DownloadRow[] = downloads
     ? [
-        ["Windows", downloads.windows],
-        ["macOS", downloads.mac],
-        ["Linux (.deb)", downloads.linuxDeb],
-        ["Linux (AppImage)", downloads.linuxAppImage],
+        ["Windows", downloads.windows, "windows"],
+        ["macOS", downloads.mac, "mac"],
+        ["Linux (.deb)", downloads.linuxDeb, "linux"],
+        ["Linux (AppImage)", downloads.linuxAppImage, "linux"],
       ]
     : [];
+  const rows = preferred
+    ? [
+        ...allRows.filter(([, , platform]) => platform === preferred),
+        ...allRows.filter(([, , platform]) => platform !== preferred),
+      ]
+    : allRows;
   return (
     <main className="h-full overflow-y-auto bg-background px-4 py-16 text-foreground">
+      <DownloadsBackLink />
       <PageAccountMenu />
       <div className="mx-auto flex w-[560px] max-w-full flex-col gap-6">
         <VnbotWordmark variant="wordmark" className="h-8 w-auto self-center" />
@@ -123,7 +157,7 @@ export function DownloadsPage() {
             </InputGroupAddon>
           </InputGroup>
         </div>
-        <Button variant="ghost" className="self-center" render={<Link to="/app" />}>
+        <Button variant="ghost" className="self-center" render={<Link to="/app?choose=1" />}>
           <Trans>Quay lại</Trans>
         </Button>
       </div>

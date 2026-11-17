@@ -1,5 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
-import type { BotAvatarSet, SpaceMemoryConfig, UsageSummary } from "@rakazo/contracts";
+import { useTimeout } from "@rakazo/chat-ui/hooks";
+import type { BotAvatarSet, LabFeature, SpaceMemoryConfig } from "@rakazo/contracts";
 import {
   Button,
   Dialog,
@@ -17,15 +18,18 @@ import { RemoteSettings } from "../components/RemoteSettings";
 import { SETTINGS_CONTENT_WIDTH, SettingsGroup, SettingsRow } from "../components/SettingsRows";
 import { VaultSettings } from "../components/VaultSettings";
 import { canChooseOwnComputer } from "../lib/computer-sandbox";
+import { setRemoteEdition, useRemoteEdition } from "../lib/remote-edition";
 import type { RpcClient } from "../lib/rpc";
+import { rpc } from "../lib/rpc";
 import { SpaceRpcProvider } from "../lib/space-rpc";
+import { useEventListener } from "../lib/use-event-listener";
 import {
   ComputerSettingsPanel,
   GeneralSettingsPanels,
   UpdatesSettingsPanel,
-  UsageSettingsPanel,
 } from "./AccountSettingsOverlay";
 import { BillingSettingsPanel } from "./BillingSettingsPanel";
+import { LabsSettingsPanel } from "./LabsSettingsPanel";
 import { MemorySettingsOverlay } from "./MemorySettingsOverlay";
 import { MessagingSettingsPanel } from "./MessagingSettingsPanel";
 import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
@@ -34,6 +38,7 @@ import { SpaceSettingsPanel } from "./SpaceSettingsPanel";
 import { useSettingsNavItems } from "./settings-nav";
 import type { SettingsSpace } from "./shell/dialogs";
 import type { SettingsSection } from "./shell-overlay";
+import { UsageSettingsPanel } from "./UsageSettingsPanel";
 import { VoiceSettingsOverlay } from "./VoiceSettingsOverlay";
 
 export function SettingsOverlay({
@@ -44,8 +49,6 @@ export function SettingsOverlay({
   onDeleteSpace,
   email,
   name,
-  usage,
-  onUsageOpen,
   section: requestedSection,
   onSectionChange,
   onNameSaved,
@@ -55,11 +58,15 @@ export function SettingsOverlay({
   onBotAvatarSetChange,
   onAccountImported,
   onImportAgent,
+  labs,
+  labsAvailable,
+  onLabsChange,
   billingEnabled = false,
   sandboxProvider,
   onSandboxProviderChange,
   canConfigureComputers = false,
   computerSettingsEnabled = false,
+  isMachineOwner = true,
   messagingEnabled = false,
   paymentWalletProvider = null,
   memoryConfig,
@@ -73,27 +80,31 @@ export function SettingsOverlay({
   space?: SettingsSpace | null;
   spaces?: { id: string; name: string }[];
   onOpenSpace?: (spaceId: string) => void;
-  onRenameSpace?: (spaceId: string, name: string) => Promise<void>;
+  onRenameSpace?: (spaceId: string, name: string, client: RpcClient) => Promise<void>;
   onDeleteSpace?: (spaceId: string) => Promise<void>;
   email?: string | null;
   name: string;
-  usage?: UsageSummary | null;
-  onUsageOpen: () => void;
   section: SettingsSection;
   onSectionChange: (section: SettingsSection) => void;
   onNameSaved?: () => Promise<void>;
   timezone: string | null;
-  onTimezoneChange: (timezone: string) => Promise<void>;
+  onTimezoneChange: (timezone: string, client: RpcClient) => Promise<void>;
   botAvatarSet?: BotAvatarSet;
   onBotAvatarSetChange?: (set: BotAvatarSet) => Promise<void>;
   onAccountImported?: () => Promise<void>;
   onImportAgent?: () => void;
+  labs: readonly LabFeature[];
+  /** The Labs features this account can switch; Labs is hidden when there are none. */
+  labsAvailable: readonly LabFeature[];
+  onLabsChange: (labs: LabFeature[], client: RpcClient) => Promise<void>;
   billingEnabled?: boolean;
   sandboxProvider?: string | null;
   onSandboxProviderChange?: (sandboxProvider: string) => void;
   /** Admins choose where new computers run. */
   canConfigureComputers?: boolean;
   computerSettingsEnabled?: boolean;
+  /** Only the machine owner manages host-level remote access and server updates. */
+  isMachineOwner?: boolean;
   messagingEnabled?: boolean;
   /** The wallet this deployment lets bots spend from; none hides Wallet. */
   paymentWalletProvider?: { id: string; name: string } | null;
@@ -101,8 +112,8 @@ export function SettingsOverlay({
   onMemoryConfigChange: (config: SpaceMemoryConfig | null) => void;
   onClose: () => void;
   onVoiceStatusMaybeChanged?: () => void | Promise<void>;
-  /** After leaving a space, with the space the server moved this person to. */
-  onLeftSpace?: (spaceId: string, activeSpaceId: string) => void;
+  /** After leaving a space, with the space the server moved this person to (or null if none remain). */
+  onLeftSpace?: (spaceId: string, activeSpaceId: string | null) => void;
   /** Pinned to the space this window shows; billing acts on it. */
   shellRpc: RpcClient;
 }) {
@@ -114,8 +125,25 @@ export function SettingsOverlay({
   const usageRef = useRef<HTMLDivElement>(null);
   const [memoryBusy, setMemoryBusy] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
-  const [keepComputerRecovery, setKeepComputerRecovery] = useState(false);
-  const recoveryHoldTimer = useRef<number | undefined>(undefined);
+  // A new object holds the hint for another four seconds; null lets it go.
+  const [recoveryHold, setRecoveryHold] = useState<object | null>(null);
+  const keepComputerRecovery = recoveryHold !== null;
+  const edition = useRemoteEdition();
+  const showConnection = isMachineOwner && edition !== "free";
+  const showUpdates = isMachineOwner;
+  useEffect(() => {
+    if (!isMachineOwner) return;
+    let active = true;
+    void rpc.remoteHosts
+      ?.list?.()
+      .then((portal) => {
+        if (active && portal?.edition !== undefined) setRemoteEdition(portal.edition);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [isMachineOwner]);
   const showComputer =
     computerSettingsEnabled &&
     (canConfigureComputers ||
@@ -124,59 +152,53 @@ export function SettingsOverlay({
       computersAreUnavailable(sandboxProvider));
   // A section that isn't available yet (billing before its flag loads) shows General until it is.
   const section =
+    (requestedSection === "connection" && !showConnection) ||
+    (requestedSection === "updates" && !showUpdates) ||
     (requestedSection === "computer" && !showComputer) ||
     (requestedSection === "billing" && !billingEnabled) ||
     (requestedSection === "wallet" && !paymentWalletProvider) ||
-    requestedSection === "organization"
+    requestedSection === "organization" ||
+    (requestedSection === "labs" && labsAvailable.length === 0)
       ? "general"
       : requestedSection;
   const panelBusy = memoryBusy || voiceBusy;
   // Only a space's own page binds to it; every other section, memory included, acts on the
   // space the app is showing.
-  const spaceId = section === "space" ? (space?.id ?? null) : null;
-  const releaseComputerRecovery = useCallback(() => {
-    window.clearTimeout(recoveryHoldTimer.current);
-    recoveryHoldTimer.current = undefined;
-    setKeepComputerRecovery(false);
-  }, []);
-  const holdComputerRecovery = useCallback(() => {
-    setKeepComputerRecovery(true);
-    window.clearTimeout(recoveryHoldTimer.current);
-    recoveryHoldTimer.current = window.setTimeout(() => {
-      recoveryHoldTimer.current = undefined;
-      setKeepComputerRecovery(false);
-    }, 4000);
-  }, []);
+  const spaceId = section === "space" ? (space?.id ?? null) : undefined;
+  const releaseComputerRecovery = useCallback(() => setRecoveryHold(null), []);
+  const holdComputerRecovery = useCallback(() => setRecoveryHold({}), []);
+  useTimeout(releaseComputerRecovery, recoveryHold ? 4000 : null, recoveryHold);
 
   useEffect(() => {
     if (section !== "computer") releaseComputerRecovery();
   }, [section, releaseComputerRecovery]);
-  useEffect(() => () => window.clearTimeout(recoveryHoldTimer.current), []);
 
   useEffect(() => {
-    if (section === "usage") {
-      onUsageOpen();
-      usageRef.current?.focus();
-    }
-  }, [section, onUsageOpen]);
+    if (section === "usage") usageRef.current?.focus();
+  }, [section]);
 
   const navItems = useSettingsNavItems({
+    isMachineOwner,
+    connection: showConnection,
     messaging: messagingEnabled,
     wallet: Boolean(paymentWalletProvider),
     computer: showComputer,
     billing: billingEnabled,
-    updates: true,
+    updates: showUpdates,
+    labs: labsAvailable.length > 0,
   });
 
+  const measureNav = () => {
+    if (!nav) return;
+    const offset = Math.abs(nav.scrollLeft);
+    setNavOverflow({
+      previous: offset > 1,
+      next: nav.scrollWidth - nav.clientWidth - offset > 1,
+    });
+  };
+  useEventListener(nav, "scroll", measureNav);
   useEffect(() => {
     if (!nav) return;
-    const measure = () => {
-      const offset = Math.abs(nav.scrollLeft);
-      setNavOverflow({
-        previous: offset > 1,
-        next: nav.scrollWidth - nav.clientWidth - offset > 1,
-      });
-    };
     const revealSection = () => {
       if (nav.scrollWidth > nav.clientWidth) {
         nav.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({
@@ -184,20 +206,18 @@ export function SettingsOverlay({
           inline: "nearest",
         });
       }
-      measure();
+      measureNav();
     };
     revealSection();
-    nav.addEventListener("scroll", measure);
     const observer =
       typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(revealSection);
     observer?.observe(nav);
-    return () => {
-      nav.removeEventListener("scroll", measure);
-      observer?.disconnect();
-    };
+    return () => observer?.disconnect();
   }, [
     nav,
     section,
+    showConnection,
+    showUpdates,
     showComputer,
     billingEnabled,
     messagingEnabled,
@@ -389,6 +409,7 @@ export function SettingsOverlay({
                         onBotAvatarSetChange={onBotAvatarSetChange}
                         onAccountImported={onAccountImported}
                         onImportAgent={onImportAgent}
+                        isMachineOwner={isMachineOwner}
                       />
                       {/* One space is just the app, so there is nothing to tell apart or manage. */}
                       {spaces.length > 1 && onOpenSpace ? (
@@ -414,12 +435,14 @@ export function SettingsOverlay({
                       ) : null}
                     </div>
                   ) : null}
-                  {section === "connection" ? <RemoteSettings /> : null}
+                  {section === "connection" && showConnection ? <RemoteSettings /> : null}
                   {section === "space" && space ? (
                     <SpaceSettingsPanel
                       key={space.id}
                       space={space}
-                      onRename={(name) => onRenameSpace?.(space.id, name) ?? Promise.resolve()}
+                      onRename={(name, client) =>
+                        onRenameSpace?.(space.id, name, client) ?? Promise.resolve()
+                      }
                       onDelete={() => onDeleteSpace?.(space.id) ?? Promise.resolve()}
                       onLeft={(activeSpaceId) => onLeftSpace?.(space.id, activeSpaceId)}
                       onClose={requestClose}
@@ -435,7 +458,7 @@ export function SettingsOverlay({
                   {section === "usage" ? (
                     <>
                       <PlanUsage />
-                      <UsageSettingsPanel usage={usage} panelRef={usageRef} />
+                      <UsageSettingsPanel panelRef={usageRef} />
                     </>
                   ) : null}
                   {section === "computer" && showComputer ? (
@@ -450,10 +473,17 @@ export function SettingsOverlay({
                       computerSettingsEnabled={computerSettingsEnabled}
                     />
                   ) : null}
+                  {section === "labs" ? (
+                    <LabsSettingsPanel
+                      labs={labs}
+                      available={labsAvailable}
+                      onLabsChange={onLabsChange}
+                    />
+                  ) : null}
                   {section === "billing" && billingEnabled ? (
                     <BillingSettingsPanel client={shellRpc} />
                   ) : null}
-                  {section === "updates" ? <UpdatesSettingsPanel /> : null}
+                  {section === "updates" && showUpdates ? <UpdatesSettingsPanel /> : null}
                   {section === "models" ? (
                     <ModelSettingsOverlay embedded scope="account" onClose={requestClose} />
                   ) : null}

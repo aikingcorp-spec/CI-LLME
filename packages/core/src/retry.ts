@@ -48,10 +48,7 @@ function retryWaitMs(options: RetryOptions, attempt: number, error: unknown): nu
   const { delayMs } = options;
   if (delayMs === undefined) {
     const backoff = Math.min(BACKOFF_BASE_MS * 2 ** attempt, BACKOFF_MAX_MS);
-    const asked = retryDelayMs(error, 0);
-    if (asked > 0) return Math.max(asked, backoff);
-    const random = options.random ?? Math.random;
-    return Math.round(backoff - (random() * backoff) / 2);
+    return retryDelayMs(error, backoff, options.random);
   }
   if (typeof delayMs === "number") return delayMs;
   if (typeof delayMs === "function") return delayMs(attempt, error);

@@ -3,6 +3,7 @@ import {
   COMPUTER_PROVIDER_UNAVAILABLE_ERROR,
   COMPUTER_RATE_LIMIT_ERROR,
   COMPUTER_RECOVERY_REQUIRED_ERROR,
+  COMPUTER_UNRESPONSIVE_ERROR,
   isComputerAllowanceUsed,
   providerQuotaResetAt,
 } from "@rakazo/contracts";
@@ -41,6 +42,13 @@ export const HOSTED_MODEL_CREDITS_REQUIRED_ERROR =
 /** A metered model call the organization's Rakazo credits cannot cover. */
 export const MODEL_CREDITS_EXHAUSTED_ERROR =
   "Not enough model credits. Add credits in Billing or connect your own API key.";
+
+/** A model Rakazo credits cannot price, so only the member's own key can run it. */
+export const MODEL_UNPRICED_FOR_CREDITS_ERROR =
+  "This model has no reliable price. Connect your own API key to use it.";
+
+/** An operator-set usage ceiling; buying credits does not lift it. */
+export const MODEL_CREDIT_CAP_REACHED_ERROR = "Usage limit reached. Contact support to continue.";
 
 /** A run in a billing organization without a paid plan, credits, or free period. */
 export const MODEL_ACCESS_REQUIRED_RUN_ERROR = "Subscribe in Billing to keep running bots.";
@@ -116,14 +124,17 @@ const MODEL_CONNECTION_RUN_ERRORS = new Set([
   HOSTED_MODEL_CREDITS_REQUIRED_ERROR,
   MODEL_CREDITS_EXHAUSTED_ERROR,
   "Connect your own API key in Models or choose Rakazo credits in Billing.",
+  MODEL_UNPRICED_FOR_CREDITS_ERROR,
 ]);
 const APP_RUN_ERRORS = new Set([
   ...MODEL_OUTPUT_RUN_ERRORS,
   ...MODEL_CONNECTION_RUN_ERRORS,
   MODEL_ACCESS_REQUIRED_RUN_ERROR,
   COMPUTER_RECOVERY_REQUIRED_ERROR,
+  MODEL_CREDIT_CAP_REACHED_ERROR,
   COMPUTER_RATE_LIMIT_ERROR,
   COMPUTER_PROVIDER_UNAVAILABLE_ERROR,
+  COMPUTER_UNRESPONSIVE_ERROR,
   ...stuckWorkStatusMessages(),
 ]);
 
@@ -489,7 +500,7 @@ function classifyRunError(
     summary = translate(RUN_ERROR_LIMIT_MESSAGES[kind][period], { provider });
     const reset =
       message.match(
-        /\bresets?(?:\s+at|\s+on)?\s*[:=]?\s*(\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z)?)/i,
+        /\bresets?(?:\s+(?:at|on))?\s*(?:[:=]\s*)?(\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z)?)/i,
       )?.[1] ??
       metadata.reset_at ??
       metadata.reset ??
@@ -540,6 +551,9 @@ function classifyRunError(
     summary = translate("{provider} is rate limiting requests. Try again shortly.", { provider });
   } else if (
     status === 401 ||
+    // A personal access token pasted where the provider only accepts its own sign-in token.
+    (!(status !== undefined && status >= 500) &&
+      /\bpersonal access tokens are not supported\b/i.test(signals)) ||
     ((status === 403 ||
       /(?:invalid|incorrect)[_ -](?:api[_ -])?key|api[_ -]?key[_ -](?:invalid|expired)|authentication_error|\bauthentication token (?:has|is) expired\b|\binvalidated oauth token\b|\bapi key is not scoped to a workspace\b/i.test(
         signals,
@@ -590,6 +604,21 @@ function classifyRunError(
     )
   ) {
     summary = translate("{provider} took too long to respond. Try again.", { provider });
+  } else if (
+    status === 400 &&
+    payload.type === "invalid_request_error" &&
+    /^Invalid effort level\b/i.test(message)
+  ) {
+    // The organization caps the thinking effort below the one chosen for this model.
+    recovery = "model";
+  } else if (
+    status === 400 &&
+    message === "Provider returned error" &&
+    typeof metadata.provider_name === "string" &&
+    metadata.provider_name.trim() !== ""
+  ) {
+    // A gateway's named upstream refused the request; another model avoids that upstream.
+    recovery = "model";
   } else if (MODEL_OUTPUT_LIMIT_REACHED.test(message)) {
     recovery = "model";
     kind = "output";

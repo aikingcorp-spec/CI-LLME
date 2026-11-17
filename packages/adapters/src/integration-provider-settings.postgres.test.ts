@@ -128,11 +128,7 @@ suite("shared install key under row security (offline provider)", () => {
             createdAt: createdAt[index],
           },
         });
-        const space = await bootstrapUserSpace(
-          apiDb.prisma,
-          { id },
-          { signupsEnabled: "true", signupAllowlist: "" },
-        );
+        const space = await bootstrapUserSpace(apiDb.prisma, { id });
         const storedSpace = await apiDb.prisma.space.findUniqueOrThrow({
           where: { id: space.spaceId },
           select: { organizationId: true },

@@ -8,6 +8,7 @@ import {
   refreshExpiredModelCredential,
 } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
+import { resolveWithSpaceOwnerFallback, runWithSystemBypass } from "@rakazo/db";
 import { realtimeVoiceContext } from "./realtime-voice-context.js";
 import type { RouterDeps } from "./router.js";
 
@@ -26,9 +27,15 @@ function linkedVoiceAccount(
 }
 
 export async function realtimeVoiceEnabled(deps: Pick<RouterDeps, "prisma">, actor: Actor) {
-  return Boolean(
-    await deps.prisma.userRealtimeVoicePreference.findUnique({ where: { userId: actor.userId } }),
+  const resolved = await resolveWithSpaceOwnerFallback(
+    deps.prisma,
+    actor,
+    "check Space Owner realtime voice preference",
+    (scope) =>
+      deps.prisma.userRealtimeVoicePreference.findUnique({ where: { userId: scope.userId } }),
+    (preference) => !preference,
   );
+  return Boolean(resolved.value);
 }
 
 export async function realtimeVoiceStatus(deps: Pick<RouterDeps, "prisma">, actor: Actor) {
@@ -86,29 +93,54 @@ export async function connectRealtimeVoice(
   input: { botId: string; offer: string },
   signal: AbortSignal,
 ) {
-  // Resolve the bot and the personal connection on the node, never on the hosted proxy.
-  const [bot, preference] = await Promise.all([
+  // Resolve the bot in the shared Space and prefer the caller's own voice connection before Space Owner fallback.
+  const [bot, resolvedConnection] = await Promise.all([
     deps.prisma.bot.findFirst({
-      where: { id: input.botId, userId: actor.userId, spaceId: actor.spaceId },
+      where: { id: input.botId, spaceId: actor.spaceId },
     }),
-    deps.prisma.userRealtimeVoicePreference.findUnique({ where: { userId: actor.userId } }),
+    resolveWithSpaceOwnerFallback(
+      deps.prisma,
+      actor,
+      "resolve Space Owner realtime voice credential",
+      async (scope) => {
+        const preference = await deps.prisma.userRealtimeVoicePreference.findUnique({
+          where: { userId: scope.userId },
+        });
+        if (!preference) return null;
+        const credential = await deps.prisma.userModelCredential.findFirst({
+          where: {
+            id: preference.credentialId,
+            userId: scope.userId,
+            provider: CHATGPT_OAUTH_PROVIDER,
+          },
+        });
+        if (!credential) return null;
+        return { preference, credential, ownerActor: scope };
+      },
+    ),
   ]);
-  if (!bot || !preference) throw new ORPCError("NOT_FOUND");
-  const credential = await deps.prisma.userModelCredential.findFirst({
-    where: { id: preference.credentialId, userId: actor.userId, provider: CHATGPT_OAUTH_PROVIDER },
-  });
-  if (!credential) throw new ORPCError("NOT_FOUND");
-  await refreshExpiredModelCredential(
-    deps.prisma,
-    deps.secrets,
-    actor,
-    credential.secretId,
-    CHATGPT_OAUTH_PROVIDER,
-    { signal },
-  );
-  const secret = await deps.prisma.secret.findFirst({
-    where: { id: credential.secretId, userId: actor.userId, spaceId: null },
-  });
+  if (!bot || !resolvedConnection.value) throw new ORPCError("NOT_FOUND");
+  const { preference, credential, ownerActor } = resolvedConnection.value;
+  const loadSecret = async () => {
+    await refreshExpiredModelCredential(
+      deps.prisma,
+      deps.secrets,
+      ownerActor,
+      credential.secretId,
+      CHATGPT_OAUTH_PROVIDER,
+      { signal },
+    );
+    return deps.prisma.secret.findFirst({
+      where: { id: credential.secretId, userId: ownerActor.userId, spaceId: null },
+    });
+  };
+  const secret = resolvedConnection.borrowed
+    ? await runWithSystemBypass(
+        deps.prisma,
+        "refresh and read Space Owner realtime voice secret",
+        loadSecret,
+      )
+    : await loadSecret();
   if (!secret) throw new ORPCError("UNAUTHORIZED");
   const parsed = parseModelSecret(await deps.secrets.load(secret.ciphertext, secret.id));
   if (parsed.kind === "oauth" && parsed.reconnectRequired)

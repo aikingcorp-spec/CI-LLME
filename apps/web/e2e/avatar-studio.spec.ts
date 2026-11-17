@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, openBotPanelTab, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, openBotPanel, signup } from "./helpers";
 
 async function saveAvatar(page: Page, choose: () => Promise<void>) {
   const saved = page.waitForResponse(
@@ -56,7 +56,8 @@ test("bot settings open Avatar Studio on the Bot tab", async ({ page }, testInfo
   await expect(studio).toBeHidden();
 
   await page.reload();
-  await openBotPanelTab(page, "Computer");
+  await openBotPanel(page);
+  await page.getByTestId("bot-settings").getByTestId("avatar-studio-trigger").click();
   await expect(
     page.getByTestId("avatar-studio-trigger").locator("[data-vnbot-shape=sen]"),
   ).toBeVisible();

@@ -9,11 +9,12 @@ import {
   recordMcpServerHealth,
 } from "@rakazo/adapters";
 import type { Actor, McpServer, McpServerConfigInput } from "@rakazo/contracts";
-import { mcpOAuthEnvReferences } from "@rakazo/contracts";
+import { ConnectionSetupError, mcpOAuthEnvReferences } from "@rakazo/contracts";
 import type { McpServer as McpServerRow, Prisma } from "@rakazo/db";
 import { itemSecretIn, spaceAvailability } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import { isAdmin } from "./admins.js";
+import type { LocalMcpAdminDeps } from "./admins.js";
+import { isLocalMcpAdmin } from "./admins.js";
 import { assertNameFreeWhereAvailable, userAddedAvailability } from "./availability.js";
 import { dismissMcpServerApprovals } from "./mcp-approval.js";
 import type { McpSecretMaterial } from "./mcp-material.js";
@@ -101,11 +102,8 @@ export function mcpStdioPolicy(deps: Pick<RouterDeps, "env">): McpStdioPolicy {
 }
 
 /** A stdio server runs with the API's and worker's own access, so only admins add or change one. */
-export async function assertMcpStdioAdmin(
-  actor: Actor,
-  deps: Pick<RouterDeps, "env" | "prisma">,
-): Promise<void> {
-  if (!(await isAdmin(deps, actor.userId)))
+export async function assertMcpStdioAdmin(actor: Actor, deps: LocalMcpAdminDeps): Promise<void> {
+  if (!(await isLocalMcpAdmin(deps, actor.userId)))
     throw new ORPCError("FORBIDDEN", { message: "Only admins can add local MCP servers" });
 }
 
@@ -113,7 +111,7 @@ export async function assertMcpStdioAdmin(
 export async function assertMcpStdioCommand(
   command: string,
   actor: Actor,
-  deps: Pick<RouterDeps, "env" | "prisma">,
+  deps: LocalMcpAdminDeps & Pick<RouterDeps, "env">,
 ): Promise<void> {
   const refusal = mcpStdioRefusal(command, mcpStdioPolicy(deps));
   if (refusal) throw new ORPCError("BAD_REQUEST", { message: refusal });
@@ -129,12 +127,11 @@ export async function assertMcpRemoteEndpoint(
     await assertSafeRemoteUrl(endpoint, deps.remoteConnectors?.resolveHostname, {
       allowPrivateEndpoint: mayUsePrivateEndpoint(deps),
     });
-    assertNoMcpEndpointCredential(endpoint);
   } catch (error) {
-    throw new ORPCError("BAD_REQUEST", {
-      message: error instanceof Error ? error.message : "MCP endpoint is invalid",
-    });
+    if (!isHostNotFound(error)) throw error;
+    throw new ConnectionSetupError("Connector URL host could not be found", { cause: error });
   }
+  assertNoMcpEndpointCredential(endpoint);
 }
 
 /** A stdio server gets its OAuth grant through `{{oauth.*}}` references in env
@@ -371,4 +368,9 @@ export function createMcpServers(
     insertMcpServer,
     announceMcpServer,
   };
+}
+
+function isHostNotFound(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === "ENOTFOUND" || code === "ENODATA";
 }

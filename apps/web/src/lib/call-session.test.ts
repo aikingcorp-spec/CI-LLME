@@ -8,10 +8,12 @@ import {
   reduceThreadSnapshot,
   runThreadSubscription,
 } from "@rakazo/core";
+import type { Deferred } from "@rakazo/core/test-async";
+import { deferred } from "@rakazo/core/test-async";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pickUp } from "./call-pickup.js";
 import { ECHO_GUARD_MS, endCall, getSnapshot, startCall, toggleMute } from "./call-session";
-import { dictation } from "./dictation.js";
+import { dictation, usesServerDictation } from "./dictation.js";
 import { NativeVoice } from "./native-voice.js";
 import { recheckSessionOnUnauthorized, rpc } from "./rpc.js";
 import { speaker } from "./tts.js";
@@ -43,7 +45,9 @@ vi.mock("./native-voice.js", () => ({
 }));
 
 vi.mock("./dictation.js", () => ({
+  usesServerDictation: vi.fn(() => false),
   dictation: {
+    recording: false,
     listen: vi.fn(async () => undefined),
     stop: vi.fn(),
     subscribe: vi.fn(() => () => undefined),
@@ -54,6 +58,7 @@ vi.mock("./tts.js", () => ({
   speaker: {
     speak: vi.fn(async () => undefined),
     stop: vi.fn(),
+    unlock: vi.fn(),
     isSpeaking: vi.fn(() => false),
     subscribe: vi.fn(() => () => undefined),
   },
@@ -91,6 +96,8 @@ const endCallRpc = vi.mocked(rpc.threads.endCall);
 
 describe("call session", () => {
   beforeEach(() => {
+    // Retry and reconnect waits are jittered; pin them to their unjittered values.
+    vi.spyOn(Math, "random").mockReturnValue(0);
     endCall();
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -681,15 +688,11 @@ describe("call session", () => {
   });
 
   it("drops a send that finishes after the same bot is called again", async () => {
-    let finishSend: (value: { runId: string; taskId: string }) => void = () => undefined;
-    let failSend: (error: Error) => void = () => undefined;
-    send.mockImplementation(
-      () =>
-        new Promise((resolve, reject) => {
-          finishSend = resolve;
-          failSend = reject;
-        }) as never,
-    );
+    let sending: Deferred<{ runId: string; taskId: string }> | undefined;
+    send.mockImplementation(() => {
+      sending = deferred();
+      return sending.promise as never;
+    });
 
     await answeredCall({ botId: "call-bot", botName: "Ada", transcribe: false });
     const first = heard("book the flight");
@@ -699,7 +702,7 @@ describe("call session", () => {
     await answeredCall({ botId: "call-bot", botName: "Ada", transcribe: false });
     const listens = listen.mock.calls.length;
     getThread.mockClear();
-    finishSend({ runId: "run-old", taskId: "task-old" });
+    sending?.resolve({ runId: "run-old", taskId: "task-old" });
     await first;
 
     expect(getThread).not.toHaveBeenCalled();
@@ -715,7 +718,7 @@ describe("call session", () => {
     endCall();
     await answeredCall({ botId: "call-bot", botName: "Ada", transcribe: false });
     const listensAfter = listen.mock.calls.length;
-    failSend(new Error("offline"));
+    sending?.reject(new Error("offline"));
     await second;
 
     expect(getSnapshot()).toMatchObject({
@@ -762,6 +765,96 @@ describe("call session", () => {
     await vi.advanceTimersByTimeAsync(ECHO_GUARD_MS);
     expect(getSnapshot()?.phase).toBe("listening");
     expect(listen).not.toHaveBeenCalled();
+  });
+
+  it("keeps a recording off until the reply finishes, so it never records the reply", async () => {
+    vi.mocked(usesServerDictation).mockReturnValue(true);
+    try {
+      await answeredCall({ botId: "call-bot", botName: "Ada", transcribe: true });
+      getThread.mockResolvedValue(
+        snapshot([botMessage("message-1", "Booked for Friday")]) as never,
+      );
+      await heard("book the flight");
+
+      const speech = vi.mocked(speaker.subscribe).mock.calls[0]?.[0];
+      listen.mockClear();
+      speech?.({ status: "speaking", caption: "Booked for Friday" });
+      await Promise.resolve();
+      expect(getSnapshot()?.phase).toBe("speaking");
+      expect(listen).not.toHaveBeenCalled();
+      expect(usesServerDictation).toHaveBeenCalledWith(true);
+
+      speech?.({ status: "idle" });
+      await vi.advanceTimersByTimeAsync(ECHO_GUARD_MS);
+      expect(getSnapshot()?.phase).toBe("listening");
+      expect(listen).toHaveBeenCalledOnce();
+    } finally {
+      vi.mocked(usesServerDictation).mockReturnValue(false);
+    }
+  });
+
+  it("stops a recording that is still open when a reply starts playing", async () => {
+    vi.mocked(usesServerDictation).mockReturnValue(true);
+    try {
+      await answeredCall({ botId: "call-bot", botName: "Ada", transcribe: true });
+      vi.mocked(dictation.stop).mockClear();
+      listen.mockClear();
+      const mic = dictation as unknown as { recording: boolean };
+      mic.recording = true;
+
+      const speech = vi.mocked(speaker.subscribe).mock.calls[0]?.[0];
+      speech?.({ status: "speaking", caption: "Booked for Friday" });
+      await Promise.resolve();
+      mic.recording = false;
+      expect(dictation.stop).toHaveBeenCalledWith("cancel");
+      expect(listen).not.toHaveBeenCalled();
+
+      speech?.({ status: "idle" });
+      await vi.advanceTimersByTimeAsync(ECHO_GUARD_MS);
+      expect(listen).toHaveBeenCalledOnce();
+    } finally {
+      vi.mocked(usesServerDictation).mockReturnValue(false);
+    }
+  });
+
+  it("lets a finished recording's transcription land when a reply starts", async () => {
+    vi.mocked(usesServerDictation).mockReturnValue(true);
+    try {
+      await answeredCall({ botId: "call-bot", botName: "Ada", transcribe: true });
+      vi.mocked(dictation.stop).mockClear();
+
+      const speech = vi.mocked(speaker.subscribe).mock.calls[0]?.[0];
+      speech?.({ status: "speaking", caption: "Booked for Friday" });
+      await Promise.resolve();
+      expect(dictation.stop).not.toHaveBeenCalled();
+    } finally {
+      vi.mocked(usesServerDictation).mockReturnValue(false);
+    }
+  });
+
+  it("stops a fallback recording that starts while the reply plays", async () => {
+    await answeredCall({ botId: "call-bot", botName: "Ada", transcribe: true });
+    const speech = vi.mocked(speaker.subscribe).mock.calls[0]?.[0];
+    speech?.({ status: "speaking", caption: "Booked for Friday" });
+    await Promise.resolve();
+    vi.mocked(dictation.stop).mockClear();
+    listen.mockClear();
+
+    const mic = dictation as unknown as { recording: boolean };
+    const watcher = vi.mocked(dictation.subscribe).mock.calls.at(-1)?.[0];
+    mic.recording = true;
+    watcher?.({ status: "listening", transcript: "" });
+    mic.recording = false;
+    expect(dictation.stop).toHaveBeenCalledWith("cancel");
+
+    speech?.({ status: "idle" });
+    await vi.advanceTimersByTimeAsync(ECHO_GUARD_MS);
+    expect(listen).toHaveBeenCalledOnce();
+  });
+
+  it("prepares the call's audio in the tap that starts it", () => {
+    startCall({ botId: "call-bot", botName: "Ada" });
+    expect(speaker.unlock).toHaveBeenCalledOnce();
   });
 
   it("waits out the echo guard when the mic was shut through playback", async () => {
@@ -1312,14 +1405,6 @@ async function speakingReply(text: string) {
 function interim(transcript: string) {
   const watcher = vi.mocked(dictation.subscribe).mock.calls.at(-1)?.[0];
   watcher?.({ status: "listening", transcript });
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
 }
 
 function eventStream() {

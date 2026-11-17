@@ -84,14 +84,10 @@ function harness() {
       ),
     },
   };
-  const read = vi.fn(async (input: { userId: string }) =>
-    input.userId === "user-1"
-      ? {
-          status: "stale" as const,
-          checkedAt: "2026-11-10T12:00:00.000Z",
-          windows: [{ period: "week" as const, usedPercent: 64, resetsAt: null }],
-        }
-      : { status: "unavailable" as const },
+  const read = vi.fn(async (key: string) =>
+    key.startsWith("user-1:")
+      ? [{ period: "week" as const, usedPercent: 64, resetsAt: null }]
+      : null,
   );
   const refresh = vi.fn();
   const deps = {
@@ -131,16 +127,14 @@ describe("usage.limits", () => {
         credentialId: "c1",
         name: "Claude",
         label: "me@example.com",
-        reading: {
-          status: "stale",
-          checkedAt: "2026-11-10T12:00:00.000Z",
-          windows: [{ period: "week", usedPercent: 64, resetsAt: null }],
-        },
+        windows: [{ period: "week", usedPercent: 64, resetsAt: null }],
       },
     ] satisfies PlanLimits[]);
     expect(JSON.stringify(limits)).not.toContain("hidden");
     expect(read).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "user-1", secretId: "s1" }),
+      "user-1:s1",
+      "anthropic",
+      expect.objectContaining({ access: "hidden" }),
     );
     expect(refresh).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "user-1", spaceId: "space-1" }),
@@ -149,14 +143,7 @@ describe("usage.limits", () => {
     );
 
     const otherLimits = await clientFor(other).usage.limits();
-    expect(otherLimits).toEqual([
-      {
-        credentialId: "c2",
-        name: "Claude",
-        label: "other@example.com",
-        reading: { status: "unavailable" },
-      },
-    ]);
+    expect(otherLimits).toEqual([]);
     expect(JSON.stringify(otherLimits)).not.toContain("64");
 
     const listed = await clientFor(actor).usage.list();

@@ -8,9 +8,9 @@ import { catalogBrandLeaks, htmlBrandLeaks, screenInventory } from "./vnbot-audi
 it("checks translated text and English fallbacks, not renamed msgids or obsolete entries", () => {
   assert.deepEqual(
     catalogBrandLeaks(
-      'msgid "Rakazo"\nmsgstr "VNBot"\n\nmsgid "Rakazo fallback"\nmsgstr ""\n\n#~ msgid "Rakazo old"\n#~ msgstr "Rakazo"',
+      'msgid "Rakazo"\nmsgstr "VNBot"\n\nmsgid "Rakazo fallback"\nmsgstr ""\n\nmsgid "rakazo-shared and IDs starting with bot- are reserved for VNBot."\nmsgstr ""\n\nmsgid "rakazo-shared and IDs starting with bot- are reserved for Rakazo."\nmsgstr ""\n\n#~ msgid "Rakazo old"\n#~ msgstr "Rakazo"',
     ),
-    ["Rakazo fallback"],
+    ["Rakazo fallback", "rakazo-shared and IDs starting with bot- are reserved for Rakazo."],
   );
 });
 it("checks multiline translations and contexts", () => {

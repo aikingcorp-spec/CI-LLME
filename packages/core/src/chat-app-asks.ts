@@ -1,5 +1,5 @@
 import type { MessageBlock } from "@rakazo/contracts";
-import { isQuestionAskBlock } from "./action-approval.js";
+import { isQuestionAskBlock } from "./ask-replies.js";
 import { TAKEOVER_COMPUTER_PENDING_STATE } from "./thread-message-updates.js";
 
 /** What a chat app adds to a pending question it cannot show as a card. */

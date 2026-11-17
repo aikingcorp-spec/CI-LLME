@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { EMAIL_NOT_INVITED } from "@rakazo/contracts";
+import { useTimeout } from "@rakazo/chat-ui/hooks";
+import { EMAIL_NOT_INVITED, signInProviders } from "@rakazo/contracts";
 import {
   credentialIssue,
   MAX_PASSWORD_LENGTH,
@@ -8,10 +9,12 @@ import {
   suggestEmailCorrection,
 } from "@rakazo/core";
 import { Button, Input, InputOTP, InputOTPGroup, InputOTPSlot, Label } from "@rakazo/ui-web";
+import { ChevronLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { LanguageSwitch } from "../components/LanguageSwitch";
-import { PasskeySignIn } from "../components/PasskeySignIn";
+import { PasskeySignIn, usePasskeySignIn } from "../components/PasskeySignIn";
+import { SocialSignInButtons } from "../components/SocialSignInButtons";
 import { VnbotWordmark } from "../components/VnbotWordmark";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
@@ -48,6 +51,10 @@ function refusedInvite(error: unknown): boolean {
 export function AuthPage({ mode }: { mode: AuthMode }) {
   const { t } = useLingui();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const chooserPath = mode === "up" ? "/sign-up" : "/sign-in";
+  const emailStep = location.pathname === `${chooserPath}/email`;
   const next = signInNext(searchParams.get("next"));
   // Switching between sign-in and sign-up keeps where the person was going.
   const nextQuery = next ? `?next=${encodeURIComponent(next)}` : "";
@@ -64,6 +71,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   });
   const [pending, setPending] = useState(false);
   const entering = useRef(false);
+  const passkey = usePasskeySignIn({ onSignedIn: enterApp, onError: setError });
   const [resetSent, setResetSent] = useState(false);
   // Signup triggers a session refresh that remounts the anonymous auth page.
   const sent = resetSent || searchParams.get("verify") === "email";
@@ -79,10 +87,20 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const codeMode = useCode;
   const codeStep = useCode && codeSent;
   const resendLabel = `${Math.floor(resendIn / 60)}:${String(resendIn % 60).padStart(2, "0")}`;
+  const providers = reset ? signInProviders(reset) : [];
+  const chooser = Boolean(
+    reset?.passwordAuth && providers.length > 0 && !emailStep && mode !== "forgot" && !codeStep,
+  );
+  // The chooser and the email step share a card. A server with no providers keeps today's form.
+  const presented = Boolean(
+    reset?.passwordAuth && providers.length > 0 && mode !== "forgot" && !sent && !codeStep,
+  );
   const passwordFieldId = mode === "in" ? "current-password" : "new-password";
   const title =
     sent || codeStep ? (
       <Trans>Check your email</Trans>
+    ) : presented && mode === "in" ? (
+      <Trans>Welcome back</Trans>
     ) : primaryCodeEntry ? (
       <Trans>Get started with VNBot</Trans>
     ) : mode === "in" ? (
@@ -93,11 +111,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       <Trans>Reset your password</Trans>
     );
 
-  useEffect(() => {
-    if (!codeStep || resendIn <= 0) return;
-    const timer = window.setTimeout(() => setResendIn((seconds) => Math.max(0, seconds - 1)), 1000);
-    return () => window.clearTimeout(timer);
-  }, [codeStep, resendIn]);
+  useTimeout(
+    () => setResendIn((seconds) => Math.max(0, seconds - 1)),
+    codeStep && resendIn > 0 ? 1000 : null,
+    resendIn,
+  );
 
   useEffect(() => {
     setReset(null);
@@ -226,6 +244,13 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           setCodeSent(false);
           setResent(false);
           setResendIn(0);
+        } else if (
+          typeof result.error === "object" &&
+          result.error !== null &&
+          "code" in result.error &&
+          (result.error.code === "OTP_EXPIRED" || result.error.code === "TOO_MANY_ATTEMPTS")
+        ) {
+          setResendIn(0);
         }
         setError(authErrorText(result.error, t`Could not continue`));
         setCode("");
@@ -280,6 +305,25 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     }
   }
 
+  async function signInAsDemo(account: { email: string; password: string }) {
+    setPending(true);
+    setError(null);
+    try {
+      const result = await authClient.signIn.email(account);
+      if (result.error) {
+        setError(authErrorText(result.error, t`Could not continue`));
+        return;
+      }
+      // Sign-up sends a signed-in user to new-account onboarding; the demo account already exists.
+      if (mode === "up") navigate(`/sign-in${nextQuery}`, { replace: true });
+      enterApp();
+    } catch {
+      setError(t`Could not reach the server`);
+    } finally {
+      if (!entering.current) setPending(false);
+    }
+  }
+
   function leaveCodeStep() {
     setCodeSent(false);
     setCode("");
@@ -288,14 +332,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     setResendIn(0);
   }
 
-  async function signInWithSso() {
+  async function signInWithProvider(provider: string) {
     setError(null);
     try {
       const result = await runSsoFlow(
         (disableRedirect, callbackURL) =>
           authClient.signIn.social({
             disableRedirect,
-            provider: "oidc",
+            provider,
             newUserCallbackURL: callbackURL(newAccountDestination(next)),
             callbackURL: callbackURL(next ?? "/app"),
             errorCallbackURL: callbackURL("/sign-in"),
@@ -328,6 +372,25 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           <Trans>Enter your email to get a 6-digit sign-in code.</Trans>
         ) : null
       }
+      surface={presented}
+      leading={
+        presented && emailStep ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              setError(null);
+              if (location.state?.authChooser) navigate(-1);
+              else navigate(`${chooserPath}${nextQuery}`, { replace: true });
+            }}
+          >
+            <ChevronLeft />
+            <Trans>Back</Trans>
+          </Button>
+        ) : null
+      }
     >
       {sent ? (
         <div className="w-full text-center">
@@ -351,22 +414,61 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               </Button>
             </div>
           ) : null}
-          {reset?.sso && !reset.passwordAuth && mode !== "forgot" ? (
-            <Button
-              type="button"
+          {!reset?.passwordAuth && mode !== "forgot" ? (
+            <SocialSignInButtons
+              providers={providers}
               disabled={pending}
-              className={submitClass}
-              onClick={() => void signInWithSso()}
-            >
-              <Trans>Continue with {reset.sso.name}</Trans>
-            </Button>
+              onPress={(providerId) => void signInWithProvider(providerId)}
+            />
           ) : null}
           {error && !reset?.passwordAuth ? (
-            <p role="alert" className="mt-3 text-body text-destructive">
+            <p
+              role="alert"
+              className="mx-auto mt-4 w-full max-w-sm text-center text-body-sm text-destructive"
+            >
               {error}
             </p>
           ) : null}
-          {reset?.passwordAuth ? (
+          {chooser ? (
+            <>
+              <SocialSignInButtons
+                providers={providers}
+                disabled={pending || passkey.pending}
+                onPress={(providerId) => void signInWithProvider(providerId)}
+                onEmail={() => {
+                  setError(null);
+                  navigate(`${chooserPath}/email${nextQuery}`, { state: { authChooser: true } });
+                }}
+                onPasskey={mode === "in" && passkey.supported ? passkey.start : undefined}
+              />
+              {error ? (
+                <p
+                  role="alert"
+                  className="mx-auto mt-4 w-full max-w-sm text-center text-body-sm text-destructive"
+                >
+                  {error}
+                </p>
+              ) : null}
+              <p className="mt-8 text-center text-muted-foreground">
+                {mode === "in" ? (
+                  <>
+                    <Trans>Don’t have an account?</Trans>{" "}
+                    <Link to={`/sign-up${nextQuery}`} className="font-medium text-foreground">
+                      <Trans>Sign up</Trans>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Trans>Already have an account?</Trans>{" "}
+                    <Link to={`/sign-in${nextQuery}`} className="font-medium text-foreground">
+                      <Trans>Sign in</Trans>
+                    </Link>
+                  </>
+                )}
+              </p>
+            </>
+          ) : null}
+          {reset?.passwordAuth && !chooser ? (
             <>
               {mode === "up" && !codeStep && !primaryCodeEntry ? (
                 <div className="mb-4 w-full">
@@ -501,6 +603,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               </Button>
               {mode === "in" && !codeStep && !primaryCodeEntry ? (
                 <PasskeySignIn
+                  autoFillOnly={presented}
                   disabled={pending}
                   className={submitClass}
                   onSignedIn={enterApp}
@@ -540,20 +643,20 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   <Trans>Đổi email khác</Trans>
                 </button>
               ) : null}
-              {reset.sso && mode !== "forgot" && !codeStep ? (
+              {reset?.demoAccount && mode !== "forgot" && !codeStep ? (
                 <Button
                   type="button"
-                  variant="link"
-                  size="sm"
+                  variant="outline"
+                  size="lg"
                   disabled={pending}
-                  className="mt-3 text-muted-foreground"
-                  onClick={() => void signInWithSso()}
+                  className={submitClass}
+                  onClick={() => reset.demoAccount && void signInAsDemo(reset.demoAccount)}
                 >
-                  <Trans>Continue with {reset.sso.name}</Trans>
+                  <Trans>Sign in with demo account</Trans>
                 </Button>
               ) : null}
               {codeStep || primaryCodeEntry ? null : (
-                <p className="mt-8 text-muted-foreground">
+                <p className="mt-8 text-center text-muted-foreground">
                   {mode === "in" ? (
                     <>
                       <Trans>Don’t have an account?</Trans>{" "}
@@ -669,12 +772,16 @@ export function PasswordResetPage() {
 export function AuthFrame({
   title,
   subtitle,
+  surface = false,
+  leading,
   onSubmit,
   notInvited = false,
   children,
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
+  surface?: boolean;
+  leading?: React.ReactNode;
   onSubmit: (event: React.FormEvent) => void;
   /** The invite list refused the address: point the person to where approval happens. */
   notInvited?: boolean;
@@ -688,25 +795,41 @@ export function AuthFrame({
       </div>
       {/* Outside the form: picking a language must never submit it. */}
       <LanguageSwitch className="absolute end-5 top-4 max-sm:end-3 max-sm:top-3" />
-      <div className="flex w-[460px] max-w-full flex-col items-center">
-        <form noValidate onSubmit={onSubmit} className="flex w-full flex-col items-center">
-          <VnbotWordmark variant="wordmark" className="h-8 w-auto sm:h-9" />
-          <h1
-            aria-live="polite"
-            className={
-              // off-scale: the approved 0.3.9 title is 36px on desktop and 30px on phones.
-              "mt-7 text-center text-[36px]/10 font-medium tracking-tight max-sm:text-[30px]/9"
-            }
-          >
-            {title}
-          </h1>
-          {subtitle ? (
-            <p className="mb-9 mt-3 text-center text-body text-pretty text-muted-foreground">
-              {subtitle}
-            </p>
-          ) : (
-            <div className="mb-9" />
-          )}
+      <div
+        className={`flex w-full flex-col items-center ${surface ? "max-w-[520px]" : "max-w-[460px]"}`}
+      >
+        <form
+          noValidate
+          onSubmit={onSubmit}
+          className={
+            surface
+              ? "flex w-full flex-col rounded-3xl border border-border bg-card px-8 pt-8 pb-9 shadow-sm"
+              : "flex w-full flex-col items-center"
+          }
+        >
+          {leading ? <div className="mb-4 self-start">{leading}</div> : null}
+          <div className={surface ? "flex w-full flex-col items-center" : "contents"}>
+            <VnbotWordmark variant="wordmark" className="h-8 w-auto sm:h-9" />
+            <h1
+              aria-live="polite"
+              className={
+                surface
+                  ? // off-scale: the approved 0.3.9 title is 36px on desktop and 30px on phones.
+                    "mt-5 mb-6 text-balance text-center text-[36px]/10 font-medium tracking-tight max-sm:text-[30px]/9"
+                  : // off-scale: the approved 0.3.9 title is 36px on desktop and 30px on phones.
+                    "mt-7 text-center text-[36px]/10 font-medium tracking-tight max-sm:text-[30px]/9"
+              }
+            >
+              {title}
+            </h1>
+            {subtitle ? (
+              <p className="mb-9 mt-3 text-center text-body text-pretty text-muted-foreground">
+                {subtitle}
+              </p>
+            ) : surface ? null : (
+              <div className="mb-9" />
+            )}
+          </div>
           {children}
         </form>
         {notInvited ? (

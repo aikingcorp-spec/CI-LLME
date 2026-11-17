@@ -201,7 +201,7 @@ it("runs in-app OTP through the issuer and local session caller, then logs out l
   expect(f.seen.every((r) => !r.url.includes("token") && !r.url.includes("?"))).toBe(true);
 });
 
-it("passes on the issuer refusing an address it has not approved, and nothing else", async () => {
+it("passes on the issuer refusing an address it has not approved, OTP errors, and nothing else", async () => {
   const f = servers();
   const refuse = (status: number, body: unknown) =>
     vi.stubGlobal("fetch", async () => Response.json(body, { status }));
@@ -209,6 +209,24 @@ it("passes on the issuer refusing an address it has not approved, and nothing el
   const refused = await f.call("/email-otp/send-verification-otp", { email: source.email });
   expect(refused.status).toBe(403);
   expect(await refused.json()).toMatchObject({ code: "EMAIL_NOT_INVITED" });
+  for (const [status, code, message] of [
+    [400, "INVALID_OTP", "Invalid OTP"],
+    [400, "OTP_EXPIRED", "Request a new code"],
+    [403, "TOO_MANY_ATTEMPTS", "Too many attempts"],
+    [429, "TOO_MANY_REQUESTS", "Too many attempts. Try again later."],
+  ] as const) {
+    refuse(status, { code, message });
+    const forwarded = await f.call("/sign-in/email-otp", {
+      email: source.email,
+      otp: "123456",
+    });
+    expect(forwarded.status).toBe(status);
+    expect(await forwarded.json()).toMatchObject({ code, message });
+  }
+  refuse(429, { error: "rate limited" });
+  const bareRateLimit = await f.call("/email-otp/send-verification-otp", { email: source.email });
+  expect(bareRateLimit.status).toBe(429);
+  expect(await bareRateLimit.json()).toMatchObject({ code: "TOO_MANY_REQUESTS" });
   refuse(403, { code: "SOMETHING_ELSE" });
   const other = await f.call("/email-otp/send-verification-otp", { email: source.email });
   expect(other.status).toBe(401);
@@ -442,15 +460,13 @@ it("requires a fresh issuer proof even with a valid local session", async () => 
   const f = servers();
   const legacy = await existingLocalSession(f);
   await f.call("/email-otp/send-verification-otp", { email: source.email });
-  expect(
-    (
-      await f.call(
-        "/sign-in/email-otp",
-        { email: source.email, otp: "invalid-code" },
-        legacy.cookie,
-      )
-    ).status,
-  ).toBe(401);
+  const response = await f.call(
+    "/sign-in/email-otp",
+    { email: source.email, otp: "invalid-code" },
+    legacy.cookie,
+  );
+  expect(response.status).toBe(400);
+  expect(await response.json()).toMatchObject({ code: "INVALID_OTP" });
   expect(f.localData.account).toHaveLength(0);
 });
 

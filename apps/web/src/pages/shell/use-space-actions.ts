@@ -1,6 +1,8 @@
 import type { RefObject } from "react";
-import type { createSpaceRpc } from "../../lib/rpc";
+import { requestRemoteHostSwitch } from "../../lib/remote-frame";
+import type { createSpaceRpc, RpcClient } from "../../lib/rpc";
 import { selectedSpaceId, selectSpace } from "../../lib/rpc";
+import { signOut } from "../../lib/sign-out";
 import { commitSpaceRename } from "./space-sidebar";
 import type { useSpaceRoster } from "./use-space-roster";
 
@@ -22,10 +24,10 @@ export function useSpaceActions({
   bootstrapMe: Roster["bootstrapMe"];
   closePanel: () => void;
 }) {
-  async function renameSpace(spaceId: string, name: string) {
+  async function renameSpace(spaceId: string, name: string, client: RpcClient) {
     await commitSpaceRename({
       rename: async () => {
-        await rpc.spaces.rename({ spaceId, name });
+        await client.spaces.rename({ spaceId, name });
       },
       apply: () => {
         setSpaces((current) =>
@@ -51,7 +53,12 @@ export function useSpaceActions({
     await refreshBots(true);
   }
 
-  async function leftSpace(spaceId: string, activeSpaceId: string) {
+  async function leftSpace(spaceId: string, activeSpaceId: string | null) {
+    if (activeSpaceId === null) {
+      if (await requestRemoteHostSwitch()) return;
+      await signOut("/sign-in");
+      return;
+    }
     const effectiveSpaceId = selectedSpaceId() ?? bootstrapMe?.spaceId;
     // Leaving the open space changes the auth boundary, so reload like a space switch.
     if (effectiveSpaceId === spaceId && selectSpace(activeSpaceId)) {

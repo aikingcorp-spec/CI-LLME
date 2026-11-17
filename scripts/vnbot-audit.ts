@@ -6,7 +6,7 @@ import { translationsOf } from "../.agents/skills/translate/catalog-gaps.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const OLD = path.resolve(ROOT, "../VNBot-0310-V2");
-const containsOldBrand = (text: string) => /rakazo/i.test(text);
+const containsOldBrand = (text: string) => /rakazo/i.test(text.replace(/\brakazo-shared\b/g, ""));
 const REMOVED_BY_S00 = new Map([
   ["apps/web/src/pages/Pairing.tsx", "S00 removes P2P pairing."],
   ["apps/web/src/components/ApprovalRulePreview.tsx", "S00 removes approval rule preview."],
@@ -106,7 +106,7 @@ export async function main(args: string[]) {
   if (args[0] === "brand" && args.length >= 1) {
     const findings: Array<{ file: string; field: string }> = [];
     for (const locale of ["vi", "en"]) {
-      const file = `apps/web/src/locales/${locale}/messages.po`;
+      const file = `packages/i18n/locales/${locale}/messages.po`;
       for (const key of catalogBrandLeaks(await readFile(path.join(ROOT, file), "utf8")))
         findings.push({ file, field: key });
     }

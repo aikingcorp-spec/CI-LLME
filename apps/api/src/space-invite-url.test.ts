@@ -54,3 +54,15 @@ it("encodes invite data instead of letting it change the destination", () => {
   expect(values.getAll("device")).toEqual(["fake-device"]);
   expect(values.get("invite")).toBe(token);
 });
+
+it("prefers shortCode over deviceId when present for shorter invite URLs", () => {
+  const url = new URL(
+    spaceInviteUrl("fake-invite-token", {
+      webOrigin: "http://127.0.0.1:34287",
+      deviceId: "a".repeat(64),
+      shortCode: "ab12cd34",
+      portalOrigin: "https://portal.example.test",
+    }),
+  );
+  expect(new URLSearchParams(url.hash.slice(1)).get("device")).toBe("ab12cd34");
+});

@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { sandboxCheckFailureMessage } from "../lib/computer-sandbox";
 import { desktopBridge } from "../lib/desktop";
+import { useSave } from "../lib/query";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -23,11 +24,35 @@ export function HostComputerPrompt({
 }) {
   const { t } = useLingui();
   const desktop = desktopBridge();
+  const [activeMe, setActiveMe] = useState<Me | undefined>(initialMe);
   const [configuring, setConfiguring] = useState(false);
   const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const choice = useSave({
+    // Resolves false when the person declined access, which leaves the choice open.
+    save: async (computerHost: "docker" | "this-mac", client) => {
+      if (!desktop?.computer?.managesHostChoice)
+        throw new Error(t`Local computer access requires the latest desktop app.`);
+      if (computerHost === "this-mac") {
+        if (!(await desktop.computer.requestAccess())) return false;
+      } else {
+        await desktop.computer.revokeAccess();
+      }
+      try {
+        const updated = await client.me();
+        setActiveMe(updated);
+        onMeUpdated?.(updated);
+      } catch {
+        // The choice is already saved. A failed refresh must not look like a failed save.
+      }
+      return true;
+    },
+    onSaved: (chosen) => {
+      if (chosen) setOpen(false);
+    },
+  });
+  const pending = choice.pending;
   const mac = desktop?.platform === "darwin";
   const hostLabel = mac ? t`this Mac` : t`this computer`;
 
@@ -37,6 +62,7 @@ export function HostComputerPrompt({
         void rpc
           .me()
           .then((me) => {
+            setActiveMe(me);
             if (me.canChooseHostComputer) {
               setConfiguring(me.computerHost != null);
               setOpen(true);
@@ -49,15 +75,22 @@ export function HostComputerPrompt({
 
   useEffect(() => {
     if (!desktop) return;
+    const applyInitialChoice = (me: Me) => {
+      setActiveMe(me);
+      if (!me.canChooseHostComputer || me.computerHost != null) return;
+      if (me.sandboxProvider === "docker" && desktop.computer?.managesHostChoice) {
+        choice.run("docker");
+        return;
+      }
+      setOpen(true);
+    };
     if (initialMe) {
-      if (initialMe.canChooseHostComputer && initialMe.computerHost == null) setOpen(true);
+      applyInitialChoice(initialMe);
       return;
     }
     void rpc
       .me()
-      .then((me) => {
-        if (me.canChooseHostComputer && me.computerHost == null) setOpen(true);
-      })
+      .then(applyInitialChoice)
       .catch(() => undefined);
   }, [desktop, initialMe]);
 
@@ -66,8 +99,10 @@ export function HostComputerPrompt({
   async function refreshChoiceState() {
     setChecking(true);
     setError(null);
+    choice.reset();
     try {
       const me = await rpc.me();
+      setActiveMe(me);
       onMeUpdated?.(me);
       if (!me.canChooseHostComputer || me.computerHost != null) {
         setOpen(false);
@@ -79,34 +114,13 @@ export function HostComputerPrompt({
     }
   }
 
-  async function choose(computerHost: "docker" | "this-mac") {
-    setPending(true);
+  function choose(computerHost: "docker" | "this-mac") {
     setError(null);
-    try {
-      if (!desktop?.computer?.managesHostChoice)
-        throw new Error(t`Local computer access requires the latest desktop app.`);
-      if (computerHost === "this-mac") {
-        if (!(await desktop.computer.requestAccess())) {
-          setPending(false);
-          return;
-        }
-      } else {
-        await desktop?.computer?.revokeAccess();
-      }
-    } catch (err) {
-      setError(errorText(err, t`Could not save that choice`));
-      setPending(false);
-      return;
-    }
-    try {
-      const me = await rpc.me();
-      onMeUpdated?.(me);
-    } catch {
-      // The choice is already saved. A failed refresh must not look like a failed save.
-    }
-    setOpen(false);
-    setPending(false);
+    choice.run(computerHost);
   }
+
+  const shownError = choice.error ? errorText(choice.error, t`Could not save that choice`) : error;
+  const dockerAvailable = activeMe?.sandboxProvider !== "none";
 
   const busy = pending || checking;
 
@@ -125,10 +139,17 @@ export function HostComputerPrompt({
           </DialogTitle>
           <DialogDescription className="space-y-2 leading-relaxed">
             <span className="block">
-              <Trans>
-                Docker limits access to your computer for added security. Using {hostLabel} lets
-                bots work with your local files and tools.
-              </Trans>
+              {dockerAvailable ? (
+                <Trans>
+                  Docker limits access to your computer for added security. Using {hostLabel} lets
+                  bots work with your local files and tools.
+                </Trans>
+              ) : (
+                <Trans>
+                  Docker chưa được cài hoặc chưa chạy trên máy này. Cho phép dùng {hostLabel} để bot
+                  làm việc trực tiếp với tệp và công cụ trên máy bạn.
+                </Trans>
+              )}
             </span>
             <span className="block text-label text-muted-foreground/80">
               <Trans>
@@ -138,25 +159,22 @@ export function HostComputerPrompt({
             </span>
           </DialogDescription>
         </DialogHeader>
-        {error ? (
+        {shownError ? (
           <p role="alert" className="text-body text-destructive">
-            {error}
+            {shownError}
           </p>
         ) : null}
         <div className="flex flex-col gap-2">
-          <Button variant="outline" size="lg" disabled={busy} onClick={() => void choose("docker")}>
-            <Trans>Docker</Trans>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            disabled={busy}
-            onClick={() => void choose("this-mac")}
-          >
+          {dockerAvailable ? (
+            <Button variant="outline" size="lg" disabled={busy} onClick={() => choose("docker")}>
+              <Trans>Docker</Trans>
+            </Button>
+          ) : null}
+          <Button variant="outline" size="lg" disabled={busy} onClick={() => choose("this-mac")}>
             <Trans>Use {hostLabel}</Trans>
           </Button>
         </div>
-        {error ? (
+        {shownError ? (
           <div className="mt-1 flex flex-wrap gap-2">
             <Button
               type="button"

@@ -12,17 +12,20 @@ import {
 import { Search, SlidersHorizontal } from "lucide-react";
 import type { ReactNode, UIEvent } from "react";
 import { useState } from "react";
-import { InviteDialog } from "../../components/InviteDialog";
 import { PasskeyOffer } from "../../components/PasskeyOffer";
+import { useUsageHint } from "../../components/PlanUsage";
 import { SidebarFooter } from "../../components/SidebarFooter";
 import { useBilling } from "../../components/SubscriptionGate";
 import { formatBillingDate } from "../../lib/billing";
 import type { BotsSidebarDensity } from "../../lib/bots-sidebar-density-pref";
+import { desktopBridge } from "../../lib/desktop";
+import { isInsideRemoteFrame, requestRemoteHostSwitch } from "../../lib/remote-frame";
 import type { Panel } from "../../lib/right-panel-state";
 import { useSignOut } from "../../lib/sign-out";
 import { ActivityList } from "../ActivityList";
 import { SpaceSearchResults } from "../SpaceSearch";
 import type { SettingsSection } from "../shell-overlay";
+import type { ChatMenuState } from "./chat-context-menu";
 import { SidebarHeader } from "./sidebar-header";
 import type { SidebarSearch } from "./use-sidebar-search";
 
@@ -70,11 +73,13 @@ export function ShellSidebar({
   navigate,
   setNewSpaceOpen,
   setCreateBotOpen,
+  canCreateSpace = true,
+  chatMenu,
   roster,
   archived,
   footerLogos,
   user,
-  ticketBoardEnabled,
+  boardEnabled,
   navLinks,
   openSettings,
   openIntegrations,
@@ -98,11 +103,13 @@ export function ShellSidebar({
   navigate: (path: string) => void;
   setNewSpaceOpen: (open: boolean) => void;
   setCreateBotOpen: (open: boolean) => void;
+  canCreateSpace?: boolean;
+  chatMenu: ChatMenuState;
   roster: ReactNode;
   archived: ReactNode;
   footerLogos: Array<{ name: string; logo?: string | null }>;
   user: User | undefined;
-  ticketBoardEnabled: boolean;
+  boardEnabled: boolean;
   navLinks: NavLink[];
   openSettings: (section: SettingsSection) => void;
   openIntegrations: () => void;
@@ -185,6 +192,7 @@ export function ShellSidebar({
           navigate={navigate}
           setNewSpaceOpen={setNewSpaceOpen}
           setCreateBotOpen={setCreateBotOpen}
+          canCreateSpace={canCreateSpace}
         />
         {mini ||
         !(
@@ -255,6 +263,7 @@ export function ShellSidebar({
               error={searchError}
               onRetry={retrySearch}
               onSelect={(hit) => jumpToSearchHit(hit)}
+              chatMenu={chatMenu}
             />
           ) : activityMode && !mini ? (
             <ActivityList
@@ -301,7 +310,7 @@ export function ShellSidebar({
           mini={mini}
           logos={footerLogos}
           user={user}
-          ticketBoardEnabled={ticketBoardEnabled}
+          boardEnabled={boardEnabled}
           navLinks={navLinks}
           closeMobileSidebar={() => setMobileOpen(false)}
           navigate={navigate}
@@ -318,7 +327,7 @@ function ShellSidebarFooter({
   mini,
   logos,
   user,
-  ticketBoardEnabled,
+  boardEnabled,
   navLinks,
   closeMobileSidebar,
   navigate,
@@ -329,7 +338,7 @@ function ShellSidebarFooter({
   mini: boolean;
   logos: Array<{ name: string; logo?: string | null }>;
   user: User | undefined;
-  ticketBoardEnabled: boolean;
+  boardEnabled: boolean;
   navLinks: NavLink[];
   closeMobileSidebar: () => void;
   navigate: (path: string) => void;
@@ -345,9 +354,8 @@ function ShellSidebarFooter({
     new Date(billing.byokFreeUntil) > new Date()
       ? billing.byokFreeUntil
       : null;
+  const usage = useUsageHint();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const referral = billing?.referral;
   const [logOutError, setLogOutError] = useState<string | null>(null);
   const { signingOut, logOut } = useSignOut("/sign-in", (message) => {
     // A failed sign-out reloads the page: reopen the menu so its error shows.
@@ -356,6 +364,8 @@ function ShellSidebarFooter({
   });
   const { label: userName, initial: initials } = accountDisplay(user ?? {}, t`You`);
   const day = freeUntil ? formatBillingDate(freeUntil, i18n.locale || "en") : "";
+  const changeServer = desktopBridge()?.server?.change;
+  const canSwitchHost = Boolean(changeServer) || isInsideRemoteFrame();
   return (
     <>
       {freeUntil && !mini ? (
@@ -391,7 +401,7 @@ function ShellSidebarFooter({
           openSkills();
         }}
         onBoard={
-          ticketBoardEnabled
+          boardEnabled
             ? () => {
                 setMenuOpen(false);
                 closeMobileSidebar();
@@ -414,10 +424,21 @@ function ShellSidebarFooter({
           setMenuOpen(false);
           openSettings("general");
         }}
+        usage={usage}
         onUsage={() => {
           setMenuOpen(false);
           openSettings("usage");
         }}
+        onSwitchHost={
+          canSwitchHost
+            ? () => {
+                setMenuOpen(false);
+                closeMobileSidebar();
+                if (changeServer) void changeServer();
+                else void requestRemoteHostSwitch();
+              }
+            : undefined
+        }
         onLogOut={() => {
           setLogOutError(null);
           void logOut();
@@ -425,9 +446,6 @@ function ShellSidebarFooter({
         signingOut={signingOut}
         logOutError={logOutError}
       />
-      {referral ? (
-        <InviteDialog referral={referral} open={inviteOpen} onOpenChange={setInviteOpen} />
-      ) : null}
     </>
   );
 }

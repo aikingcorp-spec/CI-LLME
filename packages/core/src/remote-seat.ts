@@ -12,6 +12,8 @@ export interface RemotePresence {
 export interface RemotePortalDevice {
   deviceId: string;
   logicalHost: string;
+  shortCode?: string | null;
+  invited?: boolean;
   remoteEnabled: boolean;
   state: RemotePresenceState;
 }
@@ -21,9 +23,11 @@ export type RemotePortal =
       kind: "open";
       deviceId: string;
       logicalHost: string;
+      shortCode?: string | null;
+      edition?: "free" | "team";
       devices: RemotePortalDevice[];
     }
-  | { kind: "choose" | "unavailable"; devices: RemotePortalDevice[] };
+  | { kind: "choose" | "unavailable"; edition?: "free" | "team"; devices: RemotePortalDevice[] };
 
 /** Server-side access grant. The object id never goes to a browser. */
 export interface RemoteAccessGrant {
@@ -149,6 +153,7 @@ export function remotePortal(devices: readonly RemotePortalDevice[]): RemotePort
       kind: "open",
       deviceId: first.deviceId,
       logicalHost: first.logicalHost,
+      ...(first.shortCode !== undefined ? { shortCode: first.shortCode } : {}),
       devices: listed,
     };
   }

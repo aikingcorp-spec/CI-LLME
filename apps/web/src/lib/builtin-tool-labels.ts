@@ -38,6 +38,7 @@ const LABELS: Record<BuiltinToolName, () => string> = {
   read_history: () => t`Read history`,
   save_memory: () => t`Save memory`,
   recall_memory: () => t`Recall memory`,
+  reflect_memory: () => t`Reflect memory`,
   forget_memory: () => t`Forget memory`,
   task_catalog: () => t`Task catalog`,
   scratchpad_list: () => t`List scratchpad`,

@@ -3,7 +3,6 @@ import { isBackgroundRunTrigger, redactSecrets } from "@rakazo/core";
 import { normalizedHttpUrl } from "@rakazo/core/egress";
 import { getLogger } from "@rakazo/logging";
 import { executeCloudAgentTool } from "./cloud-agent-service.js";
-import { collectLogIds } from "./composio-connector.js";
 import { connectApp } from "./connect-app.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
 import { guideChaptersFromIndexFetch } from "./guide-navigation.js";
@@ -15,6 +14,7 @@ import {
 import { mcpAppViewArguments, mcpAppViewResult } from "./mcp-app.js";
 import { addMcpServerFromTool } from "./mcp-server-tool.js";
 import { serviceCallFromTool, serviceSearchFromTool } from "./paid-service-tools.js";
+import { collectLogIds } from "./providers/integration/composio/composio-connector.js";
 import type { RunContext } from "./run-context.js";
 import { runScopedToolExecutionId } from "./run-effects.js";
 import { publishMessage } from "./run-messages.js";
@@ -30,7 +30,7 @@ export async function cloudAgentTool(ctx: RunContext, call: ToolCall) {
   const { name, args, effectKey } = call;
   return call.finish(
     await executeCloudAgentTool(
-      { ...deps, cloudAgent: ctx.providers.cloudAgent },
+      { ...deps, cloudAgent: ctx.providers.cloudAgent, deployment: deps.cloudAgent },
       { ...context, operationId: effectKey, botId: bot.id },
       run,
       name,

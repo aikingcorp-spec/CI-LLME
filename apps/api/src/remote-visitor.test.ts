@@ -55,3 +55,57 @@ it("does not create a user for a ticket without an open invite", async () => {
   expect(userId).toBeNull();
   expect(created).toBe(0);
 });
+
+it("notifies onAdmit for non-owner subjects and skips owner", async () => {
+  const notified: string[] = [];
+  const db = {
+    user: {
+      findFirst: async () => ({ id: "owner" }),
+    },
+    account: {
+      findFirst: async () => ({ id: "acc-1", userId: "guest-1", scope: null }),
+      updateMany: async () => ({ count: 1 }),
+    },
+    spaceMember: {
+      findFirst: async () => ({ id: "sm-1" }),
+    },
+  } as unknown as PrismaClient;
+
+  await expect(
+    admitRemoteVisitor(db, {
+      accountId: "acc-1",
+      subject: "central-guest-1",
+      email: "guest@example.test",
+      createUser: async () => null,
+      onAdmit: async (subject) => {
+        notified.push(subject);
+      },
+    }),
+  ).resolves.toBe("guest-1");
+  expect(notified).toEqual(["central-guest-1"]);
+
+  const ownerDb = {
+    user: {
+      findFirst: async () => ({ id: "owner" }),
+    },
+    account: {
+      findFirst: async () => ({ id: "acc-owner", userId: "owner", scope: "central-owner" }),
+    },
+    spaceMember: {
+      findFirst: async () => ({ id: "sm-owner" }),
+    },
+  } as unknown as PrismaClient;
+
+  await expect(
+    admitRemoteVisitor(ownerDb, {
+      accountId: "acc-owner",
+      subject: "central-owner",
+      email: "owner@example.test",
+      createUser: async () => null,
+      onAdmit: async (subject) => {
+        notified.push(subject);
+      },
+    }),
+  ).resolves.toBe("owner");
+  expect(notified).toEqual(["central-guest-1"]);
+});

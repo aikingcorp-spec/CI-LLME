@@ -4,6 +4,8 @@ import {
   noteRemoteHeartbeat,
   registerRemoteHost,
   revokeRemoteDeviceKey,
+  revokeRemoteHostMember,
+  runAsSystem,
   setRemoteHost,
 } from "@rakazo/db";
 import { isGuestOnlyUser } from "../local-presence.js";
@@ -41,8 +43,15 @@ export function remoteHostRoutes(ctx: RouterContext) {
       localDeviceId: deps.localDeviceId,
       guestOnly: deps.localDeviceId ? await isGuestOnlyUser(deps.prisma, accountId) : false,
     });
-  const listed = (accountId: string, now: Date) =>
-    listRemoteHosts(deps.prisma, provider, { accountId, now });
+  const listed = async (accountId: string, now: Date) => {
+    const edition = deps.accountEdition ? await deps.accountEdition(accountId) : undefined;
+    const portal = await listRemoteHosts(deps.prisma, provider, {
+      accountId,
+      now,
+      includeOwned: edition !== "free",
+    });
+    return edition ? { ...portal, edition } : portal;
+  };
   return {
     remoteHosts: {
       list: authed.remoteHosts.list.handler(async ({ context }) => {
@@ -145,6 +154,18 @@ export function remoteHostRoutes(ctx: RouterContext) {
             ? (await registry.list()).portal
             : await listRemoteHosts(deps.prisma, provider, { accountId, now });
           return { kind: "conflict" as const, changed: false, portal };
+        }
+        const host = deps.prisma.remoteHost?.findUnique
+          ? await runAsSystem("check remote host owner before revoking", () =>
+              deps.prisma.remoteHost.findUnique({
+                where: { deviceId: input.deviceId },
+                select: { accountId: true },
+              }),
+            )
+          : null;
+        if (host && host.accountId !== accountId) {
+          await revokeRemoteHostMember(deps.prisma, { deviceId: input.deviceId, accountId });
+          return { kind: "disabled" as const, changed: true, portal: await listed(accountId, now) };
         }
         await revokeRemoteDeviceKey(deps.prisma, { accountId, deviceId: input.deviceId, now });
         return setRemoteHost(deps.prisma, provider, policyOf(deps.env), {

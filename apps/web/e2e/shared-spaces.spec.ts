@@ -236,13 +236,11 @@ test("an invite stays with its own account through sign-in, then opens that spac
   await expect(ownerSettings.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
   await expect(ownerSettings.getByText("Owner", { exact: true })).toBeVisible();
   await expect(ownerSettings.getByRole("button", { name: "Leave space" })).toHaveCount(0);
-  await ownerSettings.getByRole("button", { name: "Mời" }).click();
-  const copied = ownerPage.getByText("Invite link copied");
-  const linkField = ownerPage.getByLabel("Invite link");
-  await expect(copied.or(linkField)).toBeVisible();
-  const inviteUrl = (await copied.isVisible())
-    ? await ownerPage.evaluate(() => navigator.clipboard.readText())
-    : await linkField.inputValue();
+
+  await ownerSettings.getByRole("button", { name: "Invite" }).click();
+  await ownerPage.getByRole("menuitem", { name: "Copy invite link" }).click();
+  await expect(ownerPage.getByText("Invite link copied")).toBeVisible();
+  const inviteUrl = await ownerPage.evaluate(() => navigator.clipboard.readText());
   expect(inviteUrl).toMatch(/\/invite\//);
   await captureScreenshot(ownerPage, testInfo, "space-members-owner");
   const invitePath = new URL(inviteUrl).pathname;
@@ -365,7 +363,11 @@ test("an invite stays with its own account through sign-in, then opens that spac
   const inviteeSettings = inviteePage.getByTestId("user-settings");
   await expect(inviteeSettings.getByText("Ada Owner")).toBeVisible();
   await expect(inviteeSettings.getByText("Bob Invitee")).toBeVisible();
-  await expect(inviteeSettings.getByRole("button", { name: "Mời" })).toHaveCount(0);
+  // Bob is from outside Ada's organization, so he joined this Space alone, as a guest.
+  await expect(
+    inviteeSettings.getByRole("listitem").filter({ hasText: "Bob Invitee" }),
+  ).toContainText("External");
+  await expect(inviteeSettings.getByRole("button", { name: "Invite" })).toHaveCount(0);
   await expect(inviteeSettings.getByRole("button", { name: "Leave space" })).toBeVisible();
   await captureScreenshot(inviteePage, testInfo, "space-members-member");
 
@@ -431,6 +433,12 @@ test("an invite stays with its own account through sign-in, then opens that spac
   await captureScreenshot(inviteePage, testInfo, "shared-thread-invitee");
   await ownerPage.reload();
   await expect(ownerPage.getByText("Bob Invitee", { exact: true })).toBeVisible();
+  // The Space with someone from outside is marked in the sidebar, for screen readers too.
+  const homeHeading = ownerPage
+    .locator("aside")
+    .first()
+    .getByRole("button", { name: "Collapse Home, Shared with guests", exact: true });
+  await expect(homeHeading.locator("svg.lucide-globe")).toBeVisible();
   await captureScreenshot(ownerPage, testInfo, "shared-thread-owner");
 
   const group = await post("groups/create", {

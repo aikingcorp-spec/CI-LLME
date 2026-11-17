@@ -27,7 +27,7 @@ let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
 beforeEach(async () => {
-  const filename = path.resolve("apps/web/src/locales/vi/messages.po");
+  const filename = path.resolve("packages/i18n/locales/vi/messages.po");
   const catalog = await formatter().parse(readFileSync(filename, "utf8"), {
     locale: "vi",
     sourceLocale: "en",

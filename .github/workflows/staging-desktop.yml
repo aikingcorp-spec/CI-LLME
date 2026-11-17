@@ -7,7 +7,7 @@ name: staging-desktop
 # ubuntu-24.04 and windows-2025 are x64. macos-26-intel is Intel. macos-26 is arm64.
 # Desktop package targets are x64 on Linux and Windows, so arm runners are not added.
 
-# A branch named staging/vnbot-040-production* builds the production channel: pinned to the
+# A branch named staging/vnbot-040-production* or staging/vnbot-050-production* builds the production channel: pinned to the
 # production portal (vars RAKAZO_*_PRODUCTION) and keeping the update feed in package.json.
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
       STAGING_RUNNER: ${{ matrix.os }}
-      VNBOT_CHANNEL: ${{ startsWith(github.ref_name, 'staging/vnbot-040-production') && 'production' || 'staging' }}
+      VNBOT_CHANNEL: ${{ (startsWith(github.ref_name, 'staging/vnbot-040-production') || startsWith(github.ref_name, 'staging/vnbot-050-production')) && 'production' || 'staging' }}
     strategy:
       fail-fast: false
       matrix:
@@ -62,8 +62,8 @@ jobs:
       - name: Require the public staging pin
         shell: bash
         env:
-          RAKAZO_IDENTITY_PIN: ${{ startsWith(github.ref_name, 'staging/vnbot-040-production') && vars.RAKAZO_IDENTITY_PIN_PRODUCTION || vars.RAKAZO_IDENTITY_PIN }}
-          RAKAZO_CLOUD_URL: ${{ startsWith(github.ref_name, 'staging/vnbot-040-production') && vars.RAKAZO_CLOUD_URL_PRODUCTION || vars.RAKAZO_CLOUD_URL }}
+          RAKAZO_IDENTITY_PIN: ${{ (startsWith(github.ref_name, 'staging/vnbot-040-production') || startsWith(github.ref_name, 'staging/vnbot-050-production')) && vars.RAKAZO_IDENTITY_PIN_PRODUCTION || vars.RAKAZO_IDENTITY_PIN }}
+          RAKAZO_CLOUD_URL: ${{ (startsWith(github.ref_name, 'staging/vnbot-040-production') || startsWith(github.ref_name, 'staging/vnbot-050-production')) && vars.RAKAZO_CLOUD_URL_PRODUCTION || vars.RAKAZO_CLOUD_URL }}
         run: node .github/scripts/staging-desktop-verify.mjs require-public --channel "$VNBOT_CHANNEL"
 
       - name: Generate the database client
@@ -76,7 +76,7 @@ jobs:
         if: runner.os == 'Linux'
         run: pnpm --filter @rakazo/desktop test
 
-      - name: Install PostgreSQL 18 and 16
+      - name: Install PostgreSQL 18
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
@@ -91,9 +91,9 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-18
 
-      # The relocatable @embedded-postgres builds (macOS, Windows; 16 on Linux): 16.14.0-beta.17 is the
-      # server 0.3.9 shipped, so its data directory upgrades with the same binaries.
-      - name: Fetch embedded PostgreSQL 18 and 16
+      # The relocatable @embedded-postgres builds (macOS, Windows).
+      - name: Fetch embedded PostgreSQL 18
+        if: runner.os != 'Linux'
         shell: bash
         run: |
           set -euo pipefail
@@ -101,11 +101,12 @@ jobs:
             # The darwin-arm64 package ships fat x86_64 + arm64 binaries; build-native checks that.
             macos-universal) package=@embedded-postgres/darwin-arm64 ;;
             windows-x64) package=@embedded-postgres/windows-x64 ;;
-            # Linux keeps PostgreSQL 18 from Debian; only the 0.3.9 server comes from the package.
-            linux-x64) package=@embedded-postgres/linux-x64 ;;
+            *)
+              echo "Unsupported runner OS ${{ runner.os }}" >&2
+              exit 1
+              ;;
           esac
-          [ "${{ runner.os }}" = Linux ] || node .github/scripts/staging-desktop-verify.mjs fetch-embedded --package "$package" --version 18.4.0-beta.17 --dest "$RUNNER_TEMP/ep18" > "$RUNNER_TEMP/ep18.path"
-          node .github/scripts/staging-desktop-verify.mjs fetch-embedded --package "$package" --version 16.14.0-beta.17 --dest "$RUNNER_TEMP/ep16" > "$RUNNER_TEMP/ep16.path"
+          node .github/scripts/staging-desktop-verify.mjs fetch-embedded --package "$package" --version 18.4.0-beta.17 --dest "$RUNNER_TEMP/ep18" > "$RUNNER_TEMP/ep18.path"
 
       # The universal app runs this node on both chips, so join the official x64 and arm64 builds.
       - name: Join a universal Node
@@ -139,8 +140,8 @@ jobs:
           DATABASE_URL: postgres://rakazo:rakazo@127.0.0.1:5433/rakazo
           BETTER_AUTH_SECRET: ci-build-auth-secret-at-least-32-characters
           ENCRYPTION_KEY: ci-build-encryption-key-at-least-32-characters
-          RAKAZO_IDENTITY_PIN: ${{ startsWith(github.ref_name, 'staging/vnbot-040-production') && vars.RAKAZO_IDENTITY_PIN_PRODUCTION || vars.RAKAZO_IDENTITY_PIN }}
-          RAKAZO_CLOUD_URL: ${{ startsWith(github.ref_name, 'staging/vnbot-040-production') && vars.RAKAZO_CLOUD_URL_PRODUCTION || vars.RAKAZO_CLOUD_URL }}
+          RAKAZO_IDENTITY_PIN: ${{ (startsWith(github.ref_name, 'staging/vnbot-040-production') || startsWith(github.ref_name, 'staging/vnbot-050-production')) && vars.RAKAZO_IDENTITY_PIN_PRODUCTION || vars.RAKAZO_IDENTITY_PIN }}
+          RAKAZO_CLOUD_URL: ${{ (startsWith(github.ref_name, 'staging/vnbot-040-production') || startsWith(github.ref_name, 'staging/vnbot-050-production')) && vars.RAKAZO_CLOUD_URL_PRODUCTION || vars.RAKAZO_CLOUD_URL }}
 
       - name: Assemble the native bundle
         shell: bash
@@ -149,11 +150,9 @@ jobs:
           case "${{ runner.os }}" in
             Linux)
               current_root=/usr
-              legacy_root="$(cat "$RUNNER_TEMP/ep16.path")"
               ;;
             macOS|Windows)
               current_root="$(cat "$RUNNER_TEMP/ep18.path")"
-              legacy_root="$(cat "$RUNNER_TEMP/ep16.path")"
               ;;
             *)
               echo "Unsupported runner OS ${{ runner.os }}" >&2
@@ -161,12 +160,10 @@ jobs:
               ;;
           esac
           current="$(node .github/scripts/staging-desktop-verify.mjs prepare-current --root "$current_root" --major 18 --dest "$RUNNER_TEMP/pg18")"
-          legacy="$(node .github/scripts/staging-desktop-verify.mjs prepare-legacy --root "$legacy_root" --major 16 --dest "$RUNNER_TEMP/pg16")"
           pnpm --filter @rakazo/desktop run build:native \
             --node "${NATIVE_NODE:-$(node -p process.execPath)}" \
             --arch "${NATIVE_ARCH:-$(node -p process.arch)}" \
-            --postgres "$current" \
-            --legacy-postgres "$legacy"
+            --postgres "$current"
 
       - name: Package unsigned installers
         shell: bash

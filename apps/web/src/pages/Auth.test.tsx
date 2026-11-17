@@ -8,6 +8,8 @@ import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import * as localeModule from "../lib/i18n";
+import type * as Passkeys from "../lib/passkeys";
+import { usePasskeysSupported } from "../lib/passkeys";
 import { clearSpaceSelection } from "../lib/rpc";
 import { AuthPage } from "./Auth";
 
@@ -39,6 +41,7 @@ vi.mock("@rakazo/ui-web", () => ({
         {children}
       </button>
     ),
+  LogoAvatar: () => <svg aria-hidden="true" data-rakazo-logo="" />,
   Input: (props: React.ComponentProps<"input">) => <input {...props} />,
   InputOTP: ({
     maxLength,
@@ -73,11 +76,21 @@ vi.mock("@rakazo/ui-web", () => ({
 vi.mock("../lib/auth-capabilities", () => ({ fetchAuthCapabilities: vi.fn() }));
 vi.mock("../lib/auth", () => ({
   authClient: {
-    signIn: { social: vi.fn(async () => ({})), email: vi.fn(), emailOtp: vi.fn() },
+    signIn: {
+      social: vi.fn(async () => ({})),
+      email: vi.fn(),
+      emailOtp: vi.fn(),
+      passkey: vi.fn(async () => ({ data: {}, error: null })),
+    },
     emailOtp: { sendVerificationOtp: vi.fn() },
   },
 }));
 vi.mock("../lib/rpc", () => ({ clearSpaceSelection: vi.fn() }));
+vi.mock("../lib/passkeys", async (importActual) => ({
+  ...(await importActual<typeof Passkeys>()),
+  usePasskeysSupported: vi.fn(() => false),
+  conditionalPasskeyAvailable: vi.fn(async () => false),
+}));
 const capabilities: AuthCapabilities = {
   passwordAuth: false,
   sso: { name: "Example", availability: "unavailable" },
@@ -107,6 +120,9 @@ async function render(mode: "in" | "up" | "forgot" = "in", entry = "/") {
     ),
   );
 }
+function LocationProbe() {
+  return <span data-testid="location">{useLocation().pathname}</span>;
+}
 async function enter(input: Element | null, value: string) {
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
@@ -114,7 +130,9 @@ async function enter(input: Element | null, value: string) {
   });
 }
 function button(text: string) {
-  return [...host.querySelectorAll("button")].find((button) => button.textContent === text)!;
+  return [...host.querySelectorAll("button")].find(
+    (node) => node.textContent?.replace(/\s+/g, " ").trim() === text,
+  )!;
 }
 async function submit() {
   await act(async () => {
@@ -137,7 +155,7 @@ it.each(["in", "up"] as const)("offers SSO and hides credentials on %s", async (
   expect(host.textContent).toContain("Continue with Example");
   expect(host.querySelector("input")).toBeNull();
   const sso = button("Continue with Example");
-  expect(sso.dataset.variant).toBe("default");
+  expect(sso.dataset.variant).toBe("outline");
   expect(sso.className).toContain("w-full");
 });
 it("retries failed capabilities without exposing a password form", async () => {
@@ -154,25 +172,90 @@ it("retries failed capabilities without exposing a password form", async () => {
   expect(fetchAuthCapabilities).toHaveBeenCalledTimes(2);
   expect(host.textContent).toContain("Continue with Example");
 });
-it.each(["in", "up"] as const)("puts quiet SSO below the primary action on %s", async (mode) => {
+it.each(["in", "up"] as const)("offers providers before the email form on %s", async (mode) => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
   await render(mode);
-  const email = host.querySelector('input[name="email"]')!;
-  const password = host.querySelector('input[type="password"]')!;
-  const submit = host.querySelector('button[type="submit"]')!;
-  const sso = [...host.querySelectorAll("button")].find(
-    (button) => button.textContent === "Continue with Example",
-  )!;
-  for (const [first, second] of [
-    [email, password],
-    [password, submit],
-    [submit, sso],
-  ] as const) {
-    expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  }
-  expect(submit.getAttribute("data-variant")).toBe("default");
-  expect(sso.dataset.variant).toBe("link");
-  expect(sso.dataset.size).toBe("sm");
+  const provider = button("Continue with Example");
+  const emailChoice = button("Continue with email");
+  expect(host.querySelector('input[name="email"]')).toBeNull();
+  expect(provider.dataset.variant).toBe("outline");
+  expect(provider.className).toContain("w-full");
+  expect(emailChoice.dataset.variant).toBe("outline");
+  expect(emailChoice.className).toContain("w-full");
+  expect(host.querySelector('img[alt="VNBot"]')).not.toBeNull();
+  expect(
+    provider.compareDocumentPosition(emailChoice) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  await act(async () => emailChoice.click());
+  expect(host.querySelector('input[name="email"]')).not.toBeNull();
+  expect(button("Back")).toBeDefined();
+  await act(async () => button("Back").click());
+  expect(host.querySelector('input[name="email"]')).toBeNull();
+  expect(button("Continue with Example")).toBeDefined();
+});
+
+it("shows a configured provider beside the password form and hides the rest", async () => {
+  const mark = { viewBox: "0 0 24 24", paths: [{ d: "M1 1h2v2H1z" }] };
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...capabilities,
+    passwordAuth: true,
+    sso: null,
+    providers: [
+      { id: "google", name: "Google", presentation: { variant: "outline", mark } },
+      { id: "apple", name: "Apple", presentation: { variant: "solid", mark } },
+    ],
+  });
+  await render();
+  expect(host.querySelector('input[name="email"]')).toBeNull();
+  const google = button("Continue with Google");
+  const apple = button("Continue with Apple");
+  const emailChoice = button("Continue with email");
+  expect(google.dataset.variant).toBe("outline");
+  expect(apple.dataset.variant).toBe("outline");
+  expect(google.parentElement).toBe(apple.parentElement);
+  expect(google.parentElement?.className).toContain("flex-col");
+  expect(google.querySelector("svg")).not.toBeNull();
+  expect(apple.querySelector("svg")).not.toBeNull();
+  expect(emailChoice.dataset.variant).toBe("outline");
+  expect(emailChoice.className).toContain("w-full");
+  expect(host.textContent).toContain("Welcome back");
+  expect(host.querySelector('img[alt="VNBot"]')).not.toBeNull();
+  await act(async () => google.click());
+  expect(authClient.signIn.social).toHaveBeenCalledWith(
+    expect.objectContaining({ provider: "google" }),
+  );
+  await act(async () => emailChoice.click());
+  expect(host.querySelector('input[name="email"]')).not.toBeNull();
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...capabilities,
+    passwordAuth: true,
+    sso: null,
+    providers: [],
+  });
+  await render("up");
+  expect(host.textContent).not.toContain("Continue with");
+  expect(host.querySelector('input[name="email"]')).not.toBeNull();
+});
+
+it("offers a supported passkey in the sign-in chooser only", async () => {
+  vi.mocked(usePasskeysSupported).mockReturnValue(true);
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render();
+  const passkey = button("Continue with passkey");
+  expect(
+    button("Continue with email").compareDocumentPosition(passkey) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  await act(async () => passkey.click());
+  expect(authClient.signIn.passkey).toHaveBeenCalledWith({ autoFill: false });
+  expect(clearSpaceSelection).toHaveBeenCalled();
+
+  await render();
+  await act(async () => button("Continue with email").click());
+  expect(button("Sign in with passkey")).toBeUndefined();
+
+  await render("up");
+  expect(button("Continue with passkey")).toBeUndefined();
 });
 
 it("hides SSO in password recovery", async () => {
@@ -470,4 +553,66 @@ it("says the address is not approved and points to the community when the invite
   expect(host.querySelector("h1")!.textContent).not.toBe("Check your email");
   expect(host.textContent).toContain("This email is not approved for VNBot yet");
   expect(clearSpaceSelection).not.toHaveBeenCalled();
+});
+
+it.each(["in", "up"] as const)(
+  "signs in to a demo server's shared account in one click on %s",
+  async (mode) => {
+    const demoAccount = { email: "demo@example.com", password: "demo-password" };
+    vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, demoAccount });
+    vi.mocked(authClient.signIn.email).mockResolvedValue({ data: {}, error: null } as never);
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={["/sign-up"]}>
+          <AuthPage mode={mode} />
+          <LocationProbe />
+        </MemoryRouter>,
+      ),
+    );
+    await act(async () => button("Sign in with demo account").click());
+    expect(authClient.signIn.email).toHaveBeenCalledWith(demoAccount);
+    expect(host.querySelector("[data-testid=location]")!.textContent).toBe(
+      mode === "up" ? "/sign-in" : "/sign-up",
+    );
+  },
+);
+
+it("offers no demo sign-in on other servers", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(codeCapabilities);
+  await render();
+  expect(button("Sign in with demo account")).toBeUndefined();
+});
+
+it("lets the user immediately resend after TOO_MANY_ATTEMPTS and localizes rate limits", async () => {
+  vi.useFakeTimers();
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(codeCapabilities);
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValue({
+    data: { success: true },
+    error: null,
+  } as never);
+  vi.mocked(authClient.signIn.emailOtp).mockResolvedValueOnce({
+    data: null,
+    error: { code: "TOO_MANY_ATTEMPTS", message: "Too many attempts", status: 403 },
+  } as never);
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "person@example.com");
+  await submit();
+  expect(button("Gửi lại mã")).toBeUndefined();
+  await enter(host.querySelector('input[aria-label="Code"]'), "111111");
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe("Request a new code");
+  expect(button("Gửi lại mã")).toBeDefined();
+
+  vi.mocked(authClient.emailOtp.sendVerificationOtp).mockResolvedValueOnce({
+    data: null,
+    error: {
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many attempts. Try again later.",
+      status: 429,
+    },
+  } as never);
+  await act(async () => button("Gửi lại mã").click());
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe(
+    "Too many attempts. Try again in a few minutes.",
+  );
+  vi.useRealTimers();
 });

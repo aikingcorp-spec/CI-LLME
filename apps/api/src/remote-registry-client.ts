@@ -74,5 +74,7 @@ export function createRemoteRegistryClient(input: {
     present: (error?: boolean) => post("present", error ? { error: true } : {}),
     list: () => post("list"),
     set: (enabled: boolean, confirmed: boolean) => post("set", { enabled, confirmed }),
+    recordMember: (memberAccountId: string) => post("record-member", { memberAccountId }),
+    revokeMember: (memberAccountId: string) => post("revoke-member", { memberAccountId }),
   };
 }

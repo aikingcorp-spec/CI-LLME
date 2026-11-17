@@ -5,23 +5,31 @@ export const RemotePresenceStateSchema = z.enum(["off", "connecting", "ready", "
 export const RemoteHostViewSchema = z.object({
   deviceId: z.string(),
   logicalHost: z.string(),
+  shortCode: z.string().nullable().optional(),
+  invited: z.boolean().optional(),
   remoteEnabled: z.boolean(),
   state: RemotePresenceStateSchema,
 });
+
+export const RemotePortalEditionSchema = z.enum(["free", "team"]);
 
 export const RemotePortalSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("open"),
     deviceId: z.string(),
     logicalHost: z.string(),
+    shortCode: z.string().nullable().optional(),
+    edition: RemotePortalEditionSchema.optional(),
     devices: z.array(RemoteHostViewSchema),
   }),
   z.object({
     kind: z.literal("choose"),
+    edition: RemotePortalEditionSchema.optional(),
     devices: z.array(RemoteHostViewSchema),
   }),
   z.object({
     kind: z.literal("unavailable"),
+    edition: RemotePortalEditionSchema.optional(),
     devices: z.array(RemoteHostViewSchema),
   }),
 ]);

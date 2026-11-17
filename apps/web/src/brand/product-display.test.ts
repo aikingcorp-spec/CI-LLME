@@ -42,13 +42,15 @@ describe("VNBot display name", () => {
       "Paste the OpenAI-compatible address from your server. VNBot adds /v1 if needed.",
       "rakazo-shared and IDs starting with bot- are reserved for VNBot.",
     ];
-    const locales = readdirSync(new URL("../locales", import.meta.url), { withFileTypes: true })
+    const locales = readdirSync(new URL("../../../../packages/i18n/locales", import.meta.url), {
+      withFileTypes: true,
+    })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name);
     expect(locales.length).toBeGreaterThan(10);
     for (const locale of locales) {
       const catalog = readFileSync(
-        new URL(`../locales/${locale}/messages.po`, import.meta.url),
+        new URL(`../../../../packages/i18n/locales/${locale}/messages.po`, import.meta.url),
         "utf8",
       );
       for (const id of ids) {
@@ -59,9 +61,7 @@ describe("VNBot display name", () => {
         expect(entry, `${locale}: ${id}`).toContain("VNBot");
         expect(entry, `${locale}: ${id}`).not.toContain("Rakazo");
       }
-      expect(catalog).toContain(
-        'msgid "Connect your own API key in Models or choose Rakazo credits in Billing."',
-      );
+      expect(catalog).not.toContain("Rakazo credits");
     }
     const avatar = readFileSync(
       new URL("../pages/shell/avatar-studio-popover.tsx", import.meta.url),

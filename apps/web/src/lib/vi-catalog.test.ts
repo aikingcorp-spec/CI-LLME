@@ -17,7 +17,10 @@ function placeholders(text: string): string[] {
 }
 
 describe("Vietnamese catalog", () => {
-  const catalog = readFileSync(new URL("../locales/vi/messages.po", import.meta.url), "utf8");
+  const catalog = readFileSync(
+    new URL("../../../../packages/i18n/locales/vi/messages.po", import.meta.url),
+    "utf8",
+  );
   const entries = catalog
     .split("\n\n")
     .map((block) => ({ id: block.match(/^msgid (".+")$/m)?.[1], text: msgstr(block) }))

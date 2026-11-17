@@ -108,11 +108,7 @@ it.skipIf(!databaseUrl).each([
       const guestSpace = await runAsSystem(
         "seed own personal Space for native access refusal",
         () =>
-          bootstrapUserSpace(
-            handles.prisma,
-            { id: guestId },
-            { signupsEnabled: "true", signupAllowlist: "" },
-          ),
+          bootstrapUserSpace(handles.prisma, { id: guestId }),
       );
       const guestOrganization = await system.space.findUniqueOrThrow({
         where: { id: guestSpace.spaceId },

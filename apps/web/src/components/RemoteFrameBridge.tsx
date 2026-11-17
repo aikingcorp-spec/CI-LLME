@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { remoteFramePage } from "../lib/remote-frame";
+import { remoteFramePage, setPinnedRemotePortalOrigin } from "../lib/remote-frame";
 
 /** Only the local server's pinned portal may receive navigation, never cookies or tokens. */
 export function RemoteFrameBridge({ authenticated }: { authenticated: boolean }) {
@@ -21,8 +21,10 @@ export function RemoteFrameBridge({ authenticated }: { authenticated: boolean })
         )
           return;
         const url = new URL(value.portalOrigin);
-        if (active && url.protocol === "https:" && url.origin === value.portalOrigin)
+        if (active && url.protocol === "https:" && url.origin === value.portalOrigin) {
+          setPinnedRemotePortalOrigin(url.origin);
           setPortal(url.origin);
+        }
       })
       .catch(() => undefined);
     return () => {

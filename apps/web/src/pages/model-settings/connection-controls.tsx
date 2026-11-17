@@ -6,6 +6,7 @@ import {
   ModelPreflightFeedback,
   modelPreflightTestingLabel,
 } from "../../components/ModelConnectionPreflightNotice";
+import { desktopBridge, usesLoopbackOAuthRedirect } from "../../lib/desktop";
 import { CompatibleKeyField } from "./compatible-key-field";
 
 import type { ModelSettingsState } from "./use-model-settings";
@@ -23,8 +24,11 @@ export function ConnectionControls({
   copyOAuthCode,
   credential,
   gatewayId,
+  projectId,
+  region,
   needsRouting,
   needsGateway,
+  needsProject,
   isOpenAiCompatible,
   oauth,
   oauthPending,
@@ -38,11 +42,12 @@ export function ConnectionControls({
   selected,
   setAccountId,
   setGatewayId,
+  setProjectId,
+  setRegion,
   setPasteCode,
   submitOAuthCode,
   subscriptionSignIn,
   testApiKeyConnection,
-  testOAuthConnection,
   updateApiKey,
 }: Pick<
   ModelSettingsState,
@@ -58,8 +63,11 @@ export function ConnectionControls({
   | "copyOAuthCode"
   | "credential"
   | "gatewayId"
+  | "projectId"
+  | "region"
   | "needsRouting"
   | "needsGateway"
+  | "needsProject"
   | "isOpenAiCompatible"
   | "oauth"
   | "oauthPending"
@@ -73,11 +81,12 @@ export function ConnectionControls({
   | "selected"
   | "setAccountId"
   | "setGatewayId"
+  | "setProjectId"
+  | "setRegion"
   | "setPasteCode"
   | "submitOAuthCode"
   | "subscriptionSignIn"
   | "testApiKeyConnection"
-  | "testOAuthConnection"
   | "updateApiKey"
 >) {
   const { t } = useLingui();
@@ -93,7 +102,7 @@ export function ConnectionControls({
   }, [keyShownFor]);
   return !isOpenAiCompatible ? (
     <>
-      {subscriptionSignIn ? (
+      {subscriptionSignIn && (credential?.authKind !== "oauth" || credential.reconnectRequired) ? (
         <div className="mt-5 flex flex-wrap items-center gap-2 first:mt-0">
           {oauth ? (
             <div className="w-full rounded-xl border border-border px-4 py-3">
@@ -113,6 +122,14 @@ export function ConnectionControls({
                       , then paste the code here.
                     </Trans>
                   </p>
+                  {!desktopBridge() && usesLoopbackOAuthRedirect(oauth.verificationUri) ? (
+                    <p className="mt-1.5 text-caption text-muted-foreground">
+                      <Trans>
+                        If the browser cannot reach localhost after sign-in, copy the full localhost
+                        URL from the address bar and paste it below.
+                      </Trans>
+                    </p>
+                  ) : null}
                   <div className="mt-3 flex items-center gap-2">
                     <Input
                       value={pasteCode}
@@ -225,23 +242,6 @@ export function ConnectionControls({
               )}
             </Button>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={busy || preflightTesting || credential?.authKind !== "oauth"}
-            onClick={() => void testOAuthConnection()}
-          >
-            {modelPreflightTestingLabel(
-              preflightTesting && preflightTarget === "sign-in",
-              "sign-in",
-            )}
-          </Button>
-          {preflightTarget === "sign-in" ? (
-            <div className="w-full">
-              <ModelPreflightFeedback success={preflightSuccess} failure={preflightFailure} />
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -260,26 +260,30 @@ export function ConnectionControls({
           {needsRouting ? (
             <>
               <label className="block text-body text-muted-foreground" htmlFor="model-account-id">
-                <Trans>Account ID</Trans>
+                {needsProject ? <Trans>Project ID</Trans> : <Trans>Account ID</Trans>}
                 <Input
                   id="model-account-id"
-                  value={accountId}
-                  onChange={(event) => setAccountId(event.target.value)}
+                  value={needsProject ? projectId : accountId}
+                  onChange={(event) =>
+                    (needsProject ? setProjectId : setAccountId)(event.target.value)
+                  }
                   autoComplete="off"
                   spellCheck={false}
                   className="mt-2 h-10 text-foreground"
                 />
               </label>
-              {needsGateway ? (
+              {needsGateway || needsProject ? (
                 <label
                   className="mt-4 block text-body text-muted-foreground"
                   htmlFor="model-gateway-id"
                 >
-                  <Trans>Gateway ID</Trans>
+                  {needsProject ? <Trans>Region</Trans> : <Trans>Gateway ID</Trans>}
                   <Input
                     id="model-gateway-id"
-                    value={gatewayId}
-                    onChange={(event) => setGatewayId(event.target.value)}
+                    value={needsProject ? region : gatewayId}
+                    onChange={(event) =>
+                      (needsProject ? setRegion : setGatewayId)(event.target.value)
+                    }
                     autoComplete="off"
                     spellCheck={false}
                     className="mt-2 h-10 text-foreground"
@@ -320,10 +324,7 @@ export function ConnectionControls({
                 disabled={busy || preflightTesting || apiKey.trim().length < 8}
                 onClick={() => void testApiKeyConnection()}
               >
-                {modelPreflightTestingLabel(
-                  preflightTesting && preflightTarget === "api-key",
-                  "api-key",
-                )}
+                {modelPreflightTestingLabel(preflightTesting && preflightTarget === "api-key")}
               </Button>
             ) : null}
             <Button

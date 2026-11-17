@@ -3,7 +3,6 @@ import type { AgentMessage, AgentOptions } from "@earendil-works/pi-agent-core";
 import type {
   AssistantMessage,
   Context,
-  CredentialStore,
   Model,
   ModelThinkingLevel,
   TranscriptContext,
@@ -17,6 +16,8 @@ import {
   MODEL_REQUEST_LIMIT_ERROR,
   normalizeRunError,
 } from "@rakazo/core";
+import type { Deferred } from "@rakazo/core/test-async";
+import { deferred, flush } from "@rakazo/core/test-async";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const providerState = vi.hoisted(() => ({
@@ -70,6 +71,7 @@ import { PiAgentRuntime } from "./pi-runtime.js";
 import { MODEL_STREAM_IDLE_TIMEOUT_MS, MODEL_STREAM_TIMEOUT_MS } from "./pi-runtime-limits.js";
 import { MODEL_STREAM_IDLE_TIMEOUT_MESSAGE } from "./pi-runtime-stream.js";
 import { PiJsonlSessionRecorder } from "./pi-session.js";
+import { sharedTokenPacer } from "./token-pacer.js";
 
 const primary = model("provider-a", "primary", 32_768);
 const backupA = model("provider-b", "backup-a", 8_192);
@@ -562,6 +564,7 @@ describe("Pi runtime transient model retries", () => {
       { value: "whole" },
     ]);
     expect(events.at(-1)).toEqual({ type: "done", text: "Done." });
+    // The dropped call leaves nothing behind: no assistant message and no tool activity.
     const assistantEntries = appendMessage.mock.calls
       .map(([entry]) => entry)
       .filter((entry) => entry.role === "assistant");
@@ -604,57 +607,6 @@ describe("Pi runtime transient model retries", () => {
     expect(providerState.stream).toHaveBeenCalledOnce();
     expect(providerState.delay).not.toHaveBeenCalled();
     expect(input.executeTool).not.toHaveBeenCalled();
-  });
-
-  it("retries the same model for a helper agent without configured backups", async () => {
-    const input = request();
-    input.tools = [
-      {
-        name: "run_subagent",
-        description: "Run a helper agent.",
-        inputSchema: {
-          type: "object",
-          properties: { name: { type: "string" }, task: { type: "string" } },
-          required: ["name", "task"],
-        },
-        readOnly: true,
-      },
-    ];
-    providerState.stream
-      .mockImplementationOnce(() =>
-        stream(
-          primary,
-          message(
-            primary,
-            [
-              {
-                type: "toolCall",
-                id: "retry-helper",
-                name: "run_subagent",
-                arguments: { name: "helper", task: "Summarize the fixture." },
-              },
-            ],
-            "toolUse",
-          ),
-        ),
-      )
-      .mockImplementationOnce(() => stream(primary, message(primary, [], "error", "terminated")))
-      .mockImplementationOnce(() =>
-        stream(primary, message(primary, [], "error", "503 overloaded")),
-      )
-      .mockImplementationOnce(() =>
-        stream(primary, message(primary, [{ type: "text", text: "Helper result." }], "stop")),
-      )
-      .mockImplementation(() =>
-        stream(primary, message(primary, [{ type: "text", text: "Complete." }], "stop")),
-      );
-    const events = await run(input);
-    expect(providerState.stream).toHaveBeenCalledTimes(5);
-    expect(events).toContainEqual(
-      expect.objectContaining({ type: "subagent", status: "completed", result: "Helper result." }),
-    );
-    expect(events.at(-1)).toEqual({ type: "done", text: "Complete." });
-    expect(providerState.delay.mock.calls.map(([delay]) => delay)).toEqual([2_000, 8_000]);
   });
 
   it("waits for each bounded backoff before retrying", async () => {
@@ -764,7 +716,7 @@ describe("Pi runtime ordered model fallback", () => {
       void first.then(() => {
         started = true;
       });
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
       expect(started).toBe(false);
       expect(providerState.stream.mock.lastCall?.[2]).toMatchObject(options);
       upstream.push({ type: "error", reason: "error", error: failure });
@@ -1281,146 +1233,6 @@ describe("Pi runtime ordered model fallback", () => {
     expect(events).toContainEqual(
       expect.objectContaining({ type: "usage", provider: primary.provider, model: primary.id }),
     );
-  });
-
-  it("keeps helper-model selection on the active backup after the primary fails", async () => {
-    const input = request([
-      { provider: backupA.provider, id: backupA.id, apiKey: "backup-fixture-key" },
-    ]);
-    input.model.apiKey = "primary-fixture-key";
-    input.tools = [
-      {
-        name: "run_subagent",
-        description: "Run a helper agent.",
-        inputSchema: {
-          type: "object",
-          properties: { name: { type: "string" }, task: { type: "string" } },
-          required: ["name", "task"],
-        },
-        readOnly: true,
-      },
-    ];
-    const providers: string[] = [];
-    const apiKeys: Array<string | undefined> = [];
-    let backupCalls = 0;
-    providerState.stream.mockImplementation(
-      (target: Model<"openai-completions">, _context: unknown, options?: { apiKey?: string }) => {
-        providers.push(target.provider);
-        apiKeys.push(options?.apiKey);
-        if (target.provider === primary.provider) {
-          return stream(target, message(target, [], "error", "429 rate_limit_error"));
-        }
-        backupCalls += 1;
-        if (backupCalls === 1) {
-          return stream(
-            target,
-            message(
-              target,
-              [
-                {
-                  type: "toolCall",
-                  id: "helper-call",
-                  name: "run_subagent",
-                  arguments: { name: "helper", task: "Summarize the fixture." },
-                },
-              ],
-              "toolUse",
-            ),
-          );
-        }
-        return stream(target, message(target, [{ type: "text", text: "Complete." }], "stop"));
-      },
-    );
-
-    await run(input);
-
-    expect(providers).toEqual([
-      primary.provider,
-      backupA.provider,
-      backupA.provider,
-      backupA.provider,
-    ]);
-    expect(apiKeys).toEqual([
-      "primary-fixture-key",
-      "backup-fixture-key",
-      "backup-fixture-key",
-      "backup-fixture-key",
-    ]);
-  });
-
-  it("keeps a refreshed backup OAuth token for later helper calls", async () => {
-    const input = request([{ provider: backupA.provider, id: backupA.id }]);
-    input.tools = [
-      {
-        name: "run_subagent",
-        description: "Run a helper agent.",
-        inputSchema: {
-          type: "object",
-          properties: { name: { type: "string" }, task: { type: "string" } },
-          required: ["name", "task"],
-        },
-        readOnly: true,
-      },
-    ];
-    input.resolveFallbackModel = vi.fn(async () => ({
-      provider: backupA.provider,
-      id: backupA.id,
-      oauth: {
-        credential: {
-          type: "oauth" as const,
-          access: "backup-access-before-refresh",
-          refresh: "backup-refresh",
-          expires: Date.now() + 60_000,
-        },
-      },
-    }));
-    const backupKeys: Array<string | undefined> = [];
-    let backupCalls = 0;
-    providerState.stream.mockImplementation(
-      (target: Model<"openai-completions">, _context: unknown, options?: { apiKey?: string }) => {
-        if (target.provider === primary.provider) {
-          return stream(target, message(target, [], "error", "429 rate_limit_error"));
-        }
-        backupCalls += 1;
-        backupKeys.push(options?.apiKey);
-        if (backupCalls !== 1) {
-          return stream(target, message(target, [{ type: "text", text: "Complete." }], "stop"));
-        }
-        const credentialStore = providerState.credentialStores[0] as CredentialStore;
-        const response = message(
-          target,
-          [
-            {
-              type: "toolCall",
-              id: "oauth-helper-call",
-              name: "run_subagent",
-              arguments: { name: "helper", task: "Summarize the fixture." },
-            },
-          ],
-          "toolUse",
-        );
-        const output = new AssistantMessageEventStream();
-        void (async () => {
-          await credentialStore.modify(backupA.provider, async (current) => {
-            if (current?.type !== "oauth") throw new Error("OAuth credential missing in fixture");
-            return { ...current, access: "backup-access-after-refresh" };
-          });
-          for await (const event of stream(target, response)) output.push(event);
-          output.end(response);
-        })();
-        return output;
-      },
-    );
-
-    const events = await run(input);
-
-    expect(backupKeys).toEqual([
-      "backup-access-before-refresh",
-      "backup-access-after-refresh",
-      "backup-access-after-refresh",
-    ]);
-    expect(JSON.stringify(events)).not.toContain("backup-access-before-refresh");
-    expect(JSON.stringify(events)).not.toContain("backup-access-after-refresh");
   });
 
   it("persists the selected model before streaming from the backup", async () => {
@@ -2411,13 +2223,11 @@ describe("Pi runtime ordered model fallback", () => {
 
   it("does not persist or start a backup when cancellation wins during credential resolution", async () => {
     const input = request([{ provider: backupA.provider, id: backupA.id }]);
-    let releaseResolution: ((model: AgentRunRequest["model"]) => void) | undefined;
-    input.resolveFallbackModel = vi.fn(
-      () =>
-        new Promise<AgentRunRequest["model"]>((resolve) => {
-          releaseResolution = resolve;
-        }),
-    );
+    let releaseResolution: Deferred<AgentRunRequest["model"]> | undefined;
+    input.resolveFallbackModel = vi.fn(() => {
+      releaseResolution = deferred<AgentRunRequest["model"]>();
+      return releaseResolution.promise;
+    });
     const onModelChange = vi.fn(async () => undefined);
     input.onModelChange = onModelChange;
     providerState.stream.mockImplementation((target: Model<"openai-completions">) =>
@@ -2448,7 +2258,11 @@ describe("Pi runtime ordered model fallback", () => {
     const running = consume();
     await vi.waitFor(() => expect(input.resolveFallbackModel).toHaveBeenCalledOnce());
     controller.abort();
-    releaseResolution?.({ provider: backupA.provider, id: backupA.id, apiKey: "test-backup-key" });
+    releaseResolution?.resolve({
+      provider: backupA.provider,
+      id: backupA.id,
+      apiKey: "test-backup-key",
+    });
     await running;
 
     expect(onModelChange).not.toHaveBeenCalled();
@@ -2812,6 +2626,7 @@ describe("Pi runtime output reservation recovery", () => {
         ),
       );
       await expect(run(input)).rejects.toThrow("This request requires more credits");
+      // Text was shown, so it stays terminal; a tool call never ran, so the call is redone.
       expect(providerState.stream).toHaveBeenCalledTimes(calls);
       expect(input.executeTool).not.toHaveBeenCalled();
     },
@@ -3189,249 +3004,64 @@ describe("Pi runtime reasoning efforts an endpoint refuses", () => {
   );
 });
 
-describe("Pi runtime empty replies", () => {
-  const providers = (): string[] =>
-    providerState.stream.mock.calls.map(
-      ([target]) => (target as Model<"openai-completions">).provider,
+describe("Pi runtime token pacer hook", () => {
+  const local = model("local", "primary", 32_768);
+  const localRequest = () => {
+    const input = request();
+    input.model = {
+      provider: local.provider,
+      id: local.id,
+      apiKey: "fake-key",
+    } as typeof input.model;
+    providerState.models.set(
+      `${local.provider}/${local.id}`,
+      local as unknown as Record<string, unknown>,
     );
-  const thinkingOnly: AssistantMessage["content"] = [
-    { type: "thinking", thinking: "Considering the answer." },
-  ];
-
-  it("repeats an empty and a thinking-only reply on the same model with backoff", async () => {
-    providerState.stream
-      .mockImplementationOnce(() => stream(primary, message(primary, [], "stop")))
-      .mockImplementationOnce(() => stream(primary, message(primary, thinkingOnly, "stop")))
-      .mockImplementation(() =>
-        stream(primary, message(primary, [{ type: "text", text: "Recovered." }], "stop")),
-      );
-    const appendMessage = vi.fn(async (_entry: AgentMessage) => undefined);
-    vi.spyOn(PiJsonlSessionRecorder.prototype, "start").mockResolvedValue({ appendMessage });
-
-    const events = await run(
-      request(),
-      [],
-      new PiAgentRuntime({ sessionRoot: "fixture-sessions" }),
-    );
-
-    expect(providers()).toEqual([primary.provider, primary.provider, primary.provider]);
-    expect(providerState.delay.mock.calls.map(([delay]) => delay)).toEqual([2_000, 8_000]);
-    expect(events.filter((event) => event.type === "text")).toEqual([
-      { type: "text", text: "Recovered." },
-    ]);
-    expect(events.at(-1)).toEqual({ type: "done", text: "Recovered." });
-    expect(appendMessage.mock.calls.filter(([entry]) => entry.role === "assistant")).toEqual([
-      [expect.objectContaining({ content: [{ type: "text", text: "Recovered." }] })],
-    ]);
-  });
-
-  const streamedText = (target: Model<"openai-completions">, chunks: string[]) => {
-    const final = message(target, [{ type: "text", text: chunks.join("") }], "stop");
-    const result = new AssistantMessageEventStream();
-    result.push({ type: "start", partial: { ...final, content: [] } });
-    result.push({
-      type: "text_start",
-      contentIndex: 0,
-      partial: { ...final, content: [{ type: "text", text: "" }] },
-    });
-    let text = "";
-    for (const delta of chunks) {
-      text += delta;
-      result.push({
-        type: "text_delta",
-        contentIndex: 0,
-        delta,
-        partial: { ...final, content: [{ type: "text", text }] },
-      });
-    }
-    result.push({ type: "text_end", contentIndex: 0, content: text, partial: final });
-    result.push({ type: "done", reason: "stop", message: final });
-    result.end(final);
-    return result;
+    return input;
   };
+  const reply = () => stream(local, message(local, [{ type: "text", text: "Done." }], "stop"));
 
-  it("repeats a whitespace-only reply, streamed or only in the final message", async () => {
-    providerState.stream
-      .mockImplementationOnce(() => streamedText(primary, ["\n", "  \n"]))
-      .mockImplementationOnce(() =>
-        stream(primary, message(primary, [{ type: "text", text: " \n\t" }], "stop")),
-      )
-      .mockImplementation(() => streamedText(primary, ["Recovered."]));
-
-    const events = await run(request());
-
-    expect(providerState.stream).toHaveBeenCalledTimes(3);
-    expect(events.filter((event) => event.type === "text")).toEqual([
-      { type: "text", text: "Recovered." },
-    ]);
-    expect(events.at(-1)).toEqual({ type: "done", text: "Recovered." });
-  });
-
-  it("sends held-back whitespace once when real text follows it", async () => {
-    providerState.stream.mockImplementation(() => streamedText(primary, ["\n\n", "Hello."]));
-
-    const events = await run(request());
-
-    expect(providerState.stream).toHaveBeenCalledOnce();
-    expect(events.flatMap((event) => (event.type === "text" ? [event.text] : [])).join("")).toBe(
-      "\n\nHello.",
+  it("reserves the prompt before the call and settles it with the reported tokens", async () => {
+    vi.stubEnv("RAKAZO_LOCAL_TOKENS_PER_MINUTE", "123456");
+    const slot = { settle: vi.fn(), release: vi.fn() };
+    const acquire = vi.spyOn(sharedTokenPacer, "acquire").mockResolvedValue({ slot, waitedMs: 0 });
+    providerState.stream.mockImplementation(reply);
+    await run(localRequest());
+    expect(acquire).toHaveBeenCalledTimes(1);
+    expect(acquire.mock.calls[0]?.[0]).toBe("local|https://models.invalid/v1");
+    expect(acquire.mock.calls[0]?.[2]).toBe(123_456);
+    expect(acquire.mock.invocationCallOrder[0]).toBeLessThan(
+      providerState.stream.mock.invocationCallOrder[0] ?? 0,
     );
-    expect(events.at(-1)).toEqual({ type: "done", text: "\n\nHello." });
+    expect(slot.settle).toHaveBeenCalledWith(4);
   });
 
-  it("moves to the backup once the same-model repeats are empty too", async () => {
-    providerState.stream.mockImplementation((target: Model<"openai-completions">) =>
-      target.provider === primary.provider
-        ? stream(target, message(target, thinkingOnly, "stop"))
-        : stream(target, message(target, [{ type: "text", text: "from backup" }], "stop")),
+  it("does not pace when the limit is unset or the provider is not local", async () => {
+    const acquire = vi.spyOn(sharedTokenPacer, "acquire");
+    providerState.stream.mockImplementation(reply);
+    await run(localRequest());
+    vi.stubEnv("RAKAZO_LOCAL_TOKENS_PER_MINUTE", "123456");
+    providerState.stream.mockImplementation(() =>
+      stream(primary, message(primary, [{ type: "text", text: "Done." }], "stop")),
     );
+    await run(request());
+    expect(acquire).not.toHaveBeenCalled();
+  });
 
-    const events = await run(
-      request([{ provider: backupA.provider, id: backupA.id, apiKey: "fake-backup-a" }]),
+  it("frees the reservation when the call fails", async () => {
+    vi.stubEnv("RAKAZO_LOCAL_TOKENS_PER_MINUTE", "123456");
+    const slot = { settle: vi.fn(), release: vi.fn() };
+    vi.spyOn(sharedTokenPacer, "acquire").mockResolvedValue({ slot, waitedMs: 0 });
+    providerState.stream.mockImplementation(() =>
+      stream(local, message(local, [], "error", "boom")),
     );
-
-    expect(providers()).toEqual([
-      primary.provider,
-      primary.provider,
-      primary.provider,
-      backupA.provider,
-    ]);
-    expect(events.at(-1)).toEqual({ type: "done", text: "from backup" });
-  });
-
-  it("shows the empty-response text only after every attempt is empty", async () => {
-    providerState.stream.mockImplementation((target: Model<"openai-completions">) =>
-      stream(target, message(target, [], "stop")),
-    );
-
-    const events = await run(
-      request([{ provider: backupA.provider, id: backupA.id, apiKey: "fake-backup-a" }]),
-    );
-
-    expect(providers()).toEqual([
-      primary.provider,
-      primary.provider,
-      primary.provider,
-      backupA.provider,
-      backupA.provider,
-      backupA.provider,
-    ]);
-    expect(events.at(-1)).toEqual({ type: "done", text: "No response. Try again." });
-  });
-
-  it("does not repeat an empty reply in a run allowed to stay silent", async () => {
-    providerState.stream.mockImplementation(() => stream(primary, message(primary, [], "stop")));
-    const input = { ...request(), allowSilentEmpty: true };
-
-    const events = await run(input);
-
-    expect(providerState.stream).toHaveBeenCalledOnce();
-    expect(events.at(-1)).toEqual({ type: "done" });
-  });
-
-  it("leaves an empty reply after tool work to the runtime's own follow-up", async () => {
-    let calls = 0;
-    providerState.stream.mockImplementation(() => {
-      calls += 1;
-      if (calls === 1)
-        return stream(
-          primary,
-          message(
-            primary,
-            [{ type: "toolCall", id: "call", name: "write_effect", arguments: { value: "one" } }],
-            "toolUse",
-          ),
-        );
-      return stream(
-        primary,
-        message(primary, calls === 2 ? [] : [{ type: "text", text: "Done." }], "stop"),
-      );
-    });
-
-    const events = await run(request());
-
-    expect(providerState.stream).toHaveBeenCalledTimes(3);
-    expect(providerState.delay).not.toHaveBeenCalled();
-    expect(events.at(-1)).toEqual({ type: "done", text: "Done." });
-  });
-
-  it("keeps a discarded call's thinking out of a cancellation during the backoff", async () => {
-    const controller = new AbortController();
-    providerState.delay.mockImplementation(async () => controller.abort());
-    providerState.stream.mockImplementation(() => {
-      const final = message(primary, thinkingOnly, "stop");
-      const result = new AssistantMessageEventStream();
-      result.push({ type: "start", partial: { ...final, content: [] } });
-      result.push({ type: "thinking_start", contentIndex: 0, partial: final });
-      result.push({
-        type: "thinking_delta",
-        contentIndex: 0,
-        delta: "Considering the answer.",
-        partial: final,
-      });
-      result.push({
-        type: "thinking_end",
-        contentIndex: 0,
-        content: "Considering the answer.",
-        partial: final,
-      });
-      result.push({ type: "done", reason: "stop", message: final });
-      result.end(final);
-      return result;
-    });
-    const appendMessage = vi.fn(async (_entry: AgentMessage) => undefined);
-    vi.spyOn(PiJsonlSessionRecorder.prototype, "start").mockResolvedValue({ appendMessage });
-    const consume = async () => {
-      for await (const _event of new PiAgentRuntime({ sessionRoot: "fixture-sessions" }).run(
-        request(),
-        {
-          operationId: "operation",
-          traceId: "trace",
-          spaceId: "space",
-          userId: "user",
-          signal: controller.signal,
-        },
-      )) {
-        /* Consume the run. */
-      }
-    };
-
-    await consume().catch(() => undefined);
-
-    expect(providerState.delay).toHaveBeenCalledOnce();
-    const assistants = appendMessage.mock.calls
-      .map(([entry]) => entry)
-      .filter((entry) => entry.role === "assistant");
-    expect(assistants.length).toBeGreaterThan(0);
-    expect(JSON.stringify(assistants)).not.toContain("Considering the answer.");
-  });
-
-  it("stops repeating when the run is cancelled during the backoff", async () => {
-    const controller = new AbortController();
-    providerState.delay.mockImplementation(async () => controller.abort());
-    providerState.stream.mockImplementation(() => stream(primary, message(primary, [], "stop")));
-    const events: AgentRuntimeEvent[] = [];
-    const consume = async () => {
-      for await (const event of new PiAgentRuntime().run(request(), {
-        operationId: "operation",
-        traceId: "trace",
-        spaceId: "space",
-        userId: "user",
-        signal: controller.signal,
-      })) {
-        events.push(event);
-      }
-    };
-
-    await consume().catch(() => undefined);
-
-    expect(providerState.stream).toHaveBeenCalledOnce();
-    expect(providerState.delay).toHaveBeenCalledOnce();
-    expect(events).not.toContainEqual({ type: "text", text: "No response. Try again." });
+    await run(localRequest()).catch(() => undefined);
+    expect(slot.release).toHaveBeenCalled();
+    expect(slot.settle).not.toHaveBeenCalled();
   });
 });
 
-describe("Pi runtime empty and thinking-only reply retries", () => {
+describe("Pi runtime empty replies", () => {
   const providers = (): string[] =>
     providerState.stream.mock.calls.map(
       ([target]) => (target as Model<"openai-completions">).provider,

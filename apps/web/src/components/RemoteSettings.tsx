@@ -3,6 +3,7 @@ import type { RemotePortal } from "@rakazo/contracts";
 import { Button, Label, Switch } from "@rakazo/ui-web";
 import { useEffect, useId, useState } from "react";
 import { desktopBridge } from "../lib/desktop";
+import { isInsideRemoteFrame, requestRemoteHostSwitch } from "../lib/remote-frame";
 import { REMOTE_PORTAL_HOST } from "../lib/remote-portal-host";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -103,6 +104,7 @@ export function RemoteSettings() {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const changeServer = desktopBridge()?.server?.change;
+  const inRemoteFrame = isInsideRemoteFrame();
   useEffect(() => {
     let active = true;
     void rpc.remoteHosts
@@ -157,6 +159,17 @@ export function RemoteSettings() {
                 }}
               >
                 <Trans>Mở</Trans>
+              </Button>
+            ) : inRemoteFrame ? (
+              <Button
+                aria-labelledby={connectLabelId}
+                variant="outline"
+                className="min-h-11"
+                onClick={() => {
+                  void requestRemoteHostSwitch();
+                }}
+              >
+                <Trans>Đổi máy chủ</Trans>
               </Button>
             ) : (
               <Button

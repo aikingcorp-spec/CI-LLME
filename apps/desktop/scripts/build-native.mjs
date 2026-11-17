@@ -22,9 +22,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import {
-  isLegacyPostgresVersion,
   isNativePostgresVersion,
-  legacyPostgresBundleFiles,
   nativeBundleFiles,
   nativeBundleManifest,
   WINDOWS_LINKS_FILE,
@@ -74,15 +72,7 @@ export function parseNativeBuildArgs(argv, defaults = nativeBuildDefaults()) {
     values[name] = value;
     index += 1;
   }
-  const allowed = new Set([
-    "platform",
-    "arch",
-    "node",
-    "postgres",
-    "legacy-postgres",
-    "out",
-    "repo",
-  ]);
+  const allowed = new Set(["platform", "arch", "node", "postgres", "out", "repo"]);
   for (const name of Object.keys(values)) {
     if (!allowed.has(name)) throw new Error(`Unsupported native bundle input: --${name}`);
   }
@@ -91,7 +81,6 @@ export function parseNativeBuildArgs(argv, defaults = nativeBuildDefaults()) {
     arch: values.arch ?? defaults.arch,
     nodeBinary: values.node,
     postgresPrefix: values.postgres,
-    legacyPostgresPrefix: values["legacy-postgres"],
     output: values.out ?? defaults.output,
     repoRoot: values.repo ?? defaults.repoRoot,
   });
@@ -108,7 +97,6 @@ function validateRequest(input) {
   for (const [flag, value] of [
     ["--node", input.nodeBinary],
     ["--postgres", input.postgresPrefix],
-    ["--legacy-postgres", input.legacyPostgresPrefix],
     ["--out", input.output],
     ["--repo", input.repoRoot],
   ]) {
@@ -121,7 +109,6 @@ function validateRequest(input) {
     arch: input.arch,
     nodeBinary: path.resolve(input.nodeBinary),
     postgresPrefix: path.resolve(input.postgresPrefix),
-    legacyPostgresPrefix: path.resolve(input.legacyPostgresPrefix),
     output: path.resolve(input.output),
     repoRoot: path.resolve(input.repoRoot),
   };
@@ -141,9 +128,7 @@ export async function assembleNativeBundle(input) {
     inside(request.output, request.repoRoot) ||
     inside(request.output, request.nodeBinary) ||
     inside(request.output, request.postgresPrefix) ||
-    inside(request.postgresPrefix, request.output) ||
-    inside(request.output, request.legacyPostgresPrefix) ||
-    inside(request.legacyPostgresPrefix, request.output)
+    inside(request.postgresPrefix, request.output)
   ) {
     throw new Error("Native bundle output overlaps its sources.");
   }
@@ -177,7 +162,6 @@ export async function assembleNativeBundle(input) {
     await linkDatabasePackages(staging, databaseIds);
     await stageNode(request, staging);
     await stagePostgres(request, staging);
-    await stageLegacyPostgres(request, staging);
     await confineSymlinks(staging);
     if (request.arch === "universal") await assertUniversalExecutables(staging);
     await probeBundle(request, staging);
@@ -755,57 +739,6 @@ async function stagePostgres(request, staging) {
   }
 }
 
-/**
- * Stages the 0.3.9 embedded PostgreSQL 16 layout (`bin`, `lib`, `share`) under `pg16`.
- * The server finds `lib/postgresql` and `share/postgresql` relative to its executable.
- */
-async function stageLegacyPostgres(request, staging) {
-  const prefix = request.legacyPostgresPrefix;
-  const [binary] = legacyPostgresBundleFiles(request.platform);
-  const source = path.join(prefix, "bin", path.basename(binary));
-  if (!(await exists(source))) throw new Error(`Missing native bundle source: ${binary}`);
-  const root = path.join(staging, "pg16");
-  await mkdir(path.join(root, "bin"), { recursive: true });
-  await cp(source, path.join(staging, binary), { dereference: true });
-  await chmod(path.join(staging, binary), 0o755);
-  for (const file of legacyPostgresBundleFiles(request.platform).filter(
-    (entry) => entry.startsWith("pg16/bin/") && entry !== binary,
-  )) {
-    const extra = path.join(prefix, "bin", path.basename(file));
-    if (!(await exists(extra))) throw new Error(`Missing native bundle source: ${file}`);
-    await cp(extra, path.join(staging, file), { dereference: true });
-  }
-  // The 0.3.9 Windows server reads timezones and modules from share and lib themselves;
-  // the macOS and Linux builds from share/postgresql and lib/postgresql.
-  const nested = request.platform === "win32" ? "" : "postgresql";
-  await copyDereferenced(
-    path.join(prefix, "share", "postgresql"),
-    path.join(root, "share", nested),
-    prefix,
-  );
-  await copyDereferenced(
-    path.join(prefix, "lib", "postgresql"),
-    path.join(root, "lib", nested),
-    prefix,
-  );
-  if (request.platform === "linux") {
-    await vendorElfLibraries(
-      [path.join(staging, binary)],
-      librarySearchDirs(prefix, path.join(prefix, "lib")),
-      path.join(root, "lib"),
-    );
-    return;
-  }
-  // Windows loads DLLs beside the executable; macOS dylibs live in `lib`.
-  const [from, to, suffix] =
-    request.platform === "win32" ? ["bin", "bin", ".dll"] : ["lib", "lib", ".dylib"];
-  for (const name of await readdir(path.join(prefix, from))) {
-    if (name.toLowerCase().endsWith(suffix)) {
-      await cp(path.join(prefix, from, name), path.join(root, to, name), { dereference: true });
-    }
-  }
-}
-
 async function locatePostgres(prefix, platform) {
   const exe = platform === "win32" ? "postgres.exe" : "postgres";
   const layouts = [
@@ -1005,18 +938,6 @@ async function probeBundle(request, staging) {
     "Native PostgreSQL version mismatch.",
   );
   if (!isNativePostgresVersion(version)) throw new Error("Native PostgreSQL version mismatch.");
-  const legacyLib = path.join(staging, "pg16/lib");
-  const legacy = await runFile(
-    path.join(staging, legacyPostgresBundleFiles(request.platform)[0]),
-    ["--version"],
-    {
-      LD_LIBRARY_PATH: legacyLib,
-      DYLD_LIBRARY_PATH: legacyLib,
-      PATH: `${path.join(staging, "pg16/bin")}${path.delimiter}${process.env.PATH ?? ""}`,
-    },
-    "Native PostgreSQL version mismatch.",
-  );
-  if (!isLegacyPostgresVersion(legacy)) throw new Error("Native PostgreSQL version mismatch.");
 }
 
 function runFile(file, args, env, failure) {

@@ -3,6 +3,7 @@ import { once } from "node:events";
 import { createServer } from "node:http";
 import { HOST_COMPUTER_MAX_BYTES } from "./host-computer-protocol.js";
 import { createHostComputerRunner } from "./host-computer-runner.js";
+import type { HostScreen } from "./host-screen.js";
 
 export { managedLoopbackHost } from "./host-computer-protocol.js";
 
@@ -12,9 +13,11 @@ export async function startHostComputerServer(options: {
   token: string;
   port?: number;
   hostname?: string;
+  /** Drives this computer's apps. Owned by the caller, which closes it. */
+  screen?: HostScreen;
 }) {
   if (!/^[a-f0-9]{64}$/.test(options.token)) throw new Error("Invalid local computer credential");
-  const runner = createHostComputerRunner({ root: options.root });
+  const runner = createHostComputerRunner({ root: options.root, screen: options.screen });
   const secret = Buffer.from(`Bearer ${options.token}`);
   const server = createServer(async (request, response) => {
     const credential = Buffer.from(request.headers.authorization ?? "");

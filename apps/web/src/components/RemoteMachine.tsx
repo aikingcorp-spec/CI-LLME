@@ -90,6 +90,17 @@ export function RemoteMachinePage() {
       if (
         event.source === frame.current?.contentWindow &&
         event.origin === current.origin &&
+        event.data?.type === "vnbot.remote.switch-host" &&
+        !leaving.current
+      ) {
+        leaving.current = true;
+        setEntry(null);
+        navigateRef.current("/app?choose=1");
+        return;
+      }
+      if (
+        event.source === frame.current?.contentWindow &&
+        event.origin === current.origin &&
         event.data?.type === "vnbot.remote.signed-out" &&
         !leaving.current
       ) {
@@ -131,7 +142,7 @@ export function RemoteMachinePage() {
         >
           <Trans>Thử lại</Trans>
         </Button>
-        <Button variant="ghost" onClick={() => navigate("/app")}>
+        <Button variant="ghost" onClick={() => navigate("/app?choose=1")}>
           <Trans>Quay lại</Trans>
         </Button>
       </main>

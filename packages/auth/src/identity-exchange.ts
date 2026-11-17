@@ -15,6 +15,13 @@ export { parseIdentityExchangeConfig } from "./identity-exchange-config.js";
 const AGE = 60;
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const denied = () => new APIError("UNAUTHORIZED", { message: "Identity exchange rejected" });
+const FORWARDED_OTP_CODES = new Set([
+  "INVALID_OTP",
+  "OTP_EXPIRED",
+  "TOO_MANY_ATTEMPTS",
+  "TOO_MANY_REQUESTS",
+]);
+
 function stringField(body: unknown, key: string): string {
   const value = optionalField(body, key);
   if (!value) throw denied();
@@ -103,6 +110,7 @@ export interface RemoteDeviceEnrollment {
    */
   resolveRemoteEnter?: (input: {
     accountId: string;
+    subject?: string;
     email?: string;
     inviteToken?: string;
     createUser: (email: string) => Promise<string | null>;
@@ -180,10 +188,23 @@ export function identityExchange(
       body: JSON.stringify(body),
     });
     if (!response.ok) {
-      // The central list refusing the address is the one failure the person can act on.
-      const body: unknown = await response.json().catch(() => null);
-      if (response.status === 403 && isRecord(body) && body.code === EMAIL_NOT_INVITED)
-        throw notInvited();
+      // The central list refusing the address and actionable OTP errors are safe to surface.
+      const payload: unknown = await response.json().catch(() => null);
+      const code = isRecord(payload) && typeof payload.code === "string" ? payload.code : undefined;
+      if (response.status === 403 && code === EMAIL_NOT_INVITED) throw notInvited();
+      if ((code && FORWARDED_OTP_CODES.has(code)) || response.status === 429) {
+        const status = response.status >= 400 && response.status <= 599 ? response.status : 400;
+        const message =
+          isRecord(payload) && typeof payload.message === "string" && payload.message
+            ? payload.message
+            : response.status === 429
+              ? "Too many attempts. Try again later."
+              : "Invalid code";
+        throw new APIError(status as never, {
+          code: code && FORWARDED_OTP_CODES.has(code) ? code : "TOO_MANY_REQUESTS",
+          message,
+        });
+      }
       throw denied();
     }
     return response;
@@ -259,6 +280,7 @@ export function identityExchange(
               id: `identity:${accountId}`,
               providerId: "verified-identity",
               accountId,
+              scope: identity.subject,
             };
             if (existing) {
               // A copied session proves local ownership. Otherwise only an account carried over
@@ -326,6 +348,7 @@ export function identityExchange(
           try {
             userId = await hooks.resolveRemoteEnter({
               accountId,
+              subject: identity.subject,
               email: identity.email,
               inviteToken,
               createUser: async (email) => {
@@ -336,7 +359,12 @@ export function identityExchange(
                     emailVerified: true,
                     name: email.split("@")[0] || "User",
                   },
-                  { id: `identity:${accountId}`, providerId: "verified-identity", accountId },
+                  {
+                    id: `identity:${accountId}`,
+                    providerId: "verified-identity",
+                    accountId,
+                    scope: identity.subject,
+                  },
                 );
                 return created?.user?.id ?? null;
               },

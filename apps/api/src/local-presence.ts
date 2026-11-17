@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@rakazo/db";
-import { isGuestOnlyMembership } from "@rakazo/db";
+import { isGuestOnlyMembership, machineOwnerUserId } from "@rakazo/db";
 
 /**
  * Keeps the local computer present while the host process is up.
@@ -72,8 +72,18 @@ export function hostRemoteAccount(
   return hosts.length === 1 && accountId ? accountId : null;
 }
 
-/** The only non-guest signed-in account, or null when nobody or more than one host is signed in. */
+/**
+ * The host account when its session is live, or the only non-guest signed-in account.
+ * Checking the machine owner first stops an invited guest with non-guest roles from
+ * taking down the host's remote tunnel.
+ */
 export async function soleSignedInAccount(prisma: PrismaClient, now = new Date()) {
+  if ("user" in prisma && prisma.user && typeof prisma.session.findFirst === "function") {
+    const ownerId = await machineOwnerUserId(prisma);
+    if (ownerId && (await accountHasSession(prisma, ownerId, now))) {
+      return ownerId;
+    }
+  }
   const rows = await prisma.session.findMany({
     where: { expiresAt: { gt: now } },
     select: { userId: true },

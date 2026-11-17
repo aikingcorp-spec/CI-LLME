@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRemoteDeviceKey } from "@rakazo/auth";
 import { expect, it } from "vitest";
-import { allocateLoopbackPort } from "../../desktop/src/local-stack.js";
-import { nativeWeb } from "../../desktop/src/native-web.js";
+import { allocateLoopbackPort } from "../../desktop/src/main/local-stack.js";
+import { nativeWeb } from "../../desktop/src/main/native-web.js";
 import { createRemoteRegistryClient } from "./remote-registry-client.js";
 
 it("registers the web host so a connector can reach both the UI and API", async () => {

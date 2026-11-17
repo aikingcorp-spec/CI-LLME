@@ -6,6 +6,7 @@ import path from "node:path";
 
 const DIRECTORY_OPEN_FLAGS = constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW;
 
+
 function hasPermissions(stat: Stats, uid: number, gid: number, required: number): boolean {
   const shift = stat.uid === uid ? 6 : stat.gid === gid ? 3 : 0;
   return ((stat.mode >> shift) & required) === required;
@@ -137,9 +138,6 @@ async function assertWritableEntry(
     throw new Error(`computer home ${root} must be a directory`);
   }
 
-  // win32 fs.Stats always reports uid 0 and mode 0666, which is not an ACL.
-  // Comparing those bits false-refuses a writable computer home. The checks
-  // above still reject a missing root, a non-directory, and a symlink root.
   const usable =
     process.platform === "win32" ||
     (stat.isDirectory()

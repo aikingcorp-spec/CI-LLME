@@ -153,3 +153,34 @@ it("never displays a response that belongs to the previous signed-in account", a
     await view.stop();
   }
 });
+
+it("navigates to /app?choose=1 when the verified host iframe requests a host switch", async () => {
+  enter.mockResolvedValue({ href: "https://computer.example.test/remote-enter#fake-ticket" });
+  const view = await mount();
+  try {
+    const frame = view.container.querySelector("iframe")!;
+    const switchMsg = { type: "vnbot.remote.switch-host" };
+    await act(async () =>
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          origin: "https://attacker.example.test",
+          source: frame.contentWindow,
+          data: switchMsg,
+        }),
+      ),
+    );
+    expect(view.container.querySelector("output")?.textContent).toBe("/m/fake-device/app");
+    await act(async () =>
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          origin: "https://computer.example.test",
+          source: frame.contentWindow,
+          data: switchMsg,
+        }),
+      ),
+    );
+    expect(view.container.querySelector("output")?.textContent).toBe("/app?choose=1");
+  } finally {
+    await view.stop();
+  }
+});

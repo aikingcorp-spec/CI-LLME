@@ -238,76 +238,26 @@ describe("computer boot", () => {
     expect(lifecycle.releaseComputerExecutionLease).toHaveBeenCalledOnce();
   });
 
-  it("returns recovery instructions for a quarantined computer without provisioning it", async () => {
-    lifecycle.provisionComputer.mockImplementation(
-      (...args: Parameters<typeof Adapters.provisionComputer>) => lifecycle.realProvision!(...args),
-    );
-    const bot = quarantinedBot();
-    const updateMany = vi.fn();
-    const sandbox = {
-      provision: vi.fn(),
-      prepare: vi.fn(),
-      stop: vi.fn(),
-      destroy: vi.fn(),
-    };
-    const home = { writeFile: vi.fn() };
+  it("returns the quarantine recovery instruction over RPC without starting the computer", async () => {
+    const error = new ComputerRecoveryRequiredError();
+    lifecycle.provisionComputer.mockRejectedValue(error);
     const prisma = {
       spaceMember: { count: vi.fn(async () => 1) },
-      bot: { findFirst: spaceScopedBot(bot) },
-      computer: {
-        findUniqueOrThrow: vi.fn(async () => ({ ...bot.computer })),
-        updateMany,
-        update: vi.fn(),
+      bot: {
+        findFirst: vi.fn().mockResolvedValue({
+          ...stoppedBot,
+          computer: { ...stoppedBot.computer, state: "quarantined" },
+        }),
       },
-      computerExecutionLease: { findUnique: vi.fn(async () => null) },
     } as unknown as PrismaClient;
 
-    const response = await boot(prisma, { extra: { sandbox, home } });
-    const body = await response?.text();
+    const response = await boot(prisma);
 
     expect(response?.status).toBe(409);
-    expect(body).toContain(quarantineMessage);
-    expect(body).not.toContain("Internal server error");
-    expect(
-      userErrorMessage(new ComputerRecoveryRequiredError(), {
-        fallback: "Computer failed to boot",
-        offline: "Could not reach the server",
-      }),
-    ).toBe(quarantineMessage);
-    expect(sandbox.provision).not.toHaveBeenCalled();
-    expect(sandbox.prepare).not.toHaveBeenCalled();
-    expect(sandbox.stop).not.toHaveBeenCalled();
-    expect(sandbox.destroy).not.toHaveBeenCalled();
-    expect(home.writeFile).not.toHaveBeenCalled();
-    expect(updateMany).not.toHaveBeenCalled();
+    expect(await response?.text()).toContain(error.message);
+    expect(lifecycle.provisionComputer).toHaveBeenCalledOnce();
     expect(lifecycle.releaseComputerExecutionLease).toHaveBeenCalledOnce();
   });
-
-  it("does not offer recovery for a quarantined computer in another Space", async () => {
-    lifecycle.provisionComputer.mockImplementation(
-      (...args: Parameters<typeof Adapters.provisionComputer>) => lifecycle.realProvision!(...args),
-    );
-    const bot = quarantinedBot();
-    const sandbox = { provision: vi.fn(), stop: vi.fn(), destroy: vi.fn() };
-    const prisma = {
-      spaceMember: { count: vi.fn(async () => 1) },
-      bot: { findFirst: spaceScopedBot(bot) },
-      computer: { findUniqueOrThrow: vi.fn(), updateMany: vi.fn() },
-    } as unknown as PrismaClient;
-
-    const response = await boot(prisma, {
-      actor: { ...actor, spaceId: "other-space", userId: "other-user" },
-      extra: { sandbox },
-    });
-
-    expect(response?.status).toBe(404);
-    expect(await response?.text()).not.toContain(quarantineMessage);
-    expect(lifecycle.provisionComputer).not.toHaveBeenCalled();
-    expect(sandbox.provision).not.toHaveBeenCalled();
-    expect(sandbox.stop).not.toHaveBeenCalled();
-    expect(sandbox.destroy).not.toHaveBeenCalled();
-  });
-
   it("tells the user to recover a computer that stays damaged after its automatic recovery", async () => {
     lifecycle.provisionComputer.mockRejectedValue(new SandboxDamagedError());
     const prisma = {

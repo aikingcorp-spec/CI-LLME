@@ -11,6 +11,10 @@ it("returns to integration setup, plugin admin, MCP sign-in and invite links onl
   expect(signInNext("/remote-join")).toBe("/remote-join");
   expect(signInNext("/remote-join?invite=abc")).toBeNull();
   expect(signInNext("/remote-join/extra")).toBeNull();
+  expect(signInNext("/join/0b8f3c1e-7a2d-4e6b-9c1f-2d3e4f5a6b7c")).toBe(
+    "/join/0b8f3c1e-7a2d-4e6b-9c1f-2d3e4f5a6b7c",
+  );
+  expect(signInNext("/join/abc/../../app")).toBeNull();
   expect(signInNext(null)).toBeNull();
   expect(signInNext("/app")).toBeNull();
   expect(signInNext("https://example.com/invite/abc")).toBeNull();
@@ -19,8 +23,9 @@ it("returns to integration setup, plugin admin, MCP sign-in and invite links onl
   expect(signInNext("/invite/")).toBeNull();
 });
 
-it("starts a new account in onboarding unless it came for an invite or a host handoff", () => {
+it("starts a new account in onboarding unless it came for an invite, invitation, or host handoff", () => {
   expect(newAccountDestination("/invite/abc_DEF-123")).toBe("/invite/abc_DEF-123");
+  expect(newAccountDestination("/join/abc_DEF-123")).toBe("/join/abc_DEF-123");
   expect(newAccountDestination("/remote-join")).toBe("/remote-join");
   expect(newAccountDestination("/integrations/setup")).toBe("/onboarding");
   expect(newAccountDestination(null)).toBe("/onboarding");

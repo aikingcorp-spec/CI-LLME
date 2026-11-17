@@ -1,124 +1,105 @@
 import { useLingui } from "@lingui/react/macro";
-import type { PlanLimits, PlanLimitWindow } from "@rakazo/contracts";
+import type { PlanLimitWindow } from "@rakazo/contracts";
+import { modelCreditsUsd, planUsagePercent } from "@rakazo/contracts";
+import { formatTimeUntil } from "@rakazo/core";
+import { Progress } from "@rakazo/ui-web";
 import { useQuery } from "@tanstack/react-query";
 import { useSpaceQueries } from "../lib/query";
+import { useBilling } from "./SubscriptionGate";
 
-const REFRESH_MS = 60_000;
-
-/** Relative phrase such as "in 2 hours" or "5 minutes ago". */
-function relativeTime(iso: string, locale: string, now: number): string | null {
-  const target = Date.parse(iso);
-  if (!Number.isFinite(target)) return null;
-  const seconds = Math.round((target - now) / 1000);
-  const abs = Math.abs(seconds);
-  const format = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-  if (abs < 60) return format.format(seconds, "second");
-  const minutes = Math.round(seconds / 60);
-  if (Math.abs(minutes) < 60) return format.format(minutes, "minute");
-  const hours = Math.round(minutes / 60);
-  if (Math.abs(hours) < 48) return format.format(hours, "hour");
-  return format.format(Math.round(hours / 24), "day");
+/** Shared by the account menu and Settings > Usage; the server caches provider reads. */
+export function usePlanUsage() {
+  const queries = useSpaceQueries();
+  const { status } = useBilling();
+  const { data } = useQuery({ ...queries.usage.limits.queryOptions(), staleTime: 60_000 });
+  const plans = data ?? [];
+  return { plans, creditsUsd: modelCreditsUsd(status) };
 }
 
-function WindowUsage({ window, now }: { window: PlanLimitWindow; now: number }) {
+function useFormatUsd() {
+  const { i18n } = useLingui();
+  return (value: number) =>
+    new Intl.NumberFormat(i18n.locale, { style: "currency", currency: "USD" }).format(value);
+}
+
+/** What the account menu shows beside Usage, or null when there is nothing to watch. */
+export function useUsageHint(): string | null {
+  const { t } = useLingui();
+  const { plans, creditsUsd } = usePlanUsage();
+  const usd = useFormatUsd();
+  const used = planUsagePercent(plans);
+  if (used !== null) return t`${Math.round(used)}% used`;
+  if (creditsUsd !== null) return t`${usd(creditsUsd)} left`;
+  return null;
+}
+
+function WindowUsage({ window }: { window: PlanLimitWindow }) {
   const { t, i18n } = useLingui();
-  const label =
-    window.period === "session" ? t`Session` : window.period === "week" ? t`Weekly` : t`Monthly`;
+  const label = { session: t`Session`, week: t`Weekly`, month: t`Monthly` }[window.period];
   const used = Math.round(window.usedPercent);
-  const reset = window.resetsAt ? relativeTime(window.resetsAt, i18n.locale, now) : null;
+  const reset = formatTimeUntil(window.resetsAt, i18n.locale);
   return (
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-2 text-body-sm">
         <span className="truncate text-muted-foreground">{label}</span>
         <span className="tabular-nums text-foreground">{used}%</span>
       </div>
-      <progress
-        aria-label={t`${label}, ${used}% used`}
+      <Progress
         value={used}
-        max={100}
-        className="mt-1.5 h-1.5 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary"
+        aria-label={label}
+        className="mt-1.5 [&_[data-slot=progress-indicator]]:bg-link"
       />
       {reset ? (
-        <p className="mt-1.5 truncate text-label text-muted-foreground">{t`Resets ${reset}`}</p>
+        <p className="mt-1.5 truncate text-label text-muted-foreground">{t`Resets in ${reset}`}</p>
       ) : null}
     </div>
   );
 }
 
-function PlanCard({ plan, now }: { plan: PlanLimits; now: number }) {
-  const { t, i18n } = useLingui();
-  const reading = plan.reading;
-  const checked =
-    reading.status === "unavailable" ? null : relativeTime(reading.checkedAt, i18n.locale, now);
-  return (
-    <div
-      data-testid="plan-limits"
-      data-status={reading.status}
-      data-checked-at={reading.status === "unavailable" ? undefined : reading.checkedAt}
-      className="px-4 py-3"
-    >
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-body font-medium text-foreground">{plan.name}</span>
-        {plan.label !== plan.name ? (
-          <span className="min-w-0 truncate text-body-sm text-muted-foreground">{plan.label}</span>
-        ) : null}
-      </div>
-      {reading.status === "unavailable" ? (
-        <p className="mt-2 text-body-sm text-muted-foreground">{t`Couldn't read this account`}</p>
-      ) : (
-        <div className="mt-3 grid grid-cols-2 gap-x-5 gap-y-3">
-          {reading.windows.map((window, index) => (
-            <WindowUsage key={`${window.period}-${index}`} window={window} now={now} />
-          ))}
-        </div>
-      )}
-      {reading.status === "stale" && checked ? (
-        <p className="mt-2 text-label text-muted-foreground">
-          <time dateTime={reading.checkedAt}>{t`Last read ${checked}`}</time>
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Per-account allowance windows on the Usage page. Mounted only while that
- * page is open, and refreshed once a minute while it stays visible.
- */
-export function PlanUsage() {
+/** Each subscription's allowances and the credit balance; the caller frames them. */
+export function PlanUsageRows() {
   const { t } = useLingui();
-  const queries = useSpaceQueries();
-  const query = useQuery({
-    ...queries.usage.limits.queryOptions(),
-    staleTime: REFRESH_MS,
-    refetchInterval: REFRESH_MS,
-    refetchIntervalInBackground: false,
-  });
-  if (query.isPending && !query.data) {
-    return (
-      <p data-testid="plan-limits-loading" className="mb-3 text-body-sm text-muted-foreground">
-        {t`Reading limits`}
-      </p>
-    );
-  }
-  if (query.isError) {
-    return (
-      <p data-testid="plan-limits-error" className="mb-3 text-body-sm text-muted-foreground">
-        {t`Couldn't read limits`}
-      </p>
-    );
-  }
-  const plans = query.data ?? [];
-  if (!plans.length) return null;
-  const now = Date.now();
+  const { plans, creditsUsd } = usePlanUsage();
+  const usd = useFormatUsd();
   return (
-    <div
-      data-testid="plan-usage"
-      className="mb-3 divide-y divide-border rounded-xl border border-border"
-    >
+    <div className="divide-y divide-border">
       {plans.map((plan) => (
-        <PlanCard key={plan.credentialId} plan={plan} now={now} />
+        <div key={plan.credentialId} data-testid="plan-limits" className="px-4 py-3">
+          <div className="mb-2.5 flex items-baseline justify-between gap-3">
+            <span className="text-body font-medium text-foreground">{plan.name}</span>
+            {plan.label !== plan.name ? (
+              <span className="min-w-0 truncate text-body-sm text-muted-foreground">
+                {plan.label}
+              </span>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+            {plan.windows.map((window) => (
+              <WindowUsage key={window.period} window={window} />
+            ))}
+          </div>
+        </div>
       ))}
+      {creditsUsd !== null ? (
+        <div
+          data-testid="credit-balance"
+          className="flex items-baseline justify-between gap-3 px-4 py-3"
+        >
+          <span className="text-body font-medium text-foreground">{t`Credits`}</span>
+          <span className="text-body tabular-nums text-foreground">{t`${usd(creditsUsd)} left`}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Settings > Usage; renders nothing for a member with no subscription or credits. */
+export function PlanUsage() {
+  const { plans, creditsUsd } = usePlanUsage();
+  if (!plans.length && creditsUsd === null) return null;
+  return (
+    <div className="mb-3 rounded-xl border border-border">
+      <PlanUsageRows />
     </div>
   );
 }

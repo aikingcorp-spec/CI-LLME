@@ -2,7 +2,7 @@ import type { AdapterContext } from "@rakazo/adapter-kit";
 import type { IntegrationProviderConfig } from "@rakazo/contracts";
 import { createDb } from "@rakazo/db";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { ComposioConnector } from "./composio-connector.js";
+import { ComposioConnector } from "./providers/integration/composio/composio-connector.js";
 import {
   IntegrationProviderSettings,
   prepareManagedConnectorForTransaction,

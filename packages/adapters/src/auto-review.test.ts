@@ -1,20 +1,22 @@
 import type { AgentRunModel } from "@rakazo/adapter-kit";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  AUTO_REVIEW_PASS,
   autoReviewMinConfidence,
   autoReviewTimeoutMs,
-  buildAutoReviewPrompt,
   isAutoReviewCheckerConfigured,
   LlmAutoReviewProvider,
-  MEMORY_WRITE_ASK,
-  MEMORY_WRITE_PASS,
   parseAutoReviewJudgeText,
   redactToolArgsForReview,
   resolveAutoReviewChecker,
   resolveAutoReviewProviderKind,
   runAutoReviewJudge,
 } from "./auto-review.js";
+import {
+  AUTO_REVIEW_PASS,
+  buildAutoReviewPrompt,
+  MEMORY_WRITE_ASK,
+  MEMORY_WRITE_PASS,
+} from "./auto-review.prompt.js";
 
 describe("resolveAutoReviewChecker", () => {
   it("prefers explicit env overrides", () => {

@@ -7,7 +7,7 @@ import type {
 } from "@rakazo/contracts";
 import { backupChoiceKey, usableModelId } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { appliedModelRole } from "@rakazo/db";
+import { appliedModelRole, resolveWithSpaceOwnerFallback } from "@rakazo/db";
 import { resolveAutoReviewChecker } from "./auto-review.js";
 import type { ModelChoice, ModelCredential } from "./model-selection.js";
 import { findConnectedModelCredential } from "./model-selection.js";
@@ -46,18 +46,34 @@ export type EffectiveModelRole = ModelRoleSettings & {
   primarySource: "member" | "deployment" | null;
 };
 
-/** The member's ordered models for a purpose, with the deployment's filling what they left empty. */
+/** The member's ordered models for a purpose, with the Space owner's then deployment's filling what they left empty. */
 export async function effectiveModelRole(
   prisma: Pick<
     PrismaClient,
     "spaceModelRoleChoice" | "userModelRoleChoice" | "spaceSettingOverride"
-  >,
+  > &
+    Partial<Pick<PrismaClient, "spaceMember">>,
   scope: { userId: string; spaceId: string },
   role: ModelRole,
   defaults: DeploymentModelDefaults,
   requested?: SettingsScope,
 ): Promise<EffectiveModelRole> {
-  const own = await appliedModelRole(prisma, scope, role, requested);
+  const { value: own } = requested
+    ? { value: await appliedModelRole(prisma, scope, role, requested) }
+    : await resolveWithSpaceOwnerFallback(
+        prisma,
+        scope,
+        "borrow space owner model role",
+        async (effectiveScope, borrowed) => {
+          const resolved = await appliedModelRole(prisma, effectiveScope, role);
+          if (!borrowed) return resolved;
+          return {
+            primary: resolved.primary ? { ...resolved.primary, credentialId: undefined } : null,
+            backups: resolved.backups.map((choice) => ({ ...choice, credentialId: undefined })),
+          };
+        },
+        (candidate) => !candidate.primary && candidate.backups.length === 0,
+      );
   if (own.primary) return { ...own, primarySource: "member" };
   const deployment = deploymentModelRole(role, defaults);
   return {
@@ -72,22 +88,31 @@ export type MemberMainModel = ModelRoleChoice & {
   credential: ModelCredential;
 };
 
-/** The member's main model and the connection that serves it, resolved as validation does. */
+/** The member's main model and the connection that serves it, falling back to the Space owner's when the member has none. */
 export async function resolveMemberMainModel(
   deps: { prisma: PrismaClient; secretStore: Pick<SecretStore, "load"> },
   scope: { userId: string; spaceId: string },
 ): Promise<MemberMainModel | null> {
-  const { primary } = await appliedModelRole(deps.prisma, scope, "main");
-  if (!primary) return null;
-  const credential = await findConnectedModelCredential(
+  const { value } = await resolveWithSpaceOwnerFallback(
     deps.prisma,
-    deps.secretStore,
     scope,
-    primary.provider,
-    primary.modelId,
-    { credentialId: primary.credentialId },
+    "borrow space owner main model",
+    async (effectiveScope) => {
+      const { primary } = await appliedModelRole(deps.prisma, effectiveScope, "main");
+      if (!primary) return null;
+      const credential = await findConnectedModelCredential(
+        deps.prisma,
+        deps.secretStore,
+        effectiveScope,
+        primary.provider,
+        primary.modelId,
+        { credentialId: primary.credentialId },
+      );
+      return { ...primary, credential };
+    },
+    (candidate) => candidate === null || candidate.credential === null,
   );
-  return { ...primary, credential };
+  return value;
 }
 
 /** Select configuration without loading secrets or applying a runtime-specific fallback. */

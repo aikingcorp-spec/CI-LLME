@@ -1,8 +1,8 @@
 import { build } from "esbuild";
-import { desktopBuildDefines } from "../src/public-distribution.ts";
+import { desktopBuildDefines } from "../src/main/public-distribution.ts";
 
 await build({
-  entryPoints: ["src/main.ts"],
+  entryPoints: ["src/main/main.ts"],
   outfile: "dist/main.js",
   bundle: true,
   platform: "node",
@@ -16,7 +16,7 @@ await build({
   // Only the release workflow's builds report errors; local and agent builds never do.
   define: {
     "process.env.RAKAZO_DESKTOP_RELEASE": JSON.stringify(process.env.RAKAZO_DESKTOP_RELEASE ?? ""),
-    // Self-hosted builds associated with their own passkey domain (see src/passkeys.ts).
+    // Self-hosted builds associated with their own passkey domain (see src/main/passkeys.ts).
     "process.env.RAKAZO_PASSKEY_RP_ID": JSON.stringify(process.env.RAKAZO_PASSKEY_RP_ID ?? ""),
     ...desktopBuildDefines(process.env),
   },

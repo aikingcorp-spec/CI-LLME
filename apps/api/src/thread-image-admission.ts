@@ -4,10 +4,10 @@ import type { CodexLiveCatalog } from "@rakazo/adapters";
 import {
   CHATGPT_OAUTH_PROVIDER,
   codexLiveModel,
+  connectionModelSettings,
   findConnectedModelCredential,
   knownModelImageInput,
   modelAcceptsImageInput,
-  modelIdSupportsImages,
   parseModelSecret,
   resolveMemberMainModel,
   runModelChoice,
@@ -15,9 +15,16 @@ import {
   selectConfiguredModel,
 } from "@rakazo/adapters";
 import type { Actor, MessageBlock } from "@rakazo/contracts";
+import { OPENAI_COMPATIBLE_PROVIDER_ID } from "@rakazo/contracts";
 import { MODEL_IMAGE_INPUT_ERROR, MODEL_IMAGE_INPUT_UNKNOWN } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { appliedModelRole, findModelCredential, findModelCredentialById } from "@rakazo/db";
+import {
+  appliedModelRole,
+  findModelCredential,
+  findModelCredentialById,
+  resolveWithSpaceOwnerFallback,
+  runWithSystemBypass,
+} from "@rakazo/db";
 
 type ModelChoice = {
   modelProvider: string | null;
@@ -63,7 +70,22 @@ export async function assertThreadImageInput(
             override.modelProvider,
             override.modelId,
           )
-        : await findModelCredential(prisma, actor, override.modelProvider, override.modelId)
+        : (
+            await resolveWithSpaceOwnerFallback(
+              prisma,
+              actor,
+              "resolve borrowed bot model credential for image admission",
+              async (scope) => {
+                const cred = await findModelCredential(
+                  prisma,
+                  scope,
+                  override.modelProvider!,
+                  override.modelId!,
+                );
+                return cred ? { ...cred, userId: scope.userId } : null;
+              },
+            )
+          ).value
       : null;
   const selected = selectConfiguredModel({
     override,
@@ -81,50 +103,31 @@ export async function assertThreadImageInput(
   const id = running ? run.modelId : selected.id;
   if (!provider || !id) return;
   let supportsImages = knownModelImageInput(provider, id);
-  if (provider === "openai-compatible" && configuration) {
-    const credential = running ? overrideCredential : selected.credential;
-    if (credential) {
-      const row = await prisma.secret.findFirst({
-        where: { id: credential.secretId, userId: actor.userId, spaceId: null },
+  const credential = running ? overrideCredential : selected.credential;
+  if (supportsImages === undefined && configuration && credential) {
+    // A model the catalog cannot describe reads images when its settings say so; without
+    // one its capability is unknown, so the user is asked to configure it.
+    const secret = await loadModelSecret(prisma, configuration.secrets, actor, credential);
+    if (secret) {
+      const settings = connectionModelSettings(secret, provider, id, {
+        defaultModel: credential.defaultModel,
+        supportsImages: await legacyImageInput(prisma, actor, credential),
       });
-      if (row) {
-        const legacy = await prisma.userModelCredential.findFirst({
-          where: { id: credential.id, userId: actor.userId },
-          select: { supportsImages: true },
-        });
-        const secret = parseModelSecret(await configuration.secrets.load(row.ciphertext, row.id));
-        if (secret.kind === "openai_compatible") {
-          // A custom endpoint is never known to be text-only: without image input turned on,
-          // its capability is unknown, so the user is asked to configure it.
-          supportsImages =
-            modelAcceptsImageInput(provider, id) ||
-            modelIdSupportsImages(secret.visionModelIds, id) ||
-            (secret.visionModelIds === undefined &&
-              credential.defaultModel?.trim() === id.trim() &&
-              legacy?.supportsImages === true) ||
-            undefined;
-        }
-      }
+      supportsImages =
+        provider === OPENAI_COMPATIBLE_PROVIDER_ID
+          ? modelAcceptsImageInput(provider, id, settings.images) || settings.images
+          : settings.images;
     }
   }
-  if (provider === CHATGPT_OAUTH_PROVIDER && configuration?.codexCatalog) {
-    const credential = running ? overrideCredential : selected.credential;
-    if (credential) {
-      try {
-        const row = await prisma.secret.findFirst({
-          where: { id: credential.secretId, userId: actor.userId, spaceId: null },
-        });
-        if (row) {
-          const secret = parseModelSecret(await configuration.secrets.load(row.ciphertext, row.id));
-          const live = await codexLiveModel(configuration.codexCatalog, actor.userId, secret, id, {
-            waitMs: 0,
-          });
-          if (live?.supportsImages !== undefined) supportsImages = live.supportsImages;
-        }
-      } catch {
-        // An unreadable secret keeps the bundled or unknown answer.
-      }
-    }
+  if (provider === CHATGPT_OAUTH_PROVIDER && configuration?.codexCatalog && credential) {
+    const secret = await loadModelSecret(prisma, configuration.secrets, actor, credential);
+    const credentialOwnerId = credential.userId ?? actor.userId;
+    const live = secret
+      ? await codexLiveModel(configuration.codexCatalog, credentialOwnerId, secret, id, {
+          waitMs: 0,
+        }).catch(() => undefined)
+      : undefined;
+    if (live?.supportsImages !== undefined) supportsImages = live.supportsImages;
   }
   const unknownInput = supportsImages === undefined && !runtimeModelAcceptsImages(provider, id);
   if (supportsImages === false || unknownInput)
@@ -134,14 +137,73 @@ export async function assertThreadImageInput(
     });
 }
 
+/** An unreadable secret describes nothing, so the model's image input stays unknown. */
+async function loadModelSecret(
+  prisma: PrismaClient,
+  secrets: Pick<SecretStore, "load">,
+  actor: Actor,
+  credential: { secretId: string; userId?: string },
+) {
+  const credentialOwnerId = credential.userId ?? actor.userId;
+  const readRow = () =>
+    prisma.secret.findFirst({
+      where: { id: credential.secretId, userId: credentialOwnerId, spaceId: null },
+    });
+  const row =
+    credentialOwnerId === actor.userId
+      ? await readRow()
+      : await runWithSystemBypass(
+          prisma,
+          "read borrowed model secret for image admission",
+          readRow,
+        );
+  if (!row) return undefined;
+  try {
+    return parseModelSecret(await secrets.load(row.ciphertext, row.id));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Connections saved before per-model image settings recorded the capability on the row. */
+async function legacyImageInput(
+  prisma: PrismaClient,
+  actor: Actor,
+  credential: { id: string; userId?: string },
+) {
+  const credentialOwnerId = credential.userId ?? actor.userId;
+  const readFlag = () =>
+    prisma.userModelCredential.findFirst({
+      where: { id: credential.id, userId: credentialOwnerId },
+      select: { supportsImages: true },
+    });
+  const row =
+    credentialOwnerId === actor.userId
+      ? await readFlag()
+      : await runWithSystemBypass(prisma, "read borrowed model legacy image capability", readFlag);
+  return row?.supportsImages;
+}
+
 /** The main model as resolveMemberMainModel picks it, without reading secrets. */
 async function mainModelWithoutSecrets(prisma: PrismaClient, actor: Actor) {
-  const { primary } = await appliedModelRole(prisma, actor, "main");
-  if (!primary) return null;
-  return {
-    ...primary,
-    credential: primary.credentialId
-      ? await findModelCredentialById(prisma, actor, primary.credentialId, primary.provider)
-      : await findModelCredential(prisma, actor, primary.provider, primary.modelId),
-  };
+  const resolved = await resolveWithSpaceOwnerFallback(
+    prisma,
+    actor,
+    "resolve borrowed main model without secrets",
+    async (scope, borrowed) => {
+      const { primary } = await appliedModelRole(prisma, scope, "main");
+      if (!primary) return null;
+      const choice =
+        borrowed && primary.credentialId ? { ...primary, credentialId: undefined } : primary;
+      const credential = choice.credentialId
+        ? await findModelCredentialById(prisma, scope, choice.credentialId, choice.provider)
+        : await findModelCredential(prisma, scope, choice.provider, choice.modelId);
+      return {
+        ...choice,
+        credential: credential ? { ...credential, userId: scope.userId } : null,
+      };
+    },
+    (model) => !model?.credential,
+  );
+  return resolved.value;
 }

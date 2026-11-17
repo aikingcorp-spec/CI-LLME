@@ -8,10 +8,19 @@ import {
   PushSessionEndedError,
   settleCallRequest,
 } from "@rakazo/adapters";
-import type { ActionApprovalRule, Actor, Me, SettingsScope } from "@rakazo/contracts";
+import type {
+  ActionApprovalRule,
+  Actor,
+  Me,
+  SettingsScope,
+  SpaceChangeKind,
+} from "@rakazo/contracts";
+import { parseLabs } from "@rakazo/contracts";
 import {
+  abortableDelay,
   approvalModeFromPreference,
   approvalPreferenceFromMode,
+  ClientError,
   callRequestClientNonce,
 } from "@rakazo/core";
 import { urlSite } from "@rakazo/core/egress";
@@ -31,6 +40,7 @@ import {
   newestVoiceCredentialOrder,
   Prisma,
   removeApprovalRule,
+  resolveWithSpaceOwnerFallback,
   runAsSystem,
   runAsTenant,
   saveApprovalRule,
@@ -58,8 +68,8 @@ import {
 } from "../realtime-voice.js";
 import type { RouterDeps } from "../router.js";
 import {
+  accountVoiceCatalog,
   disconnectVoiceCredential,
-  listVoiceCatalog,
   loadDefaultVoiceCredential,
   loadVoiceCredential,
   persistVoiceCredential,
@@ -68,11 +78,18 @@ import {
   toVoiceStatus,
   updateVoiceSpeechModel,
   voiceContext,
+  voiceCredentialHasKey,
   voiceCredentialServer,
   voiceProviderFor,
+  withVoiceConnection,
 } from "../voice.js";
 import type { RouterContext } from "./context.js";
-import { HEARTBEAT, meDto, withHeartbeats } from "./shared.js";
+import { HEARTBEAT, meDto, mergeStreams, withHeartbeats } from "./shared.js";
+
+const ROSTER_CHANGED = Symbol("roster changed");
+const ORGANIZATIONS_CHANGED = Symbol("organizations changed");
+
+const SIGNAL_FAILURE_HOLD_MS = 30_000;
 
 function productFacts(deps: RouterDeps) {
   return {
@@ -104,7 +121,13 @@ export function accountRoutes(ctx: RouterContext) {
     },
     analytics: {
       screen: authed.analytics.screen.handler(async ({ context, input }) => {
-        deps.analytics?.capture(context.actor.userId, { name: "screen_viewed", ...input });
+        deps.analytics?.capture(
+          context.actor.userId,
+          { name: "screen_viewed", ...input },
+          undefined,
+          // The server only sends a plan layout while the test runs, so it is the exposure.
+          input.planLayout ? { "plan-layout": input.planLayout } : undefined,
+        );
         return { ok: true as const };
       }),
     },
@@ -117,7 +140,13 @@ export function accountRoutes(ctx: RouterContext) {
           const record = await firstModelConnectAnalytics(deps, context.actor, "credits");
           record(undefined, { name: "model_connect_started" });
         }
-        return billing.selectFunding(context.actor, input.funding, input.client, input.interval);
+        return billing.selectFunding(
+          context.actor,
+          input.funding,
+          input.client,
+          input.interval,
+          input.tier,
+        );
       }),
       purchaseCredits: authed.billing.purchaseCredits.handler(async ({ context, input }) =>
         requireBilling(deps).purchaseCredits(context.actor, input),
@@ -180,6 +209,12 @@ export function accountRoutes(ctx: RouterContext) {
       update: authed.preferences.update.handler(async ({ context, input }): Promise<Me> => {
         const userId = context.actor.userId;
         const botAvatarSet = input.botAvatarSet;
+        // A feature the deployment turns on is not the account's choice, so it is not saved with it.
+        const deploymentLabs = deps.env?.deploymentLabs ?? [];
+        const labs =
+          input.labs === undefined
+            ? undefined
+            : parseLabs(input.labs).filter((feature) => !deploymentLabs.includes(feature));
         if (input.timezone !== undefined) {
           // The routines that took the account zone keep their local schedule in the new
           // one, and the other fields commit in the same save. The move's row lock still
@@ -187,6 +222,7 @@ export function accountRoutes(ctx: RouterContext) {
           await changeUserTimezone(deps, userId, input.timezone, {
             ...(input.locale === undefined ? {} : { locale: input.locale }),
             ...(botAvatarSet === undefined ? {} : { botAvatarSet }),
+            ...(labs === undefined ? {} : { labs }),
           });
         } else {
           await deps.prisma.user.update({
@@ -195,6 +231,7 @@ export function accountRoutes(ctx: RouterContext) {
             data: {
               ...(input.locale === undefined ? {} : { locale: input.locale }),
               ...(botAvatarSet === undefined ? {} : { botAvatarSet }),
+              ...(labs === undefined ? {} : { labs }),
             },
           });
         }
@@ -363,14 +400,67 @@ export function accountRoutes(ctx: RouterContext) {
     },
     notifications: {
       subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
-        const { followChatAlerts } = deps.events;
+        const {
+          followChatAlerts,
+          followOrganizationChanges,
+          followRosterChanges,
+          followSpaceChanges,
+        } = deps.events;
         if (!followChatAlerts) throw new ORPCError("NOT_FOUND");
         const { spaceId, userId } = context.actor;
-        const alerts = withHeartbeats(context, (signal) =>
-          followChatAlerts(userId, spaceId, signal),
+        const rosterChanges = async function* (
+          signal: AbortSignal,
+        ): AsyncGenerator<typeof ROSTER_CHANGED> {
+          if (!followRosterChanges) return;
+          // The app re-reads the roster only on these signals, so a failure ends the stream the
+          // same way Space changes do below.
+          try {
+            for await (const _ of followRosterChanges(userId, signal)) yield ROSTER_CHANGED;
+          } catch (error) {
+            await abortableDelay(SIGNAL_FAILURE_HOLD_MS, signal);
+            throw error;
+          }
+        };
+        const spaceChanges = async function* (
+          signal: AbortSignal,
+        ): AsyncGenerator<{ spaceChange: SpaceChangeKind }> {
+          if (!followSpaceChanges) return;
+          // The app re-reads what these cover only on signals, so a failure ends the stream and
+          // the app reconnects and re-reads. Alerts keep flowing for a while first, so a lasting
+          // failure costs one reconnect every half minute rather than a tight loop.
+          try {
+            for await (const spaceChange of followSpaceChanges(spaceId, signal))
+              yield { spaceChange };
+          } catch (error) {
+            await abortableDelay(SIGNAL_FAILURE_HOLD_MS, signal);
+            throw error;
+          }
+        };
+        const organizationChanges = async function* (
+          signal: AbortSignal,
+        ): AsyncGenerator<typeof ORGANIZATIONS_CHANGED> {
+          if (!followOrganizationChanges) return;
+          try {
+            for await (const _ of followOrganizationChanges(userId, signal))
+              yield ORGANIZATIONS_CHANGED;
+          } catch (error) {
+            await abortableDelay(SIGNAL_FAILURE_HOLD_MS, signal);
+            throw error;
+          }
+        };
+        const frames = withHeartbeats(context, (signal) =>
+          mergeStreams(
+            followChatAlerts(userId, spaceId, signal),
+            rosterChanges(signal),
+            spaceChanges(signal),
+            organizationChanges(signal),
+          ),
         );
-        for await (const next of alerts) {
+        for await (const next of frames) {
           if (next === HEARTBEAT) yield { type: "heartbeat" as const };
+          else if (next === ROSTER_CHANGED) yield { type: "roster" as const };
+          else if (next === ORGANIZATIONS_CHANGED) yield { type: "organizations" as const };
+          else if ("spaceChange" in next) yield { type: next.spaceChange };
           else if (next.spaceId === spaceId) yield { type: "alert" as const, alert: next };
         }
       }),
@@ -426,7 +516,8 @@ export function accountRoutes(ctx: RouterContext) {
           try {
             await deps.pushTokens.saveDevice?.(context.actor.userId, input, context.sessionId);
           } catch (error) {
-            if (error instanceof PushSessionEndedError) throw new ORPCError("UNAUTHORIZED");
+            if (error instanceof PushSessionEndedError)
+              throw new ClientError("UNAUTHORIZED", "Unauthorized");
             throw error;
           }
           return { ok: true as const };
@@ -443,7 +534,8 @@ export function accountRoutes(ctx: RouterContext) {
             input.presentation,
           );
         } catch (error) {
-          if (error instanceof PushSessionEndedError) throw new ORPCError("UNAUTHORIZED");
+          if (error instanceof PushSessionEndedError)
+            throw new ClientError("UNAUTHORIZED", "Unauthorized");
           throw error;
         }
         return { ok: true as const };
@@ -462,12 +554,25 @@ export function accountRoutes(ctx: RouterContext) {
         async ({ context, input }) => {
           // The card ends with the session that registered it.
           if (!context.sessionId) throw new ORPCError("UNAUTHORIZED");
+          if (!input.token) return { following: Boolean(deps.workActivities) };
           const following = await deps.workActivities?.register(
             context.actor.userId,
             context.sessionId,
             input.token,
           );
           return { following: following ?? false };
+        },
+      ),
+      registerWorkActivityStarts: authed.notifications.registerWorkActivityStarts.handler(
+        async ({ context, input }) => {
+          // The phone stops getting cards with the session that registered it.
+          if (!context.sessionId) throw new ORPCError("UNAUTHORIZED");
+          await deps.workActivities?.registerStarts(
+            context.actor.userId,
+            context.sessionId,
+            input.token,
+          );
+          return { ok: true as const };
         },
       ),
     },
@@ -489,11 +594,21 @@ export function accountRoutes(ctx: RouterContext) {
           ),
         ),
       },
-      catalog: authed.voice.catalog.handler(async () =>
-        listVoiceCatalog({ allowPrivateEndpoint: deps.env?.mcpAllowPrivateEndpoint }),
+      catalog: authed.voice.catalog.handler(async ({ context }) =>
+        accountVoiceCatalog(deps, context.actor),
       ),
       status: authed.voice.status.handler(async ({ context, input }) => {
-        const cred = await findDefaultVoiceCredential(deps.prisma, context.actor, input?.scope);
+        const cred =
+          input?.scope !== undefined
+            ? await findDefaultVoiceCredential(deps.prisma, context.actor, input.scope)
+            : (
+                await resolveWithSpaceOwnerFallback(
+                  deps.prisma,
+                  context.actor,
+                  "read Space Owner default voice status",
+                  (effectiveActor) => findDefaultVoiceCredential(deps.prisma, effectiveActor),
+                )
+              ).value;
         return toVoiceStatus(cred);
       }),
       credentials: authed.voice.credentials.handler(async ({ context, input }) => {
@@ -514,6 +629,7 @@ export function accountRoutes(ctx: RouterContext) {
               voiceId: preference?.voiceId ?? "",
               speechModel: preference?.speechModel ?? "",
               server: await voiceCredentialServer(deps, context.actor, row),
+              hasKey: await voiceCredentialHasKey(deps, context.actor, row),
             });
           }),
         );
@@ -525,6 +641,8 @@ export function accountRoutes(ctx: RouterContext) {
           voiceId: input.voiceId,
           speechModel: input.speechModel,
           baseUrl: input.baseUrl,
+          sttBaseUrl: input.sttBaseUrl,
+          sttApiKey: input.sttApiKey,
           ttsModel: input.ttsModel,
           sttModel: input.sttModel,
           scope: input.scope,
@@ -564,13 +682,20 @@ export function accountRoutes(ctx: RouterContext) {
       voices: authed.voice.voices.handler(async ({ context, input }) => {
         // A named provider lists its voices even before the copy has a default voice.
         const row = input.provider
-          ? await loadVoiceCredential(deps, context.actor, input.provider, input.scope)
-          : await loadDefaultVoiceCredential(deps, context.actor, input.scope);
+          ? await loadVoiceCredential(
+              deps,
+              context.actor,
+              input.provider,
+              input.scope,
+              context.signal,
+            )
+          : await loadDefaultVoiceCredential(deps, context.actor, input.scope, context.signal);
         if (!row) return [];
-        return (await voiceProviderFor(deps, row.cred.provider)).listVoices(
-          row.apiKey,
-          voiceContext(context.actor, context.signal),
-          { language: input.language },
+        const provider = await voiceProviderFor(deps, row.cred.provider);
+        return withVoiceConnection(row.cred.provider, row.linked, () =>
+          provider.listVoices(row.apiKey, voiceContext(context.actor, context.signal), {
+            language: input.language,
+          }),
         );
       }),
       prepare: authed.voice.prepare.handler(async ({ context, input }) =>

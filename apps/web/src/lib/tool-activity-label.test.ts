@@ -18,7 +18,9 @@ import {
 } from "./tool-activity-label";
 
 beforeAll(async () => {
-  const filename = fileURLToPath(new URL("../locales/vi/messages.po", import.meta.url));
+  const filename = fileURLToPath(
+    new URL("../../../../packages/i18n/locales/vi/messages.po", import.meta.url),
+  );
   const catalog = await formatter().parse(readFileSync(filename, "utf8"), {
     locale: "vi",
     sourceLocale: "en",

@@ -20,6 +20,7 @@ function NavProbe() {
     computer: false,
     billing: false,
     updates: false,
+    labs: false,
   });
   return (
     <ul>

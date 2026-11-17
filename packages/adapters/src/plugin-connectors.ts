@@ -1,10 +1,10 @@
 /** Portable plugin parsing plus a bounded, public-GitHub acquisition adapter.
  * No repository code is executed and no files are written to the host. */
 import { createHash } from "node:crypto";
-import { McpServerConfigInput } from "@rakazo/contracts";
+import { McpServerConfigInput, trimEndChars, trimStartChars } from "@rakazo/contracts";
 import { buildSkillMd, deadlineSignal, findSkillByName, parseSkillMd } from "@rakazo/core";
 import { z } from "zod";
-import { BUILTIN_AGENT_SKILLS } from "./builtin-skills.js";
+import { BUILTIN_AGENT_SKILLS } from "./builtin-skills.prompt.js";
 import { assertNoSensitiveQuery } from "./connector-http.js";
 import {
   isAgentSkillResourcePath,
@@ -772,11 +772,10 @@ export function parsePluginDirectory(input: {
         ? skillFolder(skillPaths[0]!).split("/").filter(Boolean).at(-1)
         : undefined;
     const rawName = input.fallbackName?.trim() || inferredName || "skills";
-    const name = rawName
-      .toLowerCase()
-      .replace(/[^a-z0-9.-]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 64);
+    const name = trimEndChars(
+      trimStartChars(rawName.toLowerCase().replace(/[^a-z0-9.-]+/g, "-"), "-"),
+      "-",
+    ).slice(0, 64);
     if (!name) throw new Error("Could not infer a name for this skill bundle");
     format = "agent-skills";
     manifest = { name };
@@ -962,4 +961,13 @@ export function isTransientFetchError(error: unknown): boolean {
   );
 }
 
+/**
+ * Whether a failed plugin load is a fault in our own code. Loading parses the address, fetches
+ * it and parses what came back, and reads no store, so any other failure is about the source.
+ * The fetch client reports a network failure as a TypeError too, with the cause attached.
+ */
+export function isPluginLoadFault(error: unknown): boolean {
+  if (error instanceof TypeError) return error.cause === undefined;
+  return error instanceof ReferenceError || error instanceof RangeError;
+}
 export { pluginPreviewDto } from "./plugin-preview.js";

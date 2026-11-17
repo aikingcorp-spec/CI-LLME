@@ -30,6 +30,17 @@ export function oauthStateOf(verificationUri: string): string | undefined {
   }
 }
 
+export function usesLoopbackOAuthRedirect(verificationUri: string): boolean {
+  try {
+    const redirectUri = new URL(verificationUri).searchParams.get("redirect_uri");
+    if (!redirectUri) return false;
+    const host = new URL(redirectUri).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Desktop sign-in redirects to a loopback URL the renderer never sees, so the main process
  * captures the code there and the copy-and-paste step can be skipped. No-ops in a browser.

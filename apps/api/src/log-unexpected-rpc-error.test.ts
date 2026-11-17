@@ -10,7 +10,7 @@ import {
 } from "@rakazo/adapter-kit";
 import { ComputerRecoveryRequiredError } from "@rakazo/adapters";
 import { ThreadMessagePageSchema } from "@rakazo/contracts";
-import { MODEL_IMAGE_INPUT_ERROR } from "@rakazo/core";
+import { ClientError, MODEL_IMAGE_INPUT_ERROR } from "@rakazo/core";
 import { IsolationError, SpaceDeletionInProgressError } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { markExpectedFailure, requestLogging } from "@rakazo/logging/hono";
@@ -90,7 +90,7 @@ describe("logUnexpectedRpcError", () => {
         begin: os.handler(() => {
           logger.warn("provider sign-in unavailable");
           markExpectedFailure();
-          throw new ORPCError("SERVICE_UNAVAILABLE");
+          throw new ClientError("SERVICE_UNAVAILABLE", "Service Unavailable");
         }),
       },
       { clientInterceptors: [onError((error, { path }) => handleRpcError(error, path))] },

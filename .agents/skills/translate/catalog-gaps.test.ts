@@ -12,7 +12,7 @@ import {
   translationsOf,
 } from "./catalog-gaps.ts";
 
-const LOCALES = fileURLToPath(new URL("../../../apps/web/src/locales", import.meta.url));
+const LOCALES = fileURLToPath(new URL("../../../packages/i18n/locales", import.meta.url));
 
 const po = `msgid ""
 msgstr ""
@@ -51,7 +51,7 @@ describe("catalog gaps", () => {
   it("discovers locale directories alongside generated templates and other files", () => {
     const directory = mkdtempSync(join(tmpdir(), "catalog-locales-"));
     try {
-      const locales = join(directory, "apps/web/src/locales");
+      const locales = join(directory, "packages/i18n/locales");
       for (const locale of ["vi", "en"]) {
         mkdirSync(join(locales, locale), { recursive: true });
         writeFileSync(join(locales, locale, "messages.po"), po);

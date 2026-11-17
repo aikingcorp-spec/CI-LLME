@@ -12,18 +12,22 @@ import type { RakazoDesktop } from "@rakazo/contracts";
 import { shownWindow } from "./shown-window.js";
 
 const APP_MARKER = "Existing VNBot instance ready";
-/** Outlasts the shell's 20s wait for a mounted app before it rejects the server. */
-const NOT_READY_TIMEOUT_MS = 30_000;
+/**
+ * The shell waits 20s for a page to mount the app before it rejects the server. A page that never
+ * mounts is rejected the same way after any wait, so those specs shorten it instead of sitting out
+ * the production deadline.
+ */
+const NOT_READY_MOUNT_ENV = { RAKAZO_APP_MOUNT_TIMEOUT_MS: "2000" };
 const execFileAsync = promisify(execFile);
 
 let server: Server;
 let serverUrl: string;
-let closedUrl: string;
 let userData: string;
 let app: ElectronApplication | undefined;
 let monitoringRequests = 0;
 
-/** A port nothing listens on, so a connection attempt is refused rather than blocked. */
+/** A port nothing listens on, so a connection attempt is refused rather than blocked. Reserved by
+ * each test just before use: a port freed earlier in the run can be taken by a later server. */
 async function reserveClosedPort() {
   const probe = createServer();
   await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
@@ -64,7 +68,6 @@ test.beforeAll(async () => {
   const address = server.address();
   if (address === null || typeof address === "string") throw new Error("stub server has no port");
   serverUrl = `http://127.0.0.1:${address.port}`;
-  closedUrl = await reserveClosedPort();
 });
 
 test.afterAll(async () => {
@@ -80,9 +83,12 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-  await app?.close();
-  app = undefined;
-  await rm(userData, { recursive: true, force: true });
+  try {
+    await app?.close();
+  } finally {
+    app = undefined;
+    await rm(userData, { recursive: true, force: true });
+  }
 });
 
 function launch(extraEnv: Record<string, string> = {}) {
@@ -105,7 +111,7 @@ function launch(extraEnv: Record<string, string> = {}) {
   });
 }
 
-test("setup offers this computer first and keeps VNBot Cloud locked", async () => {
+test("setup offers this computer first without an unavailable Cloud choice", async () => {
   app = await launch();
   if (process.env.RAKAZO_E2E_EXECUTABLE) {
     expect(await app.evaluate(({ app }) => app.isPackaged)).toBe(true);
@@ -114,13 +120,12 @@ test("setup offers this computer first and keeps VNBot Cloud locked", async () =
 
   await expect(setup.getByRole("heading", { name: "Welcome to VNBot" })).toBeVisible();
   await expect(setup.getByText("Choose which server this app should use.")).toBeVisible();
-  await expect(setup.getByText("VNBot Cloud")).toBeVisible();
-  await expect(setup.getByText("Sắp ra mắt")).toBeVisible();
-  await expect(setup.getByText("This computer")).toBeVisible();
-  await expect(setup.getByText("Existing instance")).toBeVisible();
+  await expect(setup.locator("#mode-cloud")).toHaveCount(0);
+  await expect(setup.getByText("This computer", { exact: true })).toBeVisible();
+  await expect(setup.getByText("Your data stays on this computer.")).toBeVisible();
+  await expect(setup.getByText("Existing instance", { exact: true })).toBeVisible();
   await expect(setup.locator(".card")).toHaveCount(0);
 
-  await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeDisabled();
   await expect(setup.getByRole("radio", { name: /This computer/ })).toBeChecked();
   await expect(setup.locator("#panel-new")).toHaveJSProperty("hidden", false);
   await expect(setup.locator("#panel-existing")).toBeHidden();
@@ -199,10 +204,10 @@ test("setup lays out right to left in Hebrew", async () => {
   });
 });
 
-test("a saved hosted address can be shown without VNBot Cloud accepting a new choice", async () => {
+test("a saved hosted address restores Existing instance without an unavailable Cloud option", async () => {
   app = await launch();
   const setup = await app.firstWindow();
-  await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeDisabled();
+  await expect(setup.locator("#mode-cloud")).toHaveCount(0);
   await expect(setup.getByRole("radio", { name: /This computer/ })).toBeChecked();
 
   const { cloudUrl } = await setup.evaluate(() =>
@@ -213,7 +218,7 @@ test("a saved hosted address can be shown without VNBot Cloud accepting a new ch
   expect(cloudUrl).toMatch(/^https:\/\//);
   expect(await readFile(path.join(userData, "setup.json"), "utf8").catch(() => null)).toBeNull();
 
-  // A previously saved hosted address is restored for display. The control stays locked.
+  // A previously saved hosted address is restored into Existing instance.
   await app.evaluate(({ ipcMain }, url) => {
     ipcMain.removeHandler("desktop.setup.state");
     ipcMain.handle("desktop.setup.state", () => ({
@@ -223,9 +228,8 @@ test("a saved hosted address can be shown without VNBot Cloud accepting a new ch
     }));
   }, cloudUrl);
   await setup.reload();
-  await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeChecked();
-  await expect(setup.getByRole("radio", { name: /VNBot Cloud/ })).toBeDisabled();
-  await expect(setup.locator("#panel-existing")).toBeHidden();
+  await expect(setup.getByRole("radio", { name: /Existing instance/ })).toBeChecked();
+  await expect(setup.locator("#server-url")).toHaveValue(cloudUrl);
 });
 
 test("connecting to an existing instance verifies, saves, and opens it", async () => {
@@ -295,6 +299,7 @@ test("Continue verifies and remembers the instance so setup does not run again",
 });
 
 test("an unreachable address is reported instead of being saved", async () => {
+  const closedUrl = await reserveClosedPort();
   app = await launch();
   const setup = await app.firstWindow();
 
@@ -347,7 +352,6 @@ test("an HTTP error document is not accepted after a healthy probe", async () =>
 });
 
 test("a session-pending shell skeleton is not accepted as a ready app", async () => {
-  test.setTimeout(2 * NOT_READY_TIMEOUT_MS);
   const skeletonHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>VNBot</title></head>
 <body><div id="root"><div data-rakazo-app-state="session-pending"><aside></aside><main><div>Opening your Space…</div></main></div></div></body></html>`;
   const skeleton = createServer((request, response) => {
@@ -365,14 +369,14 @@ test("a session-pending shell skeleton is not accepted as a ready app", async ()
     throw new Error("skeleton server has no port");
 
   try {
-    app = await launch();
+    app = await launch(NOT_READY_MOUNT_ENV);
     const setup = await app.firstWindow();
     await setup.getByRole("radio", { name: /Existing instance/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Continue" }).click();
 
     await expect(setup.locator("#status")).toContainText("Could not open that server.", {
-      timeout: NOT_READY_TIMEOUT_MS,
+      timeout: 10_000,
     });
     await expect(async () => {
       await expect(readFile(path.join(userData, "setup.json"), "utf8")).rejects.toThrow();
@@ -448,7 +452,6 @@ for (const { name, surface } of [
 }
 
 test("a shell mount before workspace bootstrap is not accepted", async () => {
-  test.setTimeout(2 * NOT_READY_TIMEOUT_MS);
   const preBootstrapHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>VNBot</title></head>
 <body><div id="root"><div data-rakazo-app-state="ready"><div data-testid="shell-root" data-ready="false">Workspace</div></div></div></body></html>`;
   const preBootstrap = createServer((request, response) => {
@@ -466,14 +469,14 @@ test("a shell mount before workspace bootstrap is not accepted", async () => {
     throw new Error("pre-bootstrap server has no port");
 
   try {
-    app = await launch();
+    app = await launch(NOT_READY_MOUNT_ENV);
     const setup = await app.firstWindow();
     await setup.getByRole("radio", { name: /Existing instance/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Continue" }).click();
 
     await expect(setup.locator("#status")).toContainText("Could not open that server.", {
-      timeout: NOT_READY_TIMEOUT_MS,
+      timeout: 10_000,
     });
     await expect(async () => {
       await expect(readFile(path.join(userData, "setup.json"), "utf8")).rejects.toThrow();
@@ -486,7 +489,6 @@ test("a shell mount before workspace bootstrap is not accepted", async () => {
 });
 
 test("a session-ready marker without a route surface is not accepted", async () => {
-  test.setTimeout(2 * NOT_READY_TIMEOUT_MS);
   const emptyReadyHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>VNBot</title></head>
 <body><div id="root"><div data-rakazo-app-state="ready" class="h-full"></div></div></body></html>`;
   const emptyReady = createServer((request, response) => {
@@ -504,14 +506,14 @@ test("a session-ready marker without a route surface is not accepted", async () 
     throw new Error("empty-ready server has no port");
 
   try {
-    app = await launch();
+    app = await launch(NOT_READY_MOUNT_ENV);
     const setup = await app.firstWindow();
     await setup.getByRole("radio", { name: /Existing instance/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Continue" }).click();
 
     await expect(setup.locator("#status")).toContainText("Could not open that server.", {
-      timeout: NOT_READY_TIMEOUT_MS,
+      timeout: 10_000,
     });
     await expect(async () => {
       await expect(readFile(path.join(userData, "setup.json"), "utf8")).rejects.toThrow();
@@ -598,6 +600,7 @@ test("the setup probe refuses redirects instead of following them", async () => 
 });
 
 test("an unreachable saved server falls back to setup with a recovery message", async () => {
+  const closedUrl = await reserveClosedPort();
   await writeFile(
     path.join(userData, "setup.json"),
     `${JSON.stringify({ mode: "existing", serverUrl: closedUrl }, null, 2)}\n`,
@@ -780,7 +783,7 @@ test("the app window stays on its server when a link redirects to another site",
       elsewhereUrl,
     );
     await expect(appWindow.getByText("Another site")).toBeVisible();
-    expect(await openSignIn(appWindow)).toContain("Invalid sign-in request.");
+    expect(await openSignIn(appWindow)).toContain("may not call desktop.oauth.open");
     expect(await openedUrls()).toEqual([elsewhereUrl, elsewhereUrl, signInUrl]);
   } finally {
     await app?.close();

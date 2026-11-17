@@ -29,6 +29,15 @@ describe("authErrorText", () => {
         "Request a new code",
       );
     }
+    expect(
+      authErrorText(
+        { code: "TOO_MANY_REQUESTS", message: "Too many attempts. Try again later." },
+        "Fallback",
+      ),
+    ).toBe("Too many attempts. Try again in a few minutes.");
+    expect(authErrorText({ status: 429, message: "Rate limited" }, "Fallback")).toBe(
+      "Too many attempts. Try again in a few minutes.",
+    );
   });
 
   it("replaces Better Auth's raw too-long password message with the limit", () => {

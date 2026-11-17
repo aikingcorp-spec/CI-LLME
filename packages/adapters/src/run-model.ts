@@ -7,6 +7,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { OPENAI_COMPATIBLE_PROVIDER_ID } from "@rakazo/contracts";
 import { MISSING_MODEL_RUN_ERROR } from "@rakazo/core";
+import { runWithSystemBypass } from "@rakazo/db";
 import {
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
   CLOUDFLARE_WORKERS_AI_PROVIDER_ID,
@@ -18,7 +19,7 @@ import type { ExecutorDeps } from "./executor-deps.js";
 import type { FleetPrepareDeps } from "./fleet-tools.js";
 import {
   kickModelCredentialRefresh,
-  persistStoredModelSecret,
+  persistRefreshedModelCredential,
   refreshStoredModelCredential,
   resolveStoredModelAuth,
   retireToReconnectMarker,
@@ -30,7 +31,7 @@ import {
 } from "./model-credit-observer.js";
 import { resolveMemberMainModel, selectConfiguredModel } from "./model-roles.js";
 import type { StoredModelSecret } from "./model-secret.js";
-import { parseModelSecret, secretValuesToRedact, serializeModelSecret } from "./model-secret.js";
+import { parseModelSecret, secretValuesToRedact } from "./model-secret.js";
 import {
   enabledOpenAiCompatibleModelIds,
   findConnectedModelCredential,
@@ -40,10 +41,9 @@ import {
   validateConnectedModelChoice,
   validateModelAuthAvailability,
 } from "./model-selection.js";
-import { compatibleModelSeesImages } from "./model-vision.js";
+import { connectionModelSettings } from "./model-settings.js";
 import { assertAllowedOpenAiCompatibleUrl } from "./openai-compatible-url.js";
 import { codexLiveModel } from "./pi-codex-catalog.js";
-import { toOAuthCredential } from "./pi-credentials.js";
 import { LOCAL_PROVIDER_ID } from "./pi-local-provider.js";
 import { CHATGPT_OAUTH_PROVIDER, isRetiredModelCredentialError } from "./pi-oauth.js";
 
@@ -189,6 +189,7 @@ async function resolveModelKeyMaterial(
   spaceId: string,
   credential: {
     id: string;
+    userId?: string;
     secretId: string;
     provider: string;
     defaultModel?: string | null;
@@ -202,6 +203,8 @@ async function resolveModelKeyMaterial(
   apiKey?: string;
   accountId?: string;
   gatewayId?: string;
+  projectId?: string;
+  region?: string;
   baseUrl?: string;
   apiProtocol?: AgentRunRequest["model"]["apiProtocol"];
   headers?: Record<string, string>;
@@ -210,7 +213,6 @@ async function resolveModelKeyMaterial(
   contextWindow?: number;
   reasoning?: boolean;
   maxTokens?: number;
-  thinkingLevel?: AgentRunRequest["model"]["thinkingLevel"];
   acceptsImages?: boolean;
   maxImagesPerPrompt?: number;
   oauth?: AgentModelOAuthCredential;
@@ -226,166 +228,162 @@ async function resolveModelKeyMaterial(
   redact: string[];
 }> {
   if (credential) {
-    return withModelCredentialLock(credential.secretId, async () => {
-      const row = await deps.prisma.secret.findFirst({
-        where: { id: credential.secretId, userId, spaceId: null },
-      });
-      if (!row) {
-        if (await modelCreditBillingEnabled(deps))
-          throw new Error("Connect that model provider again.");
-        if (requireStoredSecret) throw new Error("Backup model credential is no longer available");
-        if (credential.provider === OPENAI_COMPATIBLE_PROVIDER_ID) {
-          throw new UnavailableModelForAuthError("Unknown model for that provider");
+    const credentialUserId = credential.userId ?? userId;
+    const credentialScope = { userId: credentialUserId, spaceId };
+    const withOwnerBypass = <T>(fn: () => Promise<T>): Promise<T> =>
+      credentialUserId === userId
+        ? fn()
+        : runWithSystemBypass(deps.prisma, "use space owner model credential", fn);
+    return withModelCredentialLock(credential.secretId, () =>
+      withOwnerBypass(async () => {
+        const row = await deps.prisma.secret.findFirst({
+          where: { id: credential.secretId, userId: credentialUserId, spaceId: null },
+        });
+        if (!row) {
+          if (await modelCreditBillingEnabled(deps))
+            throw new Error("Connect that model provider again.");
+          if (requireStoredSecret)
+            throw new Error("Backup model credential is no longer available");
+          if (credential.provider === OPENAI_COMPATIBLE_PROVIDER_ID) {
+            throw new UnavailableModelForAuthError("Unknown model for that provider");
+          }
+          cloudflareProviderEnv({ provider });
+          return { apiKey: deploymentKeyFor(deps, provider), redact: [] };
         }
-        cloudflareProviderEnv({ provider });
-        return { apiKey: deploymentKeyFor(deps, provider), redact: [] };
-      }
-      const plaintext = await deps.secretStore.load(row.ciphertext, row.id);
-      registerSecrets?.(secretValuesToRedact(parseModelSecret(plaintext)));
-      const persist = persistStoredModelSecret(
-        deps.prisma,
-        deps.secretStore,
-        { userId, spaceId },
-        row.id,
-      );
-      const retire = retireToReconnectMarker(
-        deps.prisma,
-        deps.secretStore,
-        { userId, spaceId },
-        credential,
-        parseModelSecret(plaintext).maxTokens,
-      );
-      const resolveAuth = () =>
-        resolveStoredModelAuth(
+        const plaintext = await deps.secretStore.load(row.ciphertext, row.id);
+        registerSecrets?.(secretValuesToRedact(parseModelSecret(plaintext)));
+        const rawRetire = retireToReconnectMarker(
           deps.prisma,
           deps.secretStore,
-          { userId, spaceId },
+          credentialScope,
           credential,
-          plaintext,
-          credential.provider,
         );
-      let resolved: Awaited<ReturnType<typeof resolveAuth>> | undefined;
-      let liveCodex: Awaited<ReturnType<typeof codexLiveModel>> | undefined;
-      const authError = validateModelAuthAvailability(provider, modelId, plaintext);
-      if (authError) {
-        // A statically excluded Codex model may still run when the backend's
-        // per-account catalog lists it for this credential. The catalog path
-        // never refreshes or writes credentials, so resolve inside this lock
-        // first — rotating a stale token the way any run would — then ask.
-        if (deps.codexCatalog && parseModelSecret(plaintext).kind === "oauth") {
-          resolved = await resolveAuth();
-          liveCodex = await codexLiveModel(deps.codexCatalog, userId, resolved.secret, modelId, {
-            waitMs: CODEX_LIVE_RUN_WAIT_MS,
-          });
+        const retire: typeof rawRetire = (reason, detail, failed) =>
+          withOwnerBypass(() => rawRetire(reason, detail, failed));
+        const resolveAuth = () =>
+          resolveStoredModelAuth(
+            deps.prisma,
+            deps.secretStore,
+            credentialScope,
+            credential,
+            plaintext,
+            credential.provider,
+          );
+        let resolved: Awaited<ReturnType<typeof resolveAuth>> | undefined;
+        let liveCodex: Awaited<ReturnType<typeof codexLiveModel>> | undefined;
+        const authError = validateModelAuthAvailability(provider, modelId, plaintext);
+        if (authError) {
+          // A statically excluded Codex model may still run when the backend's
+          // per-account catalog lists it for this credential. The catalog path
+          // never refreshes or writes credentials, so resolve inside this lock
+          // first — rotating a stale token the way any run would — then ask.
+          if (deps.codexCatalog && parseModelSecret(plaintext).kind === "oauth") {
+            resolved = await resolveAuth();
+            liveCodex = await codexLiveModel(
+              deps.codexCatalog,
+              credentialUserId,
+              resolved.secret,
+              modelId,
+              { waitMs: CODEX_LIVE_RUN_WAIT_MS },
+            );
+          }
+          if (!liveCodex) throw new UnavailableModelForAuthError(authError);
         }
-        if (!liveCodex) throw new UnavailableModelForAuthError(authError);
-      }
-      resolved ??= await resolveAuth();
-      if (
-        !liveCodex &&
-        deps.codexCatalog &&
-        provider === CHATGPT_OAUTH_PROVIDER &&
-        resolved.secret.kind === "oauth"
-      ) {
-        liveCodex = await codexLiveModel(deps.codexCatalog, userId, resolved.secret, modelId, {
-          waitMs: CODEX_LIVE_RUN_WAIT_MS,
-        });
-      }
-      assertCompatibleModelEnabled(credential, resolved.secret, modelId);
-      const oauth = resolved.secret.kind === "oauth" ? resolved.secret.credential : undefined;
-      const baseUrl =
-        resolved.secret.kind === "openai_compatible" ? resolved.secret.baseUrl : undefined;
-      // Recheck operator configuration for saved private connections on every run.
-      const allowPrivateEndpoint = baseUrl ? deps.mcpAllowPrivateEndpoint === true : undefined;
-      if (baseUrl) {
-        try {
-          // The public gate stays with the request-time fetch guard.
-          assertAllowedOpenAiCompatibleUrl(baseUrl, {
-            allowPublic: true,
-            allowPrivate: allowPrivateEndpoint,
-          });
-        } catch (error) {
-          throw new UnavailableModelForAuthError((error as Error).message);
+        resolved ??= await resolveAuth();
+        if (
+          !liveCodex &&
+          deps.codexCatalog &&
+          provider === CHATGPT_OAUTH_PROVIDER &&
+          resolved.secret.kind === "oauth"
+        ) {
+          liveCodex = await codexLiveModel(
+            deps.codexCatalog,
+            credentialUserId,
+            resolved.secret,
+            modelId,
+            { waitMs: CODEX_LIVE_RUN_WAIT_MS },
+          );
         }
-      }
-      const acceptsImages =
-        credential.provider === OPENAI_COMPATIBLE_PROVIDER_ID &&
-        resolved.secret.kind === "openai_compatible"
-          ? compatibleModelSeesImages(credential, resolved.secret, modelId)
-          : liveCodex?.supportsImages;
-      const accountId = resolved.secret.kind === "api_key" ? resolved.secret.accountId : undefined;
-      const gatewayId = resolved.secret.kind === "api_key" ? resolved.secret.gatewayId : undefined;
-      cloudflareProviderEnv({ provider, accountId, gatewayId });
-      return {
-        apiKey: resolved.apiKey,
-        accountId,
-        gatewayId,
-        baseUrl,
-        apiProtocol:
-          resolved.secret.kind === "openai_compatible" ? resolved.secret.apiProtocol : undefined,
-        headers: resolved.secret.kind === "openai_compatible" ? resolved.secret.headers : undefined,
-        allowPrivateEndpoint,
-        cacheCapabilities:
-          resolved.secret.kind !== "oauth" ? resolved.secret.cacheCapabilities : undefined,
-        contextWindow: resolved.secret.kind !== "oauth" ? resolved.secret.contextWindow : undefined,
-        reasoning:
-          resolved.secret.kind === "openai_compatible" ? resolved.secret.reasoning : undefined,
-        maxTokens: resolved.secret.maxTokens,
-        thinkingLevel:
-          resolved.secret.kind === "openai_compatible" ? resolved.secret.thinkingLevel : undefined,
-        acceptsImages,
-        maxImagesPerPrompt:
-          resolved.secret.kind === "openai_compatible"
-            ? resolved.secret.maxImagesPerPrompt
-            : undefined,
-        oauth,
-        persistOAuth: oauth
-          ? async (next) => {
-              await withModelCredentialLock(credential.secretId, async () => {
-                const currentRow = await deps.prisma.secret.findFirst({
-                  where: { id: credential.secretId, userId, spaceId: null },
-                });
-                if (!currentRow) return;
-                const current = parseModelSecret(
-                  await deps.secretStore.load(currentRow.ciphertext, currentRow.id),
-                );
-                if (current.kind === "oauth" && !current.reconnectRequired) {
-                  const stored = current.credential;
-                  if (stored.expires > next.expires) return;
-                  if (
-                    stored.access === next.access &&
-                    stored.refresh === next.refresh &&
-                    stored.expires === next.expires
-                  ) {
-                    return;
-                  }
-                }
-                await persist(
-                  serializeModelSecret({
-                    kind: "oauth",
-                    credential: toOAuthCredential(next),
-                    ...(current.maxTokens !== undefined ? { maxTokens: current.maxTokens } : {}),
-                  }),
-                );
-              });
-            }
-          : undefined,
-        refreshOAuth: oauth
+        assertCompatibleModelEnabled(credential, resolved.secret, modelId);
+        const oauth = resolved.secret.kind === "oauth" ? resolved.secret.credential : undefined;
+        const baseUrl =
+          resolved.secret.kind === "openai_compatible" ? resolved.secret.baseUrl : undefined;
+        // Recheck operator configuration for saved private connections on every run.
+        const allowPrivateEndpoint = baseUrl ? deps.mcpAllowPrivateEndpoint === true : undefined;
+        if (baseUrl) {
+          try {
+            // The public gate stays with the request-time fetch guard.
+            assertAllowedOpenAiCompatibleUrl(baseUrl, {
+              allowPublic: true,
+              allowPrivate: allowPrivateEndpoint,
+            });
+          } catch (error) {
+            throw new UnavailableModelForAuthError((error as Error).message);
+          }
+        }
+        const settings = connectionModelSettings(resolved.secret, provider, modelId, credential);
+        // The account catalog knows what a Codex model reads; elsewhere the model's setting
+        // decides wherever the bundled catalog cannot.
+        const acceptsImages = liveCodex?.supportsImages ?? settings.images;
+        const accountId =
+          resolved.secret.kind === "api_key" ? resolved.secret.accountId : undefined;
+        const gatewayId =
+          resolved.secret.kind === "api_key" ? resolved.secret.gatewayId : undefined;
+        cloudflareProviderEnv({ provider, accountId, gatewayId });
+        const projectId =
+          resolved.secret.kind === "api_key" ? resolved.secret.projectId : undefined;
+        const region = resolved.secret.kind === "api_key" ? resolved.secret.region : undefined;
+        const rawPersist = oauth
+          ? persistRefreshedModelCredential(
+              deps.prisma,
+              deps.secretStore,
+              credentialScope,
+              credential.secretId,
+            )
+          : undefined;
+        const rawRefresh = oauth
           ? refreshStoredModelCredential(
               deps.prisma,
               deps.secretStore,
-              { userId, spaceId },
+              credentialScope,
               credential,
               credential.provider,
             )
-          : undefined,
-        retireOAuth: retire,
-        ownCredential: true,
-        redact: [...secretValuesToRedact(resolved.secret), resolved.apiKey].filter(
-          (value): value is string => Boolean(value),
-        ),
-      };
-    });
+          : undefined;
+        return {
+          apiKey: resolved.apiKey,
+          accountId,
+          gatewayId,
+          projectId,
+          region,
+          baseUrl,
+          apiProtocol:
+            resolved.secret.kind === "openai_compatible" ? resolved.secret.apiProtocol : undefined,
+          headers:
+            resolved.secret.kind === "openai_compatible" ? resolved.secret.headers : undefined,
+          allowPrivateEndpoint,
+          cacheCapabilities:
+            resolved.secret.kind !== "oauth" ? resolved.secret.cacheCapabilities : undefined,
+          contextWindow: settings.contextWindow,
+          reasoning: settings.reasoning,
+          maxTokens: settings.maxTokens,
+          acceptsImages,
+          maxImagesPerPrompt: settings.maxImagesPerPrompt,
+          oauth,
+          persistOAuth: rawPersist
+            ? (nextCredential) => withOwnerBypass(() => rawPersist(nextCredential))
+            : undefined,
+          refreshOAuth: rawRefresh
+            ? (held, signal) => withOwnerBypass(() => rawRefresh(held, signal))
+            : undefined,
+          retireOAuth: retire,
+          ownCredential: true,
+          redact: [...secretValuesToRedact(resolved.secret), resolved.apiKey].filter(
+            (value): value is string => Boolean(value),
+          ),
+        };
+      }),
+    );
   }
   if (requireStoredSecret) throw new Error("Backup model credential is no longer available");
   cloudflareProviderEnv({ provider });
@@ -401,6 +399,8 @@ export function resolvedModelRunFields(
     callObserver: resolved.callObserver,
     ...(resolved.accountId ? { accountId: resolved.accountId } : {}),
     ...(resolved.gatewayId ? { gatewayId: resolved.gatewayId } : {}),
+    ...(resolved.projectId ? { projectId: resolved.projectId } : {}),
+    ...(resolved.region ? { region: resolved.region } : {}),
     baseUrl: resolved.baseUrl,
     apiProtocol: resolved.apiProtocol,
     headers: resolved.headers,
@@ -500,9 +500,7 @@ export async function resolveConnectedRunModel(
         ? thinkingLevel
         : credential?.defaultModel === modelId
           ? credential?.thinkingLevel
-          : null) as AgentRunRequest["model"]["thinkingLevel"]) ??
-      resolved.thinkingLevel ??
-      null,
+          : null) as AgentRunRequest["model"]["thinkingLevel"]) ?? null,
   };
 }
 
@@ -570,6 +568,6 @@ export async function resolveRunModel(
     provider,
     id,
     ...resolvedModelRunFields(resolved),
-    thinkingLevel: thinkingLevel ?? resolved.thinkingLevel ?? null,
+    thinkingLevel: thinkingLevel ?? null,
   };
 }

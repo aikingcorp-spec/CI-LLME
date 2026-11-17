@@ -76,7 +76,9 @@ describe("personal integration execution", () => {
       prisma,
       new EncryptedSecretStore("offline-test-key"),
       (config) => {
-        if (config.provider !== "composio") throw new Error("Unexpected provider");
+        if (config.provider !== "composio" || !config.apiKey) {
+          throw new Error("Unexpected provider");
+        }
         return provider(config.apiKey, seen);
       },
     );

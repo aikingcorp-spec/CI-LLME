@@ -39,6 +39,7 @@ export function SidebarHeader({
   navigate,
   setNewSpaceOpen,
   setCreateBotOpen,
+  canCreateSpace = true,
 }: {
   mini?: boolean;
   createMenuOpen: boolean;
@@ -54,10 +55,13 @@ export function SidebarHeader({
   navigate: (path: string) => void;
   setNewSpaceOpen: (open: boolean) => void;
   setCreateBotOpen: (open: boolean) => void;
+  canCreateSpace?: boolean;
 }) {
   const { t } = useLingui();
   const hasWindowChrome = Boolean(desktopBridge());
   const toggleLabel = mini ? t`Show bots` : t`Minimize bots`;
+  // In the icon rail the actions stack, so a label above or below covers its neighbour.
+  const labelSide = mini ? "inline-end" : undefined;
   return (
     <div
       className={`app-drag flex items-center ${mini ? `flex-col gap-2 px-0 pb-2 ${hasWindowChrome ? "pt-4" : "pt-2"}` : "justify-between px-[18px] pb-3 pt-4"}`}
@@ -65,7 +69,7 @@ export function SidebarHeader({
       {hasWindowChrome ? <WindowChrome /> : <SidebarBrand mini={mini} />}
       <div className={`relative flex items-center ${mini ? "flex-col gap-0.5" : "gap-1"}`}>
         {onSearch ? (
-          <IconTooltip label={t`Search`}>
+          <IconTooltip label={t`Search`} side={labelSide}>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -79,7 +83,7 @@ export function SidebarHeader({
             </Button>
           </IconTooltip>
         ) : null}
-        <IconTooltip label={t`Activity`}>
+        <IconTooltip label={t`Activity`} side={labelSide}>
           <Button
             variant="ghost"
             size="icon-sm"
@@ -98,7 +102,7 @@ export function SidebarHeader({
             />
           </Button>
         </IconTooltip>
-        <IconTooltip label={toggleLabel}>
+        <IconTooltip label={toggleLabel} side={labelSide}>
           <Button
             variant="ghost"
             size="icon-sm"
@@ -115,7 +119,7 @@ export function SidebarHeader({
           </Button>
         </IconTooltip>
         <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
-          <IconTooltip label={t`Create`}>
+          <IconTooltip label={t`Create`} side={labelSide}>
             <PopoverTrigger
               render={
                 <Button
@@ -153,11 +157,15 @@ export function SidebarHeader({
                   setMobileSidebarOpen(false);
                   setPanel("create-group");
                 }}
-                onCreateSpace={() => {
-                  setCreateMenuOpen(false);
-                  setMobileSidebarOpen(false);
-                  setNewSpaceOpen(true);
-                }}
+                onCreateSpace={
+                  canCreateSpace
+                    ? () => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setNewSpaceOpen(true);
+                      }
+                    : undefined
+                }
               />
             </PopoverContent>
           ) : null}

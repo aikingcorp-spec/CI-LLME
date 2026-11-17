@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from "@rakazo/ui-web";
 import {
+  ArrowLeftRight,
   BookOpen,
   Download,
   FolderOpen,
@@ -43,7 +44,10 @@ type Props = {
   onLink?: (link: NavLink) => void;
   onArtifacts: () => void;
   onSettings: () => void;
+  /** How much of the member's allowance is used; displayed on the Usage row when available. */
+  usage?: string | null;
   onUsage?: () => void;
+  onSwitchHost?: () => void;
   onLogOut: () => void;
   signingOut: boolean;
   logOutError: string | null;
@@ -70,7 +74,9 @@ export function SidebarFooter({
   onLink,
   onArtifacts,
   onSettings,
+  usage,
   onUsage,
+  onSwitchHost,
   onLogOut,
   signingOut,
   logOutError,
@@ -159,7 +165,7 @@ export function SidebarFooter({
               <ScrollText className="text-muted-foreground" strokeWidth={1.75} />
               <Trans>Skills</Trans>
             </Button>
-            {onUsage ? (
+            {usage ? (
               <Button
                 variant="ghost"
                 className="h-9 w-full justify-start gap-2.5 font-normal"
@@ -167,6 +173,9 @@ export function SidebarFooter({
               >
                 <Gauge className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Usage</Trans>
+                <span className="ms-auto text-body-sm tabular-nums text-muted-foreground">
+                  {usage}
+                </span>
               </Button>
             ) : null}
             <a
@@ -226,6 +235,17 @@ export function SidebarFooter({
               <Trans>Settings</Trans>
             </Button>
             <div className="my-1 border-t border-border" />
+            {onSwitchHost ? (
+              <Button
+                variant="ghost"
+                data-testid="switch-host"
+                className="h-9 w-full justify-start gap-2.5 font-normal"
+                onClick={onSwitchHost}
+              >
+                <ArrowLeftRight className="text-muted-foreground" strokeWidth={1.75} />
+                <Trans>Đổi máy chủ</Trans>
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               className="h-9 w-full justify-start gap-2.5 font-normal"

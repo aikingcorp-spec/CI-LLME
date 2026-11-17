@@ -49,19 +49,28 @@ vi.mock("./AccountSettingsOverlay", () => ({
   ComputerSettingsPanel: () => null,
   GeneralSettingsPanels: () => null,
   UpdatesSettingsPanel: () => null,
-  UsageSettingsPanel: () => null,
 }));
-const { memoryConfigs, memoryConfigChange, providerConfig, updaterStatus } = vi.hoisted(() => ({
-  memoryConfigs: [] as unknown[],
-  memoryConfigChange: { current: (_config: unknown) => {} },
-  providerConfig: vi.fn(async (_spaceId: string): Promise<unknown> => null),
-  updaterStatus: vi.fn(async (): Promise<unknown> => ({ installKind: "compose" })),
-}));
+
+vi.mock("./UsageSettingsPanel", () => ({ UsageSettingsPanel: () => null }));
+const { memoryConfigs, memoryConfigChange, providerConfig, updaterStatus, remoteList } = vi.hoisted(
+  () => ({
+    memoryConfigs: [] as unknown[],
+    memoryConfigChange: { current: (_config: unknown) => {} },
+    providerConfig: vi.fn(async (_spaceId: string): Promise<unknown> => null),
+    updaterStatus: vi.fn(async (): Promise<unknown> => ({ installKind: "compose" })),
+    remoteList: vi.fn(
+      async (): Promise<{ kind: "unavailable"; edition?: "free" | "team"; devices: never[] }> => ({
+        kind: "unavailable" as const,
+        devices: [],
+      }),
+    ),
+  }),
+);
 vi.mock("../lib/rpc", () => ({
   rpc: {
     updater: { status: updaterStatus },
     remoteHosts: {
-      list: async () => ({ kind: "unavailable" as const, devices: [] }),
+      list: remoteList,
       set: async () => ({
         kind: "disabled" as const,
         changed: false,
@@ -121,6 +130,7 @@ vi.mock("../components/ApprovalRulesSettings", () => ({
   ApprovalRulesSettings: recordScope("confirmations"),
 }));
 vi.mock("../components/VaultSettings", () => ({ VaultSettings: recordScope("vault") }));
+vi.mock("./LabsSettingsPanel", () => ({ LabsSettingsPanel: () => null }));
 vi.mock("../components/ComputersUnavailableHint", () => ({
   computersAreUnavailable: () => false,
 }));
@@ -129,6 +139,7 @@ vi.mock("./MessagingSettingsPanel", () => ({
   MessagingSettingsPanel: () => <div data-testid="messaging-panel" />,
 }));
 
+import { setRemoteEdition } from "../lib/remote-edition";
 import { SettingsOverlay } from "./SettingsOverlay";
 import { useSettingsNavItems } from "./settings-nav";
 
@@ -147,9 +158,11 @@ async function render(props: Partial<React.ComponentProps<typeof SettingsOverlay
         <QueryClientProvider client={queryClient}>
           <SettingsOverlay
             name="Jamie"
-            onUsageOpen={() => undefined}
             timezone={null}
             onTimezoneChange={async () => undefined}
+            labs={[]}
+            labsAvailable={["board"]}
+            onLabsChange={async () => undefined}
             memoryConfig={null}
             onMemoryConfigChange={() => undefined}
             onClose={() => undefined}
@@ -318,6 +331,7 @@ function NavProbe({ updates }: { updates: boolean }) {
     computer: false,
     billing: false,
     updates,
+    labs: false,
   });
   return <div>{items.map((item) => item.id).join(" ")}</div>;
 }
@@ -402,6 +416,21 @@ it("opens Messaging when no chat provider is mounted", async () => {
   }
 });
 
+it("hides Labs when the deployment turns every feature on", async () => {
+  const { container, rerender, cleanup } = await render({ section: "labs", labsAvailable: [] });
+  const shown = () =>
+    container.querySelector("[data-settings-section]")?.getAttribute("data-settings-section");
+  try {
+    expect(container.querySelector('[data-testid="settings-nav-labs"]')).toBeNull();
+    expect(shown()).toBe("general");
+    await rerender({ section: "labs", labsAvailable: ["board"] });
+    expect(container.querySelector('[data-testid="settings-nav-labs"]')).not.toBeNull();
+    expect(shown()).toBe("labs");
+  } finally {
+    await cleanup();
+  }
+});
+
 it("says what a page is for only where its name does not", async () => {
   const general = await render({ section: "general" });
   try {
@@ -416,5 +445,38 @@ it("says what a page is for only where its name does not", async () => {
     );
   } finally {
     await voice.cleanup();
+  }
+});
+
+it("hides connection settings for free edition and shows them for team edition", async () => {
+  setRemoteEdition(undefined);
+  remoteList.mockResolvedValueOnce({ kind: "unavailable", edition: "free", devices: [] });
+  const freeView = await render({ section: "connection" });
+  try {
+    expect(freeView.container.querySelector('[data-testid="settings-nav-connection"]')).toBeNull();
+    expect(
+      freeView.container
+        .querySelector("[data-settings-section]")
+        ?.getAttribute("data-settings-section"),
+    ).toBe("general");
+  } finally {
+    await freeView.cleanup();
+    setRemoteEdition(undefined);
+  }
+
+  remoteList.mockResolvedValueOnce({ kind: "unavailable", edition: "team", devices: [] });
+  const teamView = await render({ section: "connection" });
+  try {
+    expect(
+      teamView.container.querySelector('[data-testid="settings-nav-connection"]'),
+    ).not.toBeNull();
+    expect(
+      teamView.container
+        .querySelector("[data-settings-section]")
+        ?.getAttribute("data-settings-section"),
+    ).toBe("connection");
+  } finally {
+    await teamView.cleanup();
+    setRemoteEdition(undefined);
   }
 });

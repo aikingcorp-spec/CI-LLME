@@ -13,7 +13,6 @@ import type {
 import type {
   CloudAgentConnection,
   CodexLiveCatalog,
-  ComposioProvider,
   ConnectorRegistry,
   FaviconResolver,
   IntegrationProviderSettings,
@@ -21,6 +20,7 @@ import type {
   McpOAuthBroker,
   MemoryProviderResolver,
   MessagingConnectionRuntime,
+  MessagingDelivery,
   MessagingInstallations,
   PiOAuthLogins,
   PlanLimitsReader,
@@ -30,11 +30,12 @@ import type {
   PushTokenStore,
   RemoteConnectorDependencies,
   TicketChangeNotifier,
+  UserCloudAgents,
   verifyModelServesAgents,
   WorkActivities,
 } from "@rakazo/adapters";
 import type { Auth } from "@rakazo/auth";
-import type { NavLink } from "@rakazo/contracts";
+import type { LabFeature, ModelCredential, NavLink } from "@rakazo/contracts";
 import type { RemoteAccessProvider } from "@rakazo/core";
 import type { BoardEvents, PrismaClient, ThreadEvents } from "@rakazo/db";
 import type { BillingService } from "./billing.js";
@@ -65,19 +66,21 @@ import { spendingLimitRoutes } from "./routes/spending-limit.js";
 import { threadsRoutes } from "./routes/threads.js";
 import type { VoiceDeps } from "./voice.js";
 
+export { botIntroPrompt } from "./hidden-turns.prompt.js";
 export { nextConnectionLabel } from "./model-credentials.js";
-export { botIntroPrompt, enqueueBotIntroRun } from "./routes/bots.js";
+export { enqueueBotIntroRun } from "./routes/bots.js";
 export { HEARTBEAT_MS, SESSION_RECHECK_MS } from "./routes/shared.js";
 export { callMarkerClientNonce } from "./routes/threads.js";
 
 export interface RouterDeps {
   pushTokens: PushTokenStore;
   /** Absent when the deployment cannot update a phone's live status card. */
-  workActivities?: Pick<WorkActivities, "register">;
+  workActivities?: Pick<WorkActivities, "register" | "registerStarts">;
   /** Stops a call's ring on the owner's other devices once it is settled. */
   notifications?: NotificationProvider;
   analytics?: ProductAnalytics;
   cloudAgent?: CloudAgentConnection | null;
+  userCloudAgents?: UserCloudAgents;
   /** The deployment's wallet provider; absent hides purchases. */
   paymentWallet?: PaymentWalletProvider | null;
   prisma: PrismaClient;
@@ -92,7 +95,11 @@ export interface RouterDeps {
     present: (error?: boolean) => Promise<RemoteRegistryResult>;
     list: () => Promise<RemoteRegistryResult>;
     set: (enabled: boolean, confirmed: boolean) => Promise<RemoteRegistryResult>;
+    recordMember?: (memberAccountId: string) => Promise<RemoteRegistryResult>;
+    revokeMember?: (memberAccountId: string) => Promise<RemoteRegistryResult>;
   };
+  /** Resolves an account's edition on central; absent on local desktop hosts. */
+  accountEdition?: (userId: string) => Promise<"free" | "team" | null>;
   /** Starts or stops the host connector. A missing token stops it. */
   adoptConnector?: (token: string | undefined) => void;
   /** Central session asks for a one-time host entrance. Null when the computer is not ready. */
@@ -111,12 +118,12 @@ export interface RouterDeps {
   memoryProviders: MemoryProviderResolver;
   home: AgentHomeStore;
   secrets: SecretStore;
-  oauthLogins: PiOAuthLogins;
+  oauthLogins: PiOAuthLogins<ModelCredential>;
   /** Live Codex catalog seam; defaults to the shared per-process cache. */
   codexCatalog?: CodexLiveCatalog;
   providerCatalog?: ProviderCatalogCache;
-  /** Allowance readings for signed-in connections. Defaults to the shared per-process cache. */
-  planLimits?: Pick<PlanLimitsReader, "read">;
+  /** Subscription allowance readings; defaults to the shared per-process cache. */
+  planLimits?: PlanLimitsReader;
   /** HTTP transport for model connection checks and catalog probes. */
   modelConnectionFetch?: typeof fetch;
   /** One real request proving a newly keyed model can serve agents; absent skips it. */
@@ -132,7 +139,6 @@ export interface RouterDeps {
   integrationSettings?: IntegrationProviderSettings;
   /** True for an origin this install serves. Used to send OAuth back to that host. */
   trustedOrigin?: (origin: string) => boolean;
-  composio?: ComposioProvider;
   mcpOAuth?: McpOAuthBroker;
   /** Probes MCP server health; without it servers are never probed from here. */
   mcp?: Pick<McpConnector, "probe">;
@@ -143,6 +149,8 @@ export interface RouterDeps {
   artifacts: ArtifactStore;
   dataDir: string;
   messagingInstallations?: MessagingInstallations;
+  /** Sends replies to the chat apps people message from; absent without one. */
+  messagingDelivery?: MessagingDelivery;
   messaging?: {
     enabled: boolean;
     providers: string[];
@@ -164,9 +172,10 @@ export interface RouterDeps {
   env: {
     /** Domain of bots' email addresses; unset when this server receives no email. */
     inboundEmailDomain?: string;
-    ticketBoardEnabled?: boolean;
     navLinks?: NavLink[];
     adminEmails?: string[];
+    /** Labs features this deployment turns on for every account. */
+    deploymentLabs?: LabFeature[];
     phoneCallsEnabled?: boolean;
     phoneCallRingSeconds?: number;
     maxUploadSizeBytes?: number;
@@ -182,6 +191,8 @@ export interface RouterDeps {
     remotePortalOrigin?: string;
     privacyPolicyUrl?: string;
     screenProxySecret: string;
+    /** Keys the hash that names an invited address in the security log, so it can't be guessed. */
+    invitationRecipientKey: string;
     sandboxProvider: string;
     /** True when this process holds a valid managed loopback host bridge. */
     nativeHostBridge?: boolean;

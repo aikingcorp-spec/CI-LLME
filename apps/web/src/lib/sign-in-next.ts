@@ -2,7 +2,8 @@ import { machineDestination } from "./remote-frame";
 export const MCP_OAUTH_CALLBACK_PATH = "/mcp/oauth/callback";
 export const SLACK_INSTALL_CALLBACK_PATH = "/messaging/slack/callback";
 
-const INVITE_PATH = /^\/invite\/[A-Za-z0-9_-]{1,200}$/;
+// A Space invite link, or an organization invitation's Join page.
+const INVITE_PATH = /^\/(invite|join)\/[A-Za-z0-9_-]{1,200}$/;
 const REMOTE_JOIN_PATH = "/remote-join";
 
 /** The page sign-in or sign-up may return to; anything else is ignored, so `next` can't redirect off the app. */

@@ -92,3 +92,44 @@ export function clearPendingFrameInvite(): void {
     /* Storage is optional. */
   }
 }
+
+let pinnedPortalOrigin: string | null = null;
+
+export function setPinnedRemotePortalOrigin(origin: string | null): void {
+  pinnedPortalOrigin = origin;
+}
+
+export function isInsideRemoteFrame(): boolean {
+  return typeof window !== "undefined" && window.parent !== window;
+}
+
+/** Asks the pinned central portal frame to return to its host picker without signing out. */
+export async function requestRemoteHostSwitch(): Promise<boolean> {
+  if (!isInsideRemoteFrame()) return false;
+  let origin = pinnedPortalOrigin;
+  if (!origin) {
+    try {
+      const response = await fetch("/api/remote-entry");
+      if (response.ok) {
+        const value: unknown = await response.json();
+        if (
+          value &&
+          typeof value === "object" &&
+          "portalOrigin" in value &&
+          typeof value.portalOrigin === "string"
+        ) {
+          const url = new URL(value.portalOrigin);
+          if (url.protocol === "https:" && url.origin === value.portalOrigin) {
+            origin = url.origin;
+            pinnedPortalOrigin = origin;
+          }
+        }
+      }
+    } catch {
+      /* Ignore lookup failure; caller can fall back. */
+    }
+  }
+  if (!origin) return false;
+  window.parent.postMessage({ type: "vnbot.remote.switch-host" }, origin);
+  return true;
+}

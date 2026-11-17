@@ -8,8 +8,12 @@ import { QueryUserProvider } from "../lib/query";
 import { rememberedComputerKey } from "../lib/remembered-computer";
 import { RemotePortalPage, RemotePortalView } from "./RemotePortal";
 
-const { list, enter } = vi.hoisted(() => ({ list: vi.fn(), enter: vi.fn() }));
-vi.mock("../lib/rpc", () => ({ rpc: { remoteHosts: { list, enter } } }));
+const { list, enter, revoke } = vi.hoisted(() => ({
+  list: vi.fn(),
+  enter: vi.fn(),
+  revoke: vi.fn(),
+}));
+vi.mock("../lib/rpc", () => ({ rpc: { remoteHosts: { list, enter, revoke } } }));
 vi.mock("./PageAccountMenu", () => ({
   PageAccountMenu: () => (
     <button type="button" data-testid="account-menu">
@@ -478,4 +482,67 @@ it("does not follow or save an enter that finishes after the account changes", a
   expect(localStorage.getItem(preferenceKey("user-b", origin))).toBeNull();
   expect(view.container.querySelector("[data-testid='account-menu']")).not.toBeNull();
   await view.unmount();
+});
+
+it("navigates with shortCode when available while remembering canonical deviceId", async () => {
+  const assign = stubAssign();
+  const userId = "user-a";
+  const key = preferenceKey(userId);
+  const shortMachine = { ...ready, shortCode: "ab12cd34" };
+  list.mockResolvedValue({
+    kind: "open",
+    deviceId: "b",
+    logicalHost: "hb",
+    shortCode: "ab12cd34",
+    devices: [shortMachine],
+  });
+  enter.mockResolvedValue({ href: "https://host.example/open" });
+  const view = await render(page(userId));
+  expect(enter).toHaveBeenCalledWith({ deviceId: "b" });
+  expect(assign).toHaveBeenCalledWith("/m/ab12cd34/app");
+  expect(JSON.parse(localStorage.getItem(key) ?? "")).toEqual({ deviceId: "b" });
+  await view.unmount();
+});
+
+it("shows an invited badge for invited devices without changing open host label", async () => {
+  const invitedHost = { ...ready, invited: true };
+  const view = await render(
+    <RemotePortalView
+      portal={{ kind: "open", deviceId: "b", logicalHost: "hb", devices: [invitedHost] }}
+    />,
+  );
+  expect(view.container.querySelector("[data-testid='remote-portal-open']")?.textContent).toBe(
+    "hb",
+  );
+  expect(view.container.querySelector("[data-testid='remote-portal-invited-b']")?.textContent).toBe(
+    "Được mời",
+  );
+  await view.unmount();
+});
+
+it("does not bounce right back into the single ready computer when ?choose=1 is set and lets invited computers be dismissed", async () => {
+  window.history.replaceState(null, "", "/app?choose=1");
+  const invitedHost = { ...ready, invited: true };
+  list.mockResolvedValue({
+    kind: "open",
+    deviceId: "b",
+    logicalHost: "hb",
+    devices: [invitedHost],
+  });
+  revoke.mockResolvedValue({ portal: { kind: "unavailable", devices: [] } });
+  const view = await render(page("user-a"));
+  try {
+    expect(enter).not.toHaveBeenCalled();
+    expect(view.container.querySelector("[data-testid='remote-portal-pick-b']")).not.toBeNull();
+    const dismiss = view.container.querySelector<HTMLButtonElement>(
+      "[data-testid='remote-portal-dismiss-b']",
+    );
+    expect(dismiss).not.toBeNull();
+    await act(async () => dismiss!.click());
+    expect(revoke).toHaveBeenCalledWith({ deviceId: "b" });
+    expect(view.container.querySelector("[data-testid='remote-portal-empty']")).not.toBeNull();
+  } finally {
+    window.history.replaceState(null, "", "/");
+    await view.unmount();
+  }
 });

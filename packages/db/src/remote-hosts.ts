@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type {
   RemoteAccessProvider,
   RemoteDevice,
@@ -18,11 +18,25 @@ import {
 } from "@rakazo/core";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
+import { isUniqueViolation } from "./prisma-errors.js";
 import { runAsSystem } from "./row-security.js";
+
+const SHORT_CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+const SHORT_CODE_RE = /^[a-z0-9]{8}$/;
+
+export function generateRemoteShortCode(): string {
+  const bytes = randomBytes(8);
+  let out = "";
+  for (let i = 0; i < 8; i++) {
+    out += SHORT_CODE_ALPHABET[bytes[i]! % SHORT_CODE_ALPHABET.length];
+  }
+  return out;
+}
 
 type RemoteHostRow = {
   deviceId: string;
   accountId: string;
+  shortCode: string | null;
   remoteEnabled: boolean;
   heartbeatAt: Date | null;
   providerError: boolean;
@@ -52,10 +66,12 @@ function deviceOf(row: RemoteHostRow): RemoteDevice {
   };
 }
 
-function view(row: RemoteHostRow, now: Date): RemotePortalDevice {
+function view(row: RemoteHostRow, now: Date, options?: { invited?: boolean }): RemotePortalDevice {
   return {
     deviceId: row.deviceId,
     logicalHost: row.logicalHost,
+    shortCode: row.shortCode,
+    ...(options?.invited ? { invited: true } : {}),
     remoteEnabled: row.remoteEnabled,
     state: remotePresence({
       remoteEnabled: row.remoteEnabled,
@@ -66,17 +82,61 @@ function view(row: RemoteHostRow, now: Date): RemotePortalDevice {
   };
 }
 
+const REMOTE_HOST_SELECT = {
+  deviceId: true,
+  accountId: true,
+  shortCode: true,
+  remoteEnabled: true,
+  heartbeatAt: true,
+  providerError: true,
+  providerObjectId: true,
+  logicalHost: true,
+} as const;
+
+async function readRemoteHostByKey(
+  db: PrismaClient,
+  key: string,
+): Promise<RemoteHostRow | null> {
+  const byDevice = await db.remoteHost.findUnique({
+    where: { deviceId: key },
+    select: REMOTE_HOST_SELECT,
+  });
+  if (byDevice) return byDevice;
+  if (!SHORT_CODE_RE.test(key)) return null;
+  return db.remoteHost.findUnique({
+    where: { shortCode: key },
+    select: REMOTE_HOST_SELECT,
+  });
+}
+
+export async function findRemoteHostByKey(
+  db: PrismaClient,
+  key: string,
+): Promise<RemoteHostRow | null> {
+  return runAsSystem("find a remote computer", () => readRemoteHostByKey(db, key));
+}
+
 /** One computer's public state. No provider id and no connector token. */
 export async function remoteHostEntrance(
   db: PrismaClient,
-  deviceId: string,
+  deviceIdOrShortCode: string,
   now: Date,
-): Promise<{ logicalHost: string; state: RemotePortalDevice["state"] } | null> {
+): Promise<{
+  deviceId: string;
+  shortCode: string | null;
+  logicalHost: string;
+  state: RemotePortalDevice["state"];
+} | null> {
   return runAsSystem("read one remote computer", async () => {
-    const row = await db.remoteHost.findUnique({ where: { deviceId } });
+    const row = await readRemoteHostByKey(db, deviceIdOrShortCode);
     if (!row) return null;
     const shown = view(row, now);
-    return { logicalHost: shown.logicalHost, state: shown.state };
+    return {
+      deviceId: row.deviceId,
+      shortCode: row.shortCode,
+      logicalHost: shown.logicalHost,
+      state: shown.state,
+    };
   });
 }
 
@@ -109,15 +169,7 @@ function command(
 
 async function rowsOf(db: PrismaClient): Promise<RemoteHostRow[]> {
   return db.remoteHost.findMany({
-    select: {
-      deviceId: true,
-      accountId: true,
-      remoteEnabled: true,
-      heartbeatAt: true,
-      providerError: true,
-      providerObjectId: true,
-      logicalHost: true,
-    },
+    select: REMOTE_HOST_SELECT,
   });
 }
 
@@ -245,15 +297,84 @@ export async function reconcileRemoteHosts(
   });
 }
 
+async function allocateShortCode(
+  tx: Pick<PrismaClient, "remoteHost">,
+): Promise<string> {
+  for (let attempt = 0; attempt < 16; attempt++) {
+    const candidate = generateRemoteShortCode();
+    const taken = await tx.remoteHost.findUnique({
+      where: { shortCode: candidate },
+      select: { deviceId: true },
+    });
+    if (!taken) return candidate;
+  }
+  throw new Error("Could not allocate unique remote short code");
+}
+
+export async function recordRemoteHostMember(
+  db: PrismaClient,
+  input: { deviceId: string; accountId: string; invitedBy: string },
+): Promise<boolean> {
+  return runAsSystem("record a remote host member", async () => {
+    const host = await db.remoteHost.findUnique({
+      where: { deviceId: input.deviceId },
+      select: { deviceId: true, accountId: true },
+    });
+    if (!host || host.accountId === input.accountId) return false;
+    await db.remoteHostMember.upsert({
+      where: {
+        deviceId_accountId: { deviceId: input.deviceId, accountId: input.accountId },
+      },
+      create: {
+        deviceId: input.deviceId,
+        accountId: input.accountId,
+        invitedBy: input.invitedBy,
+      },
+      update: {},
+    });
+    return true;
+  });
+}
+
+export async function revokeRemoteHostMember(
+  db: PrismaClient,
+  input: { deviceId: string; accountId: string },
+): Promise<boolean> {
+  return runAsSystem("revoke a remote host member", async () => {
+    const deleted = await db.remoteHostMember.deleteMany({
+      where: { deviceId: input.deviceId, accountId: input.accountId },
+    });
+    return deleted.count > 0;
+  });
+}
+
 export async function listRemoteHosts(
   db: PrismaClient,
   provider: RemoteAccessProvider,
-  input: { accountId: string; now: Date },
+  input: { accountId: string; now: Date; includeOwned?: boolean },
 ): Promise<RemotePortal> {
   await reconcileRemoteHosts(db, provider, input.now);
   return runAsSystem("list one account's remote computers", async () => {
-    const rows = await rowsOf(db);
-    return portalFor(rows, input.accountId, input.now);
+    const includeOwned = input.includeOwned ?? true;
+    const ownedRows = includeOwned
+      ? await db.remoteHost.findMany({
+          where: { accountId: input.accountId },
+          select: REMOTE_HOST_SELECT,
+        })
+      : [];
+    const memberships = await db.remoteHostMember.findMany({
+      where: { accountId: input.accountId },
+      include: { host: { select: REMOTE_HOST_SELECT } },
+      orderBy: { createdAt: "asc" },
+    });
+    const seen = new Set(ownedRows.map((row) => row.deviceId));
+    const devices: RemotePortalDevice[] = ownedRows.map((row) => view(row, input.now));
+    for (const membership of memberships) {
+      if (seen.has(membership.host.deviceId)) continue;
+      seen.add(membership.host.deviceId);
+      devices.push(view(membership.host, input.now, { invited: true }));
+    }
+    return remotePortal(devices);
   });
 }
 
@@ -266,17 +387,40 @@ export async function registerRemoteHost(
       await tx.$executeRaw(LOCK);
       const rows = await rowsOf(tx as unknown as PrismaClient);
       const result = registerRemoteDevice(rows.map(deviceOf), input);
+      let updated = false;
       if (result.changed) {
-        await tx.remoteHost.create({
-          data: {
-            deviceId: input.deviceId,
-            accountId: input.accountId,
-            remoteEnabled: false,
-            logicalHost: remoteLogicalHost(input.deviceId),
-          },
-        });
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const shortCode = await allocateShortCode(tx as unknown as PrismaClient);
+          try {
+            await tx.remoteHost.create({
+              data: {
+                deviceId: input.deviceId,
+                accountId: input.accountId,
+                shortCode,
+                remoteEnabled: false,
+                logicalHost: remoteLogicalHost(input.deviceId),
+              },
+            });
+            updated = true;
+            break;
+          } catch (error) {
+            if (!isUniqueViolation(error) || attempt === 4) throw error;
+          }
+        }
+      } else {
+        const existing = rows.find(
+          (row) => row.deviceId === input.deviceId && row.accountId === input.accountId,
+        );
+        if (existing && !existing.shortCode) {
+          const shortCode = await allocateShortCode(tx as unknown as PrismaClient);
+          await tx.remoteHost.update({
+            where: { deviceId: input.deviceId },
+            data: { shortCode },
+          });
+          updated = true;
+        }
       }
-      const stored = result.changed ? await rowsOf(tx as unknown as PrismaClient) : rows;
+      const stored = updated ? await rowsOf(tx as unknown as PrismaClient) : rows;
       return command(result, stored, input.accountId, input.now);
     }),
   );
@@ -358,12 +502,16 @@ export async function noteRemoteHeartbeat(
   await runAsSystem("record that a remote computer is online", async () => {
     const current = await db.remoteHost.findUnique({
       where: { deviceId: input.deviceId },
-      select: { accountId: true },
+      select: { accountId: true, shortCode: true },
     });
     if (current?.accountId !== input.accountId) return;
     await db.remoteHost.update({
       where: { deviceId: input.deviceId },
-      data: { heartbeatAt: input.now, providerError: input.error },
+      data: {
+        heartbeatAt: input.now,
+        providerError: input.error,
+        ...(current.shortCode ? {} : { shortCode: await allocateShortCode(db) }),
+      },
     });
     const row = (await rowsOf(db)).find((item) => item.deviceId === input.deviceId);
     if (row?.remoteEnabled && !input.error) await grantObject(db, provider, row);

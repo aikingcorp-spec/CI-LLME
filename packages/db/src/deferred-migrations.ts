@@ -153,7 +153,10 @@ async function rollBackLockConflict(migrationUrl: string, migrationsPath: string
 
 /** Resolve from the packaged database dependencies, independent of cwd and PATH. */
 export function migrationPrismaCli(dbPackageDir: string): string {
-  return createRequire(path.join(dbPackageDir, "package.json")).resolve("prisma/build/index.js");
+  const manifest = createRequire(path.join(dbPackageDir, "package.json")).resolve(
+    "prisma/package.json",
+  );
+  return path.join(path.dirname(manifest), "build/index.js");
 }
 
 /**
@@ -211,7 +214,12 @@ export async function deployMigrations(input: {
         const retried =
           delay === undefined
             ? undefined
-            : await rollBackLockConflict(input.migrationUrl, migrationsPath).catch(() => undefined);
+            : await rollBackLockConflict(input.migrationUrl, migrationsPath).catch((checkError) => {
+                throw new AggregateError(
+                  [error, checkError],
+                  "Migration failed, and checking whether it lost a lock failed too",
+                );
+              });
         if (!retried) throw error;
         process.stdout.write(`${retried} lost a lock to running queries; retrying\n`);
         await new Promise((resolve) => setTimeout(resolve, delay));

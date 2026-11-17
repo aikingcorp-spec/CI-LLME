@@ -70,4 +70,16 @@ export const VI_MESSAGES: Record<string, string> = {
     "Tệp máy tính đã lưu của bạn sẽ bị xóa vào {date} trừ khi bạn đăng ký lại.",
   "Your saved computer files will be deleted on {date} unless you choose a plan.":
     "Tệp máy tính đã lưu của bạn sẽ bị xóa vào {date} trừ khi bạn chọn một gói.",
+  "{inviter} invited you to {organization} on VNBot":
+    "{inviter} đã mời bạn vào {organization} trên VNBot",
+  "{inviter} invited you to join {organization} on VNBot.":
+    "{inviter} đã mời bạn tham gia {organization} trên VNBot.",
+  "Join {organization}": "Tham gia {organization}",
+  "This invitation expires in 7 days. Sign in with this email address to accept it.":
+    "Lời mời này hết hạn sau 7 ngày. Đăng nhập bằng địa chỉ email này để chấp nhận.",
+  "{inviter} invited you to {space} on VNBot": "{inviter} đã mời bạn vào {space} trên VNBot",
+  "{inviter} invited you to join {space} on VNBot.":
+    "{inviter} đã mời bạn tham gia {space} trên VNBot.",
+  "Join {space}": "Tham gia {space}",
+  "This invitation expires in 7 days.": "Lời mời này hết hạn sau 7 ngày.",
 };

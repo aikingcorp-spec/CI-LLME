@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Field, FieldLabel, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
+import { Field, FieldLabel, OptionSelect } from "@rakazo/ui-web";
 import { useQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { useSpaceQueries } from "../../lib/query";
@@ -40,39 +40,29 @@ export function NativeVoiceSettings({ disabled = false }: { disabled?: boolean }
         <FieldLabel htmlFor={`${ids}-account`}>
           <Trans>Account voice</Trans>
         </FieldLabel>
-        <NativeSelect
+        <OptionSelect
           id={`${ids}-account`}
           value={status.data?.credentialId ?? ""}
           disabled={disabled || pending || !status.data}
-          onChange={(event) =>
-            void configure(event.target.value || null, status.data?.voiceId ?? "cove")
-          }
-        >
-          <NativeSelectOption value="">{t`Off`}</NativeSelectOption>
-          {choices.map((credential) => (
-            <NativeSelectOption key={credential.id} value={credential.id}>
-              {credential.label}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+          options={[
+            { value: "", label: t`Off` },
+            ...choices.map((credential) => ({ value: credential.id, label: credential.label })),
+          ]}
+          onValueChange={(next) => void configure(next || null, status.data?.voiceId ?? "cove")}
+        />
       </Field>
       {status.data?.enabled ? (
         <Field>
           <FieldLabel htmlFor={`${ids}-voice`}>
             <Trans>Voice</Trans>
           </FieldLabel>
-          <NativeSelect
+          <OptionSelect
             id={`${ids}-voice`}
             value={status.data.voiceId}
             disabled={disabled || pending}
-            onChange={(event) => void configure(status.data!.credentialId, event.target.value)}
-          >
-            {status.data.voices.map((voice) => (
-              <NativeSelectOption key={voice} value={voice}>
-                {voice}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+            options={status.data.voices.map((voice) => ({ value: voice, label: voice }))}
+            onValueChange={(next) => void configure(status.data!.credentialId, next)}
+          />
         </Field>
       ) : null}
       {error || loadError ? (

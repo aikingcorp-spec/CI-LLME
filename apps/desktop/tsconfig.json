@@ -7,5 +7,9 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/app-document-state.test.ts", "src/setup.test.ts", "src/splash.test.ts"]
+  "exclude": [
+    "src/main/app-document-state.test.ts",
+    "src/setup-renderer/setup.test.ts",
+    "src/main/splash.test.ts"
+  ]
 }

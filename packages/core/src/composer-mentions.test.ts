@@ -328,7 +328,6 @@ describe("filterComposerMentionTargets", () => {
     expect(find("moi ng")).toEqual(["everyone"]);
     expect(find("mọi".normalize("NFD"))).toEqual(["everyone"]);
   });
-
   it("leaves all to a group member named All, as routing does, but not to a bot outside it", () => {
     const everyoneIn = (memberNames: string[]) =>
       buildComposerMentionOptions({

@@ -45,6 +45,27 @@ it("does not select a guest session as this computer's account", async () => {
   await expect(soleSignedInAccount(guestOnly, now)).resolves.toBeNull();
 });
 
+it("prefers machineOwnerUserId when both owner and another non-guest are signed in", async () => {
+  const now = new Date("2026-11-11T00:00:00Z");
+  const db = {
+    user: {
+      findFirst: async () => ({ id: "owner" }),
+    },
+    session: {
+      findFirst: async ({ where }: { where: { userId: string } }) =>
+        where.userId === "owner" ? { id: "s-owner" } : null,
+      findMany: async () => [{ userId: "owner" }, { userId: "co-member" }],
+    },
+    member: {
+      findMany: async () => [
+        { userId: "owner", role: "owner" },
+        { userId: "co-member", role: "member" },
+      ],
+    },
+  } as unknown as PrismaClient;
+  await expect(soleSignedInAccount(db, now)).resolves.toBe("owner");
+});
+
 it("keeps reporting the account this process already named", async () => {
   vi.useFakeTimers();
   const present = vi.fn(async () => undefined);

@@ -57,7 +57,7 @@ function errorFacts(value: unknown) {
   visit(value, 0);
   for (const detail of text) {
     for (const match of detail.matchAll(
-      /(?:\b(?:http(?:\s+status(?:\s+code)?)?|status(?:\s+code)?|error\s+code)\s*[:=]?\s*|\bapi error\s*\(\s*|^\s*)([45]\d{2})\b/gi,
+      /(?:\b(?:http(?:\s+status(?:\s+code)?)?|status(?:\s+code)?|error\s+code)\s*(?:[:=]\s*)?|\bapi error\s*\(\s*|^\s*)([45]\d{2})\b/gi,
     )) {
       statuses.add(Number(match[1]));
     }
@@ -104,6 +104,13 @@ export function isModelCredentialRejected(error: unknown): boolean {
   );
 }
 
+/** A provider's sign-in service answers 400 `request_failed` when it asks the client to retry. */
+export function isSignInRetryRequest(error: unknown): boolean {
+  return /"error"\s*:\s*"request_failed"/.test(
+    error instanceof Error ? error.message : String(error),
+  );
+}
+
 /** Only provider availability failures may advance the user's explicit chain. */
 export function isRetryableProviderUnavailable(error: unknown): boolean {
   const { text, statuses } = errorFacts(error);
@@ -121,7 +128,7 @@ export function isRetryableProviderUnavailable(error: unknown): boolean {
   if (/you have hit your chatgpt usage limit/.test(text)) return true;
   if (
     [400, 401, 403].some((status) => statuses.has(status)) ||
-    /\b(?:http(?:\s+status(?:\s+code)?)?|status(?:\s+code)?|error\s+code)\s*[:=]?\s*(?:400|401|403)\b/.test(
+    /\b(?:http(?:\s+status(?:\s+code)?)?|status(?:\s+code)?|error\s+code)\s*(?:[:=]\s*)?(?:400|401|403)\b/.test(
       text,
     )
   ) {

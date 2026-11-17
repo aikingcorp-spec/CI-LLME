@@ -314,7 +314,6 @@ describe("mentionedGroupBotIds", () => {
     expect(mentionedGroupBotIds({ text: "@tất cả xem", members: roster })).toEqual(["vn"]);
     expect(mentionedGroupBotIds({ text: "@mọi người", members: roster })).toHaveLength(4);
   });
-
   it("reads @所有人 as a member named 所有人", () => {
     const roster = [...members, { id: "zh", name: "所有人" }];
     expect(mentionedGroupBotIds({ text: "@所有人 看下", members: roster })).toEqual(["zh"]);

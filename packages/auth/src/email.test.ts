@@ -16,6 +16,10 @@ import {
 } from "./email.js";
 import { homeDeletionEmail } from "./home-deletion-email.js";
 import {
+  organizationInvitationEmail,
+  spaceInvitationEmail,
+} from "./organization-invitation-email.js";
+import {
   integrationClaimConfirmEmail,
   pluginSubmissionAdminEmail,
   pluginSubmissionReceivedEmail,
@@ -88,6 +92,11 @@ it("shares the layout across account, product and marketplace emails", async () 
     homeDeletionEmail(user, new Date(), "plan-ended", url),
     homeDeletionEmail(user, new Date(), "unused", url),
     referralEmail(user, url, url),
+    organizationInvitationEmail(user.email, {
+      organizationName: "Acme",
+      inviterName: "Sam",
+      url,
+    }),
     pluginSubmissionReceivedEmail(user.email),
     integrationClaimConfirmEmail(user.email, url),
     pluginSubmissionAdminEmail(
@@ -274,6 +283,17 @@ describe("email languages", () => {
     expect(english.html).toContain('href="https://dl.vnbot.run/desktop"');
     expect(english.html).not.toContain("rakazo.com");
     expect(english.text).not.toContain("github.com");
+  });
+
+  it("names a Space invitation's Space, never an organization, in every language", async () => {
+    const invitation = { spaceName: "Clients", inviterName: "Ana", url: "https://example.test/i" };
+    const english = await spaceInvitationEmail("guest@example.test", invitation);
+    expect(english.subject).toBe("Ana invited you to Clients on VNBot");
+    expect(english.text).toContain("This invitation expires in 7 days.");
+    expect(english.text).not.toContain("Sign in with this email address");
+    const turkish = await spaceInvitationEmail("guest@example.test", invitation, "tr");
+    expect(turkish.subject).toBe("Ana sizi VNBot'ta Clients alanına davet etti");
+    expect(turkish.text).not.toContain("kuruluş");
   });
 
   it.each(Object.entries(CATALOGS))(

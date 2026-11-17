@@ -25,7 +25,7 @@ import {
 import { getGlobalBroadcastChannel } from "better-auth/client";
 import { useSyncExternalStore } from "react";
 import { pickUp } from "./call-pickup.js";
-import { dictation } from "./dictation.js";
+import { dictation, usesServerDictation } from "./dictation.js";
 import {
   newLogoAvatarActivitySource,
   openLogoAvatarActivityFeed,
@@ -167,6 +167,7 @@ export function startCall(call: {
 }): void {
   if (leaving) return;
   endCall();
+  prepareCallAudio();
   callId = call.answered?.callId ?? newClientId();
   transcribe = call.transcribe;
   spokenMemory.clear();
@@ -317,7 +318,11 @@ export function startCall(call: {
     if (speech.status === "speaking") {
       bargedIn = false;
       set({ phase: "speaking", caption: speech.caption ?? "" });
-      // The mic stays open through playback so the caller can talk over the reply.
+      if (micOpen && dictation.recording) {
+        dictation.stop("cancel");
+        micOpen = false;
+      }
+      // Recognition stays open through playback so the caller can talk over the reply.
       void openMic();
     } else if (speech.status === "idle" && state.phase !== "listening" && !bargedIn) {
       set({ caption: "" });
@@ -327,6 +332,11 @@ export function startCall(call: {
   });
   unsubDictation = dictation.subscribe((heard) => {
     if (!state) return;
+    if (state.phase === "speaking" && dictation.recording) {
+      dictation.stop("cancel");
+      micOpen = false;
+      return;
+    }
     if (heard.status === "listening") {
       set({ heard: pendingCallSecretAsk(thread) ? "" : heard.transcript });
       watchInterim(heard.transcript);
@@ -364,6 +374,10 @@ export function startCall(call: {
       void listen();
     });
   });
+}
+
+export function prepareCallAudio(): void {
+  speaker.unlock();
 }
 
 export function endCall(): void {
@@ -705,6 +719,7 @@ async function listen() {
 /** Starts dictation unless it is already running, muted, or waiting on a typed secret. */
 async function openMic() {
   if (!state || micOpen || state.muted || pendingCallSecretAsk(thread)) return;
+  if (state.phase === "speaking" && usesServerDictation(transcribe)) return;
   micOpen = true;
   try {
     await dictation.listen({

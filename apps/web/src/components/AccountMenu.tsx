@@ -1,4 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
+import { canDeleteOrganization } from "@rakazo/core";
 import {
   Button,
   cn,
@@ -21,11 +22,13 @@ import { useState } from "react";
 import { authClient } from "../lib/auth";
 import { switchOrganization, useOrganizations } from "../lib/organizations";
 import { useQueryUserId } from "../lib/query";
+import { isInsideRemoteFrame, requestRemoteHostSwitch } from "../lib/remote-frame";
+import { DeleteOrganizationDialog, removeOrganization } from "../pages/OrganizationSettingsPanel";
 import { DeleteAccountForm, hasDeleteRedirectError } from "./AccountAccess";
 
 /**
- * The way out before the app opens (plan choice, onboarding): log out or delete the account,
- * without reaching settings.
+ * The way out before the app opens (plan choice, onboarding): switch organization, delete an
+ * unwanted one, log out or delete the account, without reaching settings.
  */
 export function AccountMenu({
   disabled,
@@ -42,8 +45,13 @@ export function AccountMenu({
   const email = authClient.useSession().data?.user.email;
   const userId = useQueryUserId();
   const { organizations, activeOrganizationId } = useOrganizations();
+  const inRemoteFrame = isInsideRemoteFrame();
   // An SSO sign-in to confirm deletion returns here; reopen so its error is seen.
-  const [deleting, setDeleting] = useState(hasDeleteRedirectError);
+  const [deleting, setDeleting] = useState(() => !inRemoteFrame && hasDeleteRedirectError());
+  const [deletingOrganization, setDeletingOrganization] = useState(false);
+  const active = organizations.find((organization) => organization.id === activeOrganizationId);
+  const deletableOrganization =
+    active && canDeleteOrganization(organizations, active) ? active : null;
   return (
     <>
       <DropdownMenu>
@@ -89,24 +97,45 @@ export function AccountMenu({
               <DropdownMenuSeparator />
             </>
           ) : null}
+          {deletableOrganization ? (
+            <DropdownMenuItem onClick={() => setDeletingOrganization(true)}>
+              <Trans>Delete organization</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          {inRemoteFrame ? (
+            <DropdownMenuItem onClick={() => void requestRemoteHostSwitch()}>
+              <Trans>Đổi máy chủ</Trans>
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onClick={onLogOut}>
             <Trans>Log out</Trans>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setDeleting(true)}>
-            <Trans>Delete account</Trans>
-          </DropdownMenuItem>
+          {!inRemoteFrame ? (
+            <DropdownMenuItem onClick={() => setDeleting(true)}>
+              <Trans>Delete account</Trans>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Dialog open={deleting} onOpenChange={setDeleting}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              <Trans>Delete account</Trans>
-            </DialogTitle>
-          </DialogHeader>
-          <DeleteAccountForm open />
-        </DialogContent>
-      </Dialog>
+      {!inRemoteFrame ? (
+        <Dialog open={deleting} onOpenChange={setDeleting}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                <Trans>Delete account</Trans>
+              </DialogTitle>
+            </DialogHeader>
+            <DeleteAccountForm open />
+          </DialogContent>
+        </Dialog>
+      ) : null}
+      {deletingOrganization && deletableOrganization ? (
+        <DeleteOrganizationDialog
+          organization={deletableOrganization}
+          onCancel={() => setDeletingOrganization(false)}
+          onConfirm={() => removeOrganization(deletableOrganization)}
+        />
+      ) : null}
     </>
   );
 }

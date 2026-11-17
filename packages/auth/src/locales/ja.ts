@@ -73,4 +73,17 @@ export const JA_MESSAGES: Record<string, string> = {
     "再登録しない場合、保存されたコンピューターのファイルは{date}に削除されます。",
   "Your saved computer files will be deleted on {date} unless you choose a plan.":
     "プランを選択しない場合、保存されたコンピューターのファイルは{date}に削除されます。",
+  "{inviter} invited you to {organization} on VNBot":
+    "{inviter}さんがVNBotの{organization}にあなたを招待しました",
+  "{inviter} invited you to join {organization} on VNBot.":
+    "{inviter}さんがVNBotの{organization}への参加にあなたを招待しました。",
+  "Join {organization}": "{organization}に参加",
+  "This invitation expires in 7 days. Sign in with this email address to accept it.":
+    "この招待は7日後に期限切れになります。承諾するには、このメールアドレスでサインインしてください。",
+  "{inviter} invited you to {space} on VNBot":
+    "{inviter}さんがVNBotの{space}にあなたを招待しました",
+  "{inviter} invited you to join {space} on VNBot.":
+    "{inviter}さんがVNBotの{space}への参加にあなたを招待しました。",
+  "Join {space}": "{space}に参加",
+  "This invitation expires in 7 days.": "この招待は7日後に期限切れになります。",
 };

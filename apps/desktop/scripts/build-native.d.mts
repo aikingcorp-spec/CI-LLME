@@ -3,7 +3,6 @@ export type NativeBuildRequest = {
   arch: string;
   nodeBinary: string;
   postgresPrefix: string;
-  legacyPostgresPrefix: string;
   output: string;
   repoRoot: string;
 };
@@ -30,7 +29,6 @@ export function assembleNativeBundle(input: {
   arch: string;
   nodeBinary: string;
   postgresPrefix: string;
-  legacyPostgresPrefix: string;
   output: string;
   repoRoot: string;
 }): Promise<string>;

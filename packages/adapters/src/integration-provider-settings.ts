@@ -4,18 +4,36 @@ import type {
   ManagedConnectorProvider,
   SecretStore,
 } from "@rakazo/adapter-kit";
-import type { IntegrationProviderConfig, IntegrationProviderId } from "@rakazo/contracts";
-import { IntegrationProviderConfigSchema, IntegrationProviderIdSchema } from "@rakazo/contracts";
+import type { IntegrationProviderConfig as SubmittedConfig } from "@rakazo/contracts";
+import { ClientError } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { currentDbContext, runAsSystemInTransaction } from "@rakazo/db";
-import { ComposioConnector } from "./composio-connector.js";
+import * as z from "zod";
 import { credentialDigest } from "./credential-digest.js";
 import {
   credentialVerificationError,
   integrationProviderUnreachable,
 } from "./credential-reachability.js";
 import type { PersonalIntegrationSettings } from "./personal-integration-settings.js";
-import { PipedreamConnector } from "./pipedream-connector.js";
+import { ComposioConnector } from "./providers/integration/composio/composio-connector.js";
+import { PipedreamConnector } from "./providers/integration/pipedream/pipedream-connector.js";
+
+/** Each provider this build has, with the credentials it takes. */
+export const IntegrationProviderConfigSchema = z.discriminatedUnion("provider", [
+  z.object({ provider: z.literal("composio"), apiKey: z.string().trim().min(1).max(16384) }),
+  z.object({
+    provider: z.literal("pipedream"),
+    clientId: z.string().trim().min(1).max(512),
+    clientSecret: z.string().trim().min(1).max(16384),
+    projectId: z.string().trim().min(1).max(512),
+    environment: z.enum(["production", "development"]).default("production"),
+  }),
+]);
+type IntegrationProviderConfig = z.infer<typeof IntegrationProviderConfigSchema>;
+type IntegrationProviderId = IntegrationProviderConfig["provider"];
+const INTEGRATION_PROVIDER_IDS = IntegrationProviderConfigSchema.options.map(
+  (option) => option.shape.provider.value,
+);
 
 const PLUGIN_SLUG_PROVIDER: IntegrationProviderId = "composio";
 
@@ -118,7 +136,13 @@ export class IntegrationProviderSettings {
     await this.assertCanManageKey(userId);
     await this.personal.revoke(userId, PLUGIN_SLUG_PROVIDER, client);
   }
-  async configured(id: IntegrationProviderId): Promise<boolean> {
+  /** Whether this build has an integration provider with that id. */
+  has(id: string): id is IntegrationProviderId {
+    return (INTEGRATION_PROVIDER_IDS as string[]).includes(id);
+  }
+
+  async configured(id: string): Promise<boolean> {
+    if (!this.has(id)) return false;
     return (
       Boolean(
         await this.prisma.integrationProviderConfig.findUnique({
@@ -129,21 +153,19 @@ export class IntegrationProviderSettings {
     );
   }
 
-  async resolve(
-    id: IntegrationProviderId,
-    userId?: string,
-  ): Promise<ManagedConnectorProvider | undefined> {
+  async resolve(id: string, userId?: string): Promise<ManagedConnectorProvider | undefined> {
     return (await this.prepare(id, userId)).provider;
   }
 
   async prepare(
-    id: IntegrationProviderId,
+    id: string,
     userId?: string,
   ): Promise<{
     provider: ManagedConnectorProvider | undefined;
     ref: string | null;
     recheck?: (client: Pick<PrismaClient, "userIntegrationProviderConfig">) => Promise<boolean>;
   }> {
+    if (!this.has(id)) return { provider: undefined, ref: null };
     if (this.personal && userId !== undefined && id === PLUGIN_SLUG_PROVIDER) {
       const account = userId ? await this.keyAccount(userId) : "";
       if (!account) return { provider: undefined, ref: null };
@@ -186,7 +208,13 @@ export class IntegrationProviderSettings {
     }
   }
 
-  async save(config: IntegrationProviderConfig, context: AdapterContext): Promise<void> {
+  async save(submitted: SubmittedConfig, context: AdapterContext): Promise<void> {
+    if (!this.has(submitted.provider))
+      throw new ClientError("BAD_REQUEST", "Unknown integration provider");
+    const parsed = IntegrationProviderConfigSchema.safeParse(submitted);
+    // The schema's own message could repeat a credential.
+    if (!parsed.success) throw new ClientError("BAD_REQUEST", "Could not verify these credentials");
+    const config = parsed.data;
     const adapter = this.create(config);
     try {
       // Exercises authenticated access before replacing working credentials.
@@ -222,14 +250,12 @@ export class IntegrationProviderSettings {
   }
 
   providers(): ManagedConnectorProvider[] {
-    return IntegrationProviderIdSchema.options.map(
-      (id) => new ConfiguredIntegrationProvider(id, this),
-    );
+    return INTEGRATION_PROVIDER_IDS.map((id) => new ConfiguredIntegrationProvider(id, this));
   }
 
   /** Warm catalogs for env- and DB-configured providers. Fire-and-forget. */
   warmDirectories(): void {
-    for (const id of IntegrationProviderIdSchema.options) {
+    for (const id of INTEGRATION_PROVIDER_IDS) {
       void this.resolve(id)
         .then((provider) => provider?.warmDirectory?.())
         .catch(() => undefined);
@@ -311,11 +337,21 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
   async catalog(context: AdapterContext, query?: string) {
     return (await this.resolve(context))?.catalog(context, query) ?? [];
   }
+  async listAppTools(context: AdapterContext, externalId: string) {
+    const provider = await this.resolve(context);
+    if (!provider) return [];
+    return provider.listAppTools
+      ? provider.listAppTools(context, externalId)
+      : provider.discoverTools(context);
+  }
   async discoverTools(context: AdapterContext) {
     return (await this.resolve(context))?.discoverTools(context) ?? [];
   }
   async listConnectedExternalIds(context: AdapterContext) {
     return (await this.resolve(context))?.listConnectedExternalIds(context) ?? [];
+  }
+  async needsReconnect(context: AdapterContext, externalId: string) {
+    return (await (await this.resolve(context))?.needsReconnect?.(context, externalId)) ?? false;
   }
   async listReconnectRefs(context: AdapterContext) {
     return (await (await this.resolve(context))?.listReconnectRefs?.(context)) ?? [];

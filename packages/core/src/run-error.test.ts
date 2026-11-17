@@ -2,7 +2,9 @@ import {
   COMPUTER_ALLOWANCE_USED_ERROR,
   COMPUTER_PROVIDER_UNAVAILABLE_ERROR,
   COMPUTER_RATE_LIMIT_ERROR,
+  COMPUTER_UNRESPONSIVE_ERROR,
 } from "@rakazo/contracts";
+import { expectLinearTime } from "@rakazo/contracts/test-timing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APPROVED_ACTION_NOT_RUN_ERROR,
@@ -13,12 +15,14 @@ import {
   MISSING_MODEL_RUN_ERROR,
   MISSING_TOOL_FINAL_RESPONSE_ERROR,
   MODEL_CONTEXT_TOO_SMALL_ERROR,
+  MODEL_CREDIT_CAP_REACHED_ERROR,
   MODEL_CREDITS_EXHAUSTED_ERROR,
   MODEL_IMAGE_INPUT_ERROR,
   MODEL_OUTPUT_CUT_ERROR,
   MODEL_OUTPUT_LIMIT_ERROR,
   MODEL_REQUEST_LIMIT_ERROR,
   MODEL_REQUIRED_SEND_ERROR,
+  MODEL_UNPRICED_FOR_CREDITS_ERROR,
   modelFallbackFailure,
   normalizeRunError,
   userRunError,
@@ -104,10 +108,18 @@ describe("normalizeRunError", () => {
       "Your model provider rejected the API key. Check your connection settings.",
     ],
     [
+      "400 checking third-party user token: Personal Access Tokens are not supported for this endpoint",
+      "Your model provider rejected the API key. Check your connection settings.",
+    ],
+    [
       '404: {"error":{"message":"Model fake-model does not exist"}}',
       "Your model provider can't run this model.",
     ],
     ['{"error":{"code":"model_not_found"}}', "Your model provider can't run this model."],
+    [
+      '400 {"status":400,"title":"Bad Request","detail":"Function id \'example-function\': DEGRADED function cannot be invoked"}',
+      "Your model provider can't run this model.",
+    ],
     [
       '400: {"message":"Model example is not a chat model; call /v1/example instead of /v1/chat/completions","type":"invalid_request_error"}',
       "Your model provider can't run this model.",
@@ -158,7 +170,9 @@ describe("normalizeRunError", () => {
   ])("normalizes %s", (details, summary) => {
     const shownDetails = details.includes("Incorrect API key: sk-fake-placeholder")
       ? '401: {"message":"Incorrect API key=[redacted] https://api.openai.com"}'
-      : details;
+      : details.includes("user token: Personal")
+        ? "400 checking third-party user token=[redacted] Access Tokens are not supported for this endpoint"
+        : details;
     expect(normalizeRunError(details)).toMatchObject({ summary, details: shownDetails });
   });
 
@@ -484,10 +498,25 @@ describe("normalizeRunError", () => {
       });
     });
 
+    it("shows an operator cap without suggesting buying credits or changing connections", () => {
+      expect(normalizeRunError(MODEL_CREDIT_CAP_REACHED_ERROR)).toEqual({
+        summary: MODEL_CREDIT_CAP_REACHED_ERROR,
+        details: MODEL_CREDIT_CAP_REACHED_ERROR,
+      });
+    });
+
     it("keeps the advice when VNBot credits run out", () => {
       expect(normalizeRunError(MODEL_CREDITS_EXHAUSTED_ERROR)).toEqual({
         summary: MODEL_CREDITS_EXHAUSTED_ERROR,
         details: MODEL_CREDITS_EXHAUSTED_ERROR,
+        recovery: "connection",
+      });
+    });
+
+    it("sends a model credits cannot price to the member's own connection", () => {
+      expect(normalizeRunError(MODEL_UNPRICED_FOR_CREDITS_ERROR)).toEqual({
+        summary: MODEL_UNPRICED_FOR_CREDITS_ERROR,
+        details: MODEL_UNPRICED_FOR_CREDITS_ERROR,
         recovery: "connection",
       });
     });
@@ -515,8 +544,20 @@ describe("normalizeRunError", () => {
       '400: {"message":"Unsupported model parameter: fixture_option"}',
       '400: {"message":"Unknown model setting: fixture_option"}',
       "TypeError: Cannot read properties of undefined (reading 'content')",
+      '400 {"message":"Provider returned error","code":400,"metadata":{"raw":"{}","provider_name":""}}',
     ])("leaves requests we built and unknown shapes unattributed: %s", (details) => {
       expect(normalizeRunError(details).kind).toBeUndefined();
+    });
+
+    it.each([
+      '400 {"message":"Provider returned error","code":400,"metadata":{"raw":"{\\"error\\":{\\"message\\":\\"example upstream failure\\"}}","provider_name":"ExampleUpstream","is_byok":false}}',
+      '400 {"type":"error","error":{"type":"invalid_request_error","message":"Invalid effort level: max"},"request_id":"req_example"}',
+    ])("suggests another model when the provider refuses this one's request: %s", (details) => {
+      expect(normalizeRunError(details)).toMatchObject({
+        summary: "Something went wrong. Try again.",
+        recovery: "model",
+        status: 400,
+      });
     });
   });
 });
@@ -698,12 +739,13 @@ it.each([
   });
 });
 
-it.each([COMPUTER_RATE_LIMIT_ERROR, COMPUTER_PROVIDER_UNAVAILABLE_ERROR])(
-  "shows the computer error %j as written",
-  (message) => {
-    expect(normalizeRunError(message)).toEqual({ summary: message, details: message });
-  },
-);
+it.each([
+  COMPUTER_RATE_LIMIT_ERROR,
+  COMPUTER_PROVIDER_UNAVAILABLE_ERROR,
+  COMPUTER_UNRESPONSIVE_ERROR,
+])("shows the computer error %j as written", (message) => {
+  expect(normalizeRunError(message)).toEqual({ summary: message, details: message });
+});
 
 it.each([
   "Unmatched tool result in context",
@@ -1036,4 +1078,17 @@ it("keeps a sandbox provisioning failure separate from model credentials", () =>
   expect(result.summary).toBe("Could not prepare the bot's computer. Check computer settings.");
   expect(result.recovery).toBeUndefined();
   expect(result.kind).not.toBe("auth");
+});
+
+it("reads a reset date after spacing and a separator, and stays fast on long spacing", () => {
+  expect(
+    normalizeRunError(
+      '403: {"message":"Key limit exceeded (weekly limit). Resets on : 2099-01-01"}',
+    ),
+  ).toMatchObject({
+    resetAt: Date.parse("2099-01-01"),
+  });
+  expectLinearTime(() =>
+    normalizeRunError(`429: weekly limit reached, resets${" \t".repeat(100_000)}x`),
+  );
 });

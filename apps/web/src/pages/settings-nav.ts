@@ -4,6 +4,7 @@ import {
   CloudDownload,
   Cpu,
   CreditCard,
+  FlaskConical,
   Gauge,
   KeyRound,
   MessageCircle,
@@ -26,17 +27,23 @@ export type SettingsNavItem = {
 
 /** The settings sections this deployment offers, in nav order; Space opens from its own menu. */
 export function useSettingsNavItems(available: {
+  isMachineOwner?: boolean;
+  connection?: boolean;
   messaging: boolean;
   wallet: boolean;
   computer: boolean;
   billing: boolean;
   updates: boolean;
+  labs: boolean;
 }): SettingsNavItem[] {
   const { t } = useLingui();
+  const isOwner = available.isMachineOwner !== false;
   return [
     // VNBot keeps the 0.3.9 order; pages it did not have sit next to their closest neighbour.
     { id: "general", label: t`General`, icon: Settings },
-    { id: "connection", label: t`Kết nối`, icon: Monitor },
+    ...(isOwner && available.connection !== false
+      ? [{ id: "connection" as const, label: t`Kết nối`, icon: Monitor }]
+      : []),
     { id: "models", label: t`Models`, icon: Cpu, description: t`Which LLMs your bots use.` },
     {
       id: "voice",
@@ -91,9 +98,10 @@ export function useSettingsNavItems(available: {
           },
         ]
       : []),
+    ...(available.labs ? [{ id: "labs" as const, label: t`Labs`, icon: FlaskConical }] : []),
     ...(available.billing ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
     // VNBot hides Organization: each account works in one. The panel stays for later.
-    // Docker and the browser have no desktop bridge, and this item is still the way in.
-    { id: "updates", label: t`Updates`, icon: CloudDownload },
+    // Docker and the browser have no desktop bridge, and this item is still the way in for machine owners.
+    ...(isOwner ? [{ id: "updates" as const, label: t`Updates`, icon: CloudDownload }] : []),
   ];
 }

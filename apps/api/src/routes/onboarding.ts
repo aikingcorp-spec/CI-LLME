@@ -73,7 +73,8 @@ export function onboardingRoutes(ctx: RouterContext) {
       get: authed.integrationSetup.get.handler(async ({ context }) => {
         const settings = deps.integrationSettings;
         const webUrl = new URL("/integrations/setup", deps.env.webOrigin).toString();
-        if (!settings) return { canConfigure: false, needsSetup: false, webUrl, providers: [] };
+        if (!settings || typeof settings.canManageKey !== "function")
+          return { canConfigure: false, needsSetup: false, webUrl, providers: [] };
         const owner = await settings.canManageKey(context.actor.userId);
         const configured = !(await settings.needsPersonalKey(context.actor.userId));
         return {
@@ -88,11 +89,18 @@ export function onboardingRoutes(ctx: RouterContext) {
         if (
           input.provider !== "composio" ||
           !settings ||
+          typeof settings.canManageKey !== "function" ||
           !(await settings.canManageKey(context.actor.userId))
         )
           throw new ORPCError("FORBIDDEN");
+        const apiKey = typeof input.apiKey === "string" ? input.apiKey.trim() : "";
+        if (!apiKey) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: "Could not save your Composio key. Check the key and try again.",
+          });
+        }
         try {
-          await settings.savePersonalKey(input.apiKey, {
+          await settings.savePersonalKey(apiKey, {
             userId: context.actor.userId,
             spaceId: context.actor.spaceId,
             operationId: "integrationSetup.save",
@@ -112,7 +120,11 @@ export function onboardingRoutes(ctx: RouterContext) {
       }),
       remove: authed.integrationSetup.remove.handler(async ({ context }) => {
         const settings = deps.integrationSettings;
-        if (!settings || !(await settings.canManageKey(context.actor.userId)))
+        if (
+          !settings ||
+          typeof settings.canManageKey !== "function" ||
+          !(await settings.canManageKey(context.actor.userId))
+        )
           throw new ORPCError("FORBIDDEN");
         await settings.revokePersonal(context.actor.userId);
         return { ok: true as const };

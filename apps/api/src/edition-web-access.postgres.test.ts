@@ -45,7 +45,7 @@ describe.skipIf(!hasDb)("a free account on the hosted server", () => {
     await stop?.();
   });
 
-  it("keeps the web app and the download page for team accounts", async () => {
+  it("keeps the web app and the download page for team accounts while allowing portal host listing for free accounts", async () => {
     const freeCookie = await signup(app, free);
     const teamCookie = await signup(app, team);
 
@@ -53,6 +53,12 @@ describe.skipIf(!hasDb)("a free account on the hosted server", () => {
     expect(refused.status).toBe(403);
     expect(await refused.json()).toMatchObject({ json: { code: WEB_APP_NOT_INCLUDED } });
     expect((await rpc(app, teamCookie, "spaces/list")).status).toBe(200);
+
+    const freePortal = await rpc(app, freeCookie, "remoteHosts/list");
+    expect(freePortal.status).toBe(200);
+    expect(await freePortal.json()).toMatchObject({
+      json: { kind: "empty", devices: [], edition: "free" },
+    });
 
     expect((await app.request("/api/desktop-downloads")).status).toBe(401);
     const downloads = await app.request("/api/desktop-downloads", {

@@ -3,11 +3,12 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { BUILTIN_AGENT_SKILLS } from "./builtin-skills.js";
+import { BUILTIN_AGENT_SKILLS } from "./builtin-skills.prompt.js";
 import type { PluginRepoFile } from "./plugin-connectors.js";
 import {
   classifyPluginFiles,
   fetchGitHubRepo,
+  isPluginLoadFault,
   isTransientFetchError,
   parsePluginDirectory,
   parsePluginSource,
@@ -835,6 +836,17 @@ describe("GitHub acquisition", () => {
     );
     expect(isTransientFetchError(new Error("Plugin directory has too many files"))).toBe(false);
     expect(isTransientFetchError(new Error("Request failed: HTTP 404"))).toBe(false);
+  });
+  it("tells a fault in the loader from a source that could not be reached or read", () => {
+    expect(isPluginLoadFault(new TypeError("Cannot read properties of undefined"))).toBe(true);
+    expect(isPluginLoadFault(new RangeError("Invalid array length"))).toBe(true);
+    const refused = Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
+    expect(isPluginLoadFault(new TypeError("fetch failed", { cause: refused }))).toBe(false);
+    expect(isPluginLoadFault(new DOMException("The operation timed out", "TimeoutError"))).toBe(
+      false,
+    );
+    expect(isPluginLoadFault(new SyntaxError("Unexpected token in JSON"))).toBe(false);
+    expect(isPluginLoadFault(new Error("No plugin manifest found"))).toBe(false);
   });
   it.each([
     { path: "../plugin.json", mode: "100644", type: "blob" },

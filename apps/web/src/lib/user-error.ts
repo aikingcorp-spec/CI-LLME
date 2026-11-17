@@ -16,7 +16,7 @@ import {
   MODEL_IMAGE_INPUT_UNKNOWN,
   userErrorMessage,
 } from "@rakazo/core";
-import { translateRunError } from "./run-error";
+import { translateRunError } from "@rakazo/i18n/run-error";
 
 /** Text for a failure: human messages pass through; network and implementation detail become copy. */
 export function errorText(error: unknown, fallback = t`Something went wrong. Try again.`): string {
@@ -64,7 +64,9 @@ export function credentialIssueText(field: CredentialField): string {
 export function authErrorText(error: unknown, fallback: string): string {
   const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
   if (code === "SSO_UNAVAILABLE") return t`SSO is temporarily unavailable. Try again.`;
-  if (code === "account_not_linked") return t`Sign in to your existing account to link SSO`;
+  if (code === "account_not_linked")
+    return t`Sign in to your account, then link this provider in settings`;
+  if (code === "email_does_not_match") return t`Use an account with the same email address`;
   if (code === "ACCOUNT_DEACTIVATED") return t`This account is deactivated`;
   if (code === "REGISTRATION_CLOSED") return t`Registration is closed`;
   if (code === "EMAIL_NOT_ALLOWED") return t`Email is not allowed to register`;
@@ -78,6 +80,10 @@ export function authErrorText(error: unknown, fallback: string): string {
   if (code === EMAIL_NOT_INVITED) return t`This email is not approved for VNBot yet`;
   if (code === "INVALID_OTP") return t`Invalid code`;
   if (code === "OTP_EXPIRED" || code === "TOO_MANY_ATTEMPTS") return t`Request a new code`;
+  const status = error && typeof error === "object" && "status" in error ? error.status : undefined;
+  if (code === "TOO_MANY_REQUESTS" || status === 429) {
+    return t`Too many attempts. Try again in a few minutes.`;
+  }
   return authErrorMessage(error, {
     fallback,
     email: credentialIssueText("email"),

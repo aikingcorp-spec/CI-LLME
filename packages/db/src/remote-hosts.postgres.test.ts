@@ -4,9 +4,13 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
 import {
+  findRemoteHostByKey,
   listRemoteHosts,
   noteRemoteHeartbeat,
+  recordRemoteHostMember,
   registerRemoteHost,
+  remoteHostEntrance,
+  revokeRemoteHostMember,
   setRemoteHost,
 } from "./remote-hosts.js";
 import { runAsSystem } from "./row-security.js";
@@ -224,5 +228,79 @@ describePostgres("remote hosts (PostgreSQL)", () => {
     expect(kept.remoteEnabled).toBe(false);
     expect(kept.providerObjectId).toBeNull();
     expect(kept.logicalHost).toBe(hostB?.logicalHost);
+  });
+
+  it("allocates shortCode and tracks remote_host_members across includeOwned modes", async () => {
+    const db = createDb(databaseUrl!);
+    const owner = `${suffix}-owner`;
+    const guest = `${suffix}-guest`;
+    const deviceId = `${suffix}-short-host`;
+    const access = recorder();
+    try {
+      await runAsSystem("create shortCode fixture accounts", async () => {
+        await prisma.user.create({
+          data: { id: owner, name: "Owner", email: `${owner}@example.test` },
+        });
+        await prisma.user.create({
+          data: { id: guest, name: "Guest", email: `${guest}@example.test` },
+        });
+      });
+
+      const reg = await registerRemoteHost(db.prisma, { accountId: owner, deviceId, now });
+      const shortCode = reg.portal.devices[0]?.shortCode;
+      expect(shortCode).toMatch(/^[a-z0-9]{8}$/);
+
+      const byShort = await remoteHostEntrance(db.prisma, shortCode!, now);
+      expect(byShort).toMatchObject({ deviceId, shortCode, state: "off" });
+      const byDevice = await findRemoteHostByKey(db.prisma, deviceId);
+      expect(byDevice?.shortCode).toBe(shortCode);
+      expect(await remoteHostEntrance(db.prisma, "notfound", now)).toBeNull();
+
+      // Owner cannot add themselves as an invited member; guest can be added idempotently.
+      expect(
+        await recordRemoteHostMember(db.prisma, { deviceId, accountId: owner, invitedBy: owner }),
+      ).toBe(false);
+      expect(
+        await recordRemoteHostMember(db.prisma, { deviceId, accountId: guest, invitedBy: owner }),
+      ).toBe(true);
+      expect(
+        await recordRemoteHostMember(db.prisma, { deviceId, accountId: guest, invitedBy: owner }),
+      ).toBe(true);
+
+      // Team listing returns owned host; Free guest listing still shows invited Team host.
+      const ownerPortal = await listRemoteHosts(db.prisma, access.provider, {
+        accountId: owner,
+        now,
+        includeOwned: true,
+      });
+      expect(ownerPortal.devices.map((d) => d.deviceId)).toEqual([deviceId]);
+      expect(ownerPortal.devices[0]?.invited).toBeUndefined();
+
+      const guestFreePortal = await listRemoteHosts(db.prisma, access.provider, {
+        accountId: guest,
+        now,
+        includeOwned: false,
+      });
+      expect(guestFreePortal.devices).toEqual([
+        expect.objectContaining({ deviceId, shortCode, invited: true }),
+      ]);
+
+      expect(await revokeRemoteHostMember(db.prisma, { deviceId, accountId: guest })).toBe(true);
+      expect(await revokeRemoteHostMember(db.prisma, { deviceId, accountId: guest })).toBe(false);
+      const afterRevoke = await listRemoteHosts(db.prisma, access.provider, {
+        accountId: guest,
+        now,
+        includeOwned: false,
+      });
+      expect(afterRevoke.devices).toEqual([]);
+    } finally {
+      await runAsSystem("clean shortCode fixture", async () => {
+        await db.prisma.remoteHostMember.deleteMany({ where: { deviceId } });
+        await db.prisma.remoteHost.deleteMany({ where: { deviceId } });
+        await db.prisma.user.deleteMany({ where: { id: { in: [owner, guest] } } });
+      });
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
   });
 });
