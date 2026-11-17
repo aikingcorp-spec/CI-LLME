@@ -12,6 +12,7 @@ import type { RefObject } from "react";
 import { lazyOverlay } from "../../components/ErrorBoundary";
 import { setLabs } from "../../lib/bootstrap";
 import type { connectedAppMarks } from "../../lib/connected-apps";
+import { desktopBridge } from "../../lib/desktop";
 import type { SpaceQueries } from "../../lib/query";
 import { queryClient } from "../../lib/query";
 import type { createSpaceRpc, RpcClient } from "../../lib/rpc";
@@ -180,7 +181,11 @@ export function SettingsOverlays({
           sandboxProvider={bootstrapMe?.sandboxProvider}
           computerSettingsEnabled={bootstrapMe?.computerSettingsEnabled === true}
           canConfigureComputers={bootstrapMe?.isAdmin === true}
-          isMachineOwner={bootstrapMe?.isMachineOwner !== false}
+          isMachineOwner={
+            bootstrapMe?.isMachineOwner !== false ||
+            Boolean(desktopBridge()?.update && bootstrapMe?.canCreateSpace !== false)
+          }
+          canCreateSpace={bootstrapMe?.canCreateSpace !== false}
           onSandboxProviderChange={(sandboxProvider) =>
             setBootstrapMe((prev) => (prev ? { ...prev, sandboxProvider } : prev))
           }

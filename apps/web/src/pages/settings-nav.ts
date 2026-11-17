@@ -38,12 +38,11 @@ export function useSettingsNavItems(available: {
 }): SettingsNavItem[] {
   const { t } = useLingui();
   const isOwner = available.isMachineOwner !== false;
+  const showConnection = available.connection ?? isOwner;
   return [
     // VNBot keeps the 0.3.9 order; pages it did not have sit next to their closest neighbour.
     { id: "general", label: t`General`, icon: Settings },
-    ...(isOwner && available.connection !== false
-      ? [{ id: "connection" as const, label: t`Kết nối`, icon: Monitor }]
-      : []),
+    ...(showConnection ? [{ id: "connection" as const, label: t`Kết nối`, icon: Monitor }] : []),
     { id: "models", label: t`Models`, icon: Cpu, description: t`Which LLMs your bots use.` },
     {
       id: "voice",

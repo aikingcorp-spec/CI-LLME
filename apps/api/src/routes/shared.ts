@@ -63,11 +63,9 @@ export async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     deps.env.nativeHostBridge === true &&
     ownerUserId === actor.userId &&
     (await isSpaceOrganizationOwner(deps.prisma, actor));
-  const isMachineOwner = !isHostedCentralPortal(deps)
-    ? ownerUserId === null
-      ? true
-      : ownerUserId === actor.userId
-    : false;
+  const localHostOwner = ownerUserId === null ? true : ownerUserId === actor.userId;
+  const isMachineOwner = !isHostedCentralPortal(deps) ? localHostOwner : admin;
+  const canCreateSpace = !guestOnly && (!isHostedCentralPortal(deps) ? localHostOwner : true);
   const deploymentLabs = deps.env.deploymentLabs ?? [];
   const labs = resolveLabs(user.labs, deploymentLabs);
   return {
@@ -85,7 +83,7 @@ export async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     isDeploymentOwner: false,
     isAdmin: admin,
     isMachineOwner,
-    canCreateSpace: !guestOnly,
+    canCreateSpace,
     needsModel: setup.needsModel,
     defaultProvider: canonicalPiProviderId(setup.model?.provider ?? deps.env.defaultProvider),
     defaultModel: setup.model?.modelId ?? deps.env.defaultModel,

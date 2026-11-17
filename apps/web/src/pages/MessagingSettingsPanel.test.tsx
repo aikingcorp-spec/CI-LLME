@@ -114,11 +114,11 @@ let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 let client: QueryClient;
 
-async function renderOverlay() {
+async function renderOverlay(props?: ComponentProps<typeof MessagingSettingsPanel>) {
   await act(async () =>
     root.render(
       <QueryClientProvider client={client}>
-        <MessagingSettingsPanel />
+        <MessagingSettingsPanel {...props} />
       </QueryClientProvider>,
     ),
   );
@@ -610,6 +610,15 @@ it("keeps Telegram linking when Slack is the only app missing", async () => {
   await act(async () => telegramItem()?.click());
   expect(messaging.link.start).toHaveBeenCalledWith({ botId: "bot-1" });
   expect(messaging.installations.start).not.toHaveBeenCalled();
+});
+
+it("hides absent host chat apps for guests while keeping personal linking on active providers", async () => {
+  messaging.status.mockResolvedValue(statusWith([]));
+  messaging.installations.list.mockResolvedValue({ available: false, installations: [] });
+  await renderOverlay({ isMachineOwner: false });
+  expect(container.querySelector('[data-testid="messaging-absent"]')).toBeNull();
+  expect(container.querySelector('[data-testid="messaging-absent-slack"]')).toBeNull();
+  expect(telegramItem()).toBeTruthy();
 });
 
 it("shows a load error instead of a connect control when messaging cannot be read", async () => {

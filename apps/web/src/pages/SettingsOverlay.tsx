@@ -67,6 +67,7 @@ export function SettingsOverlay({
   canConfigureComputers = false,
   computerSettingsEnabled = false,
   isMachineOwner = true,
+  canCreateSpace = isMachineOwner,
   messagingEnabled = false,
   paymentWalletProvider = null,
   memoryConfig,
@@ -103,8 +104,10 @@ export function SettingsOverlay({
   /** Admins choose where new computers run. */
   canConfigureComputers?: boolean;
   computerSettingsEnabled?: boolean;
-  /** Only the machine owner manages host-level remote access and server updates. */
+  /** Only the machine owner manages server updates on a dedicated installation. */
   isMachineOwner?: boolean;
+  /** False when the signed-in user is a guest on someone else's host or space. */
+  canCreateSpace?: boolean;
   messagingEnabled?: boolean;
   /** The wallet this deployment lets bots spend from; none hides Wallet. */
   paymentWalletProvider?: { id: string; name: string } | null;
@@ -129,10 +132,10 @@ export function SettingsOverlay({
   const [recoveryHold, setRecoveryHold] = useState<object | null>(null);
   const keepComputerRecovery = recoveryHold !== null;
   const edition = useRemoteEdition();
-  const showConnection = isMachineOwner && edition !== "free";
+  const showConnection = canCreateSpace && edition !== "free";
   const showUpdates = isMachineOwner;
   useEffect(() => {
-    if (!isMachineOwner) return;
+    if (!canCreateSpace) return;
     let active = true;
     void rpc.remoteHosts
       ?.list?.()
@@ -143,7 +146,7 @@ export function SettingsOverlay({
     return () => {
       active = false;
     };
-  }, [isMachineOwner]);
+  }, [canCreateSpace]);
   const showComputer =
     computerSettingsEnabled &&
     (canConfigureComputers ||
@@ -409,7 +412,7 @@ export function SettingsOverlay({
                         onBotAvatarSetChange={onBotAvatarSetChange}
                         onAccountImported={onAccountImported}
                         onImportAgent={onImportAgent}
-                        isMachineOwner={isMachineOwner}
+                        isMachineOwner={canCreateSpace}
                       />
                       {/* One space is just the app, so there is nothing to tell apart or manage. */}
                       {spaces.length > 1 && onOpenSpace ? (
@@ -451,7 +454,9 @@ export function SettingsOverlay({
                   ) : null}
                   {section === "confirmations" ? <ApprovalRulesSettings scope="account" /> : null}
                   {section === "vault" ? <VaultSettings scope="account" /> : null}
-                  {section === "messaging" ? <MessagingSettingsPanel /> : null}
+                  {section === "messaging" ? (
+                    <MessagingSettingsPanel isMachineOwner={canCreateSpace} />
+                  ) : null}
                   {section === "wallet" && paymentWalletProvider ? (
                     <PaymentWalletSettingsPanel provider={paymentWalletProvider} />
                   ) : null}

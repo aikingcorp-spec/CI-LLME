@@ -58,7 +58,11 @@ function ConnectionStatus({ state }: { state: "unconfigured" | "starting" | "rea
   return <Trans>Not connected</Trans>;
 }
 
-export function MessagingSettingsPanel() {
+export function MessagingSettingsPanel({
+  isMachineOwner = true,
+}: {
+  isMachineOwner?: boolean;
+} = {}) {
   const { t } = useLingui();
   const [settingsConversationId, setSettingsConversationId] = useState<string | null>(null);
   const [selectedBotId, setSelectedBotId] = useState("");
@@ -233,9 +237,8 @@ export function MessagingSettingsPanel() {
     }),
   );
   const configuration = configurationQuery.data;
-  const canManageMessaging = configuration?.canManage !== false;
   const managedIds = new Set(configuration?.connections.map((connection) => connection.id) ?? []);
-  const absentChatApps = canManageMessaging
+  const absentChatApps = isMachineOwner
     ? (["telegram", "slack"] as const).filter(
         (provider) => setup[provider] === "absent" && !managedIds.has(provider),
       )

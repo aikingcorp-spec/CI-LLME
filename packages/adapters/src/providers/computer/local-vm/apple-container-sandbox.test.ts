@@ -253,7 +253,7 @@ describe("AppleContainerSandboxProvider", () => {
   it("refuses a file over a read's size limit by type and returns one at the limit", async () => {
     const content = new TextEncoder().encode("portable");
     const fake = fakeCli({ "rakazo-1": { botId: "bot-a" } }, false, {
-      "/home/rakazo/notes/result.txt": content,
+      "/home/aiking/notes/result.txt": content,
     });
     await assertSandboxReadLimit(fake.provider, ref("rakazo-1"), context, {
       path: "notes/result.txt",

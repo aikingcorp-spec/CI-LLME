@@ -1,6 +1,7 @@
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { COMPUTER_IMAGE_WORKSPACE } from "../../../exec-computer.js";
 import { AppleContainerSandboxProvider } from "./apple-container-sandbox.js";
 
 // A stand-in for the `container` CLI: it logs each call and keeps its VMs in a JSON file.
@@ -37,7 +38,7 @@ if (command === "exec") {
   const requested = execAt >= 0 ? rest.slice(rest.indexOf("timeout", execAt) + 4) : [];
   if (requested[0] === "echo") { process.stdout.write(requested.slice(1).join(" ") + "\\n"); process.exit(0); }
   const script = rest.join(" ");
-  if (script.includes("mkdir -p -- '/home/rakazo'")) process.exit(0);
+  if (script.includes("mkdir -p -- '${COMPUTER_IMAGE_WORKSPACE}'")) process.exit(0);
   if (script.includes("/dev/tcp/127.0.0.1/6080") || script.includes("rakazo-write")) process.exit(0);
   if (script.includes("sleep")) setInterval(() => {}, 1000);
   else { process.stdout.write("out:" + script.slice(-5)); process.stderr.write("err"); process.exit(7); }

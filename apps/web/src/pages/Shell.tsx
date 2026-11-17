@@ -6,7 +6,7 @@ import type {
   ThreadMessage,
   VoiceStatus,
 } from "@rakazo/contracts";
-import { DEFAULT_NEW_BOT_AVATAR_SET, hasLab } from "@rakazo/contracts";
+import { hasLab } from "@rakazo/contracts";
 import {
   activeThreadRuns,
   answerableAskMessageIds,
@@ -892,7 +892,10 @@ function SpaceShell() {
 
   const paletteActions = usePaletteActions({
     settingsAvailable: {
-      isMachineOwner: bootstrapMe?.isMachineOwner !== false,
+      isMachineOwner:
+        bootstrapMe?.isMachineOwner !== false ||
+        Boolean(desktopBridge()?.update && bootstrapMe?.canCreateSpace !== false),
+      connection: bootstrapMe?.canCreateSpace !== false,
       messaging: messagingSurfaceEnabled,
       wallet: Boolean(bootstrapMe?.paymentWalletProvider),
       computer:

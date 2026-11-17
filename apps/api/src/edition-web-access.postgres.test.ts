@@ -57,7 +57,7 @@ describe.skipIf(!hasDb)("a free account on the hosted server", () => {
     const freePortal = await rpc(app, freeCookie, "remoteHosts/list");
     expect(freePortal.status).toBe(200);
     expect(await freePortal.json()).toMatchObject({
-      json: { kind: "empty", devices: [], edition: "free" },
+      json: { kind: "unavailable", devices: [], edition: "free" },
     });
 
     expect((await app.request("/api/desktop-downloads")).status).toBe(401);
