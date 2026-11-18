@@ -13,6 +13,7 @@ export type { IdentityExchangeConfig } from "./identity-exchange-config.js";
 export { parseIdentityExchangeConfig } from "./identity-exchange-config.js";
 
 const AGE = 60;
+const CLOCK_SKEW_SECONDS = 30;
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const denied = () => new APIError("UNAUTHORIZED", { message: "Identity exchange rejected" });
 const FORWARDED_OTP_CODES = new Set([
@@ -47,13 +48,16 @@ export async function issueIdentityProof(
 ) {
   if (!source.emailVerified) throw denied();
   const { importPKCS8, SignJWT } = await import("jose");
+  // Center the 60s window around server time so existing 0.5.0 desktop clients
+  // (which run jwtVerify with maxTokenAge=60 and zero clockTolerance) tolerate +/-30s PC clock skew.
+  const issuedAt = Math.floor(Date.now() / 1000) - CLOCK_SKEW_SECONDS;
   return new SignJWT({ email: source.email, device: binding.device, nonce: binding.nonce })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(config.issuer)
     .setAudience(config.audience)
     .setSubject(source.id)
-    .setIssuedAt()
-    .setExpirationTime(`${AGE}s`)
+    .setIssuedAt(issuedAt)
+    .setExpirationTime(issuedAt + AGE)
     .sign(await importPKCS8(config.privateKey, "EdDSA"));
 }
 
@@ -68,6 +72,7 @@ export async function verifyIdentityProof(
     issuer: config.issuer,
     audience: config.audience,
     maxTokenAge: AGE,
+    clockTolerance: CLOCK_SKEW_SECONDS,
     requiredClaims: ["sub", "iat", "exp"],
   });
   if (

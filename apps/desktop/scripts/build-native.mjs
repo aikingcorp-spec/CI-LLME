@@ -26,6 +26,7 @@ import {
   nativeBundleFiles,
   nativeBundleManifest,
   WINDOWS_LINKS_FILE,
+  WINDOWS_MSVC_RUNTIME_DLLS,
 } from "./native-bundle-contract.mjs";
 
 const PLATFORMS = new Set(["darwin", "linux", "win32"]);
@@ -693,7 +694,7 @@ async function stagePostgres(request, staging) {
     : path.join(staging, "pg/bin");
   await mkdir(binaryDirectory, { recursive: true });
   for (const file of nativeBundleFiles(request.platform)) {
-    if (!file.startsWith("pg/bin/")) continue;
+    if (!file.startsWith("pg/bin/") || file.toLowerCase().endsWith(".dll")) continue;
     const source = path.join(layout.bin, path.basename(file));
     if (!(await exists(source))) throw new Error(`Missing native bundle source: ${file}`);
     const destination = path.join(binaryDirectory, path.basename(file));
@@ -717,6 +718,13 @@ async function stagePostgres(request, staging) {
   }
   await copyDereferenced(layout.lib, path.join(staging, "pg/lib"), request.postgresPrefix);
   await copyDereferenced(layout.share, path.join(staging, "pg/share"), request.postgresPrefix);
+  if (request.platform === "win32") {
+    await vendorWindowsRuntimeDlls(
+      binaryDirectory,
+      path.join(staging, "pg/lib"),
+      windowsRuntimeSearchDirs(request.postgresPrefix, layout.bin),
+    );
+  }
   if (relocated) {
     // PostgreSQL locates timezone and extension files relative to its real executable.
     for (const [source, target] of [
@@ -736,6 +744,49 @@ async function stagePostgres(request, staging) {
       librarySearchDirs(request.postgresPrefix, layout.lib),
       path.join(staging, "pg/lib"),
     );
+  }
+}
+
+function windowsRuntimeSearchDirs(postgresPrefix, layoutBin) {
+  const dirs = [layoutBin, path.join(postgresPrefix, "bin")];
+  const vcRedist = process.env.VCToolsRedistDir;
+  if (vcRedist) {
+    dirs.push(path.join(vcRedist, "x64", "Microsoft.VC143.CRT"));
+    dirs.push(path.join(vcRedist, "x64", "Microsoft.VC142.CRT"));
+  }
+  const systemRoot = process.env.SystemRoot ?? process.env.WINDIR ?? "C:\\Windows";
+  dirs.push(path.join(systemRoot, "System32"));
+  return dirs;
+}
+
+export async function vendorWindowsRuntimeDlls(binaryDirectory, libraryDirectory, searchDirs) {
+  await mkdir(binaryDirectory, { recursive: true });
+  await mkdir(libraryDirectory, { recursive: true });
+  const directories = [binaryDirectory, ...searchDirs];
+  const listings = new Map();
+  for (const directory of directories) {
+    if (listings.has(directory) || !(await exists(directory))) continue;
+    listings.set(directory, await readdir(directory));
+  }
+  for (const requiredName of WINDOWS_MSVC_RUNTIME_DLLS) {
+    const targetLower = requiredName.toLowerCase();
+    let source = null;
+    for (const [directory, names] of listings) {
+      const match = names.find((entry) => entry.toLowerCase() === targetLower);
+      if (match) {
+        source = path.join(directory, match);
+        break;
+      }
+    }
+    if (!source) throw new Error(`Missing Windows runtime DLL: ${requiredName}`);
+    const inBin = path.join(binaryDirectory, requiredName);
+    if (path.resolve(source) !== path.resolve(inBin)) {
+      await cp(source, inBin, { dereference: true });
+    }
+    const inLib = path.join(libraryDirectory, requiredName);
+    if (path.resolve(source) !== path.resolve(inLib)) {
+      await cp(source, inLib, { dereference: true });
+    }
   }
 }
 

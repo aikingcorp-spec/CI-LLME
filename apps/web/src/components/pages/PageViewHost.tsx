@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { pageMutationOptions } from "../../lib/page-actions";
 import type { PageSession } from "../../lib/pages";
-import { PAGE_PARAM, useMedia, usePageDocument, usePageSession } from "../../lib/pages";
+import {
+  PAGE_PARAM,
+  resolvePageShareUrl,
+  useMedia,
+  usePageDocument,
+  usePageSession,
+} from "../../lib/pages";
 import { useSpaceQueries } from "../../lib/query";
 import { errorCode } from "../../lib/user-error";
 import { PageNotice } from "./PageNotice";
@@ -154,7 +160,7 @@ function OpenPage({
             title={data.title}
             owner={data.owner}
             visibility={shownVisibility}
-            shareUrl={link.data?.shareUrl ?? null}
+            shareUrl={resolvePageShareUrl(link.data?.shareUrl)}
             open={shareOpen}
             onOpenChange={setShareOpen}
             pending={visibility.isPending}

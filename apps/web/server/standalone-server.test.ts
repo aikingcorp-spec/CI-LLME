@@ -109,6 +109,34 @@ describe("standalone web server", () => {
     expect((await get(port, "/", { host: "evil.example" })).status).toBe(403);
   });
 
+  it("expands frame-src on portal pages from /api/remote-entry without querying on assets or RPC", async () => {
+    const port = await start((req, res) => {
+      if (req.url === "/api/remote-entry") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({
+            kind: "portal",
+            portalOrigin: "https://app.example.test",
+            frameSrc: ["https://*.example.test"],
+          }),
+        );
+        return;
+      }
+      res.end(JSON.stringify({ url: req.url }));
+    });
+
+    const machinePage = await get(port, "/m/luy7d6mo/app", { host: "app.example.test" });
+    expect(machinePage.status).toBe(200);
+    expect(machinePage.headers["content-security-policy"]).toContain(
+      "frame-src 'self' blob: https://*.example.test",
+    );
+
+    apiRequests.length = 0;
+    expect((await get(port, "/assets/app-1.js", { host: "app.example.test" })).status).toBe(200);
+    expect((await get(port, "/rpc/ping", { host: "app.example.test" })).status).toBe(200);
+    expect(apiRequests).toEqual(["/rpc/ping"]);
+  });
+
   it("forwards API requests with the hop it saw", async () => {
     const port = await start();
 

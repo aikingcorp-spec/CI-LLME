@@ -11,3 +11,5 @@ export function nativeBundleManifest(input: { platform: NodeJS.Platform; arch: s
 export function isNativePostgresVersion(text: string): boolean;
 
 export const WINDOWS_LINKS_FILE: "windows-links.json";
+
+export const WINDOWS_MSVC_RUNTIME_DLLS: readonly string[];

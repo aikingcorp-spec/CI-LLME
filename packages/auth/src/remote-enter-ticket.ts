@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { IdentityExchangeConfig } from "./identity-exchange-config.js";
 
 const AGE = 60;
+const CLOCK_SKEW_SECONDS = 30;
 const seen = new Set<string>();
 
 export async function issueRemoteEnterTicket(
@@ -10,6 +11,7 @@ export async function issueRemoteEnterTicket(
 ): Promise<string> {
   const nonce = randomBytes(32).toString("base64url");
   const { importPKCS8, SignJWT } = await import("jose");
+  const issuedAt = Math.floor(Date.now() / 1000) - CLOCK_SKEW_SECONDS;
   return new SignJWT({
     device: binding.device,
     nonce,
@@ -20,8 +22,8 @@ export async function issueRemoteEnterTicket(
     .setIssuer(config.issuer)
     .setAudience(config.audience)
     .setSubject(binding.subject)
-    .setIssuedAt()
-    .setExpirationTime(`${AGE}s`)
+    .setIssuedAt(issuedAt)
+    .setExpirationTime(issuedAt + AGE)
     .sign(await importPKCS8(config.privateKey, "EdDSA"));
 }
 
@@ -35,6 +37,7 @@ export async function verifyRemoteEnterTicket(
     issuer: config.issuer,
     audience: config.audience,
     maxTokenAge: AGE,
+    clockTolerance: CLOCK_SKEW_SECONDS,
     requiredClaims: ["sub", "iat", "exp"],
   });
   if (

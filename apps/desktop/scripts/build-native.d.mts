@@ -32,3 +32,9 @@ export function assembleNativeBundle(input: {
   output: string;
   repoRoot: string;
 }): Promise<string>;
+
+export function vendorWindowsRuntimeDlls(
+  binaryDirectory: string,
+  libraryDirectory: string,
+  searchDirs: readonly string[],
+): Promise<void>;

@@ -25,6 +25,7 @@ import {
 } from "@rakazo/core/node/screen-proxy-response";
 import { resolveScreenProxySecret } from "@rakazo/core/node/secrets-guard";
 import type { Logger } from "@rakazo/logging";
+import { portalFramePolicy } from "../src/remote-frame-policy.js";
 import { ASSET_ARCHIVE_DIR, archiveAssets } from "./asset-archive.js";
 import { instanceThemeIndexMiddleware, instanceThemeMiddleware } from "./instance-theme.js";
 import { missingAssetMiddleware } from "./missing-asset.js";
@@ -536,14 +537,22 @@ export function attachPreviewMiddleware(
 ): () => void {
   const { middlewares } = server;
   middlewares.use((req, res, next) => {
-    const pathname = req.url?.split("?", 1)[0] ?? "/";
-    if (pathname !== COMPUTER_SCREEN_RUNTIME_PATH) res.setHeader("x-frame-options", "SAMEORIGIN");
-    const policy = contentSecurityPolicyFor(pathname, settings.appPolicy, wuyingScreenPolicy);
-    if (policy) {
-      res.setHeader("content-security-policy", policy);
-      res.setHeader("reporting-endpoints", CSP_REPORTING_ENDPOINTS);
-    }
-    next();
+    void (async () => {
+      const pathname = req.url?.split("?", 1)[0] ?? "/";
+      if (pathname !== COMPUTER_SCREEN_RUNTIME_PATH) res.setHeader("x-frame-options", "SAMEORIGIN");
+      let policy = contentSecurityPolicyFor(pathname, settings.appPolicy, wuyingScreenPolicy);
+      if (
+        policy === settings.appPolicy &&
+        (!path.extname(pathname) || pathname.endsWith(".html") || pathname.startsWith("/m/"))
+      ) {
+        policy = await portalFramePolicy(settings.api, req.headers.host, policy);
+      }
+      if (policy) {
+        res.setHeader("content-security-policy", policy);
+        res.setHeader("reporting-endpoints", CSP_REPORTING_ENDPOINTS);
+      }
+      next();
+    })().catch(next);
   });
   // A shared page's link is its only key: keep it out of search results and Referer.
   middlewares.use(sharedPageHeaders);

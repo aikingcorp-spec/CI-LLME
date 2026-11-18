@@ -1,17 +1,14 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { PAGE_RUNTIME_PATH } from "@rakazo/core";
 import { buildPageRuntime } from "@rakazo/page-kit/runtime-build";
 import type { Hono } from "hono";
+import { loadMermaidAsset } from "./mermaid-asset.js";
 
 /**
  * The mobile app draws a chat diagram in a WebView that loads Mermaid from the server it already
  * talks to, so the app ships without a copy and no third-party CDN sees the request.
  */
 export const DIAGRAM_SCRIPT_PATH = "/api/v1/assets/mermaid.js";
-
-const require = createRequire(import.meta.url);
 
 type Script = { body: Uint8Array<ArrayBuffer>; etag: string; cacheControl: string };
 
@@ -27,10 +24,9 @@ function cachedScript(load: () => Promise<Script>): () => Promise<Script> {
 }
 
 const loadDiagramScript = cachedScript(async () => {
-  const { version } = require("mermaid/package.json") as { version: string };
-  const file = await readFile(require.resolve("mermaid/dist/mermaid.min.js"));
+  const { version, body } = await loadMermaidAsset();
   return {
-    body: new Uint8Array(file),
+    body,
     etag: `"mermaid-${version}"`,
     cacheControl: "public, max-age=86400",
   };

@@ -601,6 +601,7 @@ export async function validateNativeBundle(
 
 function childEnvironment(source: NodeJS.ProcessEnv, bundle: string, home: string) {
   const env = nativeEnvironment(source);
+  const bin = path.join(bundle, "pg", "bin");
   const lib = path.join(bundle, "pg", "lib");
   env.HOME = home;
   env.USERPROFILE = home;
@@ -608,7 +609,8 @@ function childEnvironment(source: NodeJS.ProcessEnv, bundle: string, home: strin
   const pathName = process.platform === "win32" ? "Path" : "PATH";
   const current = env[pathName] ?? env.PATH ?? env.Path;
   if (process.platform === "win32") delete env.PATH;
-  env[pathName] = current ? `${lib}${path.delimiter}${current}` : lib;
+  const prefix = process.platform === "win32" ? `${bin}${path.delimiter}${lib}` : lib;
+  env[pathName] = current ? `${prefix}${path.delimiter}${current}` : prefix;
   return env;
 }
 

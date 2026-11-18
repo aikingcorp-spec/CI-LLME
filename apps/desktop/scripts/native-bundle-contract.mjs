@@ -1,3 +1,6 @@
+/** MSVC C/C++ runtime DLLs required by @embedded-postgres/windows-x64 on clean Windows installs. */
+export const WINDOWS_MSVC_RUNTIME_DLLS = ["vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll"];
+
 /** Files `validateNativeBundle` requires. Postgres 18 is the only current target. */
 export function nativeBundleFiles(platform = process.platform) {
   const executable = (name) => `pg/bin/${name}${platform === "win32" ? ".exe" : ""}`;
@@ -6,7 +9,12 @@ export function nativeBundleFiles(platform = process.platform) {
     node,
     executable("postgres"),
     executable("initdb"),
-    ...(platform === "win32" ? [executable("pg_ctl")] : []),
+    ...(platform === "win32"
+      ? [
+          executable("pg_ctl"),
+          ...WINDOWS_MSVC_RUNTIME_DLLS.map((name) => `pg/bin/${name}`),
+        ]
+      : []),
     "pg/share/postgres.bki",
     "apps/api/dist/index.js",
     "apps/worker/dist/index.js",

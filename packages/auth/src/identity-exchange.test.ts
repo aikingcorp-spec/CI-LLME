@@ -71,6 +71,53 @@ describe("identity proof", () => {
     vi.setSystemTime(Date.now() + 61_000);
     await expect(verifyIdentityProof(local, proof, "nonce")).rejects.toThrow();
   });
+  it("tolerates Windows/desktop clock skew even on strict zero-tolerance 0.5.0 verifiers", async () => {
+    const { importSPKI, jwtVerify } = await import("jose");
+    vi.useFakeTimers();
+    const serverNow = new Date("2026-11-18T03:54:14.508Z").getTime();
+    vi.setSystemTime(serverNow);
+    const proof = await issueIdentityProof(issuer, source, {
+      device: local.deviceId,
+      nonce: "skew-nonce",
+    });
+    const ticket = await issueRemoteEnterTicket(issuer, {
+      subject: source.id,
+      device: local.deviceId,
+      email: source.email,
+    });
+    const pubKey = await importSPKI(local.publicKey, "EdDSA");
+    // Simulate a shipped 0.5.0 Windows client whose PC clock is 1ms to 30s behind the server (no clockTolerance)
+    for (const offsetMs of [-30_000, -5_000, -500, -20, 0, 5_000, 29_000]) {
+      vi.setSystemTime(serverNow + offsetMs);
+      const strictProof = await jwtVerify(proof, pubKey, {
+        algorithms: ["EdDSA"],
+        issuer: local.issuer,
+        audience: local.audience,
+        maxTokenAge: 60,
+        requiredClaims: ["sub", "iat", "exp"],
+      });
+      expect((strictProof.payload.exp ?? 0) - (strictProof.payload.iat ?? 0)).toBeLessThanOrEqual(
+        60,
+      );
+      await jwtVerify(ticket, pubKey, {
+        algorithms: ["EdDSA"],
+        issuer: local.issuer,
+        audience: local.audience,
+        maxTokenAge: 60,
+        requiredClaims: ["sub", "iat", "exp"],
+      });
+      expect(await verifyIdentityProof(local, proof, "skew-nonce")).toMatchObject({
+        subject: source.id,
+      });
+    }
+    // Updated verifier also tolerates up to -60s / +59s skew while rejecting expired tokens (+61s)
+    vi.setSystemTime(serverNow - 55_000);
+    expect(await verifyIdentityProof(local, proof, "skew-nonce")).toMatchObject({
+      subject: source.id,
+    });
+    vi.setSystemTime(serverNow + 61_000);
+    await expect(verifyIdentityProof(local, proof, "skew-nonce")).rejects.toThrow();
+  });
 });
 
 function servers(

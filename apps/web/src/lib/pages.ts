@@ -17,6 +17,31 @@ import { errorCode } from "./user-error";
 /** The search parameter naming the page open full screen over a chat. */
 export const PAGE_PARAM = "page";
 
+/** Uses the current remote host origin when a desktop server answers with a loopback share URL. */
+export function resolvePageShareUrl(
+  shareUrl: string | null | undefined,
+  currentOrigin: string = typeof window !== "undefined" ? window.location.origin : "",
+): string | null {
+  if (!shareUrl) return null;
+  if (!currentOrigin) return shareUrl;
+  try {
+    const parsed = new URL(shareUrl);
+    const current = new URL(currentOrigin);
+    const parsedLoopback = parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost";
+    const currentLoopback = current.hostname === "127.0.0.1" || current.hostname === "localhost";
+    if (
+      parsedLoopback &&
+      !currentLoopback &&
+      (current.protocol === "https:" || current.protocol === "http:")
+    ) {
+      return new URL(`${parsed.pathname}${parsed.search}${parsed.hash}`, current.origin).href;
+    }
+  } catch {
+    return shareUrl;
+  }
+  return shareUrl;
+}
+
 function readTheme(): "light" | "dark" {
   return document.documentElement.dataset.theme === "light" ? "light" : "dark";
 }

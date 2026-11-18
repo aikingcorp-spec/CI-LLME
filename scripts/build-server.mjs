@@ -6,14 +6,15 @@
 // node_modules stays external, but a bare specifier only resolves from the package that
 // declares it (pnpm keeps dependencies strict), not from dist/. Each one is therefore
 // rewritten to the relative path of the file it resolves to from its importer.
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { builtinModules } from "node:module";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { builtinModules, createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { promptSourceVersion } from "../packages/core/src/node/prompt-source-version.ts";
 
 const builtins = new Set(builtinModules);
+const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 
 /**
  * With VNBOT_INLINE_DEPS=1, the desktop build also bundles dependencies, so the app installs a few
@@ -108,6 +109,85 @@ function serverBundleOptions(outDir, inline) {
   };
 }
 
+function inlineScriptAssetsPlugin() {
+  const scriptAssetsSuffix = path.join("apps", "api", "src", "script-assets.ts");
+  return {
+    name: "inline-script-assets",
+    setup(builder) {
+      builder.onResolve({ filter: /^@rakazo\/page-kit\/runtime-build$/ }, () => ({
+        path: "page-runtime-loader",
+        namespace: "vnbot-inline-script",
+      }));
+      builder.onResolve({ filter: /^\.\/mermaid-asset(?:\.js|\.ts)?$/ }, (args) => {
+        if (!path.normalize(args.importer).endsWith(scriptAssetsSuffix)) return undefined;
+        return {
+          path: "mermaid-loader",
+          namespace: "vnbot-inline-script",
+        };
+      });
+      builder.onResolve({ filter: /^vnbot-inline-script-data:/ }, (args) => ({
+        path: args.path.slice("vnbot-inline-script-data:".length),
+        namespace: "vnbot-inline-script-data",
+      }));
+      builder.onLoad({ filter: /.*/, namespace: "vnbot-inline-script" }, (args) => {
+        if (args.path === "page-runtime-loader") {
+          return {
+            loader: "js",
+            contents:
+              'export async function buildPageRuntime() { const mod = await import("vnbot-inline-script-data:page-runtime"); return Buffer.from(mod.default, "base64").toString("utf8"); }\n',
+          };
+        }
+        if (args.path === "mermaid-loader") {
+          return {
+            loader: "js",
+            contents:
+              'export async function loadMermaidAsset() { const mod = await import("vnbot-inline-script-data:mermaid"); return { version: mod.version, body: new Uint8Array(Buffer.from(mod.base64, "base64")) }; }\n',
+          };
+        }
+        return undefined;
+      });
+      builder.onLoad({ filter: /.*/, namespace: "vnbot-inline-script-data" }, async (args) => {
+        if (args.path === "page-runtime") {
+          const pageKitRequire = createRequire(
+            path.join(repoRoot, "packages", "page-kit", "package.json"),
+          );
+          const built = await build({
+            entryPoints: [pageKitRequire.resolve("@rakazo/page-kit/runtime")],
+            bundle: true,
+            write: false,
+            format: "iife",
+            platform: "browser",
+            target: ["es2020", "safari15"],
+            minify: true,
+            jsx: "automatic",
+            legalComments: "eof",
+            define: { "process.env.NODE_ENV": '"production"' },
+            logLevel: "silent",
+          });
+          const [output] = built.outputFiles;
+          if (!output) throw new Error("The page runtime build produced no output.");
+          const base64 = Buffer.from(output.text, "utf8").toString("base64");
+          return {
+            loader: "js",
+            contents: `export default ${JSON.stringify(base64)};\n`,
+          };
+        }
+        if (args.path === "mermaid") {
+          const apiRequire = createRequire(path.join(repoRoot, "apps", "api", "package.json"));
+          const { version } = apiRequire("mermaid/package.json");
+          const bytes = await readFile(apiRequire.resolve("mermaid/dist/mermaid.min.js"));
+          const base64 = Buffer.from(bytes).toString("base64");
+          return {
+            loader: "js",
+            contents: `export const version = ${JSON.stringify(version)};\nexport const base64 = ${JSON.stringify(base64)};\n`,
+          };
+        }
+        return undefined;
+      });
+    },
+  };
+}
+
 /**
  * One build for every entry, sharing chunks. Bundled CommonJS calls `require`, which ES modules
  * lack, so each output file gets one made for it.
@@ -116,6 +196,7 @@ export function inlineServerBuildOptions(entries, outDir) {
   const options = serverBundleOptions(outDir, true);
   return {
     ...options,
+    plugins: [inlineScriptAssetsPlugin(), ...options.plugins],
     absWorkingDir: process.cwd(),
     entryPoints: entries,
     outdir: outDir,

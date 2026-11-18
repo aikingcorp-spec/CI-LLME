@@ -15,7 +15,11 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { expect, it } from "vitest";
-import { assembleNativeBundle, parseNativeBuildArgs } from "../../scripts/build-native.mjs";
+import {
+  assembleNativeBundle,
+  parseNativeBuildArgs,
+  vendorWindowsRuntimeDlls,
+} from "../../scripts/build-native.mjs";
 import { nativeBundleManifest } from "./native-stack.js";
 
 const execFile = promisify(execFileCallback);
@@ -348,4 +352,36 @@ it("builds a universal bundle only for macOS", async () => {
       repoRoot: "/repo",
     }),
   ).rejects.toThrow("Unsupported native bundle target.");
+});
+
+it("vendors MSVC runtime DLLs case-insensitively into pg/bin and pg/lib for Windows bundles", async () => {
+  const winManifest = nativeBundleManifest({ platform: "win32", arch: "x64" });
+  expect(winManifest.files["pg/bin/vcruntime140.dll"]).toBe(true);
+  expect(winManifest.files["pg/bin/vcruntime140_1.dll"]).toBe(true);
+  expect(winManifest.files["pg/bin/msvcp140.dll"]).toBe(true);
+
+  const parent = path.resolve(import.meta.dirname, "../../build/native-bundle-tests");
+  await mkdir(parent, { recursive: true });
+  const root = await mkdtemp(path.join(parent, "win-dll-"));
+  try {
+    const bin = path.join(root, "pg/bin");
+    const lib = path.join(root, "pg/lib");
+    const system32 = path.join(root, "System32");
+    await mkdir(system32, { recursive: true });
+    await writeFile(path.join(system32, "VCRUNTIME140.dll"), "vc140");
+    await writeFile(path.join(system32, "vcruntime140_1.dll"), "vc140_1");
+    await expect(vendorWindowsRuntimeDlls(bin, lib, [system32])).rejects.toThrow(
+      "Missing Windows runtime DLL: msvcp140.dll",
+    );
+
+    await writeFile(path.join(system32, "MSVCP140.DLL"), "msvcp140");
+    await vendorWindowsRuntimeDlls(bin, lib, [system32]);
+    for (const dir of [bin, lib]) {
+      expect(await readFile(path.join(dir, "vcruntime140.dll"), "utf8")).toBe("vc140");
+      expect(await readFile(path.join(dir, "vcruntime140_1.dll"), "utf8")).toBe("vc140_1");
+      expect(await readFile(path.join(dir, "msvcp140.dll"), "utf8")).toBe("msvcp140");
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
