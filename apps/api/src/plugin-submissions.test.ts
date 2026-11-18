@@ -269,9 +269,10 @@ describe("reviewing submissions", () => {
     await reviewPluginSubmission(deps, { id: "sub-1", decision: "approve" });
     expect(await approvedPluginEntries(prisma)).toEqual([
       expect.objectContaining({
+        id: expect.stringMatching(/^VNBot:/),
         name: "acme-tickets",
         displayName: "Acme Tickets",
-        registry: "Rakazo",
+        registry: "VNBot",
         source: `https://github.com/acme/plugins@${SHA}#tickets`,
         installedSource: "https://github.com/acme/plugins#tickets",
         hasConnector: false,

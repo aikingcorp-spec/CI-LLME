@@ -167,7 +167,7 @@ export function UsageSettingsPanel({ panelRef }: { panelRef?: RefObject<HTMLDivE
         {[
           { label: t`Runs`, value: number(totals?.runs) },
           { label: t`Tokens`, value: number(totals?.totalTokens) },
-          { label: t`Cost`, value: cost(totals?.costUsd) },
+          { label: t`Model cost`, value: cost(totals?.costUsd) },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border px-4 py-3">
             <dt className="text-body-sm text-muted-foreground">{stat.label}</dt>

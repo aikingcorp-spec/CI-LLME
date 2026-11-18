@@ -145,6 +145,11 @@ it("shows every bot's usage first, then narrows it by bot, model and date range"
   const panel = await renderPanel();
   try {
     expect(breakdown.fetch).toHaveBeenLastCalledWith({ range: "30d" });
+    expect([...panel.container.querySelectorAll("dt")].map((node) => node.textContent)).toEqual([
+      "Runs",
+      "Tokens",
+      "Model cost",
+    ]);
     expect(panel.totals()).toEqual(["3", "467", "$0.04"]);
     expect(await panel.options("Bot")).toEqual(["All bots", "Alpha", "Old bot (deleted)"]);
     expect(

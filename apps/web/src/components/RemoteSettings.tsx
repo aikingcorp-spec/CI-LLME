@@ -1,4 +1,4 @@
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { RemotePortal } from "@rakazo/contracts";
 import { Button, Label, Switch } from "@rakazo/ui-web";
 import { useEffect, useId, useState } from "react";
@@ -98,6 +98,7 @@ export function RemoteHostControls({
 
 /** Opening another computer is separate from allowing remote access to this one. */
 export function RemoteSettings() {
+  const { t } = useLingui();
   const connectLabelId = useId();
   const [portal, setPortal] = useState<Portal | null>(null);
   const [pending, setPending] = useState(false);
@@ -113,12 +114,12 @@ export function RemoteSettings() {
         if (active) setPortal(next);
       })
       .catch(() => {
-        if (active) setError("Không tải được danh sách máy.");
+        if (active) setError(t`Không tải được danh sách máy.`);
       });
     return () => {
       active = false;
     };
-  }, [attempt]);
+  }, [attempt, t]);
   return (
     <div className="space-y-4">
       {portal ? (

@@ -55,7 +55,21 @@ describePostgres("board creation (PostgreSQL)", () => {
     );
     expect(new Set(boards.map((board) => board.id)).size).toBe(1);
     expect(boards.every((board) => board.name === "General")).toBe(true);
+    expect(boards.every((board) => board.ticketPrefix === "VNB")).toBe(true);
     expect(await fixtures.board.count({ where: { spaceId } })).toBe(1);
+  });
+  it("keeps an existing board's legacy RAK ticketPrefix untouched", async () => {
+    const legacySpaceId = `board-legacy-space-${suffix}`;
+    await fixtures.space.create({
+      data: { id: legacySpaceId, organizationId, name: "Legacy" },
+    });
+    await fixtures.board.create({
+      data: { spaceId: legacySpaceId, name: "Legacy", ticketPrefix: "RAK" },
+    });
+    const board = await runAsTenant({ spaceId: legacySpaceId, userId }, () =>
+      ensureBoard(prisma, legacySpaceId),
+    );
+    expect(board.ticketPrefix).toBe("RAK");
   });
   it("returns user and bot display names with comments", async () => {
     const board = await runAsTenant(tenant, () => ensureBoard(prisma, spaceId));
