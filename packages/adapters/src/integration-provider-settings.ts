@@ -99,6 +99,14 @@ export class IntegrationProviderSettings {
     }
     return this.prisma.$transaction((tx) => runAsSystemInTransaction(tx, reason, () => read(tx)));
   }
+  /** Whether this install resolves the slug provider from a shared personal key instead of deployment env. */
+  hasPersonalKeyMode(): boolean {
+    return Boolean(this.personal);
+  }
+  /** Whether the deployment has credentials configured for the slug integration provider. */
+  async isDeploymentConfigured(): Promise<boolean> {
+    return this.configured(PLUGIN_SLUG_PROVIDER);
+  }
   /** Only the install owner pastes, replaces or removes the key everyone here shares. */
   async canManageKey(userId: string): Promise<boolean> {
     if (!this.personal || !userId) return false;
@@ -321,6 +329,9 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
       },
     };
   }
+  usesPersonalKey(): boolean {
+    return this.id === PLUGIN_SLUG_PROVIDER && this.settings.hasPersonalKeyMode();
+  }
   async needsPersonalKey(context: AdapterContext) {
     return this.id === PLUGIN_SLUG_PROVIDER && this.settings.needsPersonalKey(context.userId ?? "");
   }
@@ -413,7 +424,7 @@ export async function personalKeyRejected(
   for (const provider of providers) {
     if (
       provider instanceof ConfiguredIntegrationProvider &&
-      provider.describe().id === PLUGIN_SLUG_PROVIDER &&
+      provider.usesPersonalKey() &&
       !(await provider.needsPersonalKey(context))
     ) {
       try {

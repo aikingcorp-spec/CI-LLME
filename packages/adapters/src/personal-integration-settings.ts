@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { AdapterContext, ManagedConnectorProvider, SecretStore } from "@rakazo/adapter-kit";
 import type { IntegrationProviderConfig, IntegrationProviderId } from "@rakazo/contracts";
 import { IntegrationProviderConfigSchema } from "@rakazo/contracts";
+import { ClientError } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { credentialVerificationError } from "./credential-reachability.js";
 import { personalIntegrationRecordId } from "./personal-integration-persistence.js";
@@ -163,7 +164,7 @@ export class PersonalIntegrationSettings {
     }
     const parsed = IntegrationProviderConfigSchema.safeParse(config);
     if (!parsed.success || ("apiKey" in parsed.data && !parsed.data.apiKey.trim())) {
-      throw new Error("Invalid integration credentials");
+      throw new ClientError("BAD_REQUEST", "Invalid integration credentials");
     }
     config = parsed.data;
     if (config.provider === "composio" && typeof config.apiKey === "string") {

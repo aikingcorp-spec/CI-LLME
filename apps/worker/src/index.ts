@@ -190,7 +190,26 @@ async function main() {
   const jobs: JobPublisher =
     inMemoryJobs ?? new RunJobPublisher(prisma, new GraphileJobPublisher(pool, prisma), runs);
   secretCleanupJobs = jobs;
-  const connectors = createConnectorRuntime(env, { prisma, secrets, events, jobs });
+  const identityExchangeKind = (() => {
+    try {
+      const raw = process.env.RAKAZO_IDENTITY_EXCHANGE?.trim();
+      const parsed = raw ? (JSON.parse(raw) as { kind?: unknown }) : undefined;
+      return typeof parsed?.kind === "string" ? parsed.kind : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const hostedCentralPortal = Boolean(
+    process.env.STRIPE_SECRET_KEY?.trim() ||
+      (process.env.BILLING_EMULATOR === "true" && process.env.NODE_ENV !== "production") ||
+      identityExchangeKind === "issuer" ||
+      (identityExchangeKind !== "local" && process.env.RAKAZO_REMOTE_ACCESS?.trim()),
+  );
+  const connectors = createConnectorRuntime(
+    env,
+    { prisma, secrets, events, jobs },
+    { personalIntegrationKey: !hostedCentralPortal },
+  );
   const sandbox = await createRunSandbox(sandboxProvider, {
     ...sandboxOptions,
     supervisorUrl: process.env.SANDBOX_SUPERVISOR_URL ?? "http://127.0.0.1:7091",

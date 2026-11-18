@@ -5,8 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 import { InfisicalSecretStore } from "./infisical-secret-store.js";
 import {
   IntegrationProviderSettings,
+  personalKeyRejected,
   prepareManagedConnectorForTransaction,
 } from "./integration-provider-settings.js";
+import { PersonalIntegrationSettings } from "./personal-integration-settings.js";
+import { createConnectorRuntime, runRuntimeEnvFromProcess } from "./run-runtime.js";
 import { infisicalFake } from "./secret-store-fake.js";
 import { EncryptedSecretStore } from "./secrets.js";
 
@@ -321,5 +324,92 @@ describe("integration credentials with Infisical", () => {
       await store.close();
       vi.useRealTimers();
     }
+  });
+});
+
+describe("integration mode topology and key validation", () => {
+  it("does not flag deployment-configured fallback keys in personalKeyRejected", async () => {
+    const f = fixture();
+    const listConnectedExternalIds = vi.fn(async () => {
+      throw Object.assign(new Error("Unauthorized"), { status: 401 });
+    });
+    const settings = new IntegrationProviderSettings(
+      f.prisma as unknown as PrismaClient,
+      f.secrets,
+      "test-identity",
+      {
+        composio: {
+          listConnectedExternalIds,
+        } as unknown as ManagedConnectorProvider,
+      },
+    );
+    expect(settings.hasPersonalKeyMode()).toBe(false);
+    await expect(personalKeyRejected(settings.providers(), context)).resolves.toBe(false);
+    expect(listConnectedExternalIds).not.toHaveBeenCalled();
+  });
+
+  it("throws ClientError BAD_REQUEST when normalized personal Composio key is empty", async () => {
+    const f = fixture();
+    const personal = new PersonalIntegrationSettings(
+      f.prisma as unknown as PrismaClient,
+      f.secrets,
+      () => f.adapter,
+    );
+    await expect(
+      personal.prepareSave({ provider: "composio", apiKey: 'COMPOSIO_API_KEY=""' }, context),
+    ).rejects.toMatchObject({
+      name: "ClientError",
+      kind: "BAD_REQUEST",
+    });
+  });
+
+  it("selects deployment Composio over personal mode and disables personal mode on hosted portals", async () => {
+    const env = runRuntimeEnvFromProcess({
+      ENCRYPTION_KEY: "fake-encryption-key-for-test-only",
+    });
+    const f = fixture();
+    const prismaWithOwner = {
+      ...f.prisma,
+      user: { findFirst: vi.fn(async () => ({ id: "owner-1" })) },
+    } as unknown as PrismaClient;
+    const deps = {
+      prisma: prismaWithOwner,
+      secrets: f.secrets,
+      events: { append: vi.fn() } as never,
+      jobs: { enqueue: vi.fn(), enqueueIn: vi.fn(), cancelIn: vi.fn() } as never,
+    };
+
+    const composioMock = {
+      ...f.adapter,
+      describe: () => ({
+        id: "composio",
+        contractVersion: "1",
+        adapterVersion: "1",
+        capabilities: { discover: true, oauth: true, secretsBrokered: true },
+      }),
+    } as never;
+
+    const envRuntime = createConnectorRuntime(env, deps, {
+      composio: composioMock,
+    });
+    expect(envRuntime.integrationSettings.hasPersonalKeyMode()).toBe(false);
+    await expect(envRuntime.integrationSettings.canManageKey("owner-1")).resolves.toBe(false);
+    await expect(envRuntime.integrationSettings.needsPersonalKey("owner-1")).resolves.toBe(false);
+    await expect(envRuntime.integrationSettings.resolve("composio", "user-2")).resolves.toBe(
+      composioMock,
+    );
+
+    const hostedRuntime = createConnectorRuntime(env, deps, {
+      personalIntegrationKey: false,
+    });
+    expect(hostedRuntime.integrationSettings.hasPersonalKeyMode()).toBe(false);
+    await expect(hostedRuntime.integrationSettings.canManageKey("owner-1")).resolves.toBe(false);
+    await expect(hostedRuntime.integrationSettings.needsPersonalKey("owner-1")).resolves.toBe(
+      false,
+    );
+
+    const localRuntime = createConnectorRuntime(env, deps);
+    expect(localRuntime.integrationSettings.hasPersonalKeyMode()).toBe(true);
+    await expect(localRuntime.integrationSettings.canManageKey("owner-1")).resolves.toBe(true);
   });
 });

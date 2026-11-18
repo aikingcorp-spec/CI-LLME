@@ -129,7 +129,11 @@ export function connectionsRoutes(ctx: RouterContext) {
                 });
               }
               return items;
-            } catch {
+            } catch (error) {
+              getLogger().warn("connections.catalog provider failed", {
+                connectorId: provider.describe().id,
+                errorName: error instanceof Error ? error.name : typeof error,
+              });
               return [];
             }
           }),

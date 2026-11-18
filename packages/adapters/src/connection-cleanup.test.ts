@@ -23,6 +23,8 @@ import {
   recordConnectionCleanupAttemptsExhausted,
 } from "./connection-cleanup.js";
 import { IntegrationProviderSettings } from "./integration-provider-settings.js";
+import { PersonalIntegrationSettings } from "./personal-integration-settings.js";
+import { EncryptedSecretStore } from "./secrets.js";
 
 const scope = {
   spaceId: "space-1",
@@ -532,5 +534,106 @@ describe("leftoverAuthorization", () => {
       leftoverAuthorization(connector({ revokeUnreferencedAccounts: vi.fn() }), scope, "mail"),
     ).toEqual(scope);
     expect(leftoverAuthorization(connector(), scope, undefined)).toBeUndefined();
+  });
+
+  it("passes payload.userId when preparing a personal-key managed connector", async () => {
+    const secrets = new EncryptedSecretStore("cleanup-secret-key");
+    const rows = new Map<string, { ciphertext: string; revision: string }>();
+    const prisma = {
+      userIntegrationProviderConfig: {
+        findUnique: vi.fn(
+          async ({ where }: { where: { userId_provider: { userId: string; provider: string } } }) =>
+            rows.get(`${where.userId_provider.userId}:${where.userId_provider.provider}`) ?? null,
+        ),
+        upsert: vi.fn(
+          async ({
+            where,
+            create,
+          }: {
+            where: { userId_provider: { userId: string; provider: string } };
+            create: { ciphertext: string; revision: string };
+          }) => {
+            rows.set(`${where.userId_provider.userId}:${where.userId_provider.provider}`, create);
+            return create;
+          },
+        ),
+      },
+      integrationProviderConfig: { findUnique: vi.fn(async () => null) },
+      connection: {
+        count: vi.fn(async () => 0),
+        findMany: vi.fn(async () => []),
+      },
+      $queryRaw: vi.fn(async () => [{ locked: true }]),
+      $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
+    } as unknown as PrismaClient;
+
+    const cancelAuthorizationRequest = vi.fn(async () => undefined);
+    const personal = new PersonalIntegrationSettings(prisma, secrets, () => ({
+      describe: () => ({
+        id: "composio",
+        contractVersion: "1",
+        adapterVersion: "1",
+        capabilities: { discover: true, oauth: true, secretsBrokered: true },
+      }),
+      discoverTools: async () => [],
+      catalog: async () => [],
+      listConnectedExternalIds: async () => [],
+      connectionReady: async () => true,
+      begin: async () => ({ authorizationUrl: null, state: "s" }),
+      complete: async () => ({ connectionRef: "a" }),
+      revoke: async () => undefined,
+      cancelAuthorizationRequest,
+      execute: async function* () {},
+    }));
+    await personal.save(
+      { provider: "composio", apiKey: "ak_owner" },
+      {
+        userId: "owner-1",
+        spaceId: "space-1",
+        operationId: "save",
+        traceId: "save",
+        signal: new AbortController().signal,
+      },
+    );
+    const settings = new IntegrationProviderSettings(
+      prisma,
+      secrets,
+      "id-secret",
+      {},
+      undefined,
+      personal,
+      async () => "owner-1",
+    );
+    const wrapper = settings.providers().find((p) => p.describe().id === "composio")!;
+    const handlers = createBackgroundJobHandlers({
+      prisma,
+      jobs: { enqueue: vi.fn() },
+      connectors: { managed: () => wrapper },
+    } as unknown as Parameters<typeof createBackgroundJobHandlers>[0]);
+
+    await expect(
+      handlers["connection.cleanup"]({
+        spaceId: "space-1",
+        userId: "member-1",
+        connectorId: "composio",
+        provider: "gmail",
+        ref: "request-1",
+      }),
+    ).resolves.toBeUndefined();
+    expect(cancelAuthorizationRequest).toHaveBeenCalledWith(
+      "request-1",
+      expect.objectContaining({ userId: "member-1", spaceId: "space-1" }),
+    );
+
+    rows.clear();
+    await expect(
+      handlers["connection.cleanup"]({
+        spaceId: "space-1",
+        userId: "member-1",
+        connectorId: "composio",
+        provider: "gmail",
+        ref: "request-2",
+      }),
+    ).rejects.toBeInstanceOf(RetryJobLaterError);
   });
 });

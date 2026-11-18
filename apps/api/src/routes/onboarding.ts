@@ -75,13 +75,17 @@ export function onboardingRoutes(ctx: RouterContext) {
         const webUrl = new URL("/integrations/setup", deps.env.webOrigin).toString();
         if (!settings || typeof settings.canManageKey !== "function")
           return { canConfigure: false, needsSetup: false, webUrl, providers: [] };
-        const owner = await settings.canManageKey(context.actor.userId);
-        const configured = !(await settings.needsPersonalKey(context.actor.userId));
+        const personalMode =
+          typeof settings.hasPersonalKeyMode !== "function" || settings.hasPersonalKeyMode();
+        const owner = personalMode ? await settings.canManageKey(context.actor.userId) : false;
+        const configured = personalMode
+          ? !(await settings.needsPersonalKey(context.actor.userId))
+          : await settings.isDeploymentConfigured();
         return {
           canConfigure: owner,
           needsSetup: owner && !configured,
           webUrl,
-          providers: [{ id: "composio" as const, configured }],
+          providers: personalMode || configured ? [{ id: "composio" as const, configured }] : [],
         };
       }),
       save: authed.integrationSetup.save.handler(async ({ context, input }) => {

@@ -167,7 +167,7 @@ export async function beginConnection(
     connectorId: request.connectorId ?? deps.connectors.defaultConnectorId,
   };
   const connector = deps.integrationSettings?.has(input.connectorId)
-    ? await deps.integrationSettings.resolve(input.connectorId)
+    ? await deps.integrationSettings.resolve(input.connectorId, context.actor.userId)
     : deps.connectors.managed(input.connectorId);
   if (!connector)
     throw new ClientError("BAD_REQUEST", `Connector ${input.connectorId} is not configured`);
@@ -617,7 +617,9 @@ export async function revokeConnection(
   // Prepared before the transaction, so the provider call inside it reads nothing from the pool.
   const active = snapshot && ["connected", "pending", "error"].includes(snapshot.status);
   const configured = active ? deps.connectors.managed(snapshot.connectorId) : undefined;
-  const prepared = configured ? await prepareManagedConnectorForTransaction(configured) : undefined;
+  const prepared = configured
+    ? await prepareManagedConnectorForTransaction(configured, context.actor.userId)
+    : undefined;
   // The row is marked revoked and its authorization removed in one transaction, under the
   // provider lock: a failed removal, or a process that dies around the provider call, rolls the
   // row back to what it was, so the row stays the record of an authorization that may remain.

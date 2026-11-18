@@ -131,6 +131,8 @@ export interface ConnectorRuntimeOverrides {
   pipedream?: ManagedConnectorProvider;
   /** Registered beside the configured providers. */
   connectors?: ConnectorProvider[];
+  /** Whether an install owner can supply Composio credentials in the UI when env lacks them. */
+  personalIntegrationKey?: boolean;
 }
 
 /** MCP, installed and integration connectors, in the one registry runs use. */
@@ -176,27 +178,31 @@ export function createConnectorRuntime(
     network,
     env.mcpAllowPrivateEndpoint,
   );
-  const personalIntegrationSettings = new PersonalIntegrationSettings(prisma, secrets, (config) => {
-    const parsed = IntegrationProviderConfigSchema.parse(config);
-    return parsed.provider === "composio"
-      ? new ComposioConnector({ apiKey: parsed.apiKey })
-      : new PipedreamConnector({ ...parsed, identitySecret: env.encryptionKey });
-  });
+  const deploymentComposio =
+    composio ??
+    (isComposioEnabled(env.composioApiKey)
+      ? new ComposioConnector({ apiKey: env.composioApiKey })
+      : undefined);
+  const usePersonalKey = overrides.personalIntegrationKey !== false && !deploymentComposio;
+  const personalIntegrationSettings = usePersonalKey
+    ? new PersonalIntegrationSettings(prisma, secrets, (config) => {
+        const parsed = IntegrationProviderConfigSchema.parse(config);
+        return parsed.provider === "composio"
+          ? new ComposioConnector({ apiKey: parsed.apiKey })
+          : new PipedreamConnector({ ...parsed, identitySecret: env.encryptionKey });
+      })
+    : undefined;
   const integrationSettings = new IntegrationProviderSettings(
     prisma,
     secrets,
     env.encryptionKey,
     {
-      composio:
-        composio ??
-        (isComposioEnabled(env.composioApiKey)
-          ? new ComposioConnector({ apiKey: env.composioApiKey })
-          : undefined),
+      composio: deploymentComposio,
       pipedream,
     },
     undefined,
     personalIntegrationSettings,
-    () => machineOwnerUserId(prisma),
+    usePersonalKey ? () => machineOwnerUserId(prisma) : undefined,
   );
   const stack = createConnectorStack(composio, [
     installed,

@@ -366,7 +366,7 @@ export async function retryConnectionCleanup(
     );
     return;
   }
-  const prepared = await prepareManagedConnectorForTransaction(configured);
+  const prepared = await prepareManagedConnectorForTransaction(configured, payload.userId);
   const connector = prepared.provider;
   // Credentials that are missing now may be saved again, so the job waits for them.
   if (!connector)

@@ -14,7 +14,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { IsolationError, runProviderTransaction } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
-import { beginConnection } from "./connection-flows.js";
+import { beginConnection, revokeConnection } from "./connection-flows.js";
 import type { RouterDeps } from "./router.js";
 import { appHandler, createRouter, handle } from "./router-test-support.js";
 
@@ -892,4 +892,196 @@ describe("connection tool listing", () => {
       );
     }
   });
+});
+
+describe("personal integration userId propagation and deployment modes", () => {
+  it("passes actor userId to integrationSettings.resolve in beginConnection and rejects when unconfigured", async () => {
+    const begin = vi.fn().mockResolvedValue({ state: "req-1", authorizationUrl: null });
+    const resolve = vi.fn().mockResolvedValueOnce({ begin }).mockResolvedValueOnce(undefined);
+    const integrationSettings = { has: vi.fn(() => true), resolve };
+    const prisma = {
+      $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          $executeRaw: vi.fn(),
+          connection: {
+            findMany: vi.fn(async () => []),
+            create: vi.fn(async () => ({
+              id: "conn-1",
+              connectorId: "composio",
+              provider: "gmail",
+              displayName: "Gmail",
+              status: "pending",
+              createdAt: new Date("2026-08-26T00:00:00.000Z"),
+            })),
+            updateMany: vi.fn(async () => ({ count: 1 })),
+          },
+        }),
+      ),
+    } as unknown as PrismaClient;
+    const deps = {
+      prisma,
+      connectors: { defaultConnectorId: "composio", managed: vi.fn(() => undefined) },
+      integrationSettings,
+      env: { webOrigin: "http://127.0.0.1:5173" },
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "space-1",
+      userId: "user-42",
+      email: "user@example.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+
+    await beginConnection(
+      deps,
+      { actor },
+      {
+        connectorId: "composio",
+        provider: "gmail",
+        displayName: "Gmail",
+      },
+    );
+    expect(resolve).toHaveBeenNthCalledWith(1, "composio", "user-42");
+
+    await expect(
+      beginConnection(
+        deps,
+        { actor },
+        {
+          connectorId: "composio",
+          provider: "gmail",
+          displayName: "Gmail",
+        },
+      ),
+    ).rejects.toMatchObject({
+      name: "ClientError",
+      kind: "BAD_REQUEST",
+      message: "Connector composio is not configured",
+    });
+    expect(resolve).toHaveBeenNthCalledWith(2, "composio", "user-42");
+  });
+
+  it("passes actor userId to prepareManagedConnectorForTransaction in revokeConnection", async () => {
+    const revoke = vi.fn(async () => undefined);
+    const { IntegrationProviderSettings, EncryptedSecretStore } = await import("@rakazo/adapters");
+    const secrets = new EncryptedSecretStore("test-encryption-key");
+    const mockPrisma = {
+      connection: {
+        findFirst: vi.fn(async () => ({
+          id: "conn-1",
+          spaceId: "space-1",
+          userId: "user-42",
+          connectorId: "composio",
+          provider: "gmail",
+          providerRef: "account-1",
+          displayName: "Gmail",
+          status: "connected",
+        })),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+        count: vi.fn(async () => 0),
+      },
+      integrationProviderConfig: { findUnique: vi.fn(async () => null) },
+      $executeRaw: vi.fn(async () => undefined),
+      $queryRaw: vi.fn(async () => []),
+      $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockPrisma)),
+    } as unknown as PrismaClient;
+
+    const personalPrepare = vi.fn(async (userId: string) => ({
+      provider:
+        userId === "user-42"
+          ? {
+              describe: () => ({
+                id: "composio",
+                contractVersion: "1",
+                adapterVersion: "1",
+                capabilities: { discover: true, oauth: true, secretsBrokered: true },
+              }),
+              discoverTools: async () => [],
+              catalog: async () => [],
+              listConnectedExternalIds: async () => [],
+              connectionReady: async () => true,
+              begin: async () => ({ authorizationUrl: null, state: "s" }),
+              complete: async () => ({ connectionRef: "a" }),
+              revoke,
+            }
+          : undefined,
+      recheck: async () => true,
+    }));
+    const personal = {
+      configured: vi.fn(async () => true),
+      prepare: personalPrepare,
+    } as unknown as NonNullable<ConstructorParameters<typeof IntegrationProviderSettings>[5]>;
+    const settings = new IntegrationProviderSettings(
+      mockPrisma,
+      secrets,
+      "id-secret",
+      {},
+      undefined,
+      personal,
+    );
+    const composioWrapper = settings.providers().find((p) => p.describe().id === "composio")!;
+    const deps = {
+      prisma: mockPrisma,
+      connectors: { managed: () => composioWrapper },
+      jobs: { enqueueIn: vi.fn() },
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "space-1",
+      userId: "user-42",
+      email: "user@example.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+
+    await expect(revokeConnection(deps, { actor }, { connectionId: "conn-1" })).resolves.toEqual({
+      ok: true,
+    });
+    expect(personalPrepare).toHaveBeenCalledWith("user-42", "composio");
+    expect(revoke).toHaveBeenCalledWith(
+      "account-1",
+      expect.objectContaining({ userId: "user-42", spaceId: "space-1" }),
+    );
+  });
+
+  it.each([
+    { configured: true, expectedProviders: [{ id: "composio", configured: true }] },
+    { configured: false, expectedProviders: [] },
+  ])(
+    "reports deployment integration status without owner prompt when personal mode is disabled: %j",
+    async ({ configured, expectedProviders }) => {
+      const deps = {
+        prisma: {},
+        env: { webOrigin: "https://example.test" },
+        integrationSettings: {
+          hasPersonalKeyMode: () => false,
+          canManageKey: vi.fn(async () => true),
+          needsPersonalKey: vi.fn(async () => true),
+          isDeploymentConfigured: vi.fn(async () => configured),
+        },
+      } as unknown as RouterDeps;
+      const handler = new RPCHandler(createRouter(deps));
+      const response = await handle(
+        handler,
+        new Request("https://example.test/rpc/integrationSetup/get", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ json: null }),
+        }),
+        {
+          prefix: "/rpc",
+          context: {
+            actor: {
+              userId: "owner-1",
+              spaceId: "space-1",
+              email: "owner@example.test",
+              isDeploymentOwner: false,
+            },
+          },
+        },
+      );
+      expect((await response.json()).json).toMatchObject({
+        canConfigure: false,
+        needsSetup: false,
+        providers: expectedProviders,
+      });
+    },
+  );
 });

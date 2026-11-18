@@ -517,6 +517,9 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     },
     update: { modelCreditsEnabled },
   });
+  const hostedCentralPortal = Boolean(
+    billingProvider || env.identityExchange?.kind === "issuer" || env.remoteAccess,
+  );
   const connectors = createConnectorRuntime(
     runtimeEnv,
     { prisma, secrets, events, jobs },
@@ -525,6 +528,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       composio: composioOverride,
       pipedream: pipedreamOverride,
       connectors: connectorOverrides,
+      personalIntegrationKey: !hostedCentralPortal,
     },
   );
   const { mcpOAuth, mcp, pipedream, installed, integrationSettings, stack, userCloudAgents } =
