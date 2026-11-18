@@ -1,5 +1,8 @@
+import type { ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { existsSync } from "node:fs";
+import { mkdir, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import type {
@@ -10,6 +13,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { INVALID_BROWSER_REQUEST, SandboxRequestRejectedError } from "@rakazo/adapter-kit";
 import { abortableDelay } from "@rakazo/core";
+import { bestEffort } from "@rakazo/logging";
 import type { DomStepPlan, EvaluatedDomSnapshot } from "./desktop-browser-dom.js";
 import {
   buildDomSnapshotExpression,
@@ -660,4 +664,112 @@ export async function runDesktopPageBrowser(
       error: message,
     };
   }
+}
+
+export async function launchChromiumProcess(opts: {
+  executable: string;
+  profileDir: string;
+  workspaceHome: string;
+  windowed: boolean;
+  startUrl: string;
+  onSpawned: (proc: ChildProcess) => void;
+  onStartupFailed: () => Promise<void>;
+}): Promise<{ proc: ChildProcess; port: number }> {
+  await mkdir(opts.profileDir, { recursive: true });
+  // Remove stale Chromium singleton locks if a previous process crashed.
+  await Promise.all([
+    bestEffort(
+      "remove Chromium SingletonLock",
+      rm(path.join(opts.profileDir, "SingletonLock"), { force: true }),
+    ),
+    bestEffort(
+      "remove Chromium SingletonCookie",
+      rm(path.join(opts.profileDir, "SingletonCookie"), { force: true }),
+    ),
+    bestEffort(
+      "remove Chromium SingletonSocket",
+      rm(path.join(opts.profileDir, "SingletonSocket"), { force: true }),
+    ),
+  ]);
+
+  const args = [
+    "--remote-debugging-port=0",
+    "--remote-debugging-address=127.0.0.1",
+    `--user-data-dir=${opts.profileDir}`,
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-networking",
+    "--disable-sync",
+    "--disable-default-apps",
+    "--disable-popup-blocking",
+    `--window-size=${DEFAULT_WIDTH},${DEFAULT_HEIGHT}`,
+    ...(opts.windowed
+      ? []
+      : ["--headless=new", "--hide-scrollbars", "--mute-audio", "--disable-gpu"]),
+    ...(process.platform === "linux" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
+    opts.startUrl,
+  ];
+
+  const proc = spawn(opts.executable, args, {
+    cwd: opts.workspaceHome,
+    stdio: ["ignore", "ignore", "pipe"],
+    windowsHide: !opts.windowed,
+  });
+  opts.onSpawned(proc);
+
+  const port = await new Promise<number>((resolve, reject) => {
+    let stderrText = "";
+    const timer = setTimeout(() => {
+      reject(
+        new Error(`Timed out waiting for browser DevTools endpoint (${stderrText.slice(0, 180)})`),
+      );
+    }, 12_000);
+    timer.unref();
+
+    const onData = (chunk: Buffer) => {
+      stderrText += chunk.toString("utf8");
+      const match = stderrText.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//);
+      if (match?.[1]) {
+        clearTimeout(timer);
+        proc.stderr?.off("data", onData);
+        resolve(Number(match[1]));
+      }
+    };
+    proc.stderr?.on("data", onData);
+    proc.once("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    proc.once("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(`Browser exited before DevTools started (code ${code ?? "null"})`));
+    });
+  }).catch(async (error) => {
+    await opts.onStartupFailed();
+    throw error;
+  });
+
+  return { proc, port };
+}
+
+export async function readWindowedLayoutViewport(
+  cdp: CdpPageConnection,
+): Promise<{ width?: number; height?: number } | null> {
+  const metrics = await bestEffort(
+    "read CDP layout metrics",
+    cdp.send<{
+      cssLayoutViewport?: { clientWidth?: number; clientHeight?: number };
+      layoutViewport?: { clientWidth?: number; clientHeight?: number };
+    }>("Page.getLayoutMetrics"),
+  );
+  const vp = metrics?.cssLayoutViewport ?? metrics?.layoutViewport;
+  if (!vp) return null;
+  return {
+    ...(typeof vp.clientWidth === "number" && vp.clientWidth > 0
+      ? { width: Math.round(vp.clientWidth) }
+      : {}),
+    ...(typeof vp.clientHeight === "number" && vp.clientHeight > 0
+      ? { height: Math.round(vp.clientHeight) }
+      : {}),
+  };
 }

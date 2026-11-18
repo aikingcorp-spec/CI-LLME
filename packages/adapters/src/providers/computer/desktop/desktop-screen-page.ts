@@ -327,7 +327,11 @@ export function renderDesktopScreenHtml(): string {
           return value === "1" || value === "true" || value === "yes";
         }
 
-        const viewOnly = flag("view_only");
+        const viewOnlyParam = query("view_only", null);
+        const modeParam = String(query("mode", "")).toLowerCase();
+        const viewOnly =
+          modeParam === "view" ||
+          (viewOnlyParam !== null ? flag("view_only") : modeParam !== "control");
         const root = document.documentElement;
         root.classList.add("noVNC_connecting");
 
@@ -370,6 +374,7 @@ export function renderDesktopScreenHtml(): string {
         let switchingWindow = false;
         let lastFrameImg = null;
         let composing = false;
+        let lastTabsKey = "";
 
         function updateEmptyAndCanvas(customError) {
           if (!browserOk) {
@@ -469,15 +474,25 @@ export function renderDesktopScreenHtml(): string {
               urlInput.value = msg.url === "about:blank" ? "" : msg.url;
             }
             if (Array.isArray(msg.tabs)) {
-              tabSelect.hidden = msg.tabs.length <= 1;
-              tabSelect.innerHTML = "";
-              for (const tab of msg.tabs) {
-                const opt = document.createElement("option");
-                opt.value = tab.id;
-                const label = (tab.title || tab.url || "New Tab").slice(0, 42);
-                opt.textContent = label;
-                if (tab.active) opt.selected = true;
-                tabSelect.appendChild(opt);
+              const nextTabsKey = JSON.stringify(
+                msg.tabs.map((tab) => [
+                  tab.id,
+                  (tab.title || tab.url || "New Tab").slice(0, 42),
+                  Boolean(tab.active),
+                ]),
+              );
+              if (nextTabsKey !== lastTabsKey) {
+                lastTabsKey = nextTabsKey;
+                tabSelect.hidden = msg.tabs.length <= 1;
+                tabSelect.innerHTML = "";
+                for (const tab of msg.tabs) {
+                  const opt = document.createElement("option");
+                  opt.value = tab.id;
+                  const label = (tab.title || tab.url || "New Tab").slice(0, 42);
+                  opt.textContent = label;
+                  if (tab.active) opt.selected = true;
+                  tabSelect.appendChild(opt);
+                }
               }
             }
             layoutCanvas();
@@ -584,6 +599,12 @@ export function renderDesktopScreenHtml(): string {
         }
 
         let lastMoveAt = 0;
+        let clickStreak = 0;
+        let lastDownAt = 0;
+        let lastDownX = 0;
+        let lastDownY = 0;
+        let lastDownButton = -1;
+        let activeClickCount = 1;
         canvas.addEventListener("pointermove", (event) => {
           const now = performance.now();
           if (now - lastMoveAt < 28) return;
@@ -595,6 +616,21 @@ export function renderDesktopScreenHtml(): string {
           event.preventDefault();
           canvas.setPointerCapture?.(event.pointerId);
           focusCanvasInput();
+          const now = performance.now();
+          if (
+            event.button === lastDownButton &&
+            now - lastDownAt <= 450 &&
+            Math.hypot(event.clientX - lastDownX, event.clientY - lastDownY) <= 6
+          ) {
+            clickStreak = clickStreak >= 3 ? 1 : clickStreak + 1;
+          } else {
+            clickStreak = 1;
+          }
+          lastDownAt = now;
+          lastDownX = event.clientX;
+          lastDownY = event.clientY;
+          lastDownButton = event.button;
+          activeClickCount = Math.max(event.detail || 0, clickStreak);
           const pt = toRemotePoint(event);
           send({
             type: "mouse",
@@ -602,7 +638,7 @@ export function renderDesktopScreenHtml(): string {
             x: pt.x,
             y: pt.y,
             button: buttonName(event.button),
-            clickCount: event.detail || 1,
+            clickCount: activeClickCount,
           });
         });
         canvas.addEventListener("pointerup", (event) => {
@@ -614,7 +650,7 @@ export function renderDesktopScreenHtml(): string {
             x: pt.x,
             y: pt.y,
             button: buttonName(event.button),
-            clickCount: event.detail || 1,
+            clickCount: Math.max(event.detail || 0, activeClickCount),
           });
         });
         canvas.addEventListener("contextmenu", (event) => event.preventDefault());

@@ -1,5 +1,4 @@
 import type { ChildProcess } from "node:child_process";
-import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -31,7 +30,9 @@ import {
   evaluateCdpDomSnapshot,
   executeCdpBrowserActStep,
   executeCdpComputerAction,
+  launchChromiumProcess,
   normalizeNavigationUrl,
+  readWindowedLayoutViewport,
   runDesktopPageBrowser,
   tokensEqual,
 } from "./desktop-browser-cdp.js";
@@ -74,6 +75,8 @@ export class DesktopBrowserSession {
   private launchPromise: Promise<void> | null = null;
   private pollTimer: NodeJS.Timeout | null = null;
   private stoppingProcess = false;
+  private launchStartedAt = 0;
+  private consecutiveCrashCount = 0;
 
   constructor(
     readonly computerId: string,
@@ -245,7 +248,11 @@ export class DesktopBrowserSession {
     if (!msg || typeof msg.type !== "string") return;
 
     if (msg.type === "retryBrowser") {
-      await bestEffort("retry desktop browser launch", this.ensureBrowserLaunched(true));
+      this.consecutiveCrashCount = 0;
+      await this.ensureBrowserLaunched(true).catch((error) => {
+        this.browserAvailable = false;
+        this.browserError = error instanceof Error ? error.message : String(error);
+      });
       this.broadcastState();
       if (this.browserAvailable) {
         await bestEffort(
@@ -467,23 +474,6 @@ export class DesktopBrowserSession {
     }
 
     await this.stopBrowserProcess();
-    await mkdir(this.profileDir, { recursive: true });
-    // Remove stale Chromium singleton locks if a previous process crashed.
-    await Promise.all([
-      bestEffort(
-        "remove Chromium SingletonLock",
-        rm(path.join(this.profileDir, "SingletonLock"), { force: true }),
-      ),
-      bestEffort(
-        "remove Chromium SingletonCookie",
-        rm(path.join(this.profileDir, "SingletonCookie"), { force: true }),
-      ),
-      bestEffort(
-        "remove Chromium SingletonSocket",
-        rm(path.join(this.profileDir, "SingletonSocket"), { force: true }),
-      ),
-    ]);
-
     const startUrl =
       initialUrl && initialUrl !== "about:blank"
         ? initialUrl
@@ -491,68 +481,22 @@ export class DesktopBrowserSession {
           ? this.currentUrl
           : "about:blank";
 
-    const args = [
-      "--remote-debugging-port=0",
-      "--remote-debugging-address=127.0.0.1",
-      `--user-data-dir=${this.profileDir}`,
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-background-networking",
-      "--disable-sync",
-      "--disable-default-apps",
-      "--disable-popup-blocking",
-      `--window-size=${DEFAULT_WIDTH},${DEFAULT_HEIGHT}`,
-      ...(this.windowed
-        ? []
-        : ["--headless=new", "--hide-scrollbars", "--mute-audio", "--disable-gpu"]),
-      ...(process.platform === "linux" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
+    const { proc, port } = await launchChromiumProcess({
+      executable,
+      profileDir: this.profileDir,
+      workspaceHome: this.workspaceHome,
+      windowed: this.windowed,
       startUrl,
-    ];
-
-    const proc = spawn(executable, args, {
-      cwd: this.workspaceHome,
-      stdio: ["ignore", "ignore", "pipe"],
-      windowsHide: !this.windowed,
-    });
-    this.chromeProcess = proc;
-
-    const port = await new Promise<number>((resolve, reject) => {
-      let stderrText = "";
-      const timer = setTimeout(() => {
-        reject(
-          new Error(
-            `Timed out waiting for browser DevTools endpoint (${stderrText.slice(0, 180)})`,
-          ),
-        );
-      }, 12_000);
-      timer.unref();
-
-      const onData = (chunk: Buffer) => {
-        stderrText += chunk.toString("utf8");
-        const match = stderrText.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//);
-        if (match?.[1]) {
-          clearTimeout(timer);
-          proc.stderr?.off("data", onData);
-          resolve(Number(match[1]));
-        }
-      };
-      proc.stderr?.on("data", onData);
-      proc.once("error", (err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-      proc.once("exit", (code) => {
-        clearTimeout(timer);
-        reject(new Error(`Browser exited before DevTools started (code ${code ?? "null"})`));
-      });
-    }).catch(async (error) => {
-      await this.stopBrowserProcess();
-      throw error;
+      onSpawned: (spawned) => {
+        this.chromeProcess = spawned;
+      },
+      onStartupFailed: () => this.stopBrowserProcess(),
     });
 
     this.cdpPort = port;
     this.browserAvailable = true;
     this.browserError = undefined;
+    this.launchStartedAt = Date.now();
 
     proc.once("exit", () => {
       if (this.chromeProcess === proc) {
@@ -560,17 +504,39 @@ export class DesktopBrowserSession {
         this.cdpPort = 0;
         this.cdpConnection?.close();
         this.cdpConnection = null;
-        if (this.windowed && !this.stoppingProcess) {
-          this.windowed = false;
-          this.broadcastState();
+        if (!this.stoppingProcess) {
+          const wasWindowed = this.windowed;
+          if (wasWindowed) {
+            this.windowed = false;
+            this.consecutiveCrashCount = 0;
+            this.broadcastState();
+          } else {
+            const uptime = Date.now() - this.launchStartedAt;
+            this.consecutiveCrashCount = uptime > 5_000 ? 0 : this.consecutiveCrashCount + 1;
+          }
           if (this.clients.size > 0) {
-            void bestEffort(
-              "relaunch headless desktop browser after external window closed",
-              this.ensureBrowserLaunched(true, this.currentUrl).then(() => {
-                this.broadcastState();
-                return this.captureAndBroadcastFrame();
-              }),
-            );
+            if (!wasWindowed && this.consecutiveCrashCount > 2) {
+              this.browserAvailable = false;
+              this.browserError = "Browser exited unexpectedly.";
+              this.broadcastState();
+            } else {
+              const reason = wasWindowed
+                ? "relaunch headless desktop browser after external window closed"
+                : "relaunch headless desktop browser after unexpected exit";
+              void bestEffort(
+                reason,
+                this.ensureBrowserLaunched(true, this.currentUrl)
+                  .catch((error) => {
+                    this.browserAvailable = false;
+                    this.browserError = error instanceof Error ? error.message : String(error);
+                  })
+                  .then(() => {
+                    this.broadcastState();
+                    if (this.browserAvailable) return this.captureAndBroadcastFrame();
+                    return null;
+                  }),
+              );
+            }
           }
         }
       }
@@ -721,6 +687,8 @@ export class DesktopBrowserSession {
     await bestEffort("enable CDP Runtime domain", conn.send("Runtime.enable"));
     await bestEffort("enable CDP DOM domain", conn.send("DOM.enable"));
     if (!this.windowed) {
+      this.lastFrameWidth = DEFAULT_WIDTH;
+      this.lastFrameHeight = DEFAULT_HEIGHT;
       const metrics = {
         width: DEFAULT_WIDTH,
         height: DEFAULT_HEIGHT,
@@ -764,6 +732,11 @@ export class DesktopBrowserSession {
 
   async captureAndBroadcastFrame(): Promise<Uint8Array | null> {
     const cdp = await this.ensureCdpPage();
+    if (this.windowed) {
+      const vp = await readWindowedLayoutViewport(cdp);
+      if (vp?.width) this.lastFrameWidth = vp.width;
+      if (vp?.height) this.lastFrameHeight = vp.height;
+    }
     const shot = await bestEffort(
       "capture CDP page screenshot",
       cdp.send<{ data?: string }>("Page.captureScreenshot", {

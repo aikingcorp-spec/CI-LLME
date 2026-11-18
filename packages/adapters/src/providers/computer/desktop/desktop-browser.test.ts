@@ -1,10 +1,11 @@
-import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AdapterContext } from "@rakazo/adapter-kit";
 import { afterEach, describe, expect, it } from "vitest";
 import { DesktopBrowserManager, detectNativeBrowserExecutable } from "./desktop-browser.js";
 import { DesktopSandboxProvider } from "./desktop-sandbox.js";
+import { renderDesktopScreenHtml } from "./desktop-screen-page.js";
 import type { MinimalWebSocket } from "./desktop-ws.js";
 import { connectLocalWebSocket } from "./desktop-ws.js";
 
@@ -84,6 +85,7 @@ if (stateFile && existsSync(stateFile)) {
   } catch {}
 }
 persisted.launches = (persisted.launches || 0) + 1;
+persisted.pid = process.pid;
 persisted.modes = [...(persisted.modes || []), isHeadless ? "headless" : "windowed"];
 if (initialUrl && initialUrl !== "about:blank") {
   persisted.lastUrl = initialUrl;
@@ -234,6 +236,22 @@ function handleCdpMessage(socket, msg) {
     );
     return;
   }
+  if (method === "Page.getLayoutMetrics") {
+    socket.write(
+      encodeWsText(
+        JSON.stringify({
+          id,
+          result: {
+            cssLayoutViewport: {
+              clientWidth: isHeadless ? 1280 : 1440,
+              clientHeight: isHeadless ? 800 : 900,
+            },
+          },
+        }),
+      ),
+    );
+    return;
+  }
   if (method === "Page.getNavigationHistory") {
     socket.write(
       encodeWsText(
@@ -325,6 +343,9 @@ server.listen(0, "127.0.0.1", () => {
   const addr = server.address();
   const port = typeof addr === "object" && addr ? addr.port : 0;
   process.stderr.write("DevTools listening on ws://127.0.0.1:" + port + "/devtools/browser/fake\\n");
+  if (userDataDir && existsSync(path.join(userDataDir, "crash-after-start"))) {
+    setTimeout(() => process.exit(1), 40);
+  }
 });
 `;
 
@@ -512,6 +533,355 @@ describe("DesktopBrowserManager and DesktopSandboxProvider browser screen", () =
     } finally {
       process.env.PATH = origPath;
       await manager.destroy("comp-missing", true);
+    }
+  });
+
+  it("executes desktop screen client honoring mode=view, preserving tab-select on identical polls, and sending double/triple pointer clickCount", () => {
+    const html = renderDesktopScreenHtml();
+    const match = html.match(/<script>([\s\S]*)<\/script>/);
+    const scriptBody = match?.[1] ?? "";
+    expect(scriptBody).not.toBe("");
+
+    function mountClient(href: string) {
+      let nowMs = 1_000;
+      const sent: Array<Record<string, unknown>> = [];
+      let tabClearCount = 0;
+
+      const makeEl = (id: string) => {
+        const listeners = new Map<string, Array<(e: unknown) => void>>();
+        const attrs = new Map<string, string>();
+        const classSet = new Set<string>();
+        let children: unknown[] = [];
+        let innerHtmlVal = "";
+        const el = {
+          id,
+          hidden: false,
+          disabled: false,
+          value: "",
+          placeholder: "",
+          title: "",
+          textContent: "",
+          style: {} as Record<string, string>,
+          dataset: {} as Record<string, string>,
+          width: 0,
+          height: 0,
+          classList: {
+            add(...names: string[]) {
+              for (const n of names) classSet.add(n);
+            },
+            remove(...names: string[]) {
+              for (const n of names) classSet.delete(n);
+            },
+            contains(n: string) {
+              return classSet.has(n);
+            },
+          },
+          setAttribute: (k: string, v: string) => attrs.set(k, v),
+          hasAttribute: (k: string) => attrs.has(k),
+          getContext: () => ({ drawImage: () => undefined }),
+          getBoundingClientRect: () => ({ left: 0, top: 0, width: 1280, height: 800 }),
+          focus: () => undefined,
+          select: () => undefined,
+          setPointerCapture: () => undefined,
+          appendChild: (child: unknown) => {
+            children.push(child);
+          },
+          addEventListener: (type: string, fn: (e: unknown) => void) => {
+            const list = listeners.get(type) ?? [];
+            list.push(fn);
+            listeners.set(type, list);
+          },
+          dispatch(type: string, event: Record<string, unknown>) {
+            for (const fn of listeners.get(type) ?? []) fn(event);
+          },
+          get childrenCount() {
+            return children.length;
+          },
+          get innerHTML() {
+            return innerHtmlVal;
+          },
+          set innerHTML(val: string) {
+            innerHtmlVal = val;
+            if (val === "") {
+              tabClearCount += 1;
+              children = [];
+            }
+          },
+        };
+        return el;
+      };
+
+      const elements = new Map<string, ReturnType<typeof makeEl>>();
+      const getEl = (id: string) => {
+        let found = elements.get(id);
+        if (!found) {
+          found = makeEl(id);
+          elements.set(id, found);
+        }
+        return found;
+      };
+      const rootEl = makeEl("html");
+      const doc = {
+        location: { href },
+        documentElement: rootEl,
+        activeElement: null,
+        getElementById: getEl,
+        createElement: (tag: string) => makeEl(tag),
+      };
+      const urlObj = new URL(href);
+      const win = {
+        location: {
+          href,
+          hash: urlObj.hash,
+          pathname: urlObj.pathname,
+          protocol: urlObj.protocol,
+          host: urlObj.host,
+        },
+        devicePixelRatio: 1,
+      };
+      let socketInstance: { emitMessage: (payload: unknown) => void } | null = null;
+      class FakeWebSocket {
+        static OPEN = 1;
+        readyState = 1;
+        private listeners = new Map<string, Array<(e: unknown) => void>>();
+        constructor(_url: string) {
+          socketInstance = {
+            emitMessage: (payload: unknown) => {
+              for (const fn of this.listeners.get("message") ?? []) {
+                fn({ data: JSON.stringify(payload) });
+              }
+            },
+          };
+        }
+        addEventListener(type: string, fn: (e: unknown) => void) {
+          const list = this.listeners.get(type) ?? [];
+          list.push(fn);
+          this.listeners.set(type, list);
+        }
+        send(raw: string) {
+          sent.push(JSON.parse(raw) as Record<string, unknown>);
+        }
+      }
+      class FakeResizeObserver {
+        observe() {}
+      }
+      class FakeImage {
+        onload: (() => void) | null = null;
+        set src(_v: string) {
+          this.onload?.();
+        }
+      }
+      const perf = { now: () => nowMs };
+      const nav = { language: "en-US" };
+
+      const runner = new Function(
+        "document",
+        "window",
+        "navigator",
+        "WebSocket",
+        "ResizeObserver",
+        "Image",
+        "performance",
+        scriptBody,
+      );
+      runner(doc, win, nav, FakeWebSocket, FakeResizeObserver, FakeImage, perf);
+      return {
+        getEl,
+        socket: socketInstance!,
+        sent,
+        getTabClearCount: () => tabClearCount,
+        advanceMs: (ms: number) => {
+          nowMs += ms;
+        },
+      };
+    }
+
+    // 1. Direct view URL (?mode=view without view_only) must hide toolbar and block pointer/key dispatch.
+    const viewClient = mountClient("http://127.0.0.1:41234/embed.html?mode=view&token=t1");
+    expect(viewClient.getEl("toolbar").hidden).toBe(true);
+    viewClient.getEl("viewport").dispatch("pointerdown", {
+      preventDefault() {},
+      pointerId: 1,
+      clientX: 100,
+      clientY: 100,
+      button: 0,
+      detail: 0,
+    });
+    expect(viewClient.sent).toEqual([]);
+
+    // 2. Proxied control URL (?view_only=false) and direct ?mode=control show toolbar.
+    expect(
+      mountClient("https://app.test/novnc/session/control/1.t/embed.html?view_only=false").getEl(
+        "toolbar",
+      ).hidden,
+    ).toBe(false);
+    const controlClient = mountClient("http://127.0.0.1:41234/embed.html?mode=control&token=t2");
+    expect(controlClient.getEl("toolbar").hidden).toBe(false);
+
+    // 3. Repeated identical state broadcasts do not clear & rebuild tab-select; actual tab changes do.
+    const tabsA = [
+      { id: "tab-1", title: "One", url: "https://one.test", active: true },
+      { id: "tab-2", title: "Two", url: "https://two.test", active: false },
+    ];
+    controlClient.socket.emitMessage({ type: "state", url: "https://one.test", tabs: tabsA });
+    expect(controlClient.getTabClearCount()).toBe(1);
+    controlClient.socket.emitMessage({ type: "state", url: "https://one.test", tabs: tabsA });
+    expect(controlClient.getTabClearCount()).toBe(1);
+    controlClient.socket.emitMessage({
+      type: "state",
+      url: "https://two.test",
+      tabs: [
+        { ...tabsA[0], active: false },
+        { ...tabsA[1], active: true },
+      ],
+    });
+    expect(controlClient.getTabClearCount()).toBe(2);
+
+    // 4. Consecutive PointerEvents (where native detail === 0) emit clickCount 1, 2, 3, then reset on slow/moved click.
+    const clickAt = (clientX: number, clientY: number) => {
+      const vp = controlClient.getEl("viewport") as {
+        dispatch: (type: string, e: unknown) => void;
+      };
+      vp.dispatch("pointerdown", {
+        preventDefault() {},
+        pointerId: 1,
+        clientX,
+        clientY,
+        button: 0,
+        detail: 0,
+      });
+      vp.dispatch("pointerup", {
+        preventDefault() {},
+        pointerId: 1,
+        clientX,
+        clientY,
+        button: 0,
+        detail: 0,
+      });
+    };
+    clickAt(200, 200);
+    controlClient.advanceMs(120);
+    clickAt(201, 201);
+    controlClient.advanceMs(120);
+    clickAt(201, 202);
+    controlClient.advanceMs(600);
+    clickAt(201, 202);
+
+    expect(
+      controlClient.sent
+        .filter((msg) => msg.type === "mouse")
+        .map((msg) => [msg.action, msg.clickCount]),
+    ).toEqual([
+      ["down", 1],
+      ["up", 1],
+      ["down", 2],
+      ["up", 2],
+      ["down", 3],
+      ["up", 3],
+      ["down", 1],
+      ["up", 1],
+    ]);
+  });
+
+  it("syncs windowed viewport dimensions from layout metrics and relaunches headless browser on unexpected exit while connected", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "vnbot-desktop-relaunch-"));
+    tempDirs.push(dir);
+    const fakeBin = await createFakeChromiumBinary(dir);
+    const manager = new DesktopBrowserManager({
+      root: dir,
+      browserExecutablePath: fakeBin,
+    });
+    const workspaceHome = path.join(dir, "workspace");
+    await mkdir(workspaceHome, { recursive: true });
+
+    try {
+      const controlSession = await manager.connectScreen(
+        "comp-relaunch",
+        "bot-relaunch",
+        workspaceHome,
+        { view: "stream", interactive: true, controlToken: "ctrl-token-1" },
+      );
+      const url = new URL(controlSession.url!);
+      const ws = await connectLocalWebSocket(`ws://${url.host}${url.searchParams.get("path")}`);
+      await waitForWsMessage(ws, (m) => m.type === "frame");
+
+      // Navigate and verify external window syncs 1440x900 CSS viewport dimensions.
+      ws.send(JSON.stringify({ type: "navigate", url: "https://example.test/work" }));
+      await waitForWsMessage(
+        ws,
+        (m) => m.type === "state" && m.url === "https://example.test/work",
+      );
+
+      ws.send(JSON.stringify({ type: "setWindowMode", windowed: true }));
+      const windowedFrame = await waitForWsMessage(
+        ws,
+        (m) => m.type === "frame" && m.width === 1440 && m.height === 900,
+      );
+      expect(windowedFrame).toMatchObject({ width: 1440, height: 900 });
+
+      ws.send(JSON.stringify({ type: "setWindowMode", windowed: false }));
+      await waitForWsMessage(
+        ws,
+        (m) => m.type === "state" && m.windowed === false && m.width === 1280,
+      );
+
+      // Kill headless Chromium unexpectedly while client is connected; verify auto-relaunch on same URL.
+      const stateFile = path.join(dir, "desktop-browsers", "bot-relaunch", "profile-state.json");
+      const beforeKill = JSON.parse(await readFile(stateFile, "utf8")) as {
+        pid: number;
+        launches: number;
+      };
+      const relaunchedPromise = waitForWsMessage(
+        ws,
+        (m) =>
+          m.type === "state" &&
+          m.browserAvailable === true &&
+          m.url === "https://example.test/work",
+        8_000,
+      );
+      process.kill(beforeKill.pid, "SIGKILL");
+      const relaunchedState = await relaunchedPromise;
+      expect(relaunchedState.browserAvailable).toBe(true);
+      const afterKill = JSON.parse(await readFile(stateFile, "utf8")) as { launches: number };
+      expect(afterKill.launches).toBeGreaterThan(beforeKill.launches);
+
+      ws.close();
+    } finally {
+      await manager.destroy("comp-relaunch", true);
+    }
+  });
+
+  it("stops crash-looping after repeated immediate browser exits and surfaces browserAvailable: false", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "vnbot-desktop-crashloop-"));
+    tempDirs.push(dir);
+    const fakeBin = await createFakeChromiumBinary(dir);
+    const manager = new DesktopBrowserManager({
+      root: dir,
+      browserExecutablePath: fakeBin,
+    });
+    const workspaceHome = path.join(dir, "workspace");
+    const profileDir = path.join(dir, "desktop-browsers", "bot-crash");
+    await mkdir(workspaceHome, { recursive: true });
+    await mkdir(profileDir, { recursive: true });
+    await writeFile(path.join(profileDir, "crash-after-start"), "1", "utf8");
+
+    try {
+      const session = await manager.connectScreen("comp-crash", "bot-crash", workspaceHome, {
+        view: "stream",
+        interactive: false,
+      });
+      const url = new URL(session.url!);
+      const ws = await connectLocalWebSocket(`ws://${url.host}${url.searchParams.get("path")}`);
+      const failedState = await waitForWsMessage(
+        ws,
+        (m) => m.type === "state" && m.browserAvailable === false,
+        8_000,
+      );
+      expect(failedState.browserAvailable).toBe(false);
+      expect(String(failedState.error ?? "")).toContain("exited unexpectedly");
+      ws.close();
+    } finally {
+      await manager.destroy("comp-crash", true);
     }
   });
 });
