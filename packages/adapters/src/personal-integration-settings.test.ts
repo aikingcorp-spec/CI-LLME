@@ -2,12 +2,12 @@ import type { AdapterContext } from "@rakazo/adapter-kit";
 import type { IntegrationProviderConfig } from "@rakazo/contracts";
 import { createDb } from "@rakazo/db";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { ComposioConnector } from "./providers/integration/composio/composio-connector.js";
 import {
   IntegrationProviderSettings,
   prepareManagedConnectorForTransaction,
 } from "./integration-provider-settings.js";
 import { PersonalIntegrationSettings } from "./personal-integration-settings.js";
+import { ComposioConnector } from "./providers/integration/composio/composio-connector.js";
 import { EncryptedSecretStore } from "./secrets.js";
 
 const { prisma, pool } = createDb("postgres://offline:offline@127.0.0.1:9/offline", {
@@ -166,8 +166,26 @@ describe("personal integration credentials", () => {
     f.verify.mockRejectedValueOnce(Object.assign(new Error("unauthorized"), { status: 401 }));
     await expect(
       f.settings.save({ provider: "composio", apiKey: "fake-rejected-key" }, context),
-    ).rejects.toThrow("Could not verify these credentials");
+    ).rejects.toThrow("The integration provider refused these credentials.");
     expect(f.rows.size).toBe(0);
+  });
+
+  it("strips pasted env assignment wrappers and rejects ck_ consumer keys with actionable guidance", async () => {
+    const f = fixture();
+    await expect(
+      f.settings.save({ provider: "composio", apiKey: "ck_consumer_key_123" }, context),
+    ).rejects.toThrow("Project API key (ak_…)");
+    expect(f.create).not.toHaveBeenCalled();
+    expect(f.rows.size).toBe(0);
+
+    await f.settings.save(
+      { provider: "composio", apiKey: 'export COMPOSIO_API_KEY="ak_project_key_456"' },
+      context,
+    );
+    expect(f.create).toHaveBeenCalledWith({
+      provider: "composio",
+      apiKey: "ak_project_key_456",
+    });
   });
 });
 

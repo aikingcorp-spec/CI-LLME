@@ -1,15 +1,25 @@
 import type {
   AdapterContext,
   CommandRequest,
+  ComputerActionRequest,
+  ComputerActionResult,
   ComputerFileEntry,
+  ComputerInput,
+  ComputerObservation,
   ComputerRef,
+  ControlLeaseRef,
+  PageBrowserCommand,
+  PageBrowserResult,
   PortableFile,
   ProcessEvent,
   SandboxProvider,
+  ScreenRequest,
+  ScreenSession,
   WorkspaceDirectoryRequest,
 } from "@rakazo/adapter-kit";
-import { SandboxFileTooLargeError } from "@rakazo/adapter-kit";
+import { SandboxFileTooLargeError, SandboxRequestRejectedError } from "@rakazo/adapter-kit";
 import { boundedSandboxCommandTimeoutMs } from "@rakazo/core/node/sandbox-command";
+import { boundedComputerActions } from "./computer-support.js";
 import type {
   HostComputerEnvironment,
   HostComputerFrame,
@@ -26,10 +36,18 @@ import { shouldSkipPortableWorkspaceFile } from "./workspace-save-policy.js";
 
 /** Authenticated native host transport. Commands are never retried after a lost response. */
 export class HostComputerSandbox implements SandboxProvider {
+  readonly pageBrowser?: SandboxProvider["pageBrowser"];
+
   constructor(
     private readonly url: string,
     private readonly token: string,
-  ) {}
+    options?: { enablePageBrowser?: boolean },
+  ) {
+    if (options?.enablePageBrowser) {
+      this.pageBrowser = (computer, request, context) =>
+        this.runHostPageBrowser(computer, request, context);
+    }
+  }
   describe() {
     return describeDesktopSandbox();
   }
@@ -81,9 +99,11 @@ export class HostComputerSandbox implements SandboxProvider {
           pending = pending.slice(newline + 1);
           if ("error" in frame) {
             const maxBytes = hostComputerFileTooLargeLimit(frame.error);
-            throw maxBytes === undefined
-              ? new Error(frame.error)
-              : new SandboxFileTooLargeError(maxBytes);
+            if (maxBytes !== undefined) throw new SandboxFileTooLargeError(maxBytes);
+            if (frame.error === "sandbox rejected browser request") {
+              throw new SandboxRequestRejectedError();
+            }
+            throw new Error(frame.error);
           }
           if ("heartbeat" in frame) {
             newline = pending.indexOf("\n");
@@ -235,18 +255,161 @@ export class HostComputerSandbox implements SandboxProvider {
   async destroy(computer: ComputerRef, context: AdapterContext) {
     await this.one({ method: "destroy", botId: computer.botId }, context);
   }
-  async connectScreen(): Promise<never> {
-    throw new Error(
-      "Local screen control is unavailable. Use commands to work with files and apps.",
+  runHostPageBrowser(
+    computer: ComputerRef,
+    request: PageBrowserCommand,
+    context: AdapterContext,
+  ): Promise<PageBrowserResult> {
+    return this.one<PageBrowserResult>(
+      {
+        method: "pageBrowser",
+        botId: computer.botId,
+        browserRequest: request as unknown as Record<string, unknown>,
+      },
+      context,
     );
   }
-  async sendInput(): Promise<never> {
-    throw new Error("Local screen control is unavailable");
+  async connectScreen(
+    computer?: ComputerRef,
+    request?: ScreenRequest,
+    context?: AdapterContext,
+  ): Promise<ScreenSession> {
+    if (!computer || !request || !context) {
+      throw new Error(
+        "Local screen control is unavailable. Use commands to work with files and apps.",
+      );
+    }
+    const res = await this.one<{
+      url: string | null;
+      mimeType: string;
+      singleUseSignIn?: { screen: string };
+    }>(
+      {
+        method: "connectScreen",
+        botId: computer.botId,
+        screenRequest: {
+          view: request.view,
+          ...(request.interactive !== undefined ? { interactive: request.interactive } : {}),
+          ...(request.controlToken !== undefined ? { controlToken: request.controlToken } : {}),
+        },
+      },
+      context,
+    );
+    let screenUrl = res.url;
+    if (screenUrl && this.url) {
+      try {
+        const parsedScreen = new URL(screenUrl);
+        const parsedBridge = new URL(this.url);
+        if (parsedScreen.hostname === "127.0.0.1" && parsedBridge.hostname) {
+          parsedScreen.hostname = parsedBridge.hostname;
+          screenUrl = parsedScreen.toString();
+        }
+      } catch {
+        /* keep original screenUrl */
+      }
+    }
+    return {
+      url: screenUrl,
+      mimeType: res.mimeType,
+      ...(res.singleUseSignIn ? { singleUseSignIn: res.singleUseSignIn } : {}),
+      close: async () => undefined,
+    };
   }
-  async observe(): Promise<never> {
-    throw new Error("Local screen control is unavailable");
+  async setScreenControl(
+    computer: ComputerRef,
+    interactive: boolean,
+    context: AdapterContext,
+    controlToken?: string,
+  ): Promise<void> {
+    await this.one(
+      {
+        method: "setScreenControl",
+        botId: computer.botId,
+        interactive,
+        ...(controlToken !== undefined ? { controlToken } : {}),
+      },
+      context,
+    );
   }
-  async act(): Promise<never> {
-    throw new Error("Local screen control is unavailable");
+  async releaseScreen(computer: ComputerRef, context: AdapterContext): Promise<void> {
+    const keepScreenWarm = Boolean(
+      context.keepScreenWarm && !context.cancelRunWork && !context.signal.aborted,
+    );
+    await this.one(
+      {
+        method: "releaseScreen",
+        botId: computer.botId,
+        keepScreenWarm,
+      },
+      context,
+    );
+  }
+  async sendInput(
+    computer?: ComputerRef,
+    input?: ComputerInput,
+    lease?: ControlLeaseRef,
+    context?: AdapterContext,
+  ): Promise<void> {
+    if (!computer || !input || !lease || !context) {
+      throw new Error("Local screen control is unavailable");
+    }
+    await this.one(
+      {
+        method: "sendInput",
+        botId: computer.botId,
+        input: input as unknown as Record<string, unknown>,
+        lease,
+      },
+      context,
+    );
+  }
+  async observe(computer?: ComputerRef, context?: AdapterContext): Promise<ComputerObservation> {
+    if (!computer || !context) {
+      throw new Error("Local screen control is unavailable");
+    }
+    const raw = await this.one<Omit<ComputerObservation, "image"> & { image: string }>(
+      { method: "observe", botId: computer.botId },
+      context,
+    );
+    return {
+      ...raw,
+      image: new Uint8Array(Buffer.from(raw.image, "base64")),
+    };
+  }
+  async act(
+    computer?: ComputerRef,
+    request?: ComputerActionRequest,
+    context?: AdapterContext,
+  ): Promise<ComputerActionResult> {
+    if (!computer || !request || !context) {
+      throw new Error("Local screen control is unavailable");
+    }
+    const actions = boundedComputerActions(request.actions);
+    const raw = await this.one<{
+      completed: number;
+      observation?: Omit<ComputerObservation, "image"> & { image: string };
+    }>(
+      {
+        method: "act",
+        botId: computer.botId,
+        actionRequest: {
+          actions: actions as unknown as Record<string, unknown>[],
+          ...(request.observe !== undefined ? { observe: request.observe } : {}),
+          ...(request.settleMs !== undefined ? { settleMs: request.settleMs } : {}),
+        },
+      },
+      context,
+    );
+    return {
+      completed: raw.completed,
+      ...(raw.observation
+        ? {
+            observation: {
+              ...raw.observation,
+              image: new Uint8Array(Buffer.from(raw.observation.image, "base64")),
+            },
+          }
+        : {}),
+    };
   }
 }

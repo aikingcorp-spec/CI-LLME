@@ -17,7 +17,11 @@ export async function startHostComputerServer(options: {
   screen?: HostScreen;
 }) {
   if (!/^[a-f0-9]{64}$/.test(options.token)) throw new Error("Invalid local computer credential");
-  const runner = createHostComputerRunner({ root: options.root, screen: options.screen });
+  const runner = createHostComputerRunner({
+    root: options.root,
+    screen: options.screen,
+    listenHostname: options.hostname ?? "0.0.0.0",
+  });
   const secret = Buffer.from(`Bearer ${options.token}`);
   const server = createServer(async (request, response) => {
     const credential = Buffer.from(request.headers.authorization ?? "");

@@ -525,7 +525,12 @@ export async function resolveRunCapabilities(
     modelSeesImages ||
     Boolean(computerModel || checkpointModelResolver);
   const graphicalToolsAllowed = graphical && acceptsImages && !heldForTakeover;
-  const pageBrowserAllowed = graphical && browser.describe().capabilities.page && !heldForTakeover;
+  const pageBrowserAllowed =
+    (graphical ||
+      (sandboxKindCapabilities(parts.computer.computerKind).runsOnUserMachine &&
+        Boolean(deps.sandbox.pageBrowser))) &&
+    browser.describe().capabilities.page &&
+    !heldForTakeover;
   const disabledBuiltinTools = disabledBuiltinToolSet(bot.disabledBuiltinTools);
   const replyMode = runReplyMode(run.trigger, bot.replyMode, disabledBuiltinTools);
   const emailName = deps.inboundEmailDomain

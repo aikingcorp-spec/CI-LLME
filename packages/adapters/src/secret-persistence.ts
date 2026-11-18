@@ -3,6 +3,11 @@ import type { JobPublisher, SecretStore } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma, runAsSystemInTransaction } from "@rakazo/db";
 import { bestEffort } from "@rakazo/logging";
+import {
+  lockPersonalIntegrationRefs,
+  personalIntegrationKey,
+  personalIntegrationRecordId,
+} from "./personal-integration-persistence.js";
 import type { SecretCleanup, SecretCleanupDeps } from "./secret-cleanup.js";
 import {
   attemptSecretCleanup,
@@ -21,7 +26,7 @@ import {
 } from "./secret-cleanup.js";
 
 type Candidate = { id: string; ciphertext: string };
-type Written = Candidate & { rowId?: string };
+type Written = Candidate & { rowWhere?: Record<string, string> };
 /**
  * `recorded` holds the cleanups whose backup job this transaction wrote, by reference, and
  * `queued` the references whose job is brought forward once it commits, instead of a direct
@@ -235,13 +240,27 @@ export function withSecretPersistence(
     ];
     for (const value of data)
       if (typeof value?.ciphertext === "string") {
+        if (model === "UserIntegrationProviderConfig") {
+          const key =
+            personalIntegrationKey(value) ??
+            personalIntegrationKey(input.where?.userId_provider) ??
+            personalIntegrationKey(input.where);
+          if (key && typeof value.revision === "string") {
+            written.push({
+              id: personalIntegrationRecordId(key.userId, key.provider, value.revision),
+              rowWhere: key,
+              ciphertext: value.ciphertext,
+            });
+          }
+          continue;
+        }
         const key = value.id ?? input.where?.id;
         const rowId = typeof key === "string" ? key : undefined;
         const id = String(rowId ?? "secret");
         written.push({
           id: model === "IntegrationProviderConfig" ? `integration-provider:${id}` : id,
           ciphertext: value.ciphertext,
-          rowId,
+          rowWhere: rowId ? { id: rowId } : undefined,
         });
       }
     state.written.push(...written);
@@ -257,7 +276,10 @@ export function withSecretPersistence(
       const written = trackWrites(state, model, input);
       // A change that leaves the reference in place has nothing to clean up after it.
       if (dropsReference(operation, input)) {
-        const old = await lockedRows(state, model, input.where);
+        const old =
+          model === "UserIntegrationProviderConfig"
+            ? await lockPersonalIntegrationRefs(state.client!, input.where, operation === "upsert")
+            : await lockedRows(state, model, input.where);
         await dropping(
           state,
           old.map((row) =>
@@ -315,6 +337,7 @@ export function withSecretPersistence(
       })),
     );
     if (model === "User") {
+      cleanups.push((await lockPersonalIntegrationRefs(state.client!, filter)).map(cleanupOf));
       const wallets = await lockedRows<Candidate & { userId: string }>(
         state,
         "PaymentWallet",
@@ -353,10 +376,13 @@ export function withSecretPersistence(
     const client = state.client!;
     const delegate = Reflect.get(client, model[0]!.toLowerCase() + model.slice(1));
     const cancelled = new Set<string>();
-    for (const { ciphertext: ref, rowId } of written) {
-      if (!rowId || cancelled.has(ref) || !store.isRemote(ref)) continue;
+    for (const { ciphertext: ref, rowWhere } of written) {
+      if (!rowWhere || cancelled.has(ref) || !store.isRemote(ref)) continue;
       const held = await Reflect.apply(delegate.findFirst, delegate, [
-        { where: { id: rowId, ciphertext: ref }, select: { id: true } },
+        {
+          where: { ...rowWhere, ciphertext: ref },
+          select: model === "UserIntegrationProviderConfig" ? { userId: true } : { id: true },
+        },
       ]);
       if (!held) continue;
       cancelled.add(ref);
@@ -374,7 +400,7 @@ export function withSecretPersistence(
     const result = await run();
     // A create names its row only in what it returns.
     const id = (result as { id?: unknown } | null)?.id;
-    if (typeof id === "string") for (const write of written) write.rowId ??= id;
+    if (typeof id === "string") for (const write of written) write.rowWhere ??= { id };
     await saved(state, model, written);
     return result;
   }

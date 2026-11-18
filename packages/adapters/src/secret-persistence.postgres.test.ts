@@ -143,6 +143,38 @@ describePostgres("secret persistence cleanup (PostgreSQL)", () => {
     expect(await queued(ref)).toEqual([]);
   });
 
+  it("keeps only the last accepted integration key when two saves start on an empty install", async () => {
+    const provider = "test-integration";
+    const key = { userId, provider };
+    const refs = [entry("integration-a"), entry("integration-b")];
+    await Promise.all(
+      refs.map((ciphertext) =>
+        asUser(() =>
+          prisma.userIntegrationProviderConfig.upsert({
+            where: { userId_provider: key },
+            create: { ...key, ciphertext, revision: ciphertext },
+            update: { ciphertext, revision: ciphertext },
+          }),
+        ),
+      ),
+    );
+    const held = await asUser(() =>
+      prisma.userIntegrationProviderConfig.findUniqueOrThrow({ where: { userId_provider: key } }),
+    );
+    expect(refs.filter((ref) => entries.has(ref))).toEqual([held.ciphertext]);
+    await asUser(() => prisma.userIntegrationProviderConfig.deleteMany({ where: key }));
+    for (const ref of refs) {
+      expect(entries.has(ref)).toBe(false);
+      expect(store.delete).toHaveBeenCalledWith(
+        ref,
+        expect.objectContaining({
+          recordId: `integration-provider:user:${userId}:${provider}:${ref}`,
+        }),
+      );
+      expect(await queued(ref)).toEqual([]);
+    }
+  });
+
   it("commits the backup with the write, so it runs when nothing after the commit does", async () => {
     const ref = entry("crashed");
     const row = await secretRow("crash", ref);

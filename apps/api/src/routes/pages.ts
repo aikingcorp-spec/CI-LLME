@@ -1,3 +1,4 @@
+import { bestEffort } from "@rakazo/logging";
 import {
   getPage,
   listPages,
@@ -22,7 +23,7 @@ function remoteZoneFromPortal(portalOrigin: string | undefined): string | null {
 async function resolveShareWebOrigin(deps: RouterContext["deps"]): Promise<string> {
   const zone = remoteZoneFromPortal(deps.env.remotePortalOrigin);
   if (!deps.localDeviceId || !deps.remoteRegistry || !zone) return deps.env.webOrigin;
-  const listed = await deps.remoteRegistry.list().catch(() => undefined);
+  const listed = await bestEffort("resolve remote share origin", deps.remoteRegistry.list());
   const device = listed?.portal.devices.find((item) => item.deviceId === deps.localDeviceId);
   if (!device?.remoteEnabled || !/^h[a-f0-9]{32}$/.test(device.logicalHost)) {
     return deps.env.webOrigin;

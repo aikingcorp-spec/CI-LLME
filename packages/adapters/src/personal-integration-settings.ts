@@ -4,6 +4,11 @@ import type { IntegrationProviderConfig, IntegrationProviderId } from "@rakazo/c
 import { IntegrationProviderConfigSchema } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { credentialVerificationError } from "./credential-reachability.js";
+import { personalIntegrationRecordId } from "./personal-integration-persistence.js";
+import {
+  assertComposioProjectApiKey,
+  normalizeComposioApiKey,
+} from "./providers/integration/composio/composio-api-key.js";
 
 type Client = Pick<PrismaClient, "userIntegrationProviderConfig">;
 type Read = <T>(read: (client: Client) => Promise<T>, client?: Client) => Promise<T>;
@@ -45,7 +50,7 @@ async function bindLegacyIntegration(
   context: AdapterContext,
 ) {
   const revision = `legacy-${row.revision}`;
-  const recordId = `integration-provider:user:${row.userId}:${row.provider}:${revision}`;
+  const recordId = personalIntegrationRecordId(row.userId, row.provider, revision);
   const stored = await destination.put(plaintext, context, { recordId });
   if (
     (await destination.load(stored.ciphertext, { recordId, signal: context.signal })) !== plaintext
@@ -65,7 +70,7 @@ export async function importLegacyPersonalIntegration(
 ): Promise<"imported" | "existing"> {
   const plaintext = await readLegacyIntegration(row, source, context);
   const revision = `legacy-${row.revision}`;
-  const recordId = `integration-provider:user:${row.userId}:${row.provider}:${revision}`;
+  const recordId = personalIntegrationRecordId(row.userId, row.provider, revision);
   const where = { userId_provider: { userId: row.userId, provider: row.provider } };
   const existing = await prisma.userIntegrationProviderConfig.findUnique({ where });
   if (existing) {
@@ -126,7 +131,7 @@ export class PersonalIntegrationSettings {
       JSON.parse(
         await this.secrets.load(
           row.ciphertext,
-          `integration-provider:user:${userId}:${provider}:${row.revision}`,
+          personalIntegrationRecordId(userId, provider, row.revision),
         ),
       ),
     );
@@ -148,11 +153,22 @@ export class PersonalIntegrationSettings {
     context: AdapterContext,
   ): Promise<{ id: string; ciphertext: string; store: (client: Client) => Promise<void> }> {
     if (!context.userId) throw new Error("A personal account is required");
+    if (
+      config &&
+      typeof config === "object" &&
+      config.provider === "composio" &&
+      typeof config.apiKey === "string"
+    ) {
+      config = { ...config, apiKey: normalizeComposioApiKey(config.apiKey) };
+    }
     const parsed = IntegrationProviderConfigSchema.safeParse(config);
     if (!parsed.success || ("apiKey" in parsed.data && !parsed.data.apiKey.trim())) {
       throw new Error("Invalid integration credentials");
     }
     config = parsed.data;
+    if (config.provider === "composio" && typeof config.apiKey === "string") {
+      assertComposioProjectApiKey(config.apiKey);
+    }
     try {
       await this.create(config).listConnectedExternalIds(context);
     } catch (error) {
@@ -160,7 +176,7 @@ export class PersonalIntegrationSettings {
     }
     const revision = randomUUID();
     const stored = await this.secrets.put(JSON.stringify(config), context, {
-      recordId: `integration-provider:user:${context.userId}:${config.provider}:${revision}`,
+      recordId: personalIntegrationRecordId(context.userId, config.provider, revision),
     });
     return {
       ...stored,

@@ -60,6 +60,54 @@ export const hostComputerRequest = z.discriminatedUnion("method", [
   z.object({ ...base, method: z.literal("writeFile"), file }),
   z.object({ ...base, method: z.literal("screenObserve"), ...hostScreenMethods.screenObserve }),
   z.object({ ...base, method: z.literal("screenAct"), ...hostScreenMethods.screenAct }),
+  z.object({
+    ...base,
+    method: z.literal("connectScreen"),
+    screenRequest: z.object({
+      view: z.enum(["stream", "snapshot"]),
+      interactive: z.boolean().optional(),
+      controlToken: z.string().max(512).optional(),
+    }),
+  }),
+  z.object({
+    ...base,
+    method: z.literal("setScreenControl"),
+    interactive: z.boolean(),
+    controlToken: z.string().max(512).optional(),
+  }),
+  z.object({
+    ...base,
+    method: z.literal("releaseScreen"),
+    keepScreenWarm: z.boolean().optional(),
+  }),
+  z.object({
+    ...base,
+    method: z.literal("pageBrowser"),
+    browserRequest: z.record(z.string(), z.unknown()),
+  }),
+  z.object({
+    ...base,
+    method: z.literal("observe"),
+  }),
+  z.object({
+    ...base,
+    method: z.literal("act"),
+    actionRequest: z.object({
+      actions: z.array(z.record(z.string(), z.unknown())).max(64),
+      observe: z.boolean().optional(),
+      settleMs: z.number().optional(),
+    }),
+  }),
+  z.object({
+    ...base,
+    method: z.literal("sendInput"),
+    input: z.record(z.string(), z.unknown()),
+    lease: z.object({
+      leaseId: z.string().max(512),
+      holder: z.enum(["user", "bot"]),
+      fence: z.number(),
+    }),
+  }),
 ]);
 export type HostComputerRequest = z.infer<typeof hostComputerRequest>;
 export interface HostComputerEnvironment {

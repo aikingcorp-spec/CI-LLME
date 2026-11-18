@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
-import type { AdapterContext, ComputerRef } from "@rakazo/adapter-kit";
-import { SandboxFileTooLargeError } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  ComputerActionRequest,
+  ComputerInput,
+  ComputerRef,
+  PageBrowserCommand,
+} from "@rakazo/adapter-kit";
+import { SandboxFileTooLargeError, SandboxRequestRejectedError } from "@rakazo/adapter-kit";
 import { WorkspacePathError } from "./computer-support.js";
 import type { HostComputerFrame, HostComputerRequest } from "./host-computer-protocol.js";
 import {
@@ -37,7 +43,11 @@ export interface HostComputerCall {
  * Runs host computer requests from any transport: the local HTTP listener and the outbound
  * device socket share validation, limits, cancellation, and error sanitizing.
  */
-export function createHostComputerRunner(options: { root: string; screen?: HostScreen }) {
+export function createHostComputerRunner(options: {
+  root: string;
+  screen?: HostScreen;
+  listenHostname?: string;
+}) {
   let enabled = false;
   const active = new Map<
     AbortController,
@@ -47,6 +57,7 @@ export function createHostComputerRunner(options: { root: string; screen?: HostS
     root: options.root,
     hostRoots: [homedir()],
     maxFileBytes: HOST_COMPUTER_MAX_FILE_BYTES,
+    listenHostname: options.listenHostname ?? "127.0.0.1",
   });
 
   // Reconstruct only our own workspace path. Never trust a caller's providerRef or filesystem root.
@@ -78,6 +89,72 @@ export function createHostComputerRunner(options: { root: string; screen?: HostS
         break;
       case "screenAct":
         yield await screen().act(scope, input.app, input.actions);
+        break;
+      case "connectScreen": {
+        const session = await provider.connectScreen(computer, input.screenRequest, context);
+        yield {
+          url: session.url,
+          mimeType: session.mimeType,
+          ...(session.singleUseSignIn ? { singleUseSignIn: session.singleUseSignIn } : {}),
+        };
+        break;
+      }
+      case "setScreenControl":
+        await provider.setScreenControl(computer, input.interactive, context, input.controlToken);
+        yield null;
+        break;
+      case "releaseScreen":
+        await provider.releaseScreen(computer, {
+          ...context,
+          keepScreenWarm: input.keepScreenWarm,
+        });
+        yield null;
+        break;
+      case "pageBrowser":
+        yield await provider.runDesktopPageBrowser(
+          computer,
+          input.browserRequest as unknown as PageBrowserCommand,
+          context,
+        );
+        break;
+      case "observe": {
+        const obs = await provider.observe(computer);
+        if (obs.activeWindow?.id === "placeholder") {
+          throw new HostScreenError("Local screen control is unavailable");
+        }
+        yield {
+          ...obs,
+          image: Buffer.from(obs.image).toString("base64"),
+        };
+        break;
+      }
+      case "act": {
+        const res = await provider.act(
+          computer,
+          input.actionRequest as unknown as ComputerActionRequest,
+          context,
+        );
+        yield {
+          completed: res.completed,
+          ...(res.observation
+            ? {
+                observation: {
+                  ...res.observation,
+                  image: Buffer.from(res.observation.image).toString("base64"),
+                },
+              }
+            : {}),
+        };
+        break;
+      }
+      case "sendInput":
+        await provider.sendInput(
+          computer,
+          input.input as unknown as ComputerInput,
+          input.lease,
+          context,
+        );
+        yield null;
         break;
       case "environment":
         yield await provider.environment();
@@ -238,6 +315,7 @@ function hostComputerErrorMessage(error: unknown) {
   if (error instanceof HostScreenError) return error.message;
   if (error instanceof SandboxFileTooLargeError)
     return hostComputerFileTooLargeMessage(error.maxBytes);
+  if (error instanceof SandboxRequestRejectedError) return error.message;
   if (error instanceof WorkspacePathError) return error.message;
   if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
     return "computer file not found";

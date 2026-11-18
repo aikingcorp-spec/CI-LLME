@@ -262,6 +262,7 @@ function remoteTargetPath(target: URL, requestedPath: string) {
 function isAllowedTargetName(hostname: string) {
   return (
     hostname === "localhost" ||
+    hostname === "host.docker.internal" ||
     (ipVersion(hostname) !== 0 && isPrivateNetworkAddress(hostname)) ||
     /^rakazo-bot-[a-zA-Z0-9_.-]+$/.test(hostname)
   );

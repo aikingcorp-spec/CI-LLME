@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@rakazo/db";
+import { machineOwnerUserId } from "@rakazo/db";
 import type { HostComputerEnvironment, HostComputerRequest } from "./host-computer-protocol.js";
+import { managedLoopbackHost } from "./host-computer-protocol.js";
 import { HostComputerSandbox } from "./host-computer-sandbox.js";
 import { UserDeviceOfflineError } from "./user-device-gateway.js";
 import type { UserDevice, UserDeviceGateway } from "./user-device-protocol.js";
@@ -17,11 +19,17 @@ export function withHostComputerScreen(
   options: { prisma: PrismaClient; sandboxKind: string; url?: string; token?: string },
 ): UserDeviceGateway | undefined {
   const { prisma, url, token } = options;
-  if (options.sandboxKind !== "docker" || !url || !token) return devices;
-  const host = new HostComputerSandbox(url, token);
+  const nativeBridge =
+    options.sandboxKind === "none" ? managedLoopbackHost({ url, token }) : undefined;
+  if ((options.sandboxKind !== "docker" && !nativeBridge) || !url || !token) return devices;
+  const host = new HostComputerSandbox(nativeBridge?.url ?? url, nativeBridge?.token ?? token);
 
   // Approvals count from the latest settings change, so turning access off and on asks again.
-  async function enabledSince() {
+  async function enabledSince(userId: string) {
+    if (nativeBridge) {
+      const ownerId = await machineOwnerUserId(prisma);
+      if (!ownerId || ownerId !== userId) return null;
+    }
     const settings = await prisma.deploymentSettings.findUnique({
       where: { id: "default" },
       select: { computerHost: true, updatedAt: true },
@@ -29,8 +37,8 @@ export function withHostComputerScreen(
     return settings?.computerHost === "this-mac" ? settings.updatedAt : null;
   }
 
-  async function hostDevice(): Promise<UserDevice | null> {
-    if (!(await enabledSince())) return null;
+  async function hostDevice(userId: string): Promise<UserDevice | null> {
+    if (!(await enabledSince(userId))) return null;
     try {
       let environment: HostComputerEnvironment | undefined;
       for await (const value of host.stream<HostComputerEnvironment>(
@@ -54,10 +62,10 @@ export function withHostComputerScreen(
 
   return {
     async connected(userId) {
-      return (await devices?.connected(userId)) ?? hostDevice();
+      return (await devices?.connected(userId)) ?? hostDevice(userId);
     },
     async pairedSince(userId) {
-      return (await devices?.pairedSince(userId)) ?? enabledSince();
+      return (await devices?.pairedSince(userId)) ?? enabledSince(userId);
     },
     async *request<T>(
       userId: string,
@@ -72,7 +80,7 @@ export function withHostComputerScreen(
       }
       if (request.method !== "screenObserve" && request.method !== "screenAct")
         throw new Error("Only screen control reaches this computer this way");
-      if (!(await enabledSince())) throw new UserDeviceOfflineError();
+      if (!(await enabledSince(userId))) throw new UserDeviceOfflineError();
       yield* host.stream<T>(request, signal);
     },
   };

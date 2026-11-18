@@ -15,6 +15,10 @@ import {
   integrationProviderUnreachable,
 } from "./credential-reachability.js";
 import type { PersonalIntegrationSettings } from "./personal-integration-settings.js";
+import {
+  assertComposioProjectApiKey,
+  normalizeComposioApiKey,
+} from "./providers/integration/composio/composio-api-key.js";
 import { ComposioConnector } from "./providers/integration/composio/composio-connector.js";
 import { PipedreamConnector } from "./providers/integration/pipedream/pipedream-connector.js";
 
@@ -211,10 +215,17 @@ export class IntegrationProviderSettings {
   async save(submitted: SubmittedConfig, context: AdapterContext): Promise<void> {
     if (!this.has(submitted.provider))
       throw new ClientError("BAD_REQUEST", "Unknown integration provider");
-    const parsed = IntegrationProviderConfigSchema.safeParse(submitted);
+    const candidate =
+      submitted.provider === "composio" && typeof submitted.apiKey === "string"
+        ? { ...submitted, apiKey: normalizeComposioApiKey(submitted.apiKey) }
+        : submitted;
+    const parsed = IntegrationProviderConfigSchema.safeParse(candidate);
     // The schema's own message could repeat a credential.
     if (!parsed.success) throw new ClientError("BAD_REQUEST", "Could not verify these credentials");
     const config = parsed.data;
+    if (config.provider === "composio") {
+      assertComposioProjectApiKey(config.apiKey);
+    }
     const adapter = this.create(config);
     try {
       // Exercises authenticated access before replacing working credentials.

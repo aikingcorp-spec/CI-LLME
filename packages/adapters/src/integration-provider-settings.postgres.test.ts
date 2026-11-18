@@ -14,6 +14,7 @@ import {
   IntegrationProviderSettings,
 } from "./integration-provider-settings.js";
 import { PersonalIntegrationSettings } from "./personal-integration-settings.js";
+import { withSecretPersistence } from "./secret-persistence.js";
 import { EncryptedSecretStore } from "./secrets.js";
 
 const suite =
@@ -65,8 +66,9 @@ function offlineConnector(apiKey: string, calls: Call[], op: string): ManagedCon
   };
 }
 
-function settingsFor(prisma: ReturnType<typeof createDb>["prisma"], calls: Call[]) {
+function settingsFor(database: ReturnType<typeof createDb>["prisma"], calls: Call[]) {
   const secrets = new EncryptedSecretStore(encryptionKey);
+  const prisma = withSecretPersistence(database, secrets);
   const personal = new PersonalIntegrationSettings(prisma, secrets, (config) => {
     expect(currentDbContext()?.kind).toBe("tenant");
     if (config.provider !== "composio" || !("apiKey" in config)) {

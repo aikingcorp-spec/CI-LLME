@@ -14,6 +14,7 @@ import type { ApprovalPausedToolResult } from "./approval-effect.js";
 import { internalTerminatingResult, resolveDuplicateEffectGate } from "./approval-effect.js";
 import { encodeRunCode, encodeRunLogin, prepareBotSecret } from "./bot-secrets.js";
 import type { IntegrationProviderSettings } from "./integration-provider-settings.js";
+import { normalizeComposioApiKey } from "./providers/integration/composio/composio-api-key.js";
 import { persistPreparedSecret } from "./secret-persistence.js";
 
 export function normalizeSecretAskPurpose(purpose: string | undefined): SecretAskPurpose {
@@ -187,7 +188,9 @@ export function createRunSecretWriter(
                   value.integrationSetup !== ask.integrationSetup ||
                   value.userId !== run.userId ||
                   value.botId !== run.botId ||
-                  value.plaintext !== input.answer ||
+                  (value.plaintext !== input.answer &&
+                    normalizeComposioApiKey(value.plaintext) !==
+                      normalizeComposioApiKey(input.answer)) ||
                   value.spaceId !== input.spaceId ||
                   value.runId !== input.runId
                 )

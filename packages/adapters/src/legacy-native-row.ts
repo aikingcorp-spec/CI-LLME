@@ -6,6 +6,7 @@ import {
 } from "@rakazo/contracts";
 import type { createDb, LegacyMigrationClient, LegacyNativeRowTransform } from "@rakazo/db";
 import { contentEncryptionOf, ENCRYPTED_MODELS, runAsSystem } from "@rakazo/db";
+import { personalIntegrationRecordId } from "./personal-integration-persistence.js";
 import { importLegacyPersonalIntegration } from "./personal-integration-settings.js";
 
 /** Keep upstream columns until its migrations transform them. VNBot-only values are restored later. */
@@ -186,7 +187,7 @@ export async function verifyLegacyNativeData(
       if (!rows.length) break;
       for (const row of rows) {
         const plaintext = await secrets.load(row.ciphertext, {
-          recordId: `integration-provider:user:${row.userId}:${row.provider}:${row.revision}`,
+          recordId: personalIntegrationRecordId(row.userId, row.provider, row.revision),
           signal,
         });
         if (IntegrationProviderConfigSchema.parse(JSON.parse(plaintext)).provider !== row.provider)

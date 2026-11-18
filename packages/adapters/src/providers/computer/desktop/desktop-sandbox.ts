@@ -22,6 +22,8 @@ import type {
   ComputerInput,
   ComputerRef,
   ControlLeaseRef,
+  PageBrowserCommand,
+  PageBrowserResult,
   PortableFile,
   ProcessEvent,
   SandboxProvider,
@@ -44,6 +46,7 @@ import {
   isTaggedCacheDirectory,
   shouldSkipPortableWorkspaceFile,
 } from "../../../workspace-save-policy.js";
+import { DesktopBrowserManager } from "./desktop-browser.js";
 import type { NativeProcessTree } from "./desktop-process-tree.js";
 import { spawnOwnedCommand } from "./desktop-process-tree.js";
 import { isAllowedDesktopPath, normalizeDesktopWorkspacePath } from "./desktop-sandbox-paths.js";
@@ -116,6 +119,7 @@ export class DesktopSandboxProvider implements SandboxProvider {
   readonly boxes = new Map<string, DesktopBox>();
   private readonly processTrees = new Map<NativeProcessTree, { home: string; runId?: string }>();
   private processSweep?: NodeJS.Timeout;
+  private readonly browserManager: DesktopBrowserManager;
 
   private sweepProcesses() {
     for (const tree of this.processTrees.keys()) {
@@ -162,9 +166,36 @@ export class DesktopSandboxProvider implements SandboxProvider {
     this.sweepProcesses();
   }
 
+  readonly pageBrowser?: SandboxProvider["pageBrowser"];
+
   constructor(
-    private readonly opts: { root?: string; hostRoots?: string[]; maxFileBytes?: number } = {},
-  ) {}
+    private readonly opts: {
+      root?: string;
+      hostRoots?: string[];
+      maxFileBytes?: number;
+      browserExecutablePath?: string;
+      enablePageBrowser?: boolean;
+      listenHostname?: string;
+    } = {},
+  ) {
+    this.browserManager = new DesktopBrowserManager({
+      root: opts.root,
+      browserExecutablePath: opts.browserExecutablePath,
+      listenHostname: opts.listenHostname,
+    });
+    if (opts.enablePageBrowser || opts.browserExecutablePath) {
+      this.pageBrowser = (computer, request, context) => {
+        const box = this.requiredBox(computer);
+        return this.browserManager.pageBrowser(
+          box.ref.id,
+          box.ref.botId,
+          box.home,
+          request,
+          context,
+        );
+      };
+    }
+  }
 
   describe() {
     return describeDesktopSandbox();
@@ -321,16 +352,48 @@ export class DesktopSandboxProvider implements SandboxProvider {
     );
   }
 
+  async runDesktopPageBrowser(
+    computer: ComputerRef,
+    request: PageBrowserCommand,
+    context: AdapterContext,
+  ): Promise<PageBrowserResult> {
+    const box = this.requiredBox(computer);
+    return this.browserManager.pageBrowser(box.ref.id, box.ref.botId, box.home, request, context);
+  }
+
   async connectScreen(
     computer: ComputerRef,
-    _request: ScreenRequest,
+    request: ScreenRequest,
     _context: AdapterContext,
   ): Promise<ScreenSession> {
-    return {
-      url: `desktop://screen/${computer.id}`,
-      mimeType: "text/plain",
-      close: async () => undefined,
-    };
+    const box = this.requiredBox(computer);
+    return this.browserManager.connectScreen(box.ref.id, box.ref.botId, box.home, request);
+  }
+
+  async setScreenControl(
+    computer: ComputerRef,
+    interactive: boolean,
+    _context: AdapterContext,
+    controlToken?: string,
+  ): Promise<void> {
+    const box = this.boxFor(computer);
+    if (!box) return;
+    await this.browserManager.setScreenControl(
+      box.ref.id,
+      box.ref.botId,
+      box.home,
+      interactive,
+      controlToken,
+    );
+  }
+
+  async releaseScreen(computer: ComputerRef, context: AdapterContext): Promise<void> {
+    const box = this.boxFor(computer);
+    if (!box) return;
+    const keepWarm = Boolean(
+      context.keepScreenWarm && !context.cancelRunWork && !context.signal.aborted,
+    );
+    await this.browserManager.releaseScreen(box.ref.id, keepWarm);
   }
 
   async sendInput(
@@ -340,17 +403,24 @@ export class DesktopSandboxProvider implements SandboxProvider {
     _context: AdapterContext,
   ): Promise<void> {
     const box = this.boxFor(computer);
-    if (box) applyPlaceholderAction(box, input);
+    if (!box) return;
+    applyPlaceholderAction(box, input);
+    await this.browserManager.sendInput(box.ref.id, box.ref.botId, box.home, input);
   }
 
   async observe(computer: ComputerRef) {
-    return placeholderObservation(this.requiredBox(computer).screen);
+    const box = this.requiredBox(computer);
+    const live = await this.browserManager.observe(box.ref.id);
+    if (live) return live;
+    return placeholderObservation(box.screen);
   }
 
   async act(computer: ComputerRef, request: ComputerActionRequest, _context: AdapterContext) {
     const box = this.requiredBox(computer);
     const actions = boundedComputerActions(request.actions);
     for (const action of actions) applyPlaceholderAction(box, action);
+    const live = await this.browserManager.act(box.ref.id, { ...request, actions });
+    if (live) return live;
     return {
       completed: actions.length,
       ...(request.observe === false ? {} : { observation: await this.observe(computer) }),
@@ -443,6 +513,7 @@ export class DesktopSandboxProvider implements SandboxProvider {
     const box = this.boxFor(computer);
     if (box) {
       this.cancelOwnedProcesses(box.home);
+      await this.browserManager.stop(box.ref.id);
       await markStopped(box.home);
     }
   }
@@ -451,6 +522,7 @@ export class DesktopSandboxProvider implements SandboxProvider {
     const box = this.boxFor(computer);
     if (box) {
       this.cancelOwnedProcesses(box.home);
+      await this.browserManager.destroy(box.ref.id, !this.opts.root);
       this.boxes.delete(box.ref.id);
     }
     this.boxes.delete(computer.id);

@@ -99,24 +99,17 @@ export function onboardingRoutes(ctx: RouterContext) {
             message: "Could not save your Composio key. Check the key and try again.",
           });
         }
-        try {
-          await settings.savePersonalKey(apiKey, {
-            userId: context.actor.userId,
-            spaceId: context.actor.spaceId,
-            operationId: "integrationSetup.save",
-            traceId: "integrationSetup.save",
-            signal: AbortSignal.any([
-              context.signal ?? new AbortController().signal,
-              AbortSignal.timeout(15_000),
-            ]),
-          });
-          return { ok: true as const };
-        } catch {
-          // Provider errors can carry account details; never echo them.
-          throw new ORPCError("BAD_REQUEST", {
-            message: "Could not save your Composio key. Check the key and try again.",
-          });
-        }
+        await settings.savePersonalKey(apiKey, {
+          userId: context.actor.userId,
+          spaceId: context.actor.spaceId,
+          operationId: "integrationSetup.save",
+          traceId: "integrationSetup.save",
+          signal: AbortSignal.any([
+            context.signal ?? new AbortController().signal,
+            AbortSignal.timeout(15_000),
+          ]),
+        });
+        return { ok: true as const };
       }),
       remove: authed.integrationSetup.remove.handler(async ({ context }) => {
         const settings = deps.integrationSettings;

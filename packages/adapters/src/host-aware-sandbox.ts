@@ -86,6 +86,7 @@ async function createBaseRunSandbox(
     return new DesktopSandboxProvider({
       root: opts.dataDir,
       hostRoots: [homedir()],
+      enablePageBrowser: true,
     });
   }
   const prisma = opts.prisma;
@@ -145,6 +146,7 @@ async function createBaseRunSandbox(
     new HostComputerSandbox(
       nativeBridge?.url ?? opts.hostComputerUrl ?? "",
       nativeBridge?.token ?? opts.hostComputerToken ?? "",
+      { enablePageBrowser: Boolean(nativeBridge) },
     ),
     nativeBridge ? nativeHostEnabled(prisma) : dockerHostEnabled(prisma),
   );

@@ -13,6 +13,7 @@ import {
 import * as adapters from "@rakazo/adapters";
 import { LocalAgentHomeStore, serializeModelSecret } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
+import { ClientError } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";
@@ -957,7 +958,7 @@ describe("updater owner gate", () => {
 describe("integration key (one per install, pasted by its owner)", () => {
   const rpc = (deps: RouterDeps, path: string, json: unknown, actor: Actor) =>
     handle(
-      new RPCHandler(createRouter(deps)),
+      appHandler(deps),
       new Request(`https://example.test/rpc/${path}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1032,18 +1033,28 @@ describe("integration key (one per install, pasted by its owner)", () => {
     expect(settings.revokePersonal).toHaveBeenCalledWith("owner");
   });
 
-  it("never echoes the provider error when a key is rejected", async () => {
-    const settings = settingsFor(false);
-    settings.savePersonalKey.mockRejectedValueOnce(new Error("account acct_secret is invalid"));
-    const failed = await rpc(
-      depsWith(settings),
-      "integrationSetup/save",
-      { provider: "composio", apiKey: "bad-key" },
-      person("owner"),
-    );
-    expect(failed.status).toBe(400);
-    expect(await failed.text()).not.toContain("acct_secret");
-  });
+  it.each([
+    [new ClientError("BAD_REQUEST", "The integration provider refused these credentials."), 400],
+    [new ClientError("SERVICE_UNAVAILABLE", "Could not reach the integration provider"), 503],
+    [new Error("fixture database failure"), 500],
+  ] as const)(
+    "keeps the save failure's status and hides internal details",
+    async (failure, status) => {
+      const settings = settingsFor(false);
+      settings.savePersonalKey.mockRejectedValueOnce(failure);
+      const failed = await rpc(
+        depsWith(settings),
+        "integrationSetup/save",
+        { provider: "composio", apiKey: "bad-key" },
+        person("owner"),
+      );
+      expect(failed.status).toBe(status);
+      const body = await failed.text();
+      expect(body).not.toContain("bad-key");
+      if (failure instanceof ClientError) expect(body).toContain(failure.message);
+      else expect(body).not.toContain(failure.message);
+    },
+  );
 });
 
 describe("server operation authorization", () => {
