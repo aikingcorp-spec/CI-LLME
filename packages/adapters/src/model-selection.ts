@@ -599,6 +599,8 @@ async function loadModelSecret(
 export type ConnectedModelResolution = {
   /** The connection a role row is pinned to; nothing else may serve it. */
   credentialId?: string | null;
+  /** Restrict fallback to the actor's own credentials, never borrowing the Space owner's. */
+  actorOnly?: boolean;
   hostedProvider?: string;
   codexCatalog?: CodexLiveCatalog;
   reads?: CatalogReads;
@@ -678,7 +680,7 @@ export async function findConnectedModelCredential(
   modelId?: string | null,
   resolution: ConnectedModelResolution = {},
 ): Promise<ModelCredential> {
-  if (resolution.credentialId || resolution.replacement) {
+  if (resolution.credentialId || resolution.replacement || resolution.actorOnly) {
     return findConnectedModelCredentialForActor(
       prisma,
       secretStore,
@@ -1184,6 +1186,7 @@ export async function hasHostedModelCredits(
 ): Promise<boolean> {
   const deployment = resolveDeploymentModel();
   if (!deployment.configured || deployment.provider !== provider) return false;
+  if (!prisma?.space?.findFirst) return false;
   const space = await prisma.space.findFirst({
     where: {
       id: scope.spaceId,

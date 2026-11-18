@@ -237,7 +237,9 @@ export function modelsRoutes(ctx: RouterContext) {
               await modelRoleTarget(deps.prisma, context.actor, input.scope),
               input.role,
             ),
+            input.scope,
           ),
+          input.scope,
         );
       }),
       setRole: authed.models.setRole.handler(async ({ context, input }) => {
@@ -260,7 +262,9 @@ export function modelsRoutes(ctx: RouterContext) {
               role,
               { primary, backups },
             ),
+            scope,
           ),
+          scope,
         );
       }),
       backups: authed.models.backups.handler(async ({ context }) =>

@@ -1661,4 +1661,105 @@ describePostgres("shared spaces: invites and membership (PostgreSQL)", () => {
       userId: left ? teammate.id : leaver.id,
     });
   });
+
+  it("borrows the Space owner's approval model and credential across RLS while keeping account scope isolated", async () => {
+    const owner = await person("owner");
+    const invitee = await person("invitee");
+    const home = await sharedSpace(owner, "Home");
+    await call(invitee.actor, "spaces/invites/accept", { token: await invite(owner, home) });
+
+    const ownerSecret = await system.secret.create({
+      data: { userId: owner.id, spaceId: null, kind: "model", ciphertext: "fake-openrouter" },
+    });
+    const ownerCred = await system.userModelCredential.create({
+      data: {
+        userId: owner.id,
+        provider: "openrouter",
+        label: "Owner OpenRouter",
+        secretId: ownerSecret.id,
+      },
+    });
+    const asInviteeInHome = inSpace(invitee.actor, home);
+
+    // Deployment default checker: shared Space sees owner's key across RLS; account scope stays false.
+    await expect(call(asInviteeInHome, "autoReview/get", {})).resolves.toMatchObject({
+      status: 200,
+      json: { checkerAvailable: true },
+    });
+    await expect(
+      call(asInviteeInHome, "autoReview/get", { scope: "account" }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: { checkerAvailable: false },
+    });
+
+    // Owner saves a custom approval model pinned to ownerCred.
+    const setOwnerRole = await call(inSpace(owner.actor, home), "models/setRole", {
+      role: "approval",
+      primary: { provider: "openrouter", modelId: "typesafe/jev-1.14", credentialId: ownerCred.id },
+    });
+    expect(setOwnerRole.status).toBe(200);
+
+    // Invitee inherits the Space owner's approval model and credential across RLS, but not in account scope.
+    await expect(
+      call(asInviteeInHome, "autoReview/get", { scope: "space" }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: { checkerAvailable: true },
+    });
+    await expect(
+      call(asInviteeInHome, "autoReview/get", { scope: "account" }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: { checkerAvailable: false },
+    });
+
+    // When the member connects and pins their own approval connection, account scope becomes available too.
+    const memberSecret = await system.secret.create({
+      data: { userId: invitee.id, spaceId: null, kind: "model", ciphertext: "fake-member-key" },
+    });
+    const memberCred = await system.userModelCredential.create({
+      data: {
+        userId: invitee.id,
+        provider: "openrouter",
+        label: "Member OpenRouter",
+        secretId: memberSecret.id,
+      },
+    });
+    const setMemberRole = await call(asInviteeInHome, "models/setRole", {
+      role: "approval",
+      primary: {
+        provider: "openrouter",
+        modelId: "typesafe/jev-1.14",
+        credentialId: memberCred.id,
+      },
+    });
+    expect(setMemberRole.status).toBe(200);
+    await expect(
+      call(asInviteeInHome, "autoReview/get", { scope: "account" }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: { checkerAvailable: true },
+    });
+
+    // Deleting memberCred cascades the pinned choice; Space falls back to ownerCred while account scope returns false.
+    await system.userModelCredential.delete({ where: { id: memberCred.id } });
+    await expect(call(asInviteeInHome, "autoReview/get", {})).resolves.toMatchObject({
+      status: 200,
+      json: { checkerAvailable: true },
+    });
+    await expect(
+      call(asInviteeInHome, "autoReview/get", { scope: "account" }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: { checkerAvailable: false },
+    });
+
+    // Deleting ownerCred drops the Space fallback as well.
+    await system.userModelCredential.delete({ where: { id: ownerCred.id } });
+    await expect(call(asInviteeInHome, "autoReview/get", {})).resolves.toMatchObject({
+      status: 200,
+      json: { checkerAvailable: false },
+    });
+  });
 });

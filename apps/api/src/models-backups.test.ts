@@ -1116,3 +1116,89 @@ it("lets a deployment-managed model lead the main model like any other purpose",
     vi.unstubAllEnvs();
   }
 });
+
+describe("shared Space autoReview/get availability and account scope isolation", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("uses the Space owner's credential for Space settings and never leaks it to account scope", async () => {
+    for (const key of [
+      "RAKAZO_AUTO_REVIEW_PROVIDER",
+      "RAKAZO_AUTO_REVIEW_MODEL",
+      "RAKAZO_LOCAL_MODELS",
+      "PI_DEFAULT_PROVIDER",
+      "PI_DEFAULT_MODEL",
+      "PI_DEFAULT_CREDENTIALS",
+      "OPENROUTER_API_KEY",
+      "ANTHROPIC_API_KEY",
+    ]) {
+      vi.stubEnv(key, undefined);
+    }
+    const memberActor: Actor = {
+      userId: "user-member",
+      spaceId: owner.spaceId,
+      email: "member@rakazo.test",
+      isDeploymentOwner: false,
+    };
+    const { call, prisma, roles } = setup({ actor: memberActor });
+    Object.assign(prisma, {
+      spaceMember: {
+        findFirst: vi.fn(async () => ({ userId: owner.userId })),
+        findUnique: vi.fn(async () => ({ role: "member" })),
+      },
+      actionAutoReviewPreference: { findUnique: vi.fn(async () => null) },
+      userActionAutoReviewPreference: { findUnique: vi.fn(async () => null) },
+    });
+
+    // 1. Deployment default checker (`memberChoices.length === 0`): Space borrows owner's OpenRouter key; account does not.
+    const spaceDeployment = await call("autoReview/get", {});
+    expect(spaceDeployment.response.status).toBe(200);
+    expect((await spaceDeployment.response.json()).json.checkerAvailable).toBe(true);
+
+    const accountDeployment = await call("autoReview/get", { scope: "account" });
+    expect(accountDeployment.response.status).toBe(200);
+    expect((await accountDeployment.response.json()).json.checkerAvailable).toBe(false);
+
+    // 2. `models/role` with `scope: "account"` must also keep deploymentPrimary null for the member.
+    const accountRole = await call("models/role", { role: "approval", scope: "account" });
+    expect(accountRole.response.status).toBe(200);
+    expect((await accountRole.response.json()).json.deploymentPrimary).toBeNull();
+
+    // 3. Space owner configures a custom `approval` role pinned to owner's credential.
+    roles().push({
+      userId: owner.userId,
+      role: "approval",
+      position: 0,
+      provider: "openrouter",
+      modelId: "typesafe/jev-1.14",
+      thinkingLevel: null,
+      credentialId: "credential-one",
+    });
+    const spaceCustom = await call("autoReview/get", { scope: "space" });
+    expect(spaceCustom.response.status).toBe(200);
+    expect((await spaceCustom.response.json()).json.checkerAvailable).toBe(true);
+
+    const accountCustom = await call("autoReview/get", { scope: "account" });
+    expect(accountCustom.response.status).toBe(200);
+    expect((await accountCustom.response.json()).json.checkerAvailable).toBe(false);
+  });
+
+  it("counts hosted model credits for the deployment default checker", async () => {
+    vi.stubEnv("PI_DEFAULT_PROVIDER", "openrouter");
+    vi.stubEnv("PI_DEFAULT_MODEL", "openai/gpt-4o-mini");
+    vi.stubEnv("OPENROUTER_API_KEY", "fake-hosted-key");
+    const { call, prisma } = setup({ credits: true });
+    Object.assign(prisma, {
+      spaceMember: {
+        findFirst: vi.fn(async () => null),
+        findUnique: vi.fn(async () => ({ role: "owner" })),
+      },
+      actionAutoReviewPreference: { findUnique: vi.fn(async () => null) },
+      userActionAutoReviewPreference: { findUnique: vi.fn(async () => null) },
+    });
+    const { response } = await call("autoReview/get", {});
+    expect(response.status).toBe(200);
+    expect((await response.json()).json.checkerAvailable).toBe(true);
+  });
+});

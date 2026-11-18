@@ -53,7 +53,7 @@ import { reportBotMessageWait } from "./bot-messages.js";
 import { RAKAZO_DOCS_URLS } from "./builtin-skills.prompt.js";
 import type { ExecutorDeps } from "./executor-deps.js";
 import { CATALOG_LOAD, CATALOG_SEARCH } from "./lazy-tool-catalog.js";
-import { findConnectedModelCredential } from "./model-selection.js";
+import { findConnectedModelCredential, hasHostedModelCredits } from "./model-selection.js";
 import { paidRequestEffect } from "./paid-request.js";
 import type { PurchaseApproval } from "./purchase-gate.js";
 import { PURCHASE_CHECKED_TOOLS, purchaseApprovalOf } from "./purchase-gate.js";
@@ -343,8 +343,14 @@ export async function gateToolCall(
               deps.secretStore,
               { userId: run.userId, spaceId: run.spaceId },
               checker.provider,
+              checker.model,
             ),
-          )
+          ) ||
+          (await hasHostedModelCredits(
+            deps.prisma,
+            { userId: run.userId, spaceId: run.spaceId },
+            checker.provider,
+          ))
         : false));
   const plan = USER_COMPUTER_TOOLS.has(name)
     ? await userComputerGate(ctx, approvalResolved.decision === "deny", name, args)

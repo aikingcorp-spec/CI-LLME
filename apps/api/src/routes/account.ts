@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import {
   changeUserTimezone,
   effectiveModelRole,
+  findConnectedModelCredential,
   hasHostedModelCredits,
   isAutoReviewCheckerConfigured,
   loadUserIncomingCalls,
@@ -29,8 +30,6 @@ import {
   commitBotUpdate,
   findAutoReviewPreference,
   findDefaultVoiceCredential,
-  findModelCredential,
-  findModelCredentialById,
   isRecordNotFound,
   listApprovalRules,
   listAuditEvents,
@@ -744,27 +743,43 @@ async function loadAutoReviewSettings(deps: RouterDeps, actor: Actor, scope?: Se
     ...role.backups,
   ];
   const environmentAvailable = isAutoReviewCheckerConfigured({ env: process.env });
+  const hasChoiceCredential = (choice: {
+    provider: string;
+    modelId: string;
+    credentialId?: string;
+  }) =>
+    findConnectedModelCredential(
+      deps.prisma,
+      deps.secrets,
+      actor,
+      choice.provider,
+      choice.modelId,
+      {
+        credentialId: choice.credentialId,
+        actorOnly: scope === "account",
+      },
+    );
   if (memberChoices.length === 0) {
-    // The deployment's checker runs on its own configuration or on the member's key for it.
+    // The deployment's checker runs on its own configuration, hosted credits, or a connection that can serve it.
     const requiredUserProvider =
-      environmentAvailable || deploymentChecker?.provider === "scripted"
+      environmentAvailable || !deploymentChecker || deploymentChecker.provider === "scripted"
         ? null
-        : deploymentChecker?.provider;
-    const credential = requiredUserProvider
-      ? await deps.prisma.userModelCredential.findFirst({
-          where: { userId: actor.userId, provider: requiredUserProvider },
-          select: { id: true },
-        })
-      : null;
-    return { ...settings, checkerAvailable: environmentAvailable || Boolean(credential) };
+        : deploymentChecker.provider;
+    const [credential, hostedCredits] = requiredUserProvider
+      ? await Promise.all([
+          hasChoiceCredential({
+            provider: requiredUserProvider,
+            modelId: deploymentChecker!.modelId,
+          }),
+          hasHostedModelCredits(deps.prisma, actor, requiredUserProvider),
+        ])
+      : [null, false];
+    return {
+      ...settings,
+      checkerAvailable: environmentAvailable || Boolean(credential) || hostedCredits,
+    };
   }
-  const connections = await Promise.all(
-    memberChoices.map((choice) =>
-      choice.credentialId
-        ? findModelCredentialById(deps.prisma, actor, choice.credentialId)
-        : findModelCredential(deps.prisma, actor, choice.provider, choice.modelId),
-    ),
-  );
+  const connections = await Promise.all(memberChoices.map(hasChoiceCredential));
   const checkerAvailable =
     connections.some(Boolean) ||
     (deploymentChecker !== null && environmentAvailable) ||

@@ -12,6 +12,7 @@ import {
   decisionModelCatalog,
   deploymentModelRole,
   findConnectedModelCredential,
+  hasHostedModelCredits,
   hasReadyModelCredential,
   hiddenCatalogModel,
   isAutoReviewCheckerConfigured,
@@ -36,6 +37,7 @@ import type {
   ModelRoleChoice,
   ModelRoleSettings,
   ModelRoleView,
+  SettingsScope,
 } from "@rakazo/contracts";
 import {
   appContract,
@@ -237,6 +239,7 @@ export function createRouterContext(deps: RouterDeps) {
     actor: Actor,
     role: ModelRole,
     settings: ModelRoleSettings,
+    scope?: SettingsScope,
   ): Promise<ModelRoleView> => {
     const defaults =
       role === "main"
@@ -251,14 +254,19 @@ export function createRouterContext(deps: RouterDeps) {
     let deploymentPrimary = deploymentModelRole(role, defaults).primary;
     if (role === "approval" && deploymentPrimary && !isAutoReviewCheckerConfigured({})) {
       try {
-        const ready = await hasReadyModelCredential(
-          deps.prisma,
-          deps.secrets,
-          actor,
-          deploymentPrimary.provider,
-          deploymentPrimary.modelId,
-          { codexCatalog, allowPrivateEndpoint: deps.env.mcpAllowPrivateEndpoint },
-        );
+        const ready =
+          (await hasReadyModelCredential(
+            deps.prisma,
+            deps.secrets,
+            actor,
+            deploymentPrimary.provider,
+            deploymentPrimary.modelId,
+            {
+              codexCatalog,
+              allowPrivateEndpoint: deps.env.mcpAllowPrivateEndpoint,
+              actorOnly: scope === "account",
+            },
+          )) || (await hasHostedModelCredits(deps.prisma, actor, deploymentPrimary.provider));
         if (!ready) deploymentPrimary = null;
       } catch (error) {
         if (!(error instanceof SecretStoreUnavailableError)) throw error;
@@ -277,6 +285,7 @@ export function createRouterContext(deps: RouterDeps) {
     actor: Actor,
     role: ModelRole,
     view: ModelRoleView,
+    scope?: SettingsScope,
   ): Promise<ModelRoleView> => {
     const choice = role === "main" ? (view.primary ?? view.deploymentPrimary) : null;
     if (!choice) return view;
@@ -290,7 +299,7 @@ export function createRouterContext(deps: RouterDeps) {
               actor,
               choice.provider,
               choice.modelId,
-              { credentialId: choice.credentialId },
+              { credentialId: choice.credentialId, actorOnly: scope === "account" },
             )
           : null,
         // Only an account-listed model needs the live catalog; the rest are known offline.
