@@ -191,7 +191,7 @@ export function createPostgresProcess(input: {
             "-o",
             windowsCommandLine(input.options),
           ],
-          60_000,
+          Math.max(60_000, input.startupTimeoutMs ?? 60_000),
         );
         await input.ready(
           AbortSignal.any([signal, AbortSignal.timeout(input.startupTimeoutMs ?? 30_000)]),
@@ -216,11 +216,19 @@ export function createPostgresProcess(input: {
   };
 }
 
-/** Quotes each option for the Windows command line pg_ctl passes to postgres. */
+const WINDOWS_CMD_SPECIAL = /[\s"&|<>^()%;,!=]/;
+
+/**
+ * Quotes each option for the Windows command line `pg_ctl` passes through `cmd.exe /c` to `postgres`.
+ * Unquoted `cmd.exe` metacharacters such as `&` in a user profile path (e.g. `C:\Users\A&B\...`)
+ * would otherwise split the command line before `postgres` starts.
+ */
 export function windowsCommandLine(args: string[]): string {
   return args
     .map((arg) =>
-      arg === "" || /[\s"]/.test(arg) || /=$/.test(arg) ? `"${arg.replaceAll('"', '\\"')}"` : arg,
+      arg === "" || WINDOWS_CMD_SPECIAL.test(arg)
+        ? `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`
+        : arg,
     )
     .join(" ");
 }

@@ -4,7 +4,7 @@ import path from "node:path";
 import { expect, it } from "vitest";
 import { serverLog, windowsCommandLine } from "./native-process.js";
 
-it("quotes server options with spaces or empty values for the pg_ctl command line", () => {
+it("quotes server options with spaces, cmd metacharacters, or empty values for pg_ctl", () => {
   expect(
     windowsCommandLine([
       "-h",
@@ -19,6 +19,18 @@ it("quotes server options with spaces or empty values for the pg_ctl command lin
   ).toBe(
     '-h 127.0.0.1 -p 54321 -c "unix_socket_directories=" -c "dynamic_library_path=C:\\Users\\Thu Anh\\AppData\\Roaming\\VNBot\\native\\pg\\lib"',
   );
+
+  expect(
+    windowsCommandLine([
+      "-c",
+      "dynamic_library_path=C:\\Users\\A&B\\AppData\\Local\\Programs\\vnbot\\resources\\native\\pg\\lib",
+    ]),
+  ).toBe(
+    '-c "dynamic_library_path=C:\\Users\\A&B\\AppData\\Local\\Programs\\vnbot\\resources\\native\\pg\\lib"',
+  );
+
+  expect(windowsCommandLine(["A&B", "C(x86)", "dir\\"])).toBe('"A&B" "C(x86)" dir\\');
+  expect(windowsCommandLine(["A&B\\"])).toBe('"A&B\\\\"');
 });
 
 it("logs beside a server log this account cannot replace instead of refusing to start", async () => {
