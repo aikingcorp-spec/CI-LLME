@@ -1,8 +1,11 @@
-import type { ConnectorApp } from "@rakazo/adapter-kit";
-import { isBackgroundRunTrigger, redactSecrets } from "@rakazo/core";
+import path from "node:path";
+import type { ConnectorApp, ConnectorWorkspaceFiles } from "@rakazo/adapter-kit";
+import { ATTACHMENT_MAX_BYTES } from "@rakazo/contracts";
+import { inferAttachmentMimeType, isBackgroundRunTrigger, redactSecrets } from "@rakazo/core";
 import { normalizedHttpUrl } from "@rakazo/core/egress";
 import { getLogger } from "@rakazo/logging";
 import { executeCloudAgentTool } from "./cloud-agent-service.js";
+import { resolveBotWorkspacePath } from "./computer-support.js";
 import { connectApp } from "./connect-app.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
 import { guideChaptersFromIndexFetch } from "./guide-navigation.js";
@@ -25,6 +28,45 @@ import { requestSecret } from "./run-tools-secrets.js";
 import { storeMcpAppHtml } from "./thread-artifacts.js";
 import { webFetchFromTool, webSearchFromTool } from "./web-tools.js";
 
+function sanitizeDownloadFilename(rawName: string): string {
+  const base = path.posix.basename(rawName.replace(/\\/g, "/")).trim();
+  const safe = base.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^\.+/, "");
+  return safe.length > 0 ? safe.slice(0, 120) : "download.bin";
+}
+
+function connectorWorkspaceFiles(ctx: RunContext, call: ToolCall): ConnectorWorkspaceFiles {
+  const { deps, bot, context } = ctx;
+  const maxBytes = deps.maxUploadSizeBytes ?? ATTACHMENT_MAX_BYTES;
+  return {
+    async readFile(rawPath: string) {
+      const storedPath = resolveBotWorkspacePath(ctx.computer.mode, bot.id, rawPath);
+      const bytes = await deps.sandbox.readFile(
+        await ctx.computer.get("tool", call.name),
+        storedPath,
+        context,
+        { maxBytes },
+      );
+      const name = path.posix.basename(storedPath) || "file";
+      return {
+        name,
+        mimeType: inferAttachmentMimeType(name) ?? "application/octet-stream",
+        bytes,
+      };
+    },
+    async writeFile(rawName: string, bytes: Uint8Array) {
+      const relativePath = `downloads/${sanitizeDownloadFilename(rawName)}`;
+      const storedPath = resolveBotWorkspacePath(ctx.computer.mode, bot.id, relativePath);
+      ctx.computer.checkpoint.markDirty();
+      await deps.sandbox.writeFile(
+        await ctx.computer.get("tool", call.name),
+        { path: storedPath, content: bytes },
+        context,
+      );
+      return { path: relativePath };
+    },
+  };
+}
+
 export async function cloudAgentTool(ctx: RunContext, call: ToolCall) {
   const { deps, run, bot, context } = ctx;
   const { name, args, effectKey } = call;
@@ -46,9 +88,13 @@ export async function connectorTool(ctx: RunContext, call: ToolCall) {
     let result: unknown = { error: `unknown tool ${name}` };
     // Background work posts no cards, so it does not fetch the app either.
     const withApp = Boolean(deps.artifacts) && !isBackgroundRunTrigger(run.trigger);
+    const connectorContext =
+      context.workspaceFiles !== undefined
+        ? context
+        : { ...context, workspaceFiles: connectorWorkspaceFiles(ctx, call) };
     for await (const event of deps.connector.execute(
       { ...connectorCall, tool: name, args, executionId: effectKey, withApp },
-      context,
+      connectorContext,
     )) {
       if (event.type === "app") {
         await showConnectorApp(ctx, call, event.app, result);

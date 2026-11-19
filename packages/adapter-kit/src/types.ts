@@ -28,6 +28,15 @@ export interface AdapterContext {
   connectedConnections?: ConnectedConnector[];
   /** @deprecated Prefer connectedConnections so providers with the same app slug cannot collide. */
   connectedProviders?: string[];
+  /** Scoped workspace file access for connectors that stage uploads or save downloads. */
+  workspaceFiles?: ConnectorWorkspaceFiles;
+}
+
+export interface ConnectorWorkspaceFiles {
+  /** Read a file from this bot's workspace, enforcing workspace containment and size limits. */
+  readFile(path: string): Promise<{ name: string; mimeType: string; bytes: Uint8Array }>;
+  /** Write a downloaded file into this bot's workspace and return its workspace-relative path. */
+  writeFile(name: string, bytes: Uint8Array): Promise<{ path: string }>;
 }
 
 /**

@@ -1685,3 +1685,326 @@ describe("Composio during pnpm test", () => {
     vi.unstubAllEnvs();
   });
 });
+
+describe("Composio readOnly metadata and workspace file staging", () => {
+  it("sets readOnly on read-only actions and rewrites file_uploadable tool schemas", () => {
+    const tools = asConnectorTools([
+      {
+        slug: "GMAIL_LIST_MESSAGES",
+        description: "List Gmail messages",
+        input_parameters: { type: "object", properties: { q: { type: "string" } } },
+      },
+      {
+        slug: "GOOGLEDRIVE_UPLOAD_FILE",
+        description: "Upload a file to Google Drive",
+        input_parameters: {
+          type: "object",
+          properties: {
+            file_to_upload: {
+              type: "object",
+              file_uploadable: true,
+              properties: {
+                name: { type: "string" },
+                mimetype: { type: "string" },
+                s3key: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      {
+        slug: "COMPOSIO_MULTI_EXECUTE_TOOL",
+        description: "Execute tools",
+        input_parameters: { type: "object", properties: {} },
+      },
+    ]);
+
+    expect(tools.find((t) => t.name === "GMAIL_LIST_MESSAGES")?.readOnly).toBe(true);
+    expect(tools.find((t) => t.name === "GOOGLEDRIVE_UPLOAD_FILE")?.readOnly).toBeUndefined();
+    expect(tools.find((t) => t.name === "COMPOSIO_MULTI_EXECUTE_TOOL")?.readOnly).toBeUndefined();
+
+    const uploadTool = tools.find((t) => t.name === "GOOGLEDRIVE_UPLOAD_FILE");
+    const props = (uploadTool?.inputSchema as Record<string, unknown>)?.properties as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(props.file_to_upload?.type).toBe("string");
+  });
+
+  it("rewrites COMPOSIO_GET_TOOL_SCHEMAS and stages file_to_upload in COMPOSIO_MULTI_EXECUTE_TOOL", async () => {
+    const executed: Array<{ tool: string; args: Record<string, unknown> }> = [];
+    const uploaded: Array<{ name: string; toolSlug: string; toolkitSlug: string }> = [];
+    const session = {
+      sessionId: "sess-upload",
+      toolkits: async () => ({ items: [] }),
+      tools: async () => [],
+      authorize: async () => ({ redirectUrl: null, id: "req-1" }),
+      execute: async (tool: string, args: Record<string, unknown>) => {
+        executed.push({ tool, args });
+        if (tool === "COMPOSIO_GET_TOOL_SCHEMAS") {
+          return {
+            resultType: "completed" as const,
+            error: null,
+            logId: "log-schema",
+            data: {
+              tool_schemas: {
+                GOOGLEDRIVE_UPLOAD_FILE: {
+                  tool_slug: "GOOGLEDRIVE_UPLOAD_FILE",
+                  input_schema: {
+                    type: "object",
+                    properties: {
+                      file_to_upload: {
+                        type: "object",
+                        file_uploadable: true,
+                        properties: {
+                          name: { type: "string" },
+                          mimetype: { type: "string" },
+                          s3key: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          };
+        }
+        return {
+          resultType: "completed" as const,
+          error: null,
+          logId: "log-upload",
+          data: { uploaded: true },
+        };
+      },
+    };
+
+    const connector = new ComposioConnector({
+      client: {
+        create: async () => session as never,
+        sessions: { use: async () => session as never },
+        toolkits: { get: async () => [] },
+        authConfigs: { list: async () => ({ items: [], nextCursor: null }) },
+        connectedAccounts: {
+          list: async () => ({ items: [{ id: "acc-drive" }], totalPages: 1 }) as never,
+          waitForConnection: async () => ({ id: "acc-drive" }) as never,
+          delete: async () => ({}) as never,
+        },
+        getClient: () => ({
+          tools: {
+            list: async () => ({ items: [], next_cursor: null }),
+          },
+        }),
+        files: {
+          upload: async ({ file, toolSlug, toolkitSlug }) => {
+            const f = file as File;
+            uploaded.push({ name: f.name, toolSlug, toolkitSlug });
+            return { name: f.name, mimetype: f.type, s3key: "s3/drive/bao-cao.pdf" };
+          },
+        },
+      },
+    });
+
+    const context: AdapterContext = {
+      spaceId: "space-1",
+      userId: "user-1",
+      operationId: "op-1",
+      traceId: "trace-1",
+      signal: new AbortController().signal,
+      connectedConnections: [
+        {
+          id: "conn-1",
+          connectorId: "composio",
+          externalId: "googledrive",
+          displayName: "Google Drive",
+        },
+      ],
+      workspaceFiles: {
+        readFile: async (workspacePath) => {
+          expect(workspacePath).toBe("attachments/bao-cao.pdf");
+          return {
+            bytes: new TextEncoder().encode("PDFDATA"),
+            name: "bao-cao.pdf",
+            mimeType: "application/pdf",
+          };
+        },
+        writeFile: async (fileName) => ({ path: `downloads/${fileName}` }),
+      },
+    };
+
+    const schemaEvents: ConnectorEvent[] = [];
+    for await (const event of connector.execute(
+      {
+        executionId: "exec-schema",
+        tool: "COMPOSIO_GET_TOOL_SCHEMAS",
+        args: { tool_slugs: ["GOOGLEDRIVE_UPLOAD_FILE"] },
+      },
+      context,
+    )) {
+      schemaEvents.push(event);
+    }
+    const schemaResult = schemaEvents.find((e) => e.type === "result");
+    expect(schemaResult?.type).toBe("result");
+    const rewrittenSchema = (
+      schemaResult as {
+        data: {
+          data: {
+            tool_schemas: {
+              GOOGLEDRIVE_UPLOAD_FILE: {
+                input_schema: { properties: { file_to_upload: { type: string } } };
+              };
+            };
+          };
+        };
+      }
+    ).data.data.tool_schemas.GOOGLEDRIVE_UPLOAD_FILE.input_schema.properties.file_to_upload;
+    expect(rewrittenSchema.type).toBe("string");
+
+    const uploadEvents: ConnectorEvent[] = [];
+    for await (const event of connector.execute(
+      {
+        executionId: "exec-upload",
+        tool: "COMPOSIO_MULTI_EXECUTE_TOOL",
+        args: {
+          tools: [
+            {
+              tool_slug: "GOOGLEDRIVE_UPLOAD_FILE",
+              arguments: { file_to_upload: "attachments/bao-cao.pdf" },
+            },
+          ],
+        },
+      },
+      context,
+    )) {
+      uploadEvents.push(event);
+    }
+
+    expect(uploadEvents.some((e) => e.type === "result")).toBe(true);
+    expect(uploaded).toEqual([
+      { name: "bao-cao.pdf", toolSlug: "GOOGLEDRIVE_UPLOAD_FILE", toolkitSlug: "googledrive" },
+    ]);
+    expect(executed[1]).toEqual({
+      tool: "COMPOSIO_MULTI_EXECUTE_TOOL",
+      args: {
+        tools: [
+          {
+            tool_slug: "GOOGLEDRIVE_UPLOAD_FILE",
+            arguments: {
+              file_to_upload: {
+                name: "bao-cao.pdf",
+                mimetype: "application/pdf",
+                s3key: "s3/drive/bao-cao.pdf",
+              },
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it("falls back to tools.retrieve for direct upload calls without prior schema discovery", async () => {
+    const executed: Array<{ tool: string; args: Record<string, unknown> }> = [];
+    const session = {
+      sessionId: "sess-direct",
+      toolkits: async () => ({ items: [] }),
+      tools: async () => [],
+      authorize: async () => ({ redirectUrl: null, id: "req-1" }),
+      execute: async (tool: string, args: Record<string, unknown>) => {
+        executed.push({ tool, args });
+        return {
+          resultType: "completed" as const,
+          error: null,
+          logId: "log-1",
+          data: { ok: true },
+        };
+      },
+    };
+
+    const retrieve = vi.fn(async () => ({
+      slug: "GOOGLEDRIVE_UPLOAD_FILE",
+      input_parameters: {
+        type: "object",
+        properties: {
+          file_to_upload: {
+            type: "object",
+            file_uploadable: true,
+            properties: {
+              name: { type: "string" },
+              mimetype: { type: "string" },
+              s3key: { type: "string" },
+            },
+          },
+        },
+      },
+    }));
+
+    const connector = new ComposioConnector({
+      client: {
+        create: async () => session as never,
+        sessions: { use: async () => session as never },
+        toolkits: { get: async () => [] },
+        authConfigs: { list: async () => ({ items: [], nextCursor: null }) },
+        connectedAccounts: {
+          list: async () => ({ items: [{ id: "acc-drive" }], totalPages: 1 }) as never,
+          waitForConnection: async () => ({ id: "acc-drive" }) as never,
+          delete: async () => ({}) as never,
+        },
+        getClient: () => ({
+          tools: {
+            list: async () => ({ items: [], next_cursor: null }),
+            retrieve,
+          },
+        }),
+        files: {
+          upload: async ({ file }) => {
+            const f = file as File;
+            return { name: f.name, mimetype: f.type, s3key: "s3/direct/doc.txt" };
+          },
+        },
+      },
+    });
+
+    const events: ConnectorEvent[] = [];
+    for await (const event of connector.execute(
+      {
+        executionId: "exec-direct",
+        tool: "GOOGLEDRIVE_UPLOAD_FILE",
+        args: { file_to_upload: "notes/doc.txt" },
+      },
+      {
+        spaceId: "space-1",
+        userId: "user-1",
+        operationId: "op-2",
+        traceId: "trace-2",
+        signal: new AbortController().signal,
+        connectedConnections: [
+          {
+            id: "conn-1",
+            connectorId: "composio",
+            externalId: "googledrive",
+            displayName: "Google Drive",
+          },
+        ],
+        workspaceFiles: {
+          readFile: async () => ({
+            bytes: new TextEncoder().encode("hello"),
+            name: "doc.txt",
+            mimeType: "text/plain",
+          }),
+          writeFile: async (fileName) => ({ path: `downloads/${fileName}` }),
+        },
+      },
+    )) {
+      events.push(event);
+    }
+
+    expect(retrieve).toHaveBeenCalledTimes(1);
+    expect(events.some((e) => e.type === "result")).toBe(true);
+    expect(executed[0]?.args).toEqual({
+      file_to_upload: {
+        name: "doc.txt",
+        mimetype: "text/plain",
+        s3key: "s3/direct/doc.txt",
+      },
+    });
+  });
+});

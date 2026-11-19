@@ -13,7 +13,7 @@ import type {
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import { ConnectorAuthUnavailableError } from "@rakazo/adapter-kit";
-import { humanizeToolName } from "@rakazo/core";
+import { connectorToolRequiresApproval, humanizeToolName } from "@rakazo/core";
 import { getLogger } from "@rakazo/logging";
 import { collectPages, filterCatalog } from "../../../connector-catalog.js";
 import { isVitestRuntime } from "../../../test-runtime.js";
@@ -24,6 +24,14 @@ import {
   createToolkitDirectoryCache,
   mergeCatalogWithConnected,
 } from "./composio-catalog-cache.js";
+import type { ComposioFileUploader } from "./composio-file-staging.js";
+import {
+  ComposioFileFieldCache,
+  rewriteDiscoveredToolSchemas,
+  rewriteFileUploadableSchema,
+  stageComposioDownloadResults,
+  stageComposioUploadArgs,
+} from "./composio-file-staging.js";
 
 type SdkSession = Awaited<ReturnType<Composio["create"]>>;
 
@@ -37,6 +45,7 @@ export type ComposioClient = {
   create(userId: string, config: ToolRouterCreateSessionConfig): Promise<ComposioSession>;
   sessions: { use(sessionId: string): Promise<ComposioSession> };
   connectedAccounts: Pick<Composio["connectedAccounts"], "list" | "waitForConnection" | "delete">;
+  files?: Pick<Composio["files"], "upload">;
   toolkits: {
     get(query: {
       limit?: number;
@@ -51,6 +60,11 @@ export type ComposioClient = {
         items: unknown[];
         next_cursor?: string | null;
       }>;
+      retrieve?(
+        toolSlug: string,
+        query?: Record<string, unknown> | null,
+        options?: { signal?: AbortSignal },
+      ): Promise<unknown>;
     };
   };
   authConfigs: {
@@ -68,7 +82,10 @@ export function isComposioEnabled(apiKey: string | undefined): boolean {
   return Boolean(apiKey) && !isVitestRuntime();
 }
 
-export function asConnectorTools(input: unknown): ConnectorTool[] {
+export function asConnectorTools(
+  input: unknown,
+  onFileFields?: (toolSlug: string, fileFields: Set<string>) => void,
+): ConnectorTool[] {
   const items = Array.isArray(input)
     ? input
     : input && typeof input === "object" && Array.isArray((input as { items?: unknown }).items)
@@ -76,23 +93,51 @@ export function asConnectorTools(input: unknown): ConnectorTool[] {
       : [];
   const tools: ConnectorTool[] = [];
   for (const item of items) {
-    const mapped = mapOneTool(item);
+    const mapped = mapOneTool(item, onFileFields);
     if (mapped) tools.push(mapped);
   }
   return tools;
 }
 
-function mapOneTool(item: unknown): ConnectorTool | undefined {
+function composioToolReadOnly(name: string, raw: Record<string, unknown>): boolean | undefined {
+  const annotations = asObject(raw.annotations);
+  if (typeof annotations?.readOnlyHint === "boolean") return annotations.readOnlyHint;
+  if (typeof raw.read_only === "boolean") return raw.read_only;
+  if (
+    Array.isArray(raw.tags) &&
+    raw.tags.some(
+      (tag) =>
+        typeof tag === "string" &&
+        (tag.toLowerCase() === "readonly" || tag.toLowerCase() === "readonlyhint"),
+    )
+  ) {
+    return true;
+  }
+  if (!name.startsWith(COMPOSIO_TOOL_PREFIX) && !connectorToolRequiresApproval(name)) {
+    return true;
+  }
+  return undefined;
+}
+
+function mapOneTool(
+  item: unknown,
+  onFileFields?: (toolSlug: string, fileFields: Set<string>) => void,
+): ConnectorTool | undefined {
   if (!item || typeof item !== "object") return undefined;
   const raw = item as Record<string, unknown>;
   if (raw.type === "function" && raw.function && typeof raw.function === "object") {
     const fn = raw.function as Record<string, unknown>;
     const name = String(fn.name ?? "");
     if (!name) return undefined;
+    const rawSchema = asObject(fn.parameters) ?? { type: "object", properties: {} };
+    const { schema, fileFields } = rewriteFileUploadableSchema(rawSchema);
+    onFileFields?.(name, fileFields);
+    const readOnly = composioToolReadOnly(name, raw);
     return {
       name,
       description: String(fn.description ?? name),
-      inputSchema: asObject(fn.parameters) ?? { type: "object", properties: {} },
+      inputSchema: schema,
+      ...(readOnly !== undefined ? { readOnly } : {}),
       batch: composioToolBatch(name),
       ...composioToolLabel(name),
       route: { connectorId: "composio", toolName: name },
@@ -100,12 +145,19 @@ function mapOneTool(item: unknown): ConnectorTool | undefined {
   }
   const name = String(raw.slug ?? raw.name ?? "");
   if (!name) return undefined;
+  const rawSchema = asObject(raw.inputParameters) ??
+    asObject(raw.input_parameters) ??
+    asObject(raw.inputSchema) ??
+    asObject(raw.input_schema) ??
+    asObject(raw.parameters) ?? { type: "object", properties: {} };
+  const { schema, fileFields } = rewriteFileUploadableSchema(rawSchema);
+  onFileFields?.(name, fileFields);
+  const readOnly = composioToolReadOnly(name, raw);
   return {
     name,
     description: String(raw.description ?? name),
-    inputSchema: asObject(raw.inputParameters) ??
-      asObject(raw.inputSchema) ??
-      asObject(raw.parameters) ?? { type: "object", properties: {} },
+    inputSchema: schema,
+    ...(readOnly !== undefined ? { readOnly } : {}),
     batch: composioToolBatch(name),
     ...composioToolLabel(name),
     route: { connectorId: "composio", toolName: name },
@@ -113,6 +165,10 @@ function mapOneTool(item: unknown): ConnectorTool | undefined {
 }
 
 const COMPOSIO_TOOL_PREFIX = "COMPOSIO_";
+const COMPOSIO_SCHEMA_DISCOVERY_TOOLS = new Set([
+  "COMPOSIO_SEARCH_TOOLS",
+  "COMPOSIO_GET_TOOL_SCHEMAS",
+]);
 const COMPOSIO_TOOL_LABELS: Record<string, string> = {
   COMPOSIO_SEARCH_TOOLS: "Searching your apps",
   COMPOSIO_GET_TOOL_SCHEMAS: "Checking app details",
@@ -238,6 +294,22 @@ function callUsesToolkit(call: ConnectorCall, toolkit: string, toolkits: string[
       return candidatePrefix.length > prefix.length && key.startsWith(candidatePrefix);
     });
   });
+}
+
+function resolveToolkitSlugForTool(toolSlug: string, toolkits: string[]): string {
+  const key = composioSlugKey(toolSlug);
+  let bestMatch: string | undefined;
+  let bestPrefixLen = -1;
+  for (const toolkit of toolkits) {
+    const prefix = `${composioSlugKey(toolkit)}_`;
+    if (key.startsWith(prefix) && prefix.length > bestPrefixLen) {
+      bestMatch = toolkit;
+      bestPrefixLen = prefix.length;
+    }
+  }
+  if (bestMatch) return bestMatch.toLowerCase();
+  const firstSegment = toolSlug.split("_")[0]?.trim();
+  return (firstSegment || toolSlug).toLowerCase();
 }
 
 function accountIsPinned(
@@ -396,6 +468,7 @@ export class ComposioConnector implements ComposioProvider {
   }
   private readonly catalogSessions = new Map<string, string>();
   private readonly executeSessions = new Map<string, { sessionId: string; key: string }>();
+  private readonly fileFieldCache = new ComposioFileFieldCache();
 
   describe() {
     return {
@@ -627,7 +700,7 @@ export class ComposioConnector implements ComposioProvider {
       tools.push(...page.items);
       cursor = page.next_cursor ?? undefined;
     } while (cursor);
-    return asConnectorTools(tools);
+    return asConnectorTools(tools, (slug, fields) => this.fileFieldCache.set(slug, fields));
   }
 
   async discoverTools(context: AdapterContext): Promise<ConnectorTool[]> {
@@ -635,7 +708,94 @@ export class ComposioConnector implements ComposioProvider {
     if (connections.length === 0) return [];
     const { session } = await this.sessionForExecute(context.userId, connections);
     if (!session) return [];
-    return asConnectorTools(await session.tools());
+    return asConnectorTools(await session.tools(), (slug, fields) =>
+      this.fileFieldCache.set(slug, fields),
+    );
+  }
+
+  private async resolveFileUploadFields(
+    toolSlug: string,
+    args: Record<string, unknown>,
+    signal: AbortSignal,
+  ): Promise<Set<string>> {
+    if (toolSlug.startsWith(COMPOSIO_TOOL_PREFIX)) return new Set();
+    const cached = this.fileFieldCache.get(toolSlug);
+    if (cached !== undefined) return cached;
+    if (Object.keys(args).length === 0) return new Set();
+    const composio = await this.sdk();
+    const retrieve = composio.getClient().tools.retrieve;
+    if (typeof retrieve !== "function") return new Set();
+    try {
+      const detail = asObject(await retrieve(toolSlug, undefined, { signal }));
+      const rawSchema =
+        asObject(detail?.input_parameters) ??
+        asObject(detail?.inputParameters) ??
+        asObject(detail?.input_schema) ??
+        asObject(detail?.inputSchema) ??
+        asObject(detail?.parameters);
+      const fileFields = rawSchema
+        ? rewriteFileUploadableSchema(rawSchema).fileFields
+        : new Set<string>();
+      this.fileFieldCache.set(toolSlug, fileFields);
+      return fileFields;
+    } catch (error) {
+      getLogger().warn("composio tool schema lookup skipped", {
+        "composio.tool": toolSlug,
+        error: sanitizeIntegrationError(error),
+      });
+      return new Set();
+    }
+  }
+
+  private async stageExecutionItemArgs(
+    item: ComposioExecutionCall,
+    toolkits: string[],
+    context: AdapterContext,
+    uploadFile: ComposioFileUploader,
+  ): Promise<Record<string, unknown>> {
+    if (item.tool === COMPOSIO_MULTI_EXECUTE_TOOL && Array.isArray(item.args.tools)) {
+      let changed = false;
+      const nextTools = await Promise.all(
+        item.args.tools.map(async (entry) => {
+          const record = asObject(entry);
+          const slug = typeof record?.tool_slug === "string" ? record.tool_slug.trim() : "";
+          if (!record || !slug) return entry;
+          const parsedArgs = objectArguments(record.arguments);
+          if (!parsedArgs || Object.keys(parsedArgs).length === 0) return entry;
+          const staged = await this.stageSingleToolArgs(
+            slug,
+            parsedArgs,
+            toolkits,
+            context,
+            uploadFile,
+          );
+          if (staged === parsedArgs) return entry;
+          changed = true;
+          return { ...record, arguments: staged };
+        }),
+      );
+      return changed ? { ...item.args, tools: nextTools } : item.args;
+    }
+    return this.stageSingleToolArgs(item.tool, item.args, toolkits, context, uploadFile);
+  }
+
+  private async stageSingleToolArgs(
+    toolSlug: string,
+    args: Record<string, unknown>,
+    toolkits: string[],
+    context: AdapterContext,
+    uploadFile: ComposioFileUploader,
+  ): Promise<Record<string, unknown>> {
+    const fileFields = await this.resolveFileUploadFields(toolSlug, args, context.signal);
+    if (fileFields.size === 0) return args;
+    return stageComposioUploadArgs({
+      toolSlug,
+      toolkitSlug: resolveToolkitSlugForTool(toolSlug, toolkits),
+      args,
+      fileFields,
+      workspaceFiles: context.workspaceFiles,
+      uploadFile,
+    });
   }
 
   async *execute(call: ConnectorCall, context: AdapterContext): AsyncIterable<ConnectorEvent> {
@@ -673,10 +833,15 @@ export class ComposioConnector implements ComposioProvider {
         };
         return;
       }
+      const composio = await this.sdk();
+      const upload = composio.files?.upload?.bind(composio.files);
       for (const item of planned) {
+        const itemArgs = upload
+          ? await this.stageExecutionItemArgs(item, toolkits, context, upload)
+          : item.args;
         const result = await session.execute(
           item.tool,
-          item.args,
+          itemArgs,
           item.account ? { account: item.account } : undefined,
         );
         // A failed or hook-blocked call can come back with an empty error.
@@ -693,7 +858,23 @@ export class ComposioConnector implements ComposioProvider {
           };
           return;
         }
-        executed.push(result);
+        if (COMPOSIO_SCHEMA_DISCOVERY_TOOLS.has(item.tool.toUpperCase())) {
+          const rewrittenData = rewriteDiscoveredToolSchemas(result.data, (slug, fields) =>
+            this.fileFieldCache.set(slug, fields),
+          );
+          executed.push(
+            rewrittenData === result.data ? result : { ...result, data: rewrittenData },
+          );
+        } else if (context.workspaceFiles) {
+          const stagedData = await stageComposioDownloadResults({
+            data: result.data,
+            workspaceFiles: context.workspaceFiles,
+            signal: context.signal,
+          });
+          executed.push(stagedData === result.data ? result : { ...result, data: stagedData });
+        } else {
+          executed.push(result);
+        }
       }
       const result =
         executed.length === 1
