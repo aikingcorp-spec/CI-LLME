@@ -233,19 +233,20 @@ export const conversationTools: ConnectorTool[] = [
   {
     name: "add_mcp_server",
     description:
-      "Connect a remote MCP tool server to this Space when the user asks you to add one and provides the details (URL, optional token/headers). The server is created immediately and an approval card appears in the chat; its tools reach you once the user approves it there. Do not invent endpoints; only use details the user provided. Local (stdio) servers can only be added by an admin in Settings.",
+      "Connect an MCP tool server (remote HTTP/SSE, or local stdio when enabled on this deployment) when the user asks you to add one and provides its details. An approval card appears in chat; its tools reach you once the user approves it. Never invent endpoints or commands.",
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: 'Display name, e.g. "Brex".' },
+        name: { type: "string", description: 'Display name, e.g. "Brex" or "Filesystem".' },
         transport: {
           type: "string",
-          enum: ["streamable_http", "sse"],
-          description: "streamable_http for modern HTTP servers, sse for legacy HTTP servers.",
+          enum: ["streamable_http", "sse", "stdio"],
+          description:
+            "streamable_http or sse for remote HTTP servers; stdio for local command servers.",
         },
         endpoint: {
           type: "string",
-          description: "HTTPS URL of the remote MCP server.",
+          description: "HTTPS URL for remote transports (streamable_http or sse).",
         },
         headers: {
           type: "object",
@@ -255,13 +256,27 @@ export const conversationTools: ConnectorTool[] = [
           type: "string",
           description: "Static access token, equivalent to an Authorization: Bearer header.",
         },
+        command: {
+          type: "string",
+          description:
+            'Allowlisted executable for stdio transport, e.g. "npx", "node", or "python3".',
+        },
+        args: {
+          type: "array",
+          items: { type: "string" },
+          description: 'Command arguments for stdio transport, e.g. ["-y", "@scope/mcp-server"].',
+        },
+        env: {
+          type: "object",
+          description: "Environment variables for stdio transport.",
+        },
         assign_to_self: {
           type: "boolean",
           description:
-            "Assign the server to you so its tools are usable in this conversation (default true).",
+            "Assign the server to you so its tools are usable in this conversation (default true; always true for stdio).",
         },
       },
-      required: ["name", "transport", "endpoint"],
+      required: ["name", "transport"],
     },
   },
   {

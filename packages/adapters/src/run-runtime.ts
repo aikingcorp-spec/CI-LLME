@@ -229,6 +229,7 @@ type SetByRunRuntime =
   | "listConnectedPluginSlugs"
   | "secrets"
   | "mcpAllowPrivateEndpoint"
+  | "mcpStdioPolicy"
   | "deploymentModelKey"
   | "deploymentModelConfigured"
   | "dataDir"
@@ -304,6 +305,10 @@ export function createRunRuntime(
       process.env.TYPESAFE_API_KEY ?? "",
     ].filter(Boolean),
     mcpAllowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
+    mcpStdioPolicy: {
+      stdioEnabled: env.mcpStdioEnabled,
+      allowedCommands: env.mcpStdioAllowedCommands,
+    },
     deploymentModelKey: env.deploymentModelKey,
     deploymentModelConfigured: env.deploymentModelConfigured,
     dataDir: env.dataDir,

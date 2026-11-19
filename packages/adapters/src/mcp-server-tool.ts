@@ -5,6 +5,8 @@ import type { McpServer } from "@rakazo/db";
 import { isUniqueViolation } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { ExecutorDeps } from "./executor-deps.js";
+import { isNpxCommand, parseNpxLaunch } from "./mcp-package-installer.js";
+import { mcpStdioAvailable, mcpStdioRefusal } from "./mcp-transport.js";
 import { toStringRecord } from "./memory-provider-factory.js";
 import { assertNoMcpEndpointCredential, assertSafeRemoteUrl } from "./remote-mcp.js";
 import { persistMessageInTransaction, runLeaseFor } from "./run-messages.js";
@@ -12,8 +14,82 @@ import { persistMessageInTransaction, runLeaseFor } from "./run-messages.js";
 export { deriveMcpSlug } from "@rakazo/core";
 
 const MAX_HEADERS = 32;
+const MAX_STDIO_ARGS = 64;
+const MAX_STDIO_ARG_LENGTH = 2048;
+const MAX_STDIO_COMMAND_LENGTH = 512;
+const MAX_STDIO_ENV = 32;
+const MAX_STDIO_ENV_VALUE_LENGTH = 4096;
+const STDIO_ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-export type ParsedMcpServerArgs = {
+const SECRET_FLAG_NAMES = new Set([
+  "--token",
+  "--api-key",
+  "--apikey",
+  "--key",
+  "--secret",
+  "--password",
+  "--pass",
+  "--auth",
+  "--bearer",
+  "--access-token",
+  "--client-secret",
+  "-k",
+]);
+
+const SECRET_FLAG_PATTERN = /^--[a-z0-9-]*(?:token|key|secret|password|pass|auth|bearer)$/i;
+
+const SECRET_VALUE_PREFIX =
+  /^(?:sk-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{8,}|xox[baprs]-[A-Za-z0-9-]{8,}|ak_[A-Za-z0-9_-]{8,}|ck_[A-Za-z0-9_-]{8,}|Bearer\s+\S+)$/i;
+
+function isSecretKeyName(name: string): boolean {
+  return /(?:token|key|secret|password|pass|auth|bearer)/i.test(name);
+}
+
+/**
+ * Compact, secret-redacted command summary shown on chat approval cards for stdio servers.
+ * Masks values following secret-like flags, `KEY=VALUE` pairs with secret-like keys, and
+ * common token literals so credentials never appear in plaintext chat history.
+ */
+export function formatStdioApprovalSummary(command: string, args: readonly string[]): string {
+  const parts: string[] = [command.trim()];
+  let redactNext = false;
+  for (const raw of args) {
+    if (redactNext) {
+      parts.push("[REDACTED]");
+      redactNext = false;
+      continue;
+    }
+    const lower = raw.toLowerCase();
+    if (SECRET_FLAG_NAMES.has(lower) || SECRET_FLAG_PATTERN.test(raw)) {
+      parts.push(raw);
+      redactNext = true;
+      continue;
+    }
+    const eqIdx = raw.indexOf("=");
+    if (eqIdx > 0) {
+      const lhs = raw.slice(0, eqIdx);
+      const rhs = raw.slice(eqIdx + 1);
+      if (
+        SECRET_FLAG_NAMES.has(lhs.toLowerCase()) ||
+        SECRET_FLAG_PATTERN.test(lhs) ||
+        isSecretKeyName(lhs) ||
+        SECRET_VALUE_PREFIX.test(rhs)
+      ) {
+        parts.push(`${lhs}=[REDACTED]`);
+        continue;
+      }
+    }
+    if (SECRET_VALUE_PREFIX.test(raw)) {
+      parts.push("[REDACTED]");
+      continue;
+    }
+    parts.push(raw);
+  }
+  const summary = parts.join(" ");
+  return summary.length > 240 ? `${summary.slice(0, 237)}...` : summary;
+}
+
+export type ParsedRemoteMcpServerArgs = {
   slug: string;
   name: string;
   description: string;
@@ -24,16 +100,71 @@ export type ParsedMcpServerArgs = {
   assignToSelf: boolean;
 };
 
+export type ParsedStdioMcpServerArgs = {
+  slug: string;
+  name: string;
+  description: string;
+  transport: "stdio";
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+  headers: Record<string, string>;
+  assignToSelf: true;
+};
+
+export type ParsedMcpServerArgs = ParsedRemoteMcpServerArgs | ParsedStdioMcpServerArgs;
+
 /** Returns undefined for anything that would fail server-side validation,
  * so the model gets a single actionable error instead of a partial create. */
 export function parseMcpServerToolArgs(
   args: Record<string, unknown>,
+  options?: { allowStdio?: boolean },
 ): ParsedMcpServerArgs | undefined {
   const name = typeof args.name === "string" ? args.name.trim().slice(0, 120) : "";
   if (!name) return undefined;
   const parsedTransport = McpTransportSchema.safeParse(args.transport);
-  if (!parsedTransport.success || parsedTransport.data === "stdio") return undefined;
+  if (!parsedTransport.success) return undefined;
   const transport = parsedTransport.data;
+  const description = typeof args.description === "string" ? args.description.slice(0, 2000) : "";
+
+  if (transport === "stdio") {
+    if (options?.allowStdio !== true) return undefined;
+    const command = typeof args.command === "string" ? args.command.trim() : "";
+    if (!command || command.length > MAX_STDIO_COMMAND_LENGTH) return undefined;
+
+    const cmdArgs: string[] = [];
+    if (args.args !== undefined) {
+      if (!Array.isArray(args.args) || args.args.length > MAX_STDIO_ARGS) return undefined;
+      for (const item of args.args) {
+        if (typeof item !== "string" || item.length > MAX_STDIO_ARG_LENGTH) return undefined;
+        cmdArgs.push(item);
+      }
+    }
+
+    const rawEnv = toStringRecord(args.env);
+    const envEntries = Object.entries(rawEnv);
+    if (envEntries.length > MAX_STDIO_ENV) return undefined;
+    const env: Record<string, string> = {};
+    for (const [key, value] of envEntries) {
+      if (!STDIO_ENV_KEY_RE.test(key) || value.length > MAX_STDIO_ENV_VALUE_LENGTH) {
+        return undefined;
+      }
+      env[key] = value;
+    }
+
+    return {
+      slug: deriveMcpSlug(name),
+      name,
+      description,
+      transport: "stdio",
+      command,
+      args: cmdArgs,
+      env,
+      headers: {},
+      // Local command servers always require explicit user approval via the chat card.
+      assignToSelf: true,
+    };
+  }
 
   const endpoint = typeof args.endpoint === "string" ? args.endpoint.trim() : "";
   if (!McpRemoteEndpointSchema.safeParse(endpoint).success) return undefined;
@@ -44,7 +175,7 @@ export function parseMcpServerToolArgs(
   return {
     slug: deriveMcpSlug(name),
     name,
-    description: typeof args.description === "string" ? args.description.slice(0, 2000) : "",
+    description,
     transport,
     endpoint,
     headers,
@@ -132,28 +263,45 @@ export async function addMcpServerFromTool(
   args: Record<string, unknown>,
   executionId: string,
 ) {
-  // A local server runs on the deployment's own hosts, so only an admin adds one.
-  if (args.transport === "stdio") {
+  const stdioPolicy = deps.mcpStdioPolicy ?? {};
+  const stdioEnabled = mcpStdioAvailable(stdioPolicy);
+  // Multi-tenant/cloud deployments disable stdio by default so only an admin adds local servers.
+  if (args.transport === "stdio" && !stdioEnabled) {
     return {
       error: "Bots can't add local (stdio) MCP servers. Ask an admin to add it in Settings.",
     };
   }
-  const parsed = parseMcpServerToolArgs(args);
+  const parsed = parseMcpServerToolArgs(args, { allowStdio: stdioEnabled });
   if (!parsed) {
     return {
       error:
-        "Invalid MCP server details. Required: name, transport (streamable_http|sse), and an endpoint URL.",
+        args.transport === "stdio"
+          ? 'Invalid stdio MCP server details. Required: name, transport ("stdio"), command, and optional args/env.'
+          : "Invalid MCP server details. Required: name, transport (streamable_http|sse), and an endpoint URL.",
     };
   }
-  try {
-    await assertSafeRemoteUrl(parsed.endpoint, deps.secretHttp?.resolveHostname, {
-      allowPrivateEndpoint: deps.mcpAllowPrivateEndpoint === true,
-    });
-    assertNoMcpEndpointCredential(parsed.endpoint);
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Invalid MCP endpoint",
-    };
+  if (parsed.transport === "stdio") {
+    const refusal = mcpStdioRefusal(parsed.command, stdioPolicy);
+    if (refusal) {
+      return { error: refusal };
+    }
+    if (isNpxCommand(parsed.command) && !parseNpxLaunch(parsed.command, parsed.args)) {
+      return {
+        error:
+          'Invalid npx MCP launch arguments. Use a plain npm registry package such as ["-y", "@scope/mcp-server"].',
+      };
+    }
+  } else {
+    try {
+      await assertSafeRemoteUrl(parsed.endpoint, deps.secretHttp?.resolveHostname, {
+        allowPrivateEndpoint: deps.mcpAllowPrivateEndpoint === true,
+      });
+      assertNoMcpEndpointCredential(parsed.endpoint);
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "Invalid MCP endpoint",
+      };
+    }
   }
   if (!deps.secretStore) {
     return {
@@ -173,6 +321,10 @@ export async function addMcpServerFromTool(
     });
   }
   const oauthLikely = needsOAuthProbe(parsed);
+  const approvalEndpoint =
+    parsed.transport === "stdio"
+      ? formatStdioApprovalSummary(parsed.command, parsed.args)
+      : parsed.endpoint;
   let serverRow: McpServer;
   let approvalEventSeq: number | undefined;
   let approvalResponseRunId: string | undefined;
@@ -190,18 +342,35 @@ export async function addMcpServerFromTool(
         });
       }
       const server = await tx.mcpServer.create({
-        data: {
-          spaceId: run.spaceId,
-          userId: run.userId,
-          slug: parsed.slug,
-          name: parsed.name,
-          description: parsed.description,
-          transport: parsed.transport,
-          endpoint: parsed.endpoint,
-          headers: Object.fromEntries(Object.keys(parsed.headers).map((key) => [key, true])),
-          secretId: storedCredential?.id,
-          enabled: true,
-        },
+        data:
+          parsed.transport === "stdio"
+            ? {
+                spaceId: run.spaceId,
+                userId: run.userId,
+                slug: parsed.slug,
+                name: parsed.name,
+                description: parsed.description,
+                transport: parsed.transport,
+                endpoint: null,
+                command: parsed.command,
+                hasArgs: parsed.args.length > 0,
+                env: Object.fromEntries(Object.keys(parsed.env).map((key) => [key, true])),
+                headers: {},
+                secretId: storedCredential?.id,
+                enabled: true,
+              }
+            : {
+                spaceId: run.spaceId,
+                userId: run.userId,
+                slug: parsed.slug,
+                name: parsed.name,
+                description: parsed.description,
+                transport: parsed.transport,
+                endpoint: parsed.endpoint,
+                headers: Object.fromEntries(Object.keys(parsed.headers).map((key) => [key, true])),
+                secretId: storedCredential?.id,
+                enabled: true,
+              },
       });
       if (!parsed.assignToSelf) return { server };
       const blocks: MessageBlock[] = [
@@ -210,7 +379,7 @@ export async function addMcpServerFromTool(
           name: server.name,
           serverId: server.id,
           transport: parsed.transport,
-          endpoint: parsed.endpoint,
+          endpoint: approvalEndpoint,
           needsOAuth: oauthLikely,
           status: "pending",
         },

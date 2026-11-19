@@ -21,6 +21,7 @@ import type {
 import type { LabFeature } from "@rakazo/contracts";
 import type { PrismaClient, RunLease, ThreadEvents } from "@rakazo/db";
 import type { CloudAgentConnection, UserCloudAgents } from "./cloud-agent-factory.js";
+import type { McpStdioPolicy } from "./mcp-transport.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
 import type { MessagingDelivery } from "./messaging-delivery.js";
 import type { CodexLiveCatalog } from "./pi-codex-catalog.js";
@@ -80,6 +81,8 @@ export interface ExecutorDeps {
   secretHttp?: RemoteTransportDependencies;
   /** Allow RFC1918 / Docker-network MCP URLs when the operator enabled the escape. */
   mcpAllowPrivateEndpoint?: boolean;
+  /** Deployment stdio MCP policy (enabled flag + command allowlist). Absent disables bot-initiated stdio adds. */
+  mcpStdioPolicy?: McpStdioPolicy;
   /** Remote cloud coding agents. Null/omit means tools stay uninjected. */
   cloudAgent?: CloudAgentConnection | null;
   /** Environments users connected themselves; a run uses its user's before the deployment's. */

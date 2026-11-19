@@ -28,6 +28,7 @@ import type { RunDocker } from "./docker-cli.js";
 import { dockerSpawnEnv, resolveDockerBinary, runDocker } from "./docker-cli.js";
 import { planLegacyUpgrade, readLegacyUpgradeReceipt } from "./legacy-upgrade.js";
 import { allocateLoopbackPort } from "./local-stack.js";
+import { desktopMcpEnv } from "./mcp-stdio-defaults.js";
 import {
   CURRENT_NATIVE_DIRECTORY,
   CURRENT_NATIVE_LAYOUT_ID,
@@ -850,6 +851,8 @@ export class NativeStackController {
       SANDBOX_PROVIDER: "none",
       SANDBOX_HOST_URL: "",
       SANDBOX_HOST_TOKEN: "",
+      // Only this computer can reach the local native stack, so its own endpoints and curated stdio MCP servers are allowed.
+      ...desktopMcpEnv(this.input.env, process.platform),
       // 0.3.9 accounts have no identity binding; the first verified sign-in of the same email claims one.
       ...(receipt ? { RAKAZO_LEGACY_ACCOUNTS: "claimable" } : {}),
     };

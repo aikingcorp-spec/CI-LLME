@@ -6,6 +6,7 @@ import {
   EXAMPLE_SUPERVISOR_TOKEN_PLACEHOLDER,
 } from "@rakazo/core/node/secrets-guard";
 import { expect, it } from "vitest";
+import { desktopMcpEnv, desktopMcpStdioAllowedCommands } from "./mcp-stdio-defaults.js";
 import { CURRENT_NATIVE_DIRECTORY } from "./native-postgres-layout.js";
 import {
   archiveLegacy039Profile,
@@ -490,7 +491,10 @@ it("enforces all 4 locks when archiving a stopped 0.3.9 profile and keeps setup/
     expect(await readFile(path.join(root, "native-device.json"), "utf8")).toBe('{"keep":"device"}');
     expect(await readFile(path.join(root, "setup.json"), "utf8")).toBe('{"keep":"setup"}');
     expect(
-      await readFile(path.join(root, "legacy-039-archived-456", "pg", "data", "PG_VERSION"), "utf8"),
+      await readFile(
+        path.join(root, "legacy-039-archived-456", "pg", "data", "PG_VERSION"),
+        "utf8",
+      ),
     ).toBe("16\n");
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -508,3 +512,31 @@ it("reports whether NativeStackController has running processes", () => {
   expect(stack.managedStackRunning()).toBe(false);
 });
 
+it("enables curated stdio MCP commands per platform while honouring operator overrides", () => {
+  expect(desktopMcpStdioAllowedCommands("darwin")).toBe("npx,node,python,python3");
+  expect(desktopMcpStdioAllowedCommands("linux")).toBe("npx,node,python,python3");
+  expect(desktopMcpStdioAllowedCommands("win32")).toBe(
+    "npx,npx.cmd,node,node.exe,python,python.exe,python3,python3.exe",
+  );
+
+  expect(desktopMcpEnv({}, "win32")).toEqual({
+    MCP_ALLOW_PRIVATE_ENDPOINT: "true",
+    MCP_STDIO_ENABLED: "true",
+    MCP_STDIO_ALLOWED_COMMANDS: "npx,npx.cmd,node,node.exe,python,python.exe,python3,python3.exe",
+  });
+
+  expect(
+    desktopMcpEnv(
+      {
+        MCP_ALLOW_PRIVATE_ENDPOINT: "false",
+        MCP_STDIO_ENABLED: "false",
+        MCP_STDIO_ALLOWED_COMMANDS: "node",
+      },
+      "darwin",
+    ),
+  ).toEqual({
+    MCP_ALLOW_PRIVATE_ENDPOINT: "false",
+    MCP_STDIO_ENABLED: "false",
+    MCP_STDIO_ALLOWED_COMMANDS: "node",
+  });
+});

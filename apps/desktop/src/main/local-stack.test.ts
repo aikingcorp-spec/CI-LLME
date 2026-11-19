@@ -475,6 +475,8 @@ describe("LocalStackController", () => {
       // The laptop's disk encryption covers content; a lost key must not lose it.
       expect(call.env.CONTENT_ENCRYPTION).toBe("off");
       expect(call.env.MCP_ALLOW_PRIVATE_ENDPOINT).toBe("true");
+      expect(call.env.MCP_STDIO_ENABLED).toBe("true");
+      expect(call.env.MCP_STDIO_ALLOWED_COMMANDS).toBe("npx,node,python,python3");
     }
     expect(
       await controller({

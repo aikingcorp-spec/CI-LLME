@@ -11,6 +11,7 @@ import {
   resolveDockerBinary,
 } from "./docker-cli.js";
 import { t } from "./i18n.js";
+import { desktopMcpEnv } from "./mcp-stdio-defaults.js";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
 
 export const STACK_DIR_NAME = "stack";
@@ -789,8 +790,8 @@ export class LocalStackController extends StackLifecycle {
         // Content stays on this computer, under its own disk encryption; a lost key
         // would otherwise lose every conversation. Existing ciphertext still reads.
         CONTENT_ENCRYPTION: "off",
-        // Only this computer can reach the stack, so its own model and tool servers are fair game.
-        MCP_ALLOW_PRIVATE_ENDPOINT: "true",
+        // Only this computer can reach the stack, so its own model and tool servers (including curated stdio MCP commands) are fair game.
+        ...desktopMcpEnv(this.deps.env, "linux"),
         ...(this.currentStackToken === null
           ? {}
           : { RAKAZO_DESKTOP_STACK_TOKEN: this.currentStackToken }),
