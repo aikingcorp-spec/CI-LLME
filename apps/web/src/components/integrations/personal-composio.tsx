@@ -11,6 +11,7 @@ export function PersonalComposio({ onSaved }: { onSaved?: () => Promise<unknown>
   const { t } = useLingui();
   const queries = useSpaceQueries();
   const setup = useQuery(queries.integrationSetup.get.queryOptions());
+  const [open, setOpen] = useState(false);
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export function PersonalComposio({ onSaved }: { onSaved?: () => Promise<unknown>
       setKey("");
       await setup.refetch();
       await onSaved?.();
+      setOpen(false);
     } catch (err) {
       setError(errorText(err, failure));
     } finally {
@@ -44,6 +46,8 @@ export function PersonalComposio({ onSaved }: { onSaved?: () => Promise<unknown>
 
   return (
     <Disclosure
+      open={open}
+      onOpenChange={setOpen}
       summary={
         configured ? (
           <Trans>Composio connected</Trans>
@@ -78,7 +82,10 @@ export function PersonalComposio({ onSaved }: { onSaved?: () => Promise<unknown>
           aria-label={t`Your Composio API key`}
           placeholder={configured ? t`Paste a replacement key` : t`Your Composio API key`}
           value={key}
-          onChange={(event) => setKey(event.target.value)}
+          onChange={(event) => {
+            setKey(event.target.value);
+            setError(null);
+          }}
           disabled={busy}
         />
         <div className="flex flex-wrap gap-2">

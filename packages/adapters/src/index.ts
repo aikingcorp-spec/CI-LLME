@@ -179,7 +179,10 @@ export * from "./page-share-secrets.js";
 export * from "./paid-services-factory.js";
 export * from "./payment-wallet-factory.js";
 export * from "./payment-wallets.js";
-export { importLegacyPersonalIntegration } from "./personal-integration-settings.js";
+export {
+  importLegacyPersonalIntegration,
+  PersonalIntegrationSettings,
+} from "./personal-integration-settings.js";
 export * from "./pi-bundled.js";
 export * from "./pi-catalog-availability.js";
 export * from "./pi-codex-catalog.js";

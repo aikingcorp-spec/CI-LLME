@@ -78,22 +78,49 @@ function button(text: string) {
   return [...container.querySelectorAll("button")].find((node) => node.textContent === text);
 }
 
-it("saves a pasted key, then reloads the catalog", async () => {
+it("saves a pasted key, collapses the form, and reloads the catalog", async () => {
   const onSaved = await render();
   expect(container.textContent).toContain("Connect with your Composio key");
+  const trigger = button("Connect with your Composio key")!;
+  await act(async () => trigger.click());
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
   const input = container.querySelector<HTMLInputElement>('input[type="password"]')!;
   await act(async () => {
     const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
-    setValue.call(input, "ck_test");
+    setValue.call(input, "ak_test");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () => button("Check and save")!.click());
   expect(rpc.integrationSetup.save).toHaveBeenCalledWith({
     provider: "composio",
-    apiKey: "ck_test",
+    apiKey: "ak_test",
   });
   expect(onSaved).toHaveBeenCalledOnce();
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
   expect(button("Remove key")).toBeUndefined();
+});
+
+it("keeps the form open with an alert when saving fails and clears it when typing a new key", async () => {
+  rpc.integrationSetup.save.mockRejectedValueOnce(new Error("Invalid API key"));
+  const onSaved = await render();
+  const trigger = button("Connect with your Composio key")!;
+  await act(async () => trigger.click());
+  const input = container.querySelector<HTMLInputElement>('input[type="password"]')!;
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(input, "ak_bad");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => button("Check and save")!.click());
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe("Invalid API key");
+  expect(onSaved).not.toHaveBeenCalled();
+
+  await act(async () => {
+    setValue.call(input, "ak_next");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(container.querySelector('[role="alert"]')).toBeNull();
 });
 
 it("offers replacing and removing a saved key", async () => {

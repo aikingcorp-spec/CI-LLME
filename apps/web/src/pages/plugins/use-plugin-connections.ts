@@ -151,6 +151,10 @@ export function usePluginConnections({
       queryKey: integrationsOptions.queryKey,
       queryFn: loadIntegrations,
     });
+    void queryClient.invalidateQueries({
+      queryKey: queries.connections.catalog.key(),
+      predicate: (query) => query.queryKey.at(-1) !== "integrations",
+    });
   }
 
   function refreshTools() {

@@ -1,5 +1,5 @@
 import type { ConnectorCatalogItem } from "@rakazo/adapter-kit";
-import { planLiveConnectionSync } from "@rakazo/adapters";
+import { planLiveConnectionSync, sanitizeIntegrationError } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 import { IsolationError, recordSecurityEvent } from "@rakazo/db";
@@ -132,7 +132,7 @@ export function connectionsRoutes(ctx: RouterContext) {
             } catch (error) {
               getLogger().warn("connections.catalog provider failed", {
                 connectorId: provider.describe().id,
-                errorName: error instanceof Error ? error.name : typeof error,
+                error: sanitizeIntegrationError(error),
               });
               return [];
             }

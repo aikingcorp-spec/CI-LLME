@@ -12,6 +12,7 @@ import {
   connectionCleanupRetryAt,
   dropLeftover,
   dropLeftoverAuthorization,
+  isSettingsBackedConnector,
   leftoverAuthorization,
   lockProviderConnectionScope,
   PROVIDER_LOCK_TRANSACTION_MS,
@@ -166,9 +167,12 @@ export async function beginConnection(
     ...request,
     connectorId: request.connectorId ?? deps.connectors.defaultConnectorId,
   };
-  const connector = deps.integrationSettings?.has(input.connectorId)
-    ? await deps.integrationSettings.resolve(input.connectorId, context.actor.userId)
-    : deps.connectors.managed(input.connectorId);
+  const managed = deps.connectors.managed(input.connectorId);
+  const connector =
+    deps.integrationSettings?.has(input.connectorId) &&
+    (!managed || isSettingsBackedConnector(managed))
+      ? await deps.integrationSettings.resolve(input.connectorId, context.actor.userId)
+      : managed;
   if (!connector)
     throw new ClientError("BAD_REQUEST", `Connector ${input.connectorId} is not configured`);
   // The row belongs to this attempt until a revoke takes it or a later begin reuses it.
