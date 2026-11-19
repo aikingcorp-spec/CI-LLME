@@ -101,7 +101,8 @@ const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set([
   "set_child_bot_model",
 ]);
 
-const READ_ONLY_CONNECTOR_PATTERN = /(^|[_-])(get|list|search|find|read)([_-]|$)/i;
+const READ_ONLY_CONNECTOR_PATTERN =
+  /(^|[_-])(get|list|search|find|read|fetch|query|describe|inspect|lookup|view|show|download|export)([_-]|$)/i;
 /** App slug before a hyphenated action: letters and digits, with at most one underscore. */
 const PLAIN_CONNECTOR_SLUG = /^[a-z0-9]+(?:_[a-z0-9]+)?$/;
 const MUTATING_CONNECTOR_PATTERN =

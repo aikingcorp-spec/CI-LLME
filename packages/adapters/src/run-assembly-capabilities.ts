@@ -732,6 +732,7 @@ export async function selectRunTools(
     sourceMessage,
     ownerChatMessageBlocks: nonOwnerChatRun ? undefined : sourceBlocks,
     connectedPlugins,
+    connectorRoutes: strategicConnectorTools.flatMap((tool) => (tool.route ? [tool.route] : [])),
   });
   // Outbound destinations this run may reach without asking. See outboundSiteGate and
   // connectorReadRequiresApproval; approvals from earlier attempts are read back from effects.

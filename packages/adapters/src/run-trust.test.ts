@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ExecutorDeps } from "./executor-deps.js";
-import { connectorTrustKeys, createRunTrustLoaders } from "./run-trust.js";
+import {
+  connectorTrustKeys,
+  createRunTrustLoaders,
+  ownerNamedConnectorTrustKeys,
+} from "./run-trust.js";
 
 describe("connectorTrustKeys", () => {
   const providers = ["gmail", "slack"];
@@ -32,6 +36,70 @@ describe("connectorTrustKeys", () => {
     expect(
       connectorTrustKeys(undefined, { connectorId: "mcp", resourceId: "server-a" }, "mcp", []),
     ).toEqual(["resource:mcp:server-a"]);
+  });
+});
+
+describe("ownerNamedConnectorTrustKeys", () => {
+  const plugins = [
+    { provider: "gmail", connectorId: "apps", displayName: "Gmail" },
+    { provider: "googledrive", connectorId: "apps", displayName: "Google Drive" },
+    { provider: "slack", connectorId: "apps", displayName: "Slack" },
+  ];
+  const routes = [
+    { connectorId: "mcp", resourceId: "srv-linear", catalogGroup: "Linear (mcp; srv-linear)" },
+    { connectorId: "mcp", resourceId: "srv-jira", catalogGroup: "Jira (mcp; srv-jira)" },
+  ];
+
+  it("trusts connected apps and MCP servers explicitly named in the owner's prompt", () => {
+    const keys = ownerNamedConnectorTrustKeys(
+      "Đọc Gmail rồi kiểm tra file trên Google Drive và cập nhật Linear giúp anh",
+      plugins,
+      routes,
+    );
+    expect(keys.has("kind:gmail")).toBe(true);
+    expect(keys.has("kind:apps:gmail")).toBe(true);
+    expect(keys.has("kind:googledrive")).toBe(true);
+    expect(keys.has("kind:apps:googledrive")).toBe(true);
+    expect(keys.has("resource:mcp:srv-linear")).toBe(true);
+    // Unmentioned connectors remain untrusted to preserve prompt-injection boundaries.
+    expect(keys.has("kind:slack")).toBe(false);
+    expect(keys.has("kind:apps:slack")).toBe(false);
+    expect(keys.has("resource:mcp:srv-jira")).toBe(false);
+  });
+
+  it("never matches substrings inside unrelated words or short labels", () => {
+    const keys = ownerNamedConnectorTrustKeys(
+      "Review the hard drive backup and mailbox summary",
+      [...plugins, { provider: "go", connectorId: "apps", displayName: "Go" }],
+      routes,
+    );
+    expect(keys.size).toBe(0);
+  });
+
+  it("does not seed connector trust for non-owner messaging runs", async () => {
+    const trust = createRunTrustLoaders(
+      {
+        prisma: {
+          externalEffect: { findMany: vi.fn(async () => []) },
+        },
+      } as unknown as ExecutorDeps,
+      {
+        run: { userId: "user", spaceId: "space", trigger: "messaging" },
+        runId: "run",
+        botId: "bot",
+        taskPrompt: "Check Gmail and Google Drive",
+        ownerStartedRun: false,
+        messagingChannelRun: true,
+        sourceMessage: {
+          id: "msg-1",
+          role: "user",
+          blocks: [{ kind: "text", text: "Check Gmail and Google Drive" }],
+        },
+        connectedPlugins: plugins,
+        connectorRoutes: routes,
+      },
+    );
+    expect([...(await trust.loadTrustedConnectors())]).toEqual([]);
   });
 });
 

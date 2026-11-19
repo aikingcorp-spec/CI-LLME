@@ -164,6 +164,26 @@ describe("connectorToolRequiresApproval", () => {
   it("still requires approval for a declared read whose name says load", () => {
     expect(connectorToolRequiresApproval("warehouse-load-rows", true)).toBe(true);
   });
+
+  it("treats common read-only verbs as reads unless mutating, compound, or declared write", () => {
+    for (const name of [
+      "GOOGLEDRIVE_DOWNLOAD_FILE",
+      "GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID",
+      "NOTION_QUERY_DATABASE",
+      "GITHUB_DESCRIBE_PULL_REQUEST",
+      "STRIPE_INSPECT_BALANCE",
+      "CRM_LOOKUP_CONTACT",
+      "CALENDAR_VIEW_EVENTS",
+      "DOCS_SHOW_REVISION",
+      "SHEETS_EXPORT_CSV",
+    ]) {
+      expect(connectorToolRequiresApproval(name)).toBe(false);
+      expect(connectorToolRequiresApproval(name, false)).toBe(true);
+    }
+    expect(connectorToolRequiresApproval("CRM_QUERY_AND_UPDATE")).toBe(true);
+    expect(connectorToolRequiresApproval("DRIVE_EXPORT_AND_SEND")).toBe(true);
+    expect(connectorToolRequiresApproval("HOTEL_CHECK_IN")).toBe(true);
+  });
 });
 
 describe("resolveActionApprovalDetail", () => {

@@ -1756,6 +1756,32 @@ describe("Composio batches", () => {
       toolName: "COMPOSIO_MULTI_EXECUTE_TOOL",
     });
   });
+
+  it("allows reading a second app after taint when the owner's prompt explicitly named it", async () => {
+    reviewMock.mockResolvedValue({ decision: "ask", reason: "Unexpected lookup", model: "mock" });
+    const f = batchFixture({
+      autoReview: true,
+      connectedApps: ["gmail", "slack", "notion"],
+      route: { connectorId: "composio", toolName: "COMPOSIO_MULTI_EXECUTE_TOOL" },
+      sourceRole: "user",
+      prompt: "Check Gmail and Slack for the project status",
+    });
+    f.setCalls([
+      { args: batch("GMAIL_LIST_THREADS"), executionId: "call-1" },
+      { name: "web_search", args: { query: "news" }, executionId: "call-2" },
+      { args: batch("SLACK_LIST_CHANNELS"), executionId: "call-3" },
+      { args: batch("NOTION_SEARCH"), executionId: "call-4" },
+    ]);
+    await f.run();
+    // Slack was explicitly named by the owner so it passes without review; Notion was not named, so it is still reviewed.
+    expect(reviewMock).toHaveBeenCalledOnce();
+    expect(reviewMock.mock.calls[0]?.[0]).toMatchObject({
+      toolName: "COMPOSIO_MULTI_EXECUTE_TOOL",
+      args: expect.objectContaining({
+        tools: [expect.objectContaining({ tool_slug: "NOTION_SEARCH" })],
+      }),
+    });
+  });
 });
 
 describe("create_space", () => {

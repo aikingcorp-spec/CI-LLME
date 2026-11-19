@@ -60,6 +60,61 @@ export function connectorTrustKeys(
   });
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function ownerMentionsLabel(ownerWords: string, rawLabel: string | undefined): boolean {
+  if (!ownerWords || !rawLabel) return false;
+  const label = rawLabel.trim();
+  if (label.length < 3) return false;
+  const tokens = label
+    .split(/[\s_-]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (tokens.length === 0) return false;
+  const spaced = tokens.map(escapeRegExp).join("[\\s_-]+");
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])(?:${spaced})(?![\\p{L}\\p{N}_])`, "iu");
+  return pattern.test(ownerWords);
+}
+
+/**
+ * Connected apps and MCP/API resources explicitly named in the owner's own prompt or routine
+ * instructions are already intended for this run, just like owner-named sites in loadTrustedSites.
+ * Unmentioned connectors stay untrusted once outside content enters the run.
+ */
+export function ownerNamedConnectorTrustKeys(
+  ownerWords: string,
+  connectedPlugins: readonly { provider: string; connectorId?: string; displayName?: string }[],
+  connectorRoutes: readonly {
+    connectorId?: string;
+    resourceId?: string;
+    catalogGroup?: string;
+  }[] = [],
+): Set<string> {
+  const trusted = new Set<string>();
+  if (!ownerWords.trim()) return trusted;
+  for (const plugin of connectedPlugins) {
+    const provider = plugin.provider.trim().toLowerCase();
+    if (!provider) continue;
+    const matched =
+      ownerMentionsLabel(ownerWords, plugin.displayName) ||
+      ownerMentionsLabel(ownerWords, provider);
+    if (!matched) continue;
+    trusted.add(`kind:${provider}`);
+    const connectorId = plugin.connectorId?.trim().toLowerCase();
+    if (connectorId) trusted.add(`kind:${connectorId}:${provider}`);
+  }
+  for (const route of connectorRoutes) {
+    if (!route.connectorId || !route.resourceId || !route.catalogGroup) continue;
+    const baseName = route.catalogGroup.split(" (")[0]?.trim();
+    if (ownerMentionsLabel(ownerWords, baseName)) {
+      trusted.add(`resource:${route.connectorId}:${route.resourceId}`);
+    }
+  }
+  return trusted;
+}
+
 /** Approval and trust lookups a run's tool calls share, each loaded at most once. */
 export function createRunTrustLoaders(
   deps: ExecutorDeps,
@@ -73,7 +128,12 @@ export function createRunTrustLoaders(
     sourceMessage: { id: string; role: string; blocks: unknown } | null;
     /** The owner's own chat-app message that started a messaging run; absent for anyone else. */
     ownerChatMessageBlocks?: MessageBlock[];
-    connectedPlugins: readonly { provider: string }[];
+    connectedPlugins: readonly { provider: string; connectorId?: string; displayName?: string }[];
+    connectorRoutes?: readonly {
+      connectorId?: string;
+      resourceId?: string;
+      catalogGroup?: string;
+    }[];
   },
 ) {
   const {
@@ -86,6 +146,7 @@ export function createRunTrustLoaders(
     sourceMessage,
     ownerChatMessageBlocks,
     connectedPlugins,
+    connectorRoutes,
   } = input;
   let approvalRulesPromise: Promise<ActionApprovalRule[]> | undefined;
   const loadApprovalRules = () => {
@@ -205,22 +266,26 @@ export function createRunTrustLoaders(
         where: { runId, status: { in: PASSED_EFFECT_STATUSES } },
         select: { kind: true, request: true, batchActions: true },
       })
-      .then(
-        (rows) =>
-          new Set(
-            rows
-              .filter((row) => !BUILTIN_AGENT_TOOL_NAMES.has(row.kind))
-              .flatMap((row) =>
-                connectorTrustKeys(
-                  storedBatchActions(row.batchActions),
-                  boundDirectApprovalDetails(row.request, CATALOG_APPROVAL_TOOL)?.route ??
-                    catalogApprovalDetails(row.request, CATALOG_APPROVAL_TOOL)?.route,
-                  connectorKindFromToolName(row.kind, providers),
-                  providers,
-                ),
-              ),
-          ),
-      );
+      .then(async (rows) => {
+        const trusted = ownerNamedConnectorTrustKeys(
+          await loadOwnerWords(),
+          connectedPlugins,
+          connectorRoutes,
+        );
+        for (const row of rows) {
+          if (BUILTIN_AGENT_TOOL_NAMES.has(row.kind)) continue;
+          for (const key of connectorTrustKeys(
+            storedBatchActions(row.batchActions),
+            boundDirectApprovalDetails(row.request, CATALOG_APPROVAL_TOOL)?.route ??
+              catalogApprovalDetails(row.request, CATALOG_APPROVAL_TOOL)?.route,
+            connectorKindFromToolName(row.kind, providers),
+            providers,
+          )) {
+            trusted.add(key);
+          }
+        }
+        return trusted;
+      });
     return trustedConnectorsPromise;
   };
   // Channel and webhook text this run took in mid-turn is not the owner's. Rows queued
