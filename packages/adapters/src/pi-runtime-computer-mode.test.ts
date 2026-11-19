@@ -409,9 +409,9 @@ it("runs the user's own screen tools only in computer mode", async () => {
   const input = request();
   input.tools = builtinAgentTools.filter((t) => t.name === "user_computer_observe");
   script([
-    ["use_tool", { name: "user_computer_observe", arguments: { app: "Notes" } }],
+    ["user_computer_observe", { app: "Notes" }],
     ["enter_computer_mode", { goal: "Look at Notes" }],
-    ["use_tool", { name: "user_computer_observe", arguments: { app: "Notes" } }],
+    ["user_computer_observe", { app: "Notes" }],
     ["leave_computer_mode", { summary: "Done" }],
     [undefined],
   ]);

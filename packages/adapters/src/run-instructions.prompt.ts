@@ -53,9 +53,17 @@ export function hostComputerInstruction(
   host: { home: unknown; shell: unknown; platform: string },
 ): string {
   const shell = `Home: ${JSON.stringify(host.home)}. Shell: ${JSON.stringify(host.shell)}. The shell tool executes commands with that shell. Use its native syntax, paths and installed tools; do not assume Linux or bash.`;
-  return computerKind === "wuying"
-    ? `Commands run on a Windows cloud computer. ${shell} Files outside the bot workspace can be accessed through commands. The screen shows the Windows desktop; use the graphical tools for apps without a command line.`
-    : `Commands run on the user's ${host.platform} computer with their account permissions. ${shell} Local files outside the bot workspace can be accessed through commands. App launching is available through OS commands; graphical screen control is unavailable.`;
+  if (computerKind === "wuying") {
+    return `Commands run on a Windows cloud computer. ${shell} Files outside the bot workspace can be accessed through commands. The screen shows the Windows desktop; use the graphical tools for apps without a command line.`;
+  }
+  const platform = host.platform.toLowerCase();
+  const launcherHint =
+    platform === "darwin" || platform.startsWith("mac")
+      ? "Use macOS commands (such as open or osascript) to launch apps, open files, inspect the system, or run local scripts."
+      : platform === "win32" || platform.startsWith("win")
+        ? "Use PowerShell / Windows commands (such as Start-Process) to launch apps, open files, inspect the system, or run local scripts."
+        : "Use native OS commands (such as xdg-open) to launch apps, open files, inspect the system, or run local scripts.";
+  return `Commands run directly on the user's ${host.platform} computer with their account permissions. ${shell} Local files outside the bot workspace can be accessed through commands. ${launcherHint} Do not decline a local computer task just because direct screen clicks are unavailable — use shell and file tools whenever the goal can be completed via commands, files, scripts, or launching apps.`;
 }
 
 /** Cap the roster so a large Space cannot flood the prompt. */

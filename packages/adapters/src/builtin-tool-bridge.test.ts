@@ -26,11 +26,13 @@ describe("built-in tool bridge", () => {
   it("lists a pinned tool set within a byte budget on an owner chat run", () => {
     const { listed, deferred } = partitionTools(ownerChat);
     expect(listed.map((tool) => tool.name).sort()).toEqual([
+      "add_mcp_server",
       "ask_user",
       "attach_file",
       "connect_app",
       "find_tool",
       "list_files",
+      "list_secrets",
       "message_user",
       "read_file",
       "read_history",
@@ -38,11 +40,15 @@ describe("built-in tool bridge", () => {
       "request_secret",
       "request_takeover",
       "run_subagent",
+      "schedule_cancel",
       "schedule_create",
       "schedule_list",
+      "schedule_update",
       "search_history",
       "shell",
+      "skill_create",
       "skill_read",
+      "spawn_bot",
       "update_bot",
       "update_preferences",
       "use_tool",
@@ -50,11 +56,9 @@ describe("built-in tool bridge", () => {
       "web_search",
       "write_file",
     ]);
-    // request_secret carries the card and contact kinds; update_bot carries instructions paging;
-    // the history tools point at files from earlier messages; a watch says it takes no other timing;
-    // read_file takes a line range; ask_user carries the content being decided about;
-    // search_history lists earlier tool work by kind without a keyword.
-    expect(definitionBytes(listed)).toBeLessThanOrEqual(32_579);
+    // Core set includes promoted everyday tools (skill_create, spawn_bot, add_mcp_server,
+    // list_secrets, schedule_update, schedule_cancel, plus user_computer_* when offered).
+    expect(definitionBytes(listed)).toBeLessThanOrEqual(42_000);
     expect(deferred.map((tool) => tool.name)).toEqual(
       expect.arrayContaining(["render_plot", "create_space", "generate_secret", "scratchpad_add"]),
     );
@@ -129,12 +133,16 @@ describe("built-in tool bridge", () => {
 describe("bridge tool definitions", () => {
   it("renders find_tool with the deferred names by area, and use_tool", () => {
     const tool = (name: string) => ({ name, description: name, inputSchema: { type: "object" } });
-    const { listed } = partitionTools([tool("shell"), tool("list_secrets"), tool("render_plot")]);
+    const { listed } = partitionTools([
+      tool("shell"),
+      tool("generate_secret"),
+      tool("render_plot"),
+    ]);
     expect(listed.slice(1)).toEqual([
       {
         name: "find_tool",
         description:
-          "Get the parameters of built-in tools not in your tool list, including ones your instructions name. Call this before use_tool. Pass names for exact tools or query to search.\nmedia:\n  render_plot\nsecrets:\n  list_secrets",
+          "Get the parameters of built-in tools not in your tool list, including ones your instructions name. Call this before use_tool. Pass names for exact tools or query to search.\nmedia:\n  render_plot\nsecrets:\n  generate_secret",
         inputSchema: {
           type: "object",
           properties: {

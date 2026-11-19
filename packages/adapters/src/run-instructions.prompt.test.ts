@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { connectedPluginsInstruction, taughtSkillsInstruction } from "./run-instructions.prompt.js";
+import {
+  connectedPluginsInstruction,
+  hostComputerInstruction,
+  taughtSkillsInstruction,
+} from "./run-instructions.prompt.js";
 
 describe("connectedPluginsInstruction", () => {
   it("names each connected plugin and prefers its tools to browsing", () => {
@@ -32,5 +36,43 @@ describe("taughtSkillsInstruction", () => {
 
   it("adds nothing when no skill was taught", () => {
     expect(taughtSkillsInstruction([])).toBeUndefined();
+  });
+});
+
+describe("hostComputerInstruction", () => {
+  it("guides local Windows hosts to use PowerShell / Start-Process without declining", () => {
+    const text = hostComputerInstruction("local", {
+      home: "C:\\Users\\demo",
+      shell: "powershell.exe",
+      platform: "win32",
+    });
+    expect(text).toContain("Start-Process");
+    expect(text).toContain("Do not decline a local computer task");
+    expect(text).not.toContain("graphical screen control is unavailable");
+  });
+
+  it("guides local macOS and Linux hosts with their native launchers", () => {
+    const mac = hostComputerInstruction("local", {
+      home: "/Users/demo",
+      shell: "/bin/zsh",
+      platform: "darwin",
+    });
+    expect(mac).toContain("open or osascript");
+    const linux = hostComputerInstruction("local", {
+      home: "/home/demo",
+      shell: "/bin/bash",
+      platform: "linux",
+    });
+    expect(linux).toContain("xdg-open");
+  });
+
+  it("preserves Windows cloud computer guidance for wuying", () => {
+    const cloud = hostComputerInstruction("wuying", {
+      home: "C:\\Users\\bot",
+      shell: "powershell.exe",
+      platform: "win32",
+    });
+    expect(cloud).toContain("Windows cloud computer");
+    expect(cloud).toContain("graphical tools");
   });
 });
