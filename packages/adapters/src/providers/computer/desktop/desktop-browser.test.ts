@@ -4,6 +4,7 @@ import path from "node:path";
 import type { AdapterContext } from "@rakazo/adapter-kit";
 import { afterEach, describe, expect, it } from "vitest";
 import { DesktopBrowserManager, detectNativeBrowserExecutable } from "./desktop-browser.js";
+import { normalizeCleanSignInUrl } from "./desktop-browser-cdp.js";
 import { DesktopSandboxProvider } from "./desktop-sandbox.js";
 import { renderDesktopScreenHtml } from "./desktop-screen-page.js";
 import type { MinimalWebSocket } from "./desktop-ws.js";
@@ -86,6 +87,7 @@ if (stateFile && existsSync(stateFile)) {
 }
 persisted.launches = (persisted.launches || 0) + 1;
 persisted.pid = process.pid;
+persisted.lastArgs = args;
 persisted.modes = [...(persisted.modes || []), isHeadless ? "headless" : "windowed"];
 if (initialUrl && initialUrl !== "about:blank") {
   persisted.lastUrl = initialUrl;
@@ -882,6 +884,83 @@ describe("DesktopBrowserManager and DesktopSandboxProvider browser screen", () =
       ws.close();
     } finally {
       await manager.destroy("comp-crash", true);
+    }
+  });
+
+  it("opens clean non-CDP external Chrome window for Google sign-in and normalizes rejected URLs", async () => {
+    expect(
+      normalizeCleanSignInUrl(
+        "https://accounts.google.com/v3/signin/rejected?continue=https%3A%2F%2Fmail.google.com",
+      ),
+    ).toBe("https://accounts.google.com/");
+    expect(normalizeCleanSignInUrl("https://github.com/login")).toBe("https://github.com/login");
+
+    const dir = await mkdtemp(path.join(tmpdir(), "vnbot-desktop-clean-signin-"));
+    tempDirs.push(dir);
+    const fakeBin = await createFakeChromiumBinary(dir);
+    const manager = new DesktopBrowserManager({
+      root: dir,
+      browserExecutablePath: fakeBin,
+    });
+    const workspaceHome = path.join(dir, "workspace");
+    await mkdir(workspaceHome, { recursive: true });
+
+    try {
+      const session = await manager.connectScreen("comp-clean", "bot-clean", workspaceHome, {
+        view: "stream",
+        interactive: true,
+        controlToken: "clean-lease-1",
+      });
+      const url = new URL(session.url!);
+      const ws = await connectLocalWebSocket(`ws://${url.host}${url.searchParams.get("path")}`);
+      await waitForWsMessage(ws, (m) => m.type === "state" && m.browserAvailable === true);
+
+      ws.send(
+        JSON.stringify({
+          type: "navigate",
+          url: "https://accounts.google.com/v3/signin/rejected?continue=https%3A%2F%2Fmail.google.com",
+        }),
+      );
+      await waitForWsMessage(
+        ws,
+        (m) => m.type === "state" && String(m.url ?? "").includes("/v3/signin/rejected"),
+      );
+
+      ws.send(JSON.stringify({ type: "setWindowMode", windowed: true, clean: true }));
+      const cleanState = await waitForWsMessage(
+        ws,
+        (m) => m.type === "state" && m.windowed === true && m.cleanWindow === true,
+      );
+      expect(cleanState.cleanWindow).toBe(true);
+
+      const stateFile = path.join(dir, "desktop-browsers", "bot-clean", "profile-state.json");
+      let persisted: { lastArgs?: string[]; lastUrl?: string } = {};
+      for (let i = 0; i < 30; i += 1) {
+        try {
+          persisted = JSON.parse(await readFile(stateFile, "utf8")) as typeof persisted;
+          if (persisted.lastArgs && !persisted.lastArgs.includes("--headless=new")) break;
+        } catch {
+          /* wait for spawned clean process to write profile-state.json */
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      expect(persisted.lastArgs).toBeDefined();
+      expect(persisted.lastArgs).not.toContain("--headless=new");
+      expect(persisted.lastArgs).not.toContain("--remote-debugging-port=0");
+      expect(persisted.lastArgs).not.toContain("--disable-sync");
+      expect(persisted.lastUrl).toBe("https://accounts.google.com/");
+
+      ws.send(JSON.stringify({ type: "setWindowMode", windowed: false }));
+      const dockedState = await waitForWsMessage(
+        ws,
+        (m) => m.type === "state" && m.windowed === false && m.cleanWindow === false,
+      );
+      expect(dockedState.windowed).toBe(false);
+      expect(dockedState.cleanWindow).toBe(false);
+
+      ws.close();
+    } finally {
+      await manager.destroy("comp-clean", true);
     }
   });
 });

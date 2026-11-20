@@ -194,7 +194,9 @@ export function renderDesktopScreenHtml(): string {
         font-size: 13px;
         line-height: 1.5;
       }
-      #retry-btn {
+      #retry-btn,
+      #dock-btn,
+      #signin-open-btn {
         height: 30px;
         padding: 0 14px;
         border: 1px solid var(--field-border);
@@ -203,9 +205,35 @@ export function renderDesktopScreenHtml(): string {
         color: var(--ink);
         font: 500 12.5px/1 inherit;
         cursor: pointer;
+        white-space: nowrap;
       }
-      #retry-btn:hover {
+      #retry-btn:hover,
+      #dock-btn:hover,
+      #signin-open-btn:hover {
         background: var(--pill-active);
+      }
+      #retry-btn[hidden],
+      #dock-btn[hidden] {
+        display: none !important;
+      }
+      #signin-banner {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 14px;
+        background: var(--bar-bg);
+        border-bottom: 1px solid var(--bar-border);
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      #signin-banner[hidden] {
+        display: none !important;
+      }
+      #signin-banner-text {
+        min-width: 0;
+        flex: 1;
       }
       #sync-badge {
         position: absolute;
@@ -260,12 +288,17 @@ export function renderDesktopScreenHtml(): string {
           <span id="window-label"></span>
         </button>
       </div>
+      <div id="signin-banner" hidden>
+        <span id="signin-banner-text"></span>
+        <button id="signin-open-btn" type="button"></button>
+      </div>
       <div id="screen">
         <canvas id="viewport" tabindex="0" hidden></canvas>
         <div id="empty-state" hidden>
           <p id="empty-title"></p>
           <p id="empty-desc"></p>
           <button id="retry-btn" type="button"></button>
+          <button id="dock-btn" type="button" hidden></button>
         </div>
         <div id="sync-badge" hidden></div>
       </div>
@@ -273,48 +306,71 @@ export function renderDesktopScreenHtml(): string {
     <textarea id="ime-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="-1" aria-hidden="true"></textarea>
     <script>
       (() => {
-        const isVi = /^vi\\b/i.test(navigator.language || "");
-        const copy = isVi
-          ? {
-              placeholder: "Nhập địa chỉ trang web (ví dụ: accounts.google.com)…",
-              openExternal: "Mở cửa sổ ngoài",
-              dockInApp: "Thu về trong app",
-              switching: "Đang chuyển…",
-              syncedBadge: "Đang mở cửa sổ ngoài · Cookie tự động lưu",
-              noBrowserTitle: "Chưa tìm thấy Chrome hoặc Edge",
-              noBrowserDesc:
-                "Cài đặt Google Chrome, Microsoft Edge hoặc Brave trên máy tính để sử dụng màn hình trình duyệt ảo.",
-              readyTitle: "Trình duyệt riêng của trợ lý đã sẵn sàng",
-              readyDescControl:
-                "Nhập địa chỉ trang web trên thanh công cụ phía trên hoặc bấm Mở cửa sổ ngoài để đăng nhập.",
-              readyDescView:
-                "Chưa mở trang web nào. Bấm Sử dụng máy tính để mở trang web hoặc yêu cầu trợ lý truy cập.",
-              retry: "Kiểm tra lại",
-              back: "Quay lại",
-              forward: "Tiếp theo",
-              reload: "Tải lại",
-              newTab: "Thẻ mới",
-            }
-          : {
-              placeholder: "Enter website address (e.g. accounts.google.com)…",
-              openExternal: "Open window",
-              dockInApp: "Dock in app",
-              switching: "Switching…",
-              syncedBadge: "External window open · Cookies stay synced",
-              noBrowserTitle: "Chrome or Edge not found",
-              noBrowserDesc:
-                "Install Google Chrome, Microsoft Edge, or Brave on this computer to use the virtual browser screen.",
-              readyTitle: "Assistant browser is ready",
-              readyDescControl:
-                "Enter a website address in the toolbar above or click Open window to sign in.",
-              readyDescView:
-                "No webpage open yet. Click Use computer to open a site or ask the assistant to browse.",
-              retry: "Check again",
-              back: "Back",
-              forward: "Forward",
-              reload: "Reload",
-              newTab: "New tab",
-            };
+        function buildCopy(vi) {
+          return vi
+            ? {
+                placeholder: "Nhập địa chỉ trang web (ví dụ: accounts.google.com)…",
+                openExternal: "Mở cửa sổ ngoài",
+                dockInApp: "Thu về trong app",
+                switching: "Đang chuyển…",
+                syncedBadge: "Đang mở cửa sổ ngoài · Cookie tự động lưu",
+                noBrowserTitle: "Chưa tìm thấy Chrome hoặc Edge",
+                noBrowserDesc:
+                  "Cài đặt Google Chrome, Microsoft Edge hoặc Brave trên máy tính để sử dụng màn hình trình duyệt ảo.",
+                readyTitle: "Trình duyệt riêng của trợ lý đã sẵn sàng",
+                readyDescControl:
+                  "Nhập địa chỉ trang web trên thanh công cụ phía trên hoặc bấm Mở cửa sổ ngoài để đăng nhập.",
+                readyDescView:
+                  "Chưa mở trang web nào. Bấm Tiếp quản để mở trang web hoặc yêu cầu trợ lý truy cập.",
+                externalTitle: "Đang mở cửa sổ Chrome ngoài để đăng nhập",
+                externalDesc:
+                  "Hãy đăng nhập tài khoản trên cửa sổ Chrome vừa mở. Khi xong, đóng cửa sổ Chrome (hoặc bấm Thu về trong app) — phiên đăng nhập sẽ tự động lưu cho trợ lý.",
+                googleSignInHint:
+                  "Google chặn đăng nhập trong khung nhúng. Mở cửa sổ ngoài để đăng nhập bằng Chrome thật.",
+                retry: "Kiểm tra lại",
+                back: "Quay lại",
+                forward: "Tiếp theo",
+                reload: "Tải lại",
+                newTab: "Thẻ mới",
+              }
+            : {
+                placeholder: "Enter website address (e.g. accounts.google.com)…",
+                openExternal: "Open window",
+                dockInApp: "Dock in app",
+                switching: "Switching…",
+                syncedBadge: "External window open · Cookies stay synced",
+                noBrowserTitle: "Chrome or Edge not found",
+                noBrowserDesc:
+                  "Install Google Chrome, Microsoft Edge, or Brave on this computer to use the virtual browser screen.",
+                readyTitle: "Assistant browser is ready",
+                readyDescControl:
+                  "Enter a website address in the toolbar above or click Open window to sign in.",
+                readyDescView:
+                  "No webpage open yet. Click Take control to open a site or ask the assistant to browse.",
+                externalTitle: "External Chrome window open for sign-in",
+                externalDesc:
+                  "Sign in using the Chrome window that just opened. When done, close Chrome (or click Dock in app) — your session stays saved for the assistant.",
+                googleSignInHint:
+                  "Google blocks sign-in in embedded mode. Open an external Chrome window to sign in.",
+                retry: "Check again",
+                back: "Back",
+                forward: "Forward",
+                reload: "Reload",
+                newTab: "New tab",
+              };
+        }
+
+        function isGoogleSignInUrl(url) {
+          if (typeof url !== "string" || !url) return false;
+          try {
+            const parsed = new URL(url);
+            return parsed.hostname.toLowerCase() === "accounts.google.com";
+          } catch {
+            return false;
+          }
+        }
+
+        let copy = buildCopy(/^vi\\b/i.test(navigator.language || ""));
 
         function query(name, fallback) {
           const match = (document.location.href + window.location.hash).match(
@@ -345,6 +401,9 @@ export function renderDesktopScreenHtml(): string {
         const urlInput = document.getElementById("url-input");
         const windowBtn = document.getElementById("window-btn");
         const windowLabel = document.getElementById("window-label");
+        const signInBanner = document.getElementById("signin-banner");
+        const signInBannerText = document.getElementById("signin-banner-text");
+        const signInOpenBtn = document.getElementById("signin-open-btn");
         const screenEl = document.getElementById("screen");
         const canvas = document.getElementById("viewport");
         const ctx = canvas.getContext("2d", { alpha: false });
@@ -352,43 +411,52 @@ export function renderDesktopScreenHtml(): string {
         const emptyTitle = document.getElementById("empty-title");
         const emptyDesc = document.getElementById("empty-desc");
         const retryBtn = document.getElementById("retry-btn");
+        const dockBtn = document.getElementById("dock-btn");
         const syncBadge = document.getElementById("sync-badge");
         const imeInput = document.getElementById("ime-input");
-
-        urlInput.placeholder = copy.placeholder;
-        backBtn.title = copy.back;
-        forwardBtn.title = copy.forward;
-        reloadBtn.title = copy.reload;
-        newTabBtn.title = copy.newTab;
-        emptyTitle.textContent = copy.noBrowserTitle;
-        emptyDesc.textContent = copy.noBrowserDesc;
-        retryBtn.textContent = copy.retry;
-        syncBadge.textContent = copy.syncedBadge;
-        toolbar.hidden = viewOnly;
 
         let remoteWidth = 1280;
         let remoteHeight = 800;
         let currentWindowed = false;
+        let currentCleanWindow = false;
         let currentUrl = "about:blank";
         let browserOk = true;
+        let lastBrowserError = "";
         let switchingWindow = false;
         let lastFrameImg = null;
         let composing = false;
         let lastTabsKey = "";
 
+        function updateSignInBanner() {
+          signInBanner.hidden = viewOnly || currentWindowed || !browserOk || !isGoogleSignInUrl(currentUrl);
+        }
+
         function updateEmptyAndCanvas(customError) {
+          if (typeof customError === "string") lastBrowserError = customError;
+          updateSignInBanner();
           if (!browserOk) {
             canvas.hidden = true;
             emptyState.hidden = false;
             retryBtn.hidden = false;
+            dockBtn.hidden = true;
             emptyTitle.textContent = copy.noBrowserTitle;
-            emptyDesc.textContent = customError || copy.noBrowserDesc;
+            emptyDesc.textContent = lastBrowserError || copy.noBrowserDesc;
+            return;
+          }
+          if (currentWindowed && currentCleanWindow) {
+            canvas.hidden = true;
+            emptyState.hidden = false;
+            retryBtn.hidden = true;
+            dockBtn.hidden = viewOnly;
+            emptyTitle.textContent = copy.externalTitle;
+            emptyDesc.textContent = copy.externalDesc;
             return;
           }
           if (!currentWindowed && (!currentUrl || currentUrl === "about:blank")) {
             canvas.hidden = true;
             emptyState.hidden = false;
             retryBtn.hidden = true;
+            dockBtn.hidden = true;
             emptyTitle.textContent = copy.readyTitle;
             emptyDesc.textContent = viewOnly ? copy.readyDescView : copy.readyDescControl;
             return;
@@ -400,14 +468,41 @@ export function renderDesktopScreenHtml(): string {
         function updateWindowBtn() {
           windowBtn.dataset.active = currentWindowed ? "true" : "false";
           windowBtn.disabled = switchingWindow;
+          dockBtn.disabled = switchingWindow;
+          signInOpenBtn.disabled = switchingWindow;
           windowLabel.textContent = switchingWindow
             ? copy.switching
             : currentWindowed
               ? copy.dockInApp
               : copy.openExternal;
-          syncBadge.hidden = !currentWindowed;
+          syncBadge.hidden = !currentWindowed || currentCleanWindow;
         }
-        updateWindowBtn();
+
+        function applyCopy() {
+          urlInput.placeholder = copy.placeholder;
+          backBtn.title = copy.back;
+          forwardBtn.title = copy.forward;
+          reloadBtn.title = copy.reload;
+          newTabBtn.title = copy.newTab;
+          retryBtn.textContent = copy.retry;
+          dockBtn.textContent = copy.dockInApp;
+          signInBannerText.textContent = copy.googleSignInHint;
+          signInOpenBtn.textContent = copy.openExternal;
+          syncBadge.textContent = copy.syncedBadge;
+          updateWindowBtn();
+          updateEmptyAndCanvas();
+        }
+        toolbar.hidden = viewOnly;
+        applyCopy();
+
+        if (typeof window.addEventListener === "function") {
+          window.addEventListener("message", (event) => {
+            const data = event && event.data;
+            if (!data || typeof data !== "object" || typeof data.rakazoScreenLang !== "string") return;
+            copy = buildCopy(/^vi\\b/i.test(data.rakazoScreenLang));
+            applyCopy();
+          });
+        }
 
         function layoutCanvas() {
           const rect = screenEl.getBoundingClientRect();
@@ -460,13 +555,15 @@ export function renderDesktopScreenHtml(): string {
             markConnected();
             browserOk = msg.browserAvailable !== false;
             if (!browserOk) {
-              updateEmptyAndCanvas(msg.error);
+              updateEmptyAndCanvas(msg.error || "");
               return;
             }
+            lastBrowserError = "";
             if (typeof msg.width === "number" && msg.width > 0) remoteWidth = msg.width;
             if (typeof msg.height === "number" && msg.height > 0) remoteHeight = msg.height;
             if (typeof msg.url === "string") currentUrl = msg.url;
             currentWindowed = Boolean(msg.windowed);
+            currentCleanWindow = Boolean(msg.cleanWindow);
             switchingWindow = false;
             updateWindowBtn();
             updateEmptyAndCanvas();
@@ -586,12 +683,15 @@ export function renderDesktopScreenHtml(): string {
           event.preventDefault();
           submitUrl();
         });
-        windowBtn.addEventListener("click", () => {
+        function toggleExternalWindow(openExternal) {
           if (switchingWindow) return;
           switchingWindow = true;
           updateWindowBtn();
-          send({ type: "setWindowMode", windowed: !currentWindowed });
-        });
+          send({ type: "setWindowMode", windowed: openExternal, clean: openExternal });
+        }
+        windowBtn.addEventListener("click", () => toggleExternalWindow(!currentWindowed));
+        signInOpenBtn.addEventListener("click", () => toggleExternalWindow(true));
+        dockBtn.addEventListener("click", () => toggleExternalWindow(false));
 
         function toRemotePoint(event) {
           const rect = canvas.getBoundingClientRect();

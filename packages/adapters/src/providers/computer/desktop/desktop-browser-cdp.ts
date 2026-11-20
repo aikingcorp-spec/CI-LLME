@@ -698,6 +698,7 @@ export async function launchChromiumProcess(opts: {
     `--user-data-dir=${opts.profileDir}`,
     "--no-first-run",
     "--no-default-browser-check",
+    "--disable-blink-features=AutomationControlled",
     "--disable-background-networking",
     "--disable-sync",
     "--disable-default-apps",
@@ -750,6 +751,120 @@ export async function launchChromiumProcess(opts: {
   });
 
   return { proc, port };
+}
+
+/**
+ * When a user hits Google's automated-browser rejection page in headless mode and switches to an
+ * external Chrome window, send them to the fresh Google sign-in page instead of the dead error URL.
+ */
+export function normalizeCleanSignInUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  if (!trimmed || trimmed === "about:blank") return "about:blank";
+  try {
+    const parsed = new URL(trimmed);
+    if (
+      parsed.hostname.toLowerCase() === "accounts.google.com" &&
+      /\/signin\/rejected\b/i.test(parsed.pathname)
+    ) {
+      return "https://accounts.google.com/";
+    }
+  } catch {
+    /* keep original URL */
+  }
+  return trimmed;
+}
+
+/**
+ * Launches the user's native browser as a clean stock window (no headless, no remote debugging port,
+ * no sync suppression) sharing the bot's profile directory so Google/2FA/passkey sign-in passes.
+ */
+export async function launchCleanBrowserWindow(opts: {
+  executable: string;
+  profileDir: string;
+  workspaceHome: string;
+  startUrl: string;
+  onSpawned: (proc: ChildProcess) => void;
+}): Promise<{ proc: ChildProcess }> {
+  await mkdir(opts.profileDir, { recursive: true });
+  await Promise.all([
+    bestEffort(
+      "remove Chromium SingletonLock",
+      rm(path.join(opts.profileDir, "SingletonLock"), { force: true }),
+    ),
+    bestEffort(
+      "remove Chromium SingletonCookie",
+      rm(path.join(opts.profileDir, "SingletonCookie"), { force: true }),
+    ),
+    bestEffort(
+      "remove Chromium SingletonSocket",
+      rm(path.join(opts.profileDir, "SingletonSocket"), { force: true }),
+    ),
+  ]);
+
+  const args = [
+    `--user-data-dir=${opts.profileDir}`,
+    "--no-first-run",
+    "--no-default-browser-check",
+    `--window-size=${DEFAULT_WIDTH},${DEFAULT_HEIGHT}`,
+    ...(process.platform === "linux" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
+    normalizeCleanSignInUrl(opts.startUrl),
+  ];
+
+  const proc = spawn(opts.executable, args, {
+    cwd: opts.workspaceHome,
+    stdio: "ignore",
+    windowsHide: false,
+  });
+  opts.onSpawned(proc);
+  return { proc };
+}
+
+/**
+ * Gracefully asks a browser process to close so SQLite cookies flush to disk before falling back to
+ * hard termination. On Windows, `taskkill /PID` (without `/F`) sends WM_CLOSE to windowed Chrome.
+ */
+export async function gracefulCloseBrowserProcess(
+  proc: ChildProcess,
+  preferGracefulWindowClose: boolean,
+): Promise<void> {
+  if (proc.exitCode !== null || proc.killed) return;
+  const exited = new Promise<void>((resolve) => proc.once("exit", () => resolve()));
+  if (process.platform === "win32" && preferGracefulWindowClose && typeof proc.pid === "number") {
+    try {
+      spawn("taskkill", ["/PID", String(proc.pid)], {
+        stdio: "ignore",
+        windowsHide: true,
+      }).unref();
+    } catch {
+      try {
+        proc.kill("SIGTERM");
+      } catch {
+        /* ignore */
+      }
+    }
+  } else {
+    try {
+      proc.kill("SIGTERM");
+    } catch {
+      /* ignore */
+    }
+  }
+  const waitMs = preferGracefulWindowClose ? 2_500 : 1_500;
+  await Promise.race([
+    exited,
+    new Promise<void>((resolve) => {
+      setTimeout(() => {
+        if (proc.exitCode === null && !proc.killed) {
+          try {
+            proc.kill("SIGKILL");
+          } catch {
+            /* ignore */
+          }
+        }
+        resolve();
+      }, waitMs).unref();
+    }),
+  ]);
 }
 
 export async function readWindowedLayoutViewport(

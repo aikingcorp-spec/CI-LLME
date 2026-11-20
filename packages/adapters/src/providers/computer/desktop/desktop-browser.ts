@@ -30,7 +30,10 @@ import {
   evaluateCdpDomSnapshot,
   executeCdpBrowserActStep,
   executeCdpComputerAction,
+  gracefulCloseBrowserProcess,
   launchChromiumProcess,
+  launchCleanBrowserWindow,
+  normalizeCleanSignInUrl,
   normalizeNavigationUrl,
   readWindowedLayoutViewport,
   runDesktopPageBrowser,
@@ -58,6 +61,7 @@ export class DesktopBrowserSession {
   private cdpConnection: CdpPageConnection | null = null;
   private activeTargetId: string | null = null;
   private windowed = false;
+  private cleanWindow = false;
   private browserAvailable = true;
   private browserError: string | undefined;
   private currentUrl = "about:blank";
@@ -206,6 +210,7 @@ export class DesktopBrowserSession {
         url: this.currentUrl,
         title: this.currentTitle,
         windowed: this.windowed,
+        cleanWindow: this.cleanWindow,
         width: this.lastFrameWidth,
         height: this.lastFrameHeight,
         tabs: this.tabs,
@@ -293,7 +298,7 @@ export class DesktopBrowserSession {
           break;
         }
         case "setWindowMode": {
-          await this.setWindowMode(Boolean(msg.windowed));
+          await this.setWindowMode(Boolean(msg.windowed), Boolean(msg.clean));
           break;
         }
         case "mouse": {
@@ -436,24 +441,41 @@ export class DesktopBrowserSession {
     }
   }
 
-  async setWindowMode(windowed: boolean): Promise<void> {
-    if (this.windowed === windowed && this.chromeProcess && !this.chromeProcess.killed) {
+  async setWindowMode(windowed: boolean, clean = false): Promise<void> {
+    const nextClean = windowed && clean;
+    if (
+      this.windowed === windowed &&
+      this.cleanWindow === nextClean &&
+      this.chromeProcess &&
+      !this.chromeProcess.killed
+    ) {
       this.broadcastState();
       return;
     }
-    const targetUrl = this.currentUrl || "about:blank";
+    const wasWindowed = this.windowed || this.cleanWindow;
+    const rawTargetUrl = this.currentUrl || "about:blank";
+    const targetUrl =
+      windowed || this.cleanWindow ? normalizeCleanSignInUrl(rawTargetUrl) : rawTargetUrl;
     this.windowed = windowed;
-    await this.stopBrowserProcess();
+    this.cleanWindow = nextClean;
+    await this.stopBrowserProcess(wasWindowed);
     await this.ensureBrowserLaunched(true, targetUrl);
     this.broadcastState();
-    await bestEffort(
-      "capture desktop browser frame after window mode change",
-      this.captureAndBroadcastFrame(),
-    );
+    if (!this.cleanWindow) {
+      await bestEffort(
+        "capture desktop browser frame after window mode change",
+        this.captureAndBroadcastFrame(),
+      );
+    }
   }
 
   private async ensureBrowserLaunched(forceRetry = false, initialUrl?: string): Promise<void> {
-    if (this.chromeProcess && !this.chromeProcess.killed && this.cdpPort > 0 && !forceRetry) {
+    if (
+      this.chromeProcess &&
+      !this.chromeProcess.killed &&
+      (this.cdpPort > 0 || this.cleanWindow) &&
+      !forceRetry
+    ) {
       return;
     }
     if (this.launchPromise) {
@@ -481,17 +503,34 @@ export class DesktopBrowserSession {
           ? this.currentUrl
           : "about:blank";
 
-    const { proc, port } = await launchChromiumProcess({
-      executable,
-      profileDir: this.profileDir,
-      workspaceHome: this.workspaceHome,
-      windowed: this.windowed,
-      startUrl,
-      onSpawned: (spawned) => {
-        this.chromeProcess = spawned;
-      },
-      onStartupFailed: () => this.stopBrowserProcess(),
-    });
+    let proc: ChildProcess;
+    let port = 0;
+    if (this.windowed && this.cleanWindow) {
+      const launched = await launchCleanBrowserWindow({
+        executable,
+        profileDir: this.profileDir,
+        workspaceHome: this.workspaceHome,
+        startUrl,
+        onSpawned: (spawned) => {
+          this.chromeProcess = spawned;
+        },
+      });
+      proc = launched.proc;
+    } else {
+      const launched = await launchChromiumProcess({
+        executable,
+        profileDir: this.profileDir,
+        workspaceHome: this.workspaceHome,
+        windowed: this.windowed,
+        startUrl,
+        onSpawned: (spawned) => {
+          this.chromeProcess = spawned;
+        },
+        onStartupFailed: () => this.stopBrowserProcess(),
+      });
+      proc = launched.proc;
+      port = launched.port;
+    }
 
     this.cdpPort = port;
     this.browserAvailable = true;
@@ -506,8 +545,10 @@ export class DesktopBrowserSession {
         this.cdpConnection = null;
         if (!this.stoppingProcess) {
           const wasWindowed = this.windowed;
+          const wasCleanWindow = this.cleanWindow;
           if (wasWindowed) {
             this.windowed = false;
+            this.cleanWindow = false;
             this.consecutiveCrashCount = 0;
             this.broadcastState();
           } else {
@@ -523,9 +564,12 @@ export class DesktopBrowserSession {
               const reason = wasWindowed
                 ? "relaunch headless desktop browser after external window closed"
                 : "relaunch headless desktop browser after unexpected exit";
+              const resumeUrl = wasCleanWindow
+                ? normalizeCleanSignInUrl(this.currentUrl)
+                : this.currentUrl;
               void bestEffort(
                 reason,
-                this.ensureBrowserLaunched(true, this.currentUrl)
+                this.ensureBrowserLaunched(true, resumeUrl)
                   .catch((error) => {
                     this.browserAvailable = false;
                     this.browserError = error instanceof Error ? error.message : String(error);
@@ -542,8 +586,10 @@ export class DesktopBrowserSession {
       }
     });
 
-    await this.ensureCdpPage();
-    this.startTargetPoll();
+    if (!this.cleanWindow) {
+      await this.ensureCdpPage();
+      this.startTargetPoll();
+    }
   }
 
   private startTargetPoll(): void {
@@ -607,6 +653,11 @@ export class DesktopBrowserSession {
   }
 
   private async ensureCdpPage(): Promise<CdpPageConnection> {
+    if (this.cleanWindow) {
+      throw new Error(
+        "Browser is open in an external sign-in window. Close it or dock it back into the app first.",
+      );
+    }
     await this.ensureBrowserLaunched();
     if (!this.browserAvailable || !this.cdpPort) {
       throw new Error("Native Chrome or Edge browser is not installed on this computer.");
@@ -911,7 +962,7 @@ export class DesktopBrowserSession {
     );
   }
 
-  async stopBrowserProcess(): Promise<void> {
+  async stopBrowserProcess(preferGracefulWindowClose = this.windowed || this.cleanWindow): Promise<void> {
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
@@ -925,26 +976,7 @@ export class DesktopBrowserSession {
     if (!proc) return;
     this.stoppingProcess = true;
     try {
-      if (proc.exitCode === null && !proc.killed) {
-        try {
-          proc.kill("SIGTERM");
-        } catch {
-          /* ignore */
-        }
-        await Promise.race([
-          new Promise<void>((resolve) => proc.once("exit", () => resolve())),
-          new Promise<void>((resolve) =>
-            setTimeout(() => {
-              try {
-                proc.kill("SIGKILL");
-              } catch {
-                /* ignore */
-              }
-              resolve();
-            }, 1_500),
-          ),
-        ]);
-      }
+      await gracefulCloseBrowserProcess(proc, preferGracefulWindowClose);
     } finally {
       this.stoppingProcess = false;
     }
