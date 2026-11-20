@@ -179,9 +179,7 @@ export function ComputerOverlay({
           </div>
         ) : null}
         <div className="relative min-h-0 flex-1 bg-background">
-          {runsOnUserMachine(computer) ? (
-            <DesktopKindEmptyState className="grid h-full place-items-center px-8 text-center text-body text-muted-foreground/80" />
-          ) : computer?.state === "running" && embeddedScreenUrl && !computerScreenError ? (
+          {computer?.state === "running" && embeddedScreenUrl && !computerScreenError ? (
             <>
               {screenFrames(screenFrameKey, embeddedScreenUrl, heldScreen).map((frame) => (
                 <iframe
@@ -209,6 +207,8 @@ export function ComputerOverlay({
                 />
               ) : null}
             </>
+          ) : runsOnUserMachine(computer) && !computerScreenError && !computerBooting ? (
+            <DesktopKindEmptyState className="grid h-full place-items-center px-8 text-center text-body text-muted-foreground/80" />
           ) : (
             <div className="grid h-full place-items-center text-body text-muted-foreground/80">
               {computerScreenError ??

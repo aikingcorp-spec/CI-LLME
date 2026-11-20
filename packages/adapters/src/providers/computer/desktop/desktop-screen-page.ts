@@ -566,19 +566,25 @@ export function renderDesktopScreenHtml(): string {
           if (tabSelect.value) send({ type: "activateTab", targetId: tabSelect.value });
           focusCanvasInput();
         });
+        function submitUrl() {
+          const raw = urlInput.value.trim();
+          if (!raw) return;
+          send({ type: "navigate", url: raw });
+          focusCanvasInput();
+        }
         urlInput.addEventListener("focus", () => urlInput.select());
         urlInput.addEventListener("keydown", (event) => {
           if (event.key === "Escape") {
             event.preventDefault();
             focusCanvasInput();
+          } else if (event.key === "Enter" && !event.isComposing) {
+            event.preventDefault();
+            submitUrl();
           }
         });
         urlForm.addEventListener("submit", (event) => {
           event.preventDefault();
-          const raw = urlInput.value.trim();
-          if (!raw) return;
-          send({ type: "navigate", url: raw });
-          focusCanvasInput();
+          submitUrl();
         });
         windowBtn.addEventListener("click", () => {
           if (switchingWindow) return;

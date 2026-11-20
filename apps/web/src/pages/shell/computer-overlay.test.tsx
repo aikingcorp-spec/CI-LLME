@@ -59,13 +59,26 @@ function computer(state: ComputerStatus["state"]): ComputerStatus {
 async function render(
   state: ComputerStatus["state"],
   onStart = vi.fn(),
-  options: { hasControl?: boolean; shared?: boolean } = {},
+  options: {
+    hasControl?: boolean;
+    shared?: boolean;
+    kind?: string;
+    runsOnUserMachine?: boolean;
+    embeddedScreenUrl?: string | null;
+  } = {},
 ) {
   await act(async () => {
     root.render(
       <ComputerOverlay
         bot={bot}
-        computer={{ ...computer(state), ...(options.shared ? { shared: true } : {}) }}
+        computer={{
+          ...computer(state),
+          ...(options.shared ? { shared: true } : {}),
+          ...(options.kind ? { kind: options.kind } : {}),
+          ...(options.runsOnUserMachine !== undefined
+            ? { runsOnUserMachine: options.runsOnUserMachine }
+            : {}),
+        }}
         computerViewport={null}
         recordingSkill={null}
         teachBusy={false}
@@ -74,7 +87,7 @@ async function render(
         sending={false}
         booting={false}
         sendError={null}
-        embeddedScreenUrl={null}
+        embeddedScreenUrl={options.embeddedScreenUrl ?? null}
         screenFrameRef={() => undefined}
         computerScreenError={null}
         computerBooting={null}
@@ -133,4 +146,27 @@ it("says sign-ins are shared while someone in a shared space has control", async
   expect(note()).toBeNull();
   await render("running", vi.fn(), { shared: true });
   expect(note()).toBeNull();
+});
+
+it("renders the live screen iframe for a native desktop computer when embeddedScreenUrl is available", async () => {
+  const screenUrl = "http://127.0.0.1:4310/novnc/session/view/12345.abc/embed.html?view_only=true";
+  await render("running", vi.fn(), {
+    kind: "desktop",
+    runsOnUserMachine: true,
+    embeddedScreenUrl: screenUrl,
+  });
+  const iframe = container.querySelector("iframe");
+  expect(iframe).not.toBeNull();
+  expect(iframe?.getAttribute("src")).toBe(screenUrl);
+  expect(container.textContent).not.toContain("This bot runs on this computer");
+});
+
+it("falls back to DesktopKindEmptyState for a native desktop computer without an embedded screen URL", async () => {
+  await render("running", vi.fn(), {
+    kind: "desktop",
+    runsOnUserMachine: true,
+    embeddedScreenUrl: null,
+  });
+  expect(container.querySelector("iframe")).toBeNull();
+  expect(container.textContent).toContain("This bot runs on this computer");
 });
