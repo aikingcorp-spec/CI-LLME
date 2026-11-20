@@ -948,3 +948,85 @@ it("offers Recover for a computer that failed to boot", async () => {
   const buttons = [...container.querySelectorAll("button")].map((button) => button.textContent);
   expect(buttons).toEqual(["Retry screen", "Recover computer"]);
 });
+
+it("auto-boots a stopped local desktop computer once when opening the bot panel, without waking cloud computers", async () => {
+  const bot = { id: "bot-desktop", name: "May" } as never;
+  const boot = vi.fn(async () => ({
+    botId: "bot-desktop",
+    kind: "desktop",
+    runsOnUserMachine: true,
+    state: "running",
+  }));
+  const panelScreenUrl = vi.fn(async () => ({
+    url: "http://127.0.0.1:4310/novnc/session/view/123.sig/embed.html?mode=view",
+  }));
+  const refreshThread = vi.fn(async () => ({}) as never);
+  let activePanel: "settings" | null = "settings";
+  function Controls() {
+    state = useComputerState({
+      rpc: { computer: { boot, screenUrl: panelScreenUrl } } as never,
+      panel: activePanel,
+      activeId: "bot-desktop",
+      activeBotId: { current: "bot-desktop" },
+    });
+    useComputerControls({
+      rpc: { computer: { boot, screenUrl: panelScreenUrl } } as never,
+      state,
+      panel: activePanel,
+      active: bot,
+      bots: [bot],
+      botsRef: { current: [bot] },
+      activeBotId: { current: "bot-desktop" },
+      activeGroupId: { current: undefined },
+      runStatus: undefined,
+      sandboxProvider: undefined,
+      refreshThread,
+      refreshGroupThread: vi.fn(),
+      onUpgrade: vi.fn(),
+    });
+    return null;
+  }
+
+  await act(async () => root.render(<Controls />));
+  // Cloud computers never auto-boot when opening the panel.
+  await act(async () =>
+    state.commitComputer({
+      botId: "bot-desktop",
+      kind: "e2b",
+      runsOnUserMachine: false,
+      state: "stopped",
+    } as never),
+  );
+  expect(boot).not.toHaveBeenCalled();
+
+  // A stopped local desktop computer wakes once and loads the preview screen.
+  await act(async () =>
+    state.commitComputer({
+      botId: "bot-desktop",
+      kind: "desktop",
+      runsOnUserMachine: true,
+      state: "stopped",
+    } as never),
+  );
+  expect(boot).toHaveBeenCalledTimes(1);
+  expect(boot).toHaveBeenCalledWith({ botId: "bot-desktop" });
+  expect(panelScreenUrl).toHaveBeenCalledWith({ botId: "bot-desktop", preview: true });
+
+  // Idle sleep returning the local computer to stopped while the panel stays open does not loop.
+  await act(async () =>
+    state.commitComputer({
+      botId: "bot-desktop",
+      kind: "desktop",
+      runsOnUserMachine: true,
+      state: "stopped",
+    } as never),
+  );
+  expect(boot).toHaveBeenCalledTimes(1);
+
+  // Closing and reopening the panel allows waking again on the next visit.
+  activePanel = null;
+  await act(async () => root.render(<Controls />));
+  activePanel = "settings";
+  await act(async () => root.render(<Controls />));
+  expect(boot).toHaveBeenCalledTimes(2);
+});

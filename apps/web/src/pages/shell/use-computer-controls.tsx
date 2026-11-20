@@ -209,7 +209,9 @@ export function useComputerControls({
     setComputerBotId(active?.id);
   }, [active?.id]);
 
-  // Showing the bot panel reads a running computer's screen; it never wakes one.
+  const computerBlockedByRun = computerBusyWithRun(computer, runStatus);
+
+  // Showing the bot panel reads a running computer's screen; it never wakes a cloud one.
   const panelScreenBotId =
     panel === "settings" && !computerOpen && computer?.state === "running" && !screenUrl
       ? computer.botId
@@ -220,6 +222,35 @@ export function useComputerControls({
     void refreshComputerScreen(panelScreenBotId).catch(() => undefined);
   }, [panelScreenBotId]);
 
+  // A local desktop computer runs on the user's own machine at no cloud cost, so opening the bot
+  // panel wakes a stopped/suspended one once to load its live browser screen preview immediately.
+  const panelAutoBootedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (panel !== "settings") panelAutoBootedRef.current = null;
+  }, [panel, active?.id]);
+  const panelDesktopBootBotId =
+    panel === "settings" &&
+    !computerOpen &&
+    runsOnUserMachine(computer) &&
+    (computer?.state === "stopped" || computer?.state === "suspended") &&
+    !booting &&
+    !computerBlockedByRun &&
+    !computerError
+      ? computer.botId
+      : undefined;
+  useEffect(() => {
+    if (!panelDesktopBootBotId || activeBotId.current !== panelDesktopBootBotId) return;
+    if (screenAwaitsRetry.current) return;
+    if (panelAutoBootedRef.current === panelDesktopBootBotId) return;
+    panelAutoBootedRef.current = panelDesktopBootBotId;
+    void bootComputer({
+      botId: panelDesktopBootBotId,
+      takeControl: false,
+      showProgress: true,
+      force: false,
+    }).catch(() => undefined);
+  }, [panelDesktopBootBotId]);
+
   useEffect(() => {
     if (!computer?.busyBotName) {
       setComputerError(null);
@@ -229,7 +260,6 @@ export function useComputerControls({
 
   // Opening the computer while its bot was running was refused as busy; boot it once the run
   // ends, or the open window is left on a stopped computer with nothing to press.
-  const computerBlockedByRun = computerBusyWithRun(computer, runStatus);
   useEffect(() => {
     if (computerBlockedByRun) return;
     const botId = computer?.botId;
