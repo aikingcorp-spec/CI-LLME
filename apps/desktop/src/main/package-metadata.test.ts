@@ -34,7 +34,7 @@ function targetNames(targets: BuilderTarget[] | undefined) {
 
 describe("desktop package metadata", () => {
   it("shares the customer-facing name between Electron and electron-builder", () => {
-    expect(packageJson.version).toBe("0.5.0");
+    expect(packageJson.version).toBe("0.5.1");
     expect(packageJson.productName).toBe("VNBot");
     expect(packageJson.scripts?.["build:native"]).toBe("node scripts/build-native.mjs");
     expect(targetNames(packageJson.build?.win?.target)).toEqual(["nsis", "msi"]);

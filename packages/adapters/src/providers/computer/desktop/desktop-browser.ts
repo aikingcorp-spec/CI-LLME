@@ -17,7 +17,6 @@ import type {
   ScreenRequest,
   ScreenSession,
 } from "@rakazo/adapter-kit";
-import { abortableDelay, pollUntil } from "@rakazo/core";
 import { bestEffort } from "@rakazo/logging";
 import { computerObservation } from "../../../computer-support.js";
 import type { CdpTargetInfo, ConnectedScreenClient } from "./desktop-browser-cdp.js";
@@ -38,6 +37,7 @@ import {
   readWindowedLayoutViewport,
   runDesktopPageBrowser,
   tokensEqual,
+  waitForCdpPageSettle,
 } from "./desktop-browser-cdp.js";
 import type { EvaluatedDomSnapshot } from "./desktop-browser-dom.js";
 import { isAllowedDesktopPath } from "./desktop-sandbox-paths.js";
@@ -809,7 +809,7 @@ export class DesktopBrowserSession {
     const cdp = await this.ensureCdpPage();
     await this.configureDownloads(cdp, downloadsSubdir);
     await cdp.send("Page.navigate", { url });
-    await this.waitForPageSettle(cdp, 3_500);
+    await waitForCdpPageSettle(cdp, 3_500);
     await bestEffort("sync CDP targets after navigate", this.syncTargets());
     await bestEffort("capture CDP frame after navigate", this.captureAndBroadcastFrame());
   }
@@ -829,7 +829,7 @@ export class DesktopBrowserSession {
         await cdp.send("Page.navigateToHistoryEntry", { entryId: targetEntry.id });
       }
     }
-    await this.waitForPageSettle(cdp, 2_000);
+    await waitForCdpPageSettle(cdp, 2_000);
     await bestEffort("sync CDP targets after history navigation", this.syncTargets());
     await bestEffort("capture CDP frame after history navigation", this.captureAndBroadcastFrame());
   }
@@ -855,31 +855,6 @@ export class DesktopBrowserSession {
       this.fetchJson(`/json/activate/${encodeURIComponent(targetId)}`),
     );
     await this.ensureCdpPage();
-  }
-
-  private async waitForPageSettle(cdp: CdpPageConnection, maxWaitMs = 2_500): Promise<void> {
-    const settled = await pollUntil(
-      async () => {
-        const res = await bestEffort(
-          "check CDP document.readyState",
-          cdp.send<{ result?: { value?: string } }>("Runtime.evaluate", {
-            expression: "document.readyState",
-            returnByValue: true,
-          }),
-        );
-        return res?.result?.value === "complete" || res?.result?.value === "interactive"
-          ? true
-          : undefined;
-      },
-      {
-        intervalMs: 100,
-        timeoutMs: maxWaitMs,
-        onTimeout: () => false,
-      },
-    );
-    if (settled) {
-      await abortableDelay(120);
-    }
   }
 
   async dispatchKey(
@@ -940,7 +915,7 @@ export class DesktopBrowserSession {
       evaluateSnapshot: (cdp, query) => this.evaluateSnapshot(cdp, query),
       captureFrame: () =>
         bestEffort("capture CDP frame after pageBrowser", this.captureAndBroadcastFrame()),
-      waitForSettle: (cdp, ms) => this.waitForPageSettle(cdp, ms),
+      waitForSettle: (cdp, ms) => waitForCdpPageSettle(cdp, ms),
       executeActStep: (cdp, step) => this.executeBrowserActStep(cdp, step),
       drainPageMeta: () => this.drainPageMeta(),
       fallbackState: () => ({ url: this.currentUrl, title: this.currentTitle }),
@@ -962,7 +937,9 @@ export class DesktopBrowserSession {
     );
   }
 
-  async stopBrowserProcess(preferGracefulWindowClose = this.windowed || this.cleanWindow): Promise<void> {
+  async stopBrowserProcess(
+    preferGracefulWindowClose = this.windowed || this.cleanWindow,
+  ): Promise<void> {
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
       this.pollTimer = null;

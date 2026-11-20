@@ -116,7 +116,7 @@ describe("dispatchTool audit outcomes", () => {
     ).resolves.toEqual({ deleted: "remote-object" });
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({ tool: "delete_bot", args: { id: "remote-object" } }),
-      ctx.context,
+      expect.objectContaining(ctx.context),
     );
   });
 

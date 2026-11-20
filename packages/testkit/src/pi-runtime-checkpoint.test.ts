@@ -558,9 +558,9 @@ describe("paused turn context", () => {
         prompt: "Confirm the draft.",
         history: [],
         model: model.model,
-        // list_secrets is deferred, so use_tool is listed and can wrap the
+        // archive_bot is deferred, so use_tool is listed and can wrap the
         // core ask_user, whose nested arguments the model writes verbatim.
-        tools: builtinAgentTools.filter((tool) => ["ask_user", "list_secrets"].includes(tool.name)),
+        tools: builtinAgentTools.filter((tool) => ["ask_user", "archive_bot"].includes(tool.name)),
         secrets: [secret],
         onCheckpoint: async (snapshot) => {
           capture = snapshot;

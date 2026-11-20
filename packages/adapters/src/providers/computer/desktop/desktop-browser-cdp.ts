@@ -12,7 +12,7 @@ import type {
   PageBrowserResult,
 } from "@rakazo/adapter-kit";
 import { INVALID_BROWSER_REQUEST, SandboxRequestRejectedError } from "@rakazo/adapter-kit";
-import { abortableDelay } from "@rakazo/core";
+import { abortableDelay, pollUntil } from "@rakazo/core";
 import { bestEffort } from "@rakazo/logging";
 import type { DomStepPlan, EvaluatedDomSnapshot } from "./desktop-browser-dom.js";
 import {
@@ -887,4 +887,32 @@ export async function readWindowedLayoutViewport(
       ? { height: Math.round(vp.clientHeight) }
       : {}),
   };
+}
+
+export async function waitForCdpPageSettle(
+  cdp: CdpPageConnection,
+  maxWaitMs = 2_500,
+): Promise<void> {
+  const settled = await pollUntil(
+    async () => {
+      const res = await bestEffort(
+        "check CDP document.readyState",
+        cdp.send<{ result?: { value?: string } }>("Runtime.evaluate", {
+          expression: "document.readyState",
+          returnByValue: true,
+        }),
+      );
+      return res?.result?.value === "complete" || res?.result?.value === "interactive"
+        ? true
+        : undefined;
+    },
+    {
+      intervalMs: 100,
+      timeoutMs: maxWaitMs,
+      onTimeout: () => false,
+    },
+  );
+  if (settled) {
+    await abortableDelay(120);
+  }
 }

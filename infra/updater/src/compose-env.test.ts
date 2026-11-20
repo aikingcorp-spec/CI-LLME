@@ -82,6 +82,11 @@ const NOT_PASSED: Record<string, string> = {
   LOCAL_VM_COMPUTER_IMAGE: LOCAL_VM,
   LOCAL_VM_CPUS: LOCAL_VM,
   LOCAL_VM_MEMORY: LOCAL_VM,
+  LOCALAPPDATA:
+    "Windows local Chrome lookup for the desktop computer, which only the Electron app runs",
+  PROGRAMFILES: "Windows Chrome lookup for the desktop computer, which only the Electron app runs",
+  VNBOT_DESKTOP_BROWSER_PATH:
+    "explicit browser binary override for the desktop computer, which only the Electron app runs",
   KUBERNETES_SANDBOX_COMPUTER_IMAGE: KUBERNETES_SANDBOX,
   KUBERNETES_SANDBOX_HOME_CLAIM: KUBERNETES_SANDBOX,
   KUBERNETES_SANDBOX_HOME_COLOCATE_LABELS: KUBERNETES_SANDBOX,
@@ -96,13 +101,20 @@ const NOT_PASSED: Record<string, string> = {
 };
 
 /**
- * Shared-package reads a process must not receive. Only the API signs sessions and talks to
- * the identity provider, so the worker resolves no auth secret. Only the migrate container
- * gets the owner database login, so neither process holds one that bypasses row-level security.
+ * Shared-package or topology-guard reads a process must not receive. Only the API signs sessions,
+ * talks to the identity/billing/remote-access providers, and passes billing secrets, so the worker
+ * never receives them in Compose. Only the migrate container gets the owner database login, so
+ * neither process holds one that bypasses row-level security.
  */
 const DENIED = {
   api: ["DATABASE_MIGRATION_URL"],
-  worker: ["BETTER_AUTH_SECRET", "DATABASE_MIGRATION_URL"],
+  worker: [
+    "BETTER_AUTH_SECRET",
+    "DATABASE_MIGRATION_URL",
+    "RAKAZO_IDENTITY_EXCHANGE",
+    "RAKAZO_REMOTE_ACCESS",
+    "STRIPE_SECRET_KEY",
+  ],
 } as const;
 
 /** Reads a source scan cannot see: names held in constants or read by third-party SDKs. */

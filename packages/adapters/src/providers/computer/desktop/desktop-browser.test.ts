@@ -2,7 +2,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AdapterContext } from "@rakazo/adapter-kit";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DesktopBrowserManager, detectNativeBrowserExecutable } from "./desktop-browser.js";
 import { normalizeCleanSignInUrl } from "./desktop-browser-cdp.js";
 import { DesktopSandboxProvider } from "./desktop-sandbox.js";
@@ -433,7 +433,7 @@ describe("DesktopBrowserManager and DesktopSandboxProvider browser screen", () =
 
       const initialFrame = await waitForWsMessage(viewWs, (m) => m.type === "frame");
       expect(typeof initialFrame.data).toBe("string");
-      expect(initialFrame.data.length).toBeGreaterThan(10);
+      expect((initialFrame.data as string).length).toBeGreaterThan(10);
 
       // 3. Verify a view-only client cannot forge control mode or mutate browser navigation
       await expect(
@@ -833,7 +833,15 @@ describe("DesktopBrowserManager and DesktopSandboxProvider browser screen", () =
         pid: number;
         launches: number;
       };
-      const relaunchedPromise = waitForWsMessage(
+      process.kill(beforeKill.pid, "SIGKILL");
+      await vi.waitFor(
+        async () => {
+          const afterKill = JSON.parse(await readFile(stateFile, "utf8")) as { launches: number };
+          expect(afterKill.launches).toBeGreaterThan(beforeKill.launches);
+        },
+        { timeout: 8_000, interval: 50 },
+      );
+      const relaunchedState = await waitForWsMessage(
         ws,
         (m) =>
           m.type === "state" &&
@@ -841,11 +849,7 @@ describe("DesktopBrowserManager and DesktopSandboxProvider browser screen", () =
           m.url === "https://example.test/work",
         8_000,
       );
-      process.kill(beforeKill.pid, "SIGKILL");
-      const relaunchedState = await relaunchedPromise;
       expect(relaunchedState.browserAvailable).toBe(true);
-      const afterKill = JSON.parse(await readFile(stateFile, "utf8")) as { launches: number };
-      expect(afterKill.launches).toBeGreaterThan(beforeKill.launches);
 
       ws.close();
     } finally {
@@ -935,17 +939,14 @@ describe("DesktopBrowserManager and DesktopSandboxProvider browser screen", () =
 
       const stateFile = path.join(dir, "desktop-browsers", "bot-clean", "profile-state.json");
       let persisted: { lastArgs?: string[]; lastUrl?: string } = {};
-      for (let i = 0; i < 30; i += 1) {
-        try {
+      await vi.waitFor(
+        async () => {
           persisted = JSON.parse(await readFile(stateFile, "utf8")) as typeof persisted;
-          if (persisted.lastArgs && !persisted.lastArgs.includes("--headless=new")) break;
-        } catch {
-          /* wait for spawned clean process to write profile-state.json */
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      expect(persisted.lastArgs).toBeDefined();
-      expect(persisted.lastArgs).not.toContain("--headless=new");
+          expect(persisted.lastArgs).toBeDefined();
+          expect(persisted.lastArgs).not.toContain("--headless=new");
+        },
+        { timeout: 3_000, interval: 50 },
+      );
       expect(persisted.lastArgs).not.toContain("--remote-debugging-port=0");
       expect(persisted.lastArgs).not.toContain("--disable-sync");
       expect(persisted.lastUrl).toBe("https://accounts.google.com/");

@@ -1035,15 +1035,12 @@ describe("Pi connector tool dispatch", () => {
     const spawnBotTool = builtinAgentTools.find((tool) => tool.name === "spawn_bot");
     if (!spawnBotTool) throw new Error("missing spawn_bot");
     fakeAgentState.invoke = {
-      name: "use_tool",
+      name: "spawn_bot",
       args: {
-        name: "spawn_bot",
-        arguments: {
-          name: "Scout",
-          description: "Finds venues.",
-          instructions: "Ask before booking anything.",
-          computer_mode: "team",
-        },
+        name: "Scout",
+        description: "Finds venues.",
+        instructions: "Ask before booking anything.",
+        computer_mode: "team",
       },
     };
     const executeTool = vi.fn(async () => ({ ok: true }));
@@ -1089,8 +1086,8 @@ describe("Pi connector tool dispatch", () => {
     const spawnBotTool = builtinAgentTools.find((tool) => tool.name === "spawn_bot");
     if (!spawnBotTool) throw new Error("missing spawn_bot");
     fakeAgentState.invoke = {
-      name: "use_tool",
-      args: { name: "spawn_bot", arguments: { name: "Scout" } },
+      name: "spawn_bot",
+      args: { name: "Scout" },
     };
     const executeTool = vi.fn(async () => ({ ok: true }));
     const runtime = new PiAgentRuntime();
@@ -1129,7 +1126,8 @@ describe("Pi connector tool dispatch", () => {
 
   it("passes update_bot's read offset through the use_tool wrapper", async () => {
     const updateBotTool = builtinAgentTools.find((tool) => tool.name === "update_bot");
-    if (!updateBotTool) throw new Error("missing update_bot");
+    const archiveBotTool = builtinAgentTools.find((tool) => tool.name === "archive_bot");
+    if (!updateBotTool || !archiveBotTool) throw new Error("missing update_bot or archive_bot");
     fakeAgentState.invoke = {
       name: "use_tool",
       args: { name: "update_bot", arguments: { instructions_offset: 8_000 } },
@@ -1146,7 +1144,7 @@ describe("Pi connector tool dispatch", () => {
         instructions: "",
         history: [],
         // A deferred tool exposes use_tool, through which the model names update_bot.
-        tools: [updateBotTool, scheduleCancelTool],
+        tools: [updateBotTool, archiveBotTool],
         model: { provider: "test", id: "dispatch-test-model" },
         executeTool,
       },
@@ -1171,6 +1169,7 @@ describe("Pi connector tool dispatch", () => {
   });
 
   it("runs schedule tools, remember and request_secret sequentially", async () => {
+    const archiveBotTool = builtinAgentTools.find((tool) => tool.name === "archive_bot")!;
     const executeTool = vi.fn(async () => ({ ok: true }));
     const runtime = new PiAgentRuntime();
 
@@ -1186,6 +1185,7 @@ describe("Pi connector tool dispatch", () => {
           scheduleCreateTool,
           scheduleListTool,
           scheduleCancelTool,
+          archiveBotTool,
           destinationTool,
           builtinAgentTools.find((tool) => tool.name === "remember")!,
           builtinAgentTools.find((tool) => tool.name === "request_secret")!,
@@ -1211,7 +1211,8 @@ describe("Pi connector tool dispatch", () => {
     // the row, so the bot reports "no schedules" for a reminder it just made.
     expect(modes.get("schedule_create")).toBe("sequential");
     expect(modes.get("schedule_list")).toBe("sequential");
-    // schedule_cancel is deferred, so the use_tool that runs it is sequential.
+    expect(modes.get("schedule_cancel")).toBe("sequential");
+    // archive_bot is deferred, so the use_tool wrapper is exposed and sequential.
     expect(modes.get("use_tool")).toBe("sequential");
     expect(modes.get("remember")).toBe("sequential");
     // Two code requests in one batch would each wait on a card that one answer approves.
